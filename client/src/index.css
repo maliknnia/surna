@@ -1564,8 +1564,9 @@
   --beacon-label-text: rgba(0, 0, 0, 0.82);
 }
 
-.surna-map-root .leaflet-tile-pane {
-  filter: saturate(0.6) contrast(1.15) brightness(1.05);
+.surna-map-root .leaflet-tile-pane,
+.surna-map-root .maplibregl-canvas {
+  filter: saturate(0.6) contrast(1.15) brightness(1.0);
 }
 .surna-map-light .leaflet-tile-pane {
   filter: saturate(0.85) contrast(1.02) brightness(1.0) sepia(0.08);

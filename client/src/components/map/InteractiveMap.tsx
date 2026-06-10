@@ -1,42 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
-import L from "leaflet";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import Supercluster from "supercluster";
 import type { Coordinates } from "@/lib/geo";
-import "leaflet/dist/leaflet.css";
-import "leaflet.markercluster/dist/MarkerCluster.css";
-import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import { createMarkerClusterGroup } from "./leafletCluster";
 import {
   createSurnaClusterIcon,
   createSurnaMarker,
   createSurnaUserMarker,
 } from "./surnaMapMarkers";
 
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-});
-
 const DEFAULT_MAP_ZOOM = 15;
+const CLUSTER_MAX_ZOOM = 14;
+const LONG_PRESS_MS = 500;
 
-const CARTO_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
-const CARTO_TILES = {
-  dark: {
-    base: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    labels: "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
-  },
-  light: {
-    base: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    labels: "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-  },
+const OPENFREE_MAP_STYLES = {
+  dark: "https://tiles.openfreemap.org/styles/dark",
+  light: "https://tiles.openfreemap.org/styles/positron",
 } as const;
 
 export interface MapPin {
@@ -85,150 +64,63 @@ interface InteractiveMapProps {
   onLongPress?: (coords: Coordinates) => void;
 }
 
+type DivIconLike = {
+  options: {
+    html?: string | false | HTMLElement;
+    className?: string;
+    iconSize?: [number, number] | { x: number; y: number };
+    iconAnchor?: [number, number] | { x: number; y: number };
+  };
+};
+
+type PinFeatureProps = { pin: MapPin; hasStory: boolean };
+type ClusterProps = { cluster: true; cluster_id: number; point_count: number };
+
 function isValidCoord(lat: number, lng: number): boolean {
   return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
 }
 
-function MapInvalidateSize({ active }: { active: boolean }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!active) return;
-    const run = () => map.invalidateSize({ animate: false });
-    const raf = requestAnimationFrame(run);
-    const t = window.setTimeout(run, 150);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(t);
-    };
-  }, [active, map]);
-  return null;
+function readPoint(
+  value: [number, number] | { x: number; y: number } | undefined,
+  fallback: [number, number],
+): [number, number] {
+  if (!value) return fallback;
+  if (Array.isArray(value)) return value;
+  return [value.x, value.y];
 }
 
-function MapUpdater({ center }: { center: Coordinates }) {
-  const map = useMap();
-  const prevCenter = useRef<{ lat: number; lng: number } | null>(null);
-  useEffect(() => {
-    if (!prevCenter.current) {
-      map.setView([center.lat, center.lng], DEFAULT_MAP_ZOOM);
-    } else if (prevCenter.current.lat !== center.lat || prevCenter.current.lng !== center.lng) {
-      map.setView([center.lat, center.lng], map.getZoom());
-    }
-    prevCenter.current = { lat: center.lat, lng: center.lng };
-  }, [center.lat, center.lng, map]);
-  return null;
+function createMarkerElement(icon: DivIconLike): HTMLDivElement {
+  const rawHtml = icon.options.html;
+  const html = typeof rawHtml === "string" ? rawHtml : "";
+  const [width] = readPoint(icon.options.iconSize, [40, 40]);
+  const [anchorX, anchorY] = readPoint(icon.options.iconAnchor, [width / 2, width]);
+
+  const el = document.createElement("div");
+  el.className = icon.options.className || "";
+  el.innerHTML = html;
+  el.style.width = `${width}px`;
+  el.style.pointerEvents = "auto";
+  el.style.transform = `translate(-${anchorX}px, -${anchorY}px)`;
+  return el;
 }
 
-function MapFlyTo({
-  target,
-  zoom = 15,
-}: {
-  target?: Coordinates | null;
-  zoom?: number;
-}) {
-  const map = useMap();
-  useEffect(() => {
-    if (!target) return;
-    map.flyTo([target.lat, target.lng], zoom, { duration: 0.55 });
-  }, [target?.lat, target?.lng, zoom, map]);
-  return null;
-}
-
-function MapLongPress({ onLongPress }: { onLongPress?: (coords: Coordinates) => void }) {
-  useMapEvents({
-    contextmenu: (e) => {
-      if (!onLongPress) return;
-      e.originalEvent.preventDefault();
-      onLongPress({ lat: e.latlng.lat, lng: e.latlng.lng });
-    },
-  });
-  return null;
-}
-
-function ClusterLayer({
-  pins,
-  onPinClick,
-  highlightedPinId,
-}: {
-  pins: MapPin[];
-  onPinClick: (pin: MapPin) => void;
-  highlightedPinId?: string | null;
-}) {
-  const map = useMap();
-  const clusterGroupRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (!map) return;
-
-    if (clusterGroupRef.current) {
-      map.removeLayer(clusterGroupRef.current);
-    }
-
-    const clusterGroup = createMarkerClusterGroup({
-      maxClusterRadius: 48,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      animate: true,
-      animateAddingMarkers: false,
-      disableClusteringAtZoom: 17,
-      iconCreateFunction: (cluster: {
-        getChildCount: () => number;
-        getAllChildMarkers: () => { options: { _hasStory?: boolean } }[];
-      }) => {
-        const count = cluster.getChildCount();
-        const childMarkers = cluster.getAllChildMarkers();
-        const hasStory = childMarkers.some((m) => m.options._hasStory);
-        return createSurnaClusterIcon(count, hasStory);
-      },
+function attachMarker(
+  map: maplibregl.Map,
+  lng: number,
+  lat: number,
+  icon: DivIconLike,
+  onClick?: () => void,
+): maplibregl.Marker {
+  const el = createMarkerElement(icon);
+  if (onClick) {
+    el.addEventListener("click", (event) => {
+      event.stopPropagation();
+      onClick();
     });
-
-    const pinByMarker = new WeakMap<L.Marker, MapPin>();
-
-    const addMarkers = (zoom: number) => {
-      clusterGroup.clearLayers();
-      pins.forEach((pin) => {
-        const { lat, lng } = pin.coords;
-        if (!isValidCoord(lat, lng)) return;
-        const isFocused = highlightedPinId != null && pin.id === highlightedPinId;
-        const marker = new L.Marker([lat, lng], {
-          icon: createSurnaMarker(pin, isFocused, zoom),
-          _pinType: pin.type,
-          _hasStory: pin.hasStory || false,
-          zIndexOffset: isFocused ? 1000 : 0,
-        } as L.MarkerOptions);
-
-        pinByMarker.set(marker, pin);
-        marker.on("click", () => onPinClick(pin));
-        clusterGroup.addLayer(marker);
-      });
-    };
-
-    const refreshMarkerIcons = () => {
-      const zoom = map.getZoom();
-      clusterGroup.eachLayer((layer) => {
-        const marker = layer as L.Marker;
-        const pin = pinByMarker.get(marker);
-        if (!pin) return;
-        const isFocused = highlightedPinId != null && pin.id === highlightedPinId;
-        marker.setIcon(createSurnaMarker(pin, isFocused, zoom));
-      });
-    };
-
-    addMarkers(map.getZoom());
-    map.on("zoomend", refreshMarkerIcons);
-
-    map.addLayer(clusterGroup);
-    clusterGroupRef.current = clusterGroup;
-
-    return () => {
-      map.off("zoomend", refreshMarkerIcons);
-      if (clusterGroupRef.current) {
-        map.removeLayer(clusterGroupRef.current);
-      }
-    };
-  }, [map, pins, onPinClick, highlightedPinId]);
-
-  return null;
+  }
+  return new maplibregl.Marker({ element: el, anchor: "top-left" })
+    .setLngLat([lng, lat])
+    .addTo(map);
 }
 
 export default function InteractiveMap({
@@ -247,14 +139,283 @@ export default function InteractiveMap({
   onLongPress,
 }: InteractiveMapProps) {
   const [mounted, setMounted] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const pinMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const clusterIndexRef = useRef<Supercluster<PinFeatureProps, ClusterProps> | null>(null);
+  const prevCenterRef = useRef<{ lat: number; lng: number } | null>(null);
+  const onPinClickRef = useRef(onPinClick);
+  const styleRef = useRef<string>("");
+
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    onPinClickRef.current = onPinClick;
+  }, [onPinClick]);
 
   const useDarkTiles = mapStyle !== undefined ? mapStyle === "dark" : isDark;
-  const tiles = useDarkTiles ? CARTO_TILES.dark : CARTO_TILES.light;
   const mapCenter = isValidCoord(center.lat, center.lng)
     ? center
     : { lat: 51.8985, lng: -8.4756 };
   const youCoords = userDisplayCoords ?? mapCenter;
+  const tileStyle = useDarkTiles ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
+
+  const clearPinMarkers = () => {
+    pinMarkersRef.current.forEach((marker) => marker.remove());
+    pinMarkersRef.current = [];
+  };
+
+  const syncPinMarkers = () => {
+    const map = mapRef.current;
+    const index = clusterIndexRef.current;
+    if (!map) return;
+
+    clearPinMarkers();
+
+    const zoom = map.getZoom();
+    const validPins = pins.filter((pin) => isValidCoord(pin.coords.lat, pin.coords.lng));
+
+    if (zoom >= CLUSTER_MAX_ZOOM || !index) {
+      validPins.forEach((pin) => {
+        const isFocused = highlightedPinId != null && pin.id === highlightedPinId;
+        const marker = attachMarker(
+          map,
+          pin.coords.lng,
+          pin.coords.lat,
+          createSurnaMarker(pin, isFocused, Math.round(zoom)),
+          () => onPinClickRef.current(pin),
+        );
+        pinMarkersRef.current.push(marker);
+      });
+      return;
+    }
+
+    const bounds = map.getBounds();
+    const clusters = index.getClusters(
+      [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+      Math.floor(zoom),
+    );
+
+    clusters.forEach((feature) => {
+      const [lng, lat] = feature.geometry.coordinates;
+      const props = feature.properties as PinFeatureProps & Partial<ClusterProps & { cluster_id: number; point_count: number }>;
+
+      if ("cluster" in props && props.cluster && props.cluster_id != null) {
+        const count = props.point_count ?? 0;
+        const hasStory = index.getLeaves(props.cluster_id, Infinity).some((leaf) => leaf.properties.hasStory);
+        const clusterMarker = attachMarker(
+          map,
+          lng,
+          lat,
+          createSurnaClusterIcon(count, hasStory),
+          () => {
+            const expansionZoom = Math.min(
+              index.getClusterExpansionZoom(props.cluster_id!),
+              CLUSTER_MAX_ZOOM,
+            );
+            map.flyTo({ center: [lng, lat], zoom: expansionZoom, duration: 550 });
+          },
+        );
+        pinMarkersRef.current.push(clusterMarker);
+        return;
+      }
+
+      const pin = props.pin;
+      if (!pin) return;
+      const isFocused = highlightedPinId != null && pin.id === highlightedPinId;
+      const marker = attachMarker(
+        map,
+        lng,
+        lat,
+        createSurnaMarker(pin, isFocused, Math.round(zoom)),
+        () => onPinClickRef.current(pin),
+      );
+      pinMarkersRef.current.push(marker);
+    });
+  };
+
+  useEffect(() => {
+    clusterIndexRef.current = new Supercluster<PinFeatureProps, ClusterProps>({
+      radius: 48,
+      maxZoom: CLUSTER_MAX_ZOOM - 1,
+    });
+    clusterIndexRef.current.load(
+      pins
+        .filter((pin) => isValidCoord(pin.coords.lat, pin.coords.lng))
+        .map((pin) => ({
+          type: "Feature" as const,
+          properties: { pin, hasStory: Boolean(pin.hasStory) },
+          geometry: {
+            type: "Point" as const,
+            coordinates: [pin.coords.lng, pin.coords.lat] as [number, number],
+          },
+        })),
+    );
+    syncPinMarkers();
+  }, [pins]);
+
+  useEffect(() => {
+    if (!mounted || !mapActive || !mapContainerRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: tileStyle,
+      center: [mapCenter.lng, mapCenter.lat],
+      zoom: DEFAULT_MAP_ZOOM,
+      attributionControl: false,
+    });
+
+    mapRef.current = map;
+    styleRef.current = tileStyle;
+    prevCenterRef.current = { lat: mapCenter.lat, lng: mapCenter.lng };
+
+    const onMapReady = () => {
+      map.resize();
+      syncPinMarkers();
+    };
+
+    map.on("load", onMapReady);
+    map.on("zoomend", syncPinMarkers);
+    map.on("moveend", syncPinMarkers);
+
+    return () => {
+      map.off("load", onMapReady);
+      map.off("zoomend", syncPinMarkers);
+      map.off("moveend", syncPinMarkers);
+      clearPinMarkers();
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [mounted, mapActive]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || styleRef.current === tileStyle) return;
+
+    styleRef.current = tileStyle;
+    map.setStyle(tileStyle);
+    map.once("style.load", () => {
+      map.resize();
+      syncPinMarkers();
+    });
+  }, [tileStyle]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (!prevCenterRef.current) {
+      map.setCenter([mapCenter.lng, mapCenter.lat]);
+      map.setZoom(DEFAULT_MAP_ZOOM);
+    } else if (
+      prevCenterRef.current.lat !== mapCenter.lat ||
+      prevCenterRef.current.lng !== mapCenter.lng
+    ) {
+      map.setCenter([mapCenter.lng, mapCenter.lat]);
+    }
+    prevCenterRef.current = { lat: mapCenter.lat, lng: mapCenter.lng };
+  }, [mapCenter.lat, mapCenter.lng]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !flyTo || !isValidCoord(flyTo.lat, flyTo.lng)) return;
+    map.flyTo({
+      center: [flyTo.lng, flyTo.lat],
+      zoom: flyToZoom,
+      duration: 550,
+    });
+  }, [flyTo?.lat, flyTo?.lng, flyToZoom]);
+
+  useEffect(() => {
+    syncPinMarkers();
+  }, [highlightedPinId]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    userMarkerRef.current?.remove();
+    const icon = createSurnaUserMarker(userMarker);
+    const el = createMarkerElement(icon);
+    el.title = userMarker?.ghostMode ? "Ghost mode — only you see this" : "You are here";
+    userMarkerRef.current = new maplibregl.Marker({ element: el, anchor: "top-left" })
+      .setLngLat([youCoords.lng, youCoords.lat])
+      .addTo(map);
+  }, [userMarker, youCoords.lat, youCoords.lng]);
+
+  useEffect(() => {
+    if (!mapActive) return;
+    const map = mapRef.current;
+    const run = () => map?.resize();
+    const raf = requestAnimationFrame(run);
+    const timer = window.setTimeout(run, 150);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
+  }, [mapActive, className]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !onLongPress) return;
+
+    let timer: number | null = null;
+    let startPoint: { x: number; y: number } | null = null;
+
+    const clearTimer = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = null;
+      startPoint = null;
+    };
+
+    const fireLongPress = () => {
+      if (!startPoint) return;
+      const rect = map.getContainer().getBoundingClientRect();
+      const x = startPoint.x - rect.left;
+      const y = startPoint.y - rect.top;
+      const lngLat = map.unproject([x, y]);
+      onLongPress({ lat: lngLat.lat, lng: lngLat.lng });
+      clearTimer();
+    };
+
+    const onDown = (event: MouseEvent | TouchEvent) => {
+      const point = "touches" in event ? event.touches[0] : event;
+      startPoint = { x: point.clientX, y: point.clientY };
+      timer = window.setTimeout(fireLongPress, LONG_PRESS_MS);
+    };
+
+    const onMove = (event: MouseEvent | TouchEvent) => {
+      if (!startPoint) return;
+      const point = "touches" in event ? event.touches[0] : event;
+      if (Math.hypot(point.clientX - startPoint.x, point.clientY - startPoint.y) > 10) {
+        clearTimer();
+      }
+    };
+
+    const container = map.getContainer();
+    container.addEventListener("mousedown", onDown);
+    container.addEventListener("touchstart", onDown, { passive: true });
+    container.addEventListener("mousemove", onMove);
+    container.addEventListener("touchmove", onMove, { passive: true });
+    container.addEventListener("mouseup", clearTimer);
+    container.addEventListener("touchend", clearTimer);
+    container.addEventListener("mouseleave", clearTimer);
+    container.addEventListener("touchcancel", clearTimer);
+
+    return () => {
+      clearTimer();
+      container.removeEventListener("mousedown", onDown);
+      container.removeEventListener("touchstart", onDown);
+      container.removeEventListener("mousemove", onMove);
+      container.removeEventListener("touchmove", onMove);
+      container.removeEventListener("mouseup", clearTimer);
+      container.removeEventListener("touchend", clearTimer);
+      container.removeEventListener("mouseleave", clearTimer);
+      container.removeEventListener("touchcancel", clearTimer);
+    };
+  }, [onLongPress]);
 
   if (!mounted || !mapActive) {
     return (
@@ -271,45 +432,11 @@ export default function InteractiveMap({
     <div
       className={`surna-map-root relative ${useDarkTiles ? "surna-map-dark" : "surna-map-light"} ${className}`}
     >
-      <MapContainer
-        center={[mapCenter.lat, mapCenter.lng]}
-        zoom={DEFAULT_MAP_ZOOM}
-        scrollWheelZoom
-        zoomControl={false}
+      <div
+        ref={mapContainerRef}
         className="h-full w-full z-0 surna-leaflet"
         style={{ minHeight: "400px" }}
-      >
-        <MapUpdater center={mapCenter} />
-        <MapFlyTo target={flyTo} zoom={flyToZoom} />
-        <MapInvalidateSize active={mapActive} />
-
-        <MapLongPress onLongPress={onLongPress} />
-
-        <TileLayer
-          key={`base-${useDarkTiles ? "dark" : "light"}`}
-          attribution={CARTO_ATTRIBUTION}
-          url={tiles.base}
-          maxZoom={20}
-        />
-        <TileLayer
-          key={`labels-${useDarkTiles ? "dark" : "light"}`}
-          url={tiles.labels}
-          maxZoom={20}
-        />
-
-        <Marker
-          position={[youCoords.lat, youCoords.lng]}
-          icon={createSurnaUserMarker(userMarker)}
-        >
-          <Popup className="surna-map-popup">
-            <p className="surna-map-popup-title">
-              {userMarker?.ghostMode ? "Ghost mode — only you see this" : "You are here"}
-            </p>
-          </Popup>
-        </Marker>
-
-        <ClusterLayer pins={pins} onPinClick={onPinClick} highlightedPinId={highlightedPinId} />
-      </MapContainer>
+      />
 
       <div className="surna-map-vignette" aria-hidden />
       <div className="surna-map-grain" aria-hidden />

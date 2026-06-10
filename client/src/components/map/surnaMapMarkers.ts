@@ -62,10 +62,17 @@ function pinPointerMarkup(borderColor: string): string {
 
 function pinLabelsMarkup(pin: MapPin, borderColor: string): string {
   const typeLabel = PIN_TYPE_LABEL[pin.type] || pin.type;
+  const subtitle = pin.subtitle?.trim();
+  const subtitleDuplicatesType =
+    subtitle &&
+    (subtitle.toLowerCase() === typeLabel.toLowerCase() ||
+      subtitle.toLowerCase() === pin.type.toLowerCase());
+  const secondLine = subtitle && !subtitleDuplicatesType ? subtitle : typeLabel;
+
   return [
     `<div class="surna-spot-labels">`,
     `<span class="surna-spot-name" style="${LABEL_NAME_STYLE}">${escapeHtml(pin.title)}</span>`,
-    `<span class="surna-spot-kind" style="color:${borderColor};${LABEL_KIND_STYLE}">${escapeHtml(typeLabel)}</span>`,
+    `<span class="surna-spot-kind" style="color:${borderColor};${LABEL_KIND_STYLE}">${escapeHtml(secondLine)}</span>`,
     `</div>`,
   ].join("");
 }
