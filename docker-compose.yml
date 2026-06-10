@@ -1,0 +1,170 @@
+# Docker Compose for SURNA Sports Social Platform - Development
+version: '3.8'
+
+services:
+  # Application Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://surna_user:surna_password@db:5432/surna_db
+      - REDIS_URL=redis://redis:6379
+      - SESSION_SECRET=dev_session_secret_change_in_production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=surna_user
+      - POSTGRES_PASSWORD=surna_password
+      - POSTGRES_DB=surna_db
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U surna_user -d surna_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Grafana for Metrics Visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Elasticsearch for Centralized Logging
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Logstash for Log Processing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    volumes:
+      - ./logging/logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logs:/usr/share/logstash/logs
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Kibana for Log Visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
+
+networks:
+  surna-network:
+    driver: bridge

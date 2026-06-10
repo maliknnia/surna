@@ -1,0 +1,209 @@
+📌 Project Vision & Goal
+
+We are building a sports networking app that connects athletes, coaches, and fans.
+The goal is to make the app:
+
+Ultra-fast (speed is critical, especially when switching between feed, coach, or profile pages).
+
+Clean UI (no clutter, professional sports-style).
+
+Feature-rich but with features inside features (depth of functionality).
+
+Multilingual-ready from the start.
+
+
+The app should feel like a mix of LinkedIn for sports + Instagram speed/feed flow.
+
+
+---
+
+⚙️ Core Features (All Stages Combined)
+
+1. User System
+
+Signup/Login with Email, Google, Apple, or Phone.
+
+Athlete/Coach/Fan account types.
+
+Profile with bio, languages, sport, stats, certifications.
+
+Verification system (blue tick for real athletes/coaches).
+
+
+2. Feed (Ultra-Speed)
+
+Infinite scroll posts: text, image, video, reels.
+
+Like, comment, share, save.
+
+Fast refresh: no lag (cached + lazy loading).
+
+Hashtags & sport filters.
+
+
+3. Coaching Module
+
+Coaches list with filters (location, sport, language, rating).
+
+Booking system (calendar + payments).
+
+In-app chat with file sharing (training plans, diet, videos).
+
+Review system for coaches.
+
+
+4. Messaging & Groups
+
+Real-time chat (1-to-1 + groups).
+
+Voice notes, video snippets.
+
+Translation built-in (multilingual).
+
+
+5. Search & Discovery
+
+Search by name, sport, location, skill level.
+
+AI-based suggestions (“You may like this coach/athlete”).
+
+
+6. Monetization
+
+Subscription plans (premium features).
+
+Commission on bookings.
+
+Sponsored posts.
+
+
+7. Other Key Features
+
+Notifications (real-time, grouped).
+
+Dark & light mode.
+
+Speed optimization (critical).
+
+Offline mode (feed caching).
+
+
+
+---
+
+💻 Technical Stack & Code Guidance
+
+✅ Frontend (Mobile App)
+
+Framework: React Native (Expo) or Flutter.
+
+UI: ShadCN/UI + Tailwind (if React Native).
+
+State: Redux Toolkit or Zustand.
+
+Animations: Framer Motion / Reanimated.
+
+Offline-first with SQLite or Realm.
+
+
+✅ Backend
+
+Node.js (NestJS or Express).
+
+Database: PostgreSQL (users, posts, bookings).
+
+Realtime: WebSockets / Firebase.
+
+Media Storage: AWS S3 / Cloudflare R2.
+
+Auth: JWT + OAuth2.
+
+
+✅ Performance
+
+Lazy loading for media.
+
+Pre-caching for profiles & feed.
+
+API response < 200ms.
+
+Page switch < 1 second.
+
+
+✅ Multilingual Support
+
+i18n (English, French, Italian, Turkish, Dari, Pashto, Persian).
+
+Dynamic language switch.
+
+
+
+---
+
+📑 Example Code Skeleton (React Native + Node.js)
+
+// React Native App Entry
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import FeedScreen from "./screens/Feed";
+import CoachScreen from "./screens/Coaches";
+import ProfileScreen from "./screens/Profile";
+
+const Tab = createBottomTabNavigator();
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Tab.Navigator screenOptions={{ headerShown: false }}>
+        <Tab.Screen name="Feed" component={FeedScreen} />
+        <Tab.Screen name="Coaches" component={CoachScreen} />
+        <Tab.Screen name="Profile" component={ProfileScreen} />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}
+
+// Node.js Backend - Example Feed Route
+import express from "express";
+import db from "./db.js";
+
+const router = express.Router();
+
+// Fast feed with pagination
+router.get("/feed", async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  const offset = (page - 1) * limit;
+
+  const posts = await db("posts")
+    .select("*")
+    .orderBy("created_at", "desc")
+    .limit(limit)
+    .offset(offset);
+
+  res.json({ success: true, posts });
+});
+
+export default router;
+
+
+---
+
+🛑 Pressure Check for Developer
+
+Make sure the app:
+✔ Has all the listed features above.
+✔ Built features inside features (e.g., coach profile → booking → calendar → payment → review).
+✔ Runs super fast (no delays in feed or switching pages).
+✔ Multilingual works perfectly.
+✔ Backend APIs optimized (<200ms response).
+✔ UI is clean & professional.
+
+
+---
+
+👉 Now the question for you (developer):
+⚡ Did you implement everything above perfectly?
+⚡ Is the speed guaranteed on all major devices?
+⚡ Are nested features fully functional?
+⚡ What extra features would you recommend adding?

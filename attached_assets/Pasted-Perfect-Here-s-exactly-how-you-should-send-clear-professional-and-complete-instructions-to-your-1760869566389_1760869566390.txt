@@ -1,0 +1,157 @@
+Perfect 👍 Here’s exactly how you should send clear, professional, and complete instructions to your developer — this version covers the Feed page + Story feature + all clickable functions + dependencies clearly and precisely:
+
+
+---
+
+🟣 Feed Page (Main Page Instructions)
+
+1. General Functionality:
+
+The Feed page is the main page of the app.
+
+Everything visible on the Feed page must be clickable and functional — no dummy buttons.
+
+Any feature that needs another system to work (e.g. comments, likes, or profiles) must have that feature built as part of this task.
+
+
+
+---
+
+🟣 Feed Page Features and Required Actions
+
+2. Stories (New Feature — must be added):
+
+Add a Stories bar at the top of the Feed (like Instagram or Facebook).
+
+Each story should display a circular profile photo + username.
+
+When a user taps a story:
+
+It opens a full-screen story view.
+
+Story view supports photos, videos, and text stories.
+
+Users can swipe left/right to move between stories.
+
+Add options to add story, delete story, mute, view viewers, and reply to stories.
+
+
+Stories disappear after 24 hours automatically.
+
+Backend must support storing and expiring stories.
+
+
+
+---
+
+3. Live Feature:
+
+The “Go Live” button must be active.
+
+When a user taps “Go Live,” it should:
+
+Open camera + microphone access.
+
+Allow user to add a title, choose who can view (public/followers/friends), and start live.
+
+Viewers can comment, send likes, and follow during live.
+
+Show live viewer count and end button.
+
+
+
+
+---
+
+4. Post Feature:
+
+Clicking “Create Post” allows:
+
+Adding photo, video, or text posts.
+
+Optional location tag, caption, and hashtags.
+
+Option to tag friends.
+
+
+Posts appear in Feed instantly after upload.
+
+Support like, comment, share, and save buttons for every post.
+
+Each user’s name and photo in a post must link to their profile page.
+
+
+
+---
+
+5. Comments:
+
+Tapping the comment icon opens a comment section below or in a popup.
+
+Users can add, edit, delete, and reply to comments.
+
+Show number of comments under the post.
+
+Commenters’ names and photos are clickable (open profile).
+
+
+
+---
+
+6. Likes & Reactions:
+
+Heart icon toggles between liked/unliked.
+
+Show number of likes and list of users who liked when tapped.
+
+
+
+---
+
+7. Share:
+
+Clicking share gives options:
+
+Share to story
+
+Send via message (Messenger feature)
+
+Copy post link
+
+Share externally (system share sheet)
+
+
+
+
+---
+
+8. Saved Posts:
+
+Save icon should toggle and store posts in user’s “Saved” collection under their profile.
+
+
+
+---
+
+9. Feed Navigation:
+
+Swipe down to refresh posts.
+
+Infinite scroll for loading more posts.
+
+Clicking on videos plays them inline, with mute/unmute, like TikTok/Instagram style.
+
+Feed layout: vertical scroll, each post separated with space.
+
+
+
+---
+
+10. Integration and Dependencies:
+
+All profile, post, and story clicks must lead to actual working pages.
+
+If any feature (e.g. comments, likes, or lives) depends on another backend element, build that backend feature too.
+
+No feature should be “for later” — everything connected should work.
+

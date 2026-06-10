@@ -1,0 +1,561 @@
+Perfect — now we complete the system properly.
+You already have:
+
+Stories ✅
+
+Videos ✅
+
+Messages ✅
+
+
+Now we add the COMMENTS SYSTEM so everything feels connected, premium, and consistent.
+
+I’ll give you this like a real product spec 👇
+
+
+---
+
+🔥 SURNA Comments System (Videos + Feed + Stories)
+
+✅ Core Principle
+
+Feels as smooth as Instagram
+
+Cleaner than TikTok
+
+Smarter than both (SURNA context)
+
+
+
+---
+
+1) Where Comments Appear
+
+A) Video Viewer (like your screenshot)
+
+Opens as bottom sheet overlay
+
+NOT a full new page
+
+Keeps video slightly visible behind
+
+
+
+---
+
+B) Feed Posts
+
+Expand inline OR bottom sheet (better)
+
+Keep consistency with video comments
+
+
+
+---
+
+C) Stories
+
+Lightweight comments (more like replies)
+
+Not heavy thread structure
+
+
+
+---
+
+2) Comments Bottom Sheet (MAIN UI)
+
+Layout:
+
+Rounded top (24px radius)
+
+Drag handle at top
+
+Background:
+
+dark blur (on dark mode)
+
+light cream (on light mode)
+
+
+
+
+---
+
+Heights:
+
+Default: 70% screen
+
+Can expand to full screen
+
+
+
+---
+
+Header:
+
+Left: “Comments”
+
+Right:
+
+Sort (For you / Top / Recent)
+
+Close button
+
+
+
+
+---
+
+3) Comment Item Design
+
+Each comment should be clean, readable, and tight.
+
+Structure:
+
+Profile pic (32px)
+
+Username + time
+
+Comment text
+
+Actions below
+
+
+
+---
+
+Spacing:
+
+Vertical gap: 10–12px between comments
+
+Text line spacing: tight but readable
+
+
+
+---
+
+Style:
+
+Username: semibold
+
+Time: small + muted
+
+Text: clean, no heavy styling
+
+
+
+---
+
+Example layout:
+
+Username · 2d
+Comment text here 😂
+Reply   Like
+
+
+---
+
+4) Replies (Thread System)
+
+Behavior:
+
+Tap “Reply” → opens reply input
+
+Replies appear indented slightly
+
+
+
+---
+
+Style:
+
+Slight left margin: 20px
+
+Smaller avatar: 28px
+
+
+
+---
+
+Expand:
+
+“View X replies”
+
+Tap → expands smoothly
+
+
+
+---
+
+5) Like / Reaction System
+
+Keep simple:
+
+Heart icon ❤️
+
+Count next to it
+
+
+
+---
+
+Interaction:
+
+Tap → instant like
+
+Double tap (optional) → like
+
+
+
+---
+
+🔥 SURNA Upgrade:
+
+Long press on comment → show reactions:
+
+❤️ Like
+
+😂 Funny
+
+🔥 Strong
+
+💪 Respect
+
+👀 Watching
+
+
+👉 More expressive than Instagram but still clean
+
+
+---
+
+6) Comment Input Bar (VERY IMPORTANT)
+
+Layout:
+
+Bottom fixed bar
+
+Structure:
+
+Profile pic (small)
+
+Input field
+
+Emoji button
+
+GIF / media
+
+Send button
+
+
+
+---
+
+Style:
+
+Height: 48–52px
+
+Rounded pill
+
+Background:
+
+light grey / blur
+
+
+Border: soft
+
+
+
+---
+
+Placeholder:
+
+“Add a comment…”
+
+OR dynamic:
+
+“Comment on this play…”
+
+“React to this moment…”
+
+“Say something…”
+
+
+
+
+---
+
+7) Emoji Reaction Row (like your screenshot)
+
+Keep it — but refine:
+
+Layout:
+
+Horizontal emoji row above input
+
+Scrollable (this one is OK)
+
+
+
+---
+
+Style:
+
+Slightly bigger emojis
+
+Equal spacing
+
+Soft fade edges
+
+
+
+---
+
+Behavior:
+
+Tap emoji → instantly sends reaction
+
+Show feedback: 👉 “Reaction sent”
+
+
+
+---
+
+8) “Reaction Sent” Feedback
+
+Style:
+
+Rounded pill
+
+Dark translucent background
+
+White text
+
+
+Position:
+
+Center OR just above input bar
+
+
+Duration:
+
+1–1.5 seconds
+
+Smooth fade out
+
+
+
+---
+
+9) Comment Sorting (IMPORTANT)
+
+Options:
+
+For you (default)
+
+Top
+
+Recent
+
+
+
+---
+
+🔥 SURNA Upgrade:
+
+“For you” sorting based on:
+
+Relevance
+
+Engagement
+
+Friends / connections
+
+Teams/events relevance
+
+
+👉 Makes comments feel alive, not random
+
+
+---
+
+10) Context-Aware Comments (SURNA POWER)
+
+This is where you beat Instagram/TikTok.
+
+
+---
+
+If video is about a TEAM:
+
+Add:
+
+“View Team”
+
+“Join Team”
+
+
+
+---
+
+If EVENT:
+
+Add:
+
+“Join Event”
+
+“View Details”
+
+
+
+---
+
+If CHALLENGE:
+
+Add:
+
+“Accept Challenge”
+
+
+
+---
+
+If COACH:
+
+Add:
+
+“Book Session”
+
+
+
+---
+
+👉 These should appear above input OR as small buttons
+
+
+---
+
+11) Mentions & Interaction
+
+Features:
+
+@mention users
+
+Tap username → opens profile
+
+Highlight mentions in purple
+
+
+
+---
+
+Replies:
+
+Show: @username reply text
+
+
+
+---
+
+12) Comment Actions (on long press)
+
+When holding a comment:
+
+Show menu:
+
+Reply
+
+Like
+
+React
+
+Copy
+
+Report
+
+Delete (if yours)
+
+
+
+---
+
+13) Animations (VERY IMPORTANT)
+
+Must feel smooth:
+
+Comment appears → fade + slight slide
+
+Like → quick pop
+
+Reaction → bounce (light)
+
+Open sheet → slide up (200ms)
+
+Close → slide down
+
+
+
+---
+
+14) Performance Rules
+
+Tell developer:
+
+Comments must load fast
+
+Lazy load replies
+
+No freezing while scrolling
+
+Keep scroll buttery smooth
+
+Preload top comments
+
+
+
+---
+
+15) What NOT to do
+
+❌ Don’t make comments too heavy visually
+
+❌ Don’t overload with buttons
+
+❌ Don’t make replies messy
+
+❌ Don’t copy TikTok clutter
+
+❌ Don’t break consistency with messages
+
+
+
+---
+
+🎯 Final Vision
+
+Tell your developer this:
+
+👉 “Comments should feel fast, clean, and expressive like Instagram, but smarter and more connected to SURNA (teams, events, challenges, etc.).”
+
+
+---
+
+🔥 My honest take (important)
+
+This is where your app becomes addictive:
+
+Stories → quick consumption
+
+Videos → engagement
+
+Comments → conversation
+
+
+👉 If comments feel smooth = people stay longer
+
+
+---
+
+If you want next level: 👉 I can design the full SURNA interaction system (likes, comments, shares, saves, notifications all connected)
+👉 Or map how comments link into profiles, messaging, and feed ranking system

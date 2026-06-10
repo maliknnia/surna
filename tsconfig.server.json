@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "types": ["node"],
+    "lib": ["esnext"],
+    "jsx": "preserve",
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo.server",
+    "noEmit": true
+  },
+  "include": ["server/**/*.ts", "server/**/*.d.ts", "shared/**/*.ts"],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"]
+}

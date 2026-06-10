@@ -1,0 +1,15 @@
+node_modules
+dist
+.env*
+!.env.example
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+.cursor/
+.config/
+.local/
+.tools/
+.vscode/
+*.zip
+.tmp-*.txt

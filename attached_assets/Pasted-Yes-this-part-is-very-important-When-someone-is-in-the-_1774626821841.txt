@@ -1,0 +1,597 @@
+Yes — this part is very important.
+
+When someone is in the Feed page and goes into the video part, it should feel natural, premium, and connected, not like they got thrown into another random section.
+
+Give your developer this:
+
+
+---
+
+SURNA Feed → Video Experience Spec
+
+Core idea
+
+When a user is scrolling the main feed and taps a video or enters the video area, the experience should feel:
+
+smooth like Instagram/TikTok
+
+connected to the feed
+
+not like a totally separate app
+
+immersive, but easy to exit back to feed
+
+
+The user must always feel: “I am still inside SURNA feed, just deeper in the video layer.”
+
+
+---
+
+1) How users enter video mode from the feed
+
+There should be 3 clear entry paths:
+
+A. Tap a video post in the feed
+
+If a video appears as a normal post card in the feed and the user taps it:
+
+open that video in a full-screen vertical viewer
+
+animate from the exact card position into full screen
+
+do not hard cut unless performance forces it
+
+
+B. Tap a dedicated video area/tab inside feed
+
+If there is a “Videos” lane, button, or section:
+
+open a vertical video stream
+
+start from the first selected video
+
+show related videos after it
+
+
+C. Swipe up from a video preview card
+
+Optional but premium:
+
+if a feed card has a playable preview, user can tap or swipe up to expand into full video mode
+
+
+
+---
+
+2) Transition from feed to video viewer
+
+This transition matters a lot.
+
+Required behavior
+
+When a user taps a video card:
+
+the card should expand smoothly
+
+corners gradually reduce as it becomes full-screen
+
+surrounding feed fades away
+
+video becomes active immediately
+
+
+Timing
+
+duration: 180ms–240ms
+
+easing: soft ease-out
+
+should feel quick, not theatrical
+
+
+Important
+
+Do not make it:
+
+jarring
+
+like opening a brand-new page
+
+slow or dramatic
+
+
+The user should feel: “I tapped the video and it naturally became the focus.”
+
+
+---
+
+3) What happens once inside the video layer
+
+Once inside, user enters a vertical video stream.
+
+Structure
+
+selected video is first
+
+next videos are stacked vertically
+
+swipe up/down moves between videos
+
+each video is full-screen or near full-screen
+
+
+This should feel similar to modern short-form video browsing, but cleaner.
+
+
+---
+
+4) Relation between feed videos and video stream
+
+This is very important for SURNA.
+
+The video stream should not be random unless user intentionally opens a broad explore mode.
+
+If user enters from feed:
+
+Prioritize videos related to:
+
+same interest cluster
+
+same sport
+
+same event
+
+same team
+
+same creator type
+
+same place
+
+same challenge/protest/topic
+
+
+Example: If user tapped a football training clip, the next videos should likely be:
+
+football highlights
+
+team tryouts
+
+coach tips
+
+local events
+
+related player stories
+
+
+Not random beauty content or unrelated things.
+
+This makes SURNA feel intelligent.
+
+
+---
+
+5) Top area of the video viewer
+
+Keep it clean.
+
+Top bar should include:
+
+back/close button
+
+optional small label like:
+
+For You
+
+Following
+
+Team Videos
+
+Event Clips
+
+
+maybe subtle dropdown if you want category switching
+
+
+Best layout
+
+Top-left:
+
+back arrow
+
+
+Top-center or upper-left:
+
+feed context label
+
+
+Top-right:
+
+optional overflow menu
+
+
+
+---
+
+6) Back behavior — this is critical
+
+When user exits the video viewer:
+
+they should return to the same place in the feed
+
+same scroll position
+
+same video card area
+
+no refresh jump
+
+no losing their position
+
+
+This is non-negotiable.
+
+If they tapped a video 12 posts down the feed, backing out should put them right there again.
+
+That makes the app feel polished.
+
+
+---
+
+7) Feed card video preview behavior
+
+Before entering full video mode, the feed card itself should behave nicely.
+
+In-feed video card
+
+can autoplay silently when visible
+
+only one video autoplaying at a time
+
+pause when mostly off-screen
+
+show muted preview
+
+tapping sound icon can unmute preview if needed
+
+
+Preview duration
+
+short looping preview is okay
+
+but do not make the feed noisy or heavy
+
+
+The feed card should tempt entry into video mode, not replace it.
+
+
+---
+
+8) Full-screen video UI inside feed-driven video mode
+
+Keep it immersive but not overloaded.
+
+Main areas:
+
+creator/user/team info
+
+caption
+
+right-side actions
+
+bottom interaction bar
+
+contextual CTA buttons for SURNA objects
+
+
+
+---
+
+9) Right-side action stack
+
+Use a vertical stack like modern video apps, but cleaner.
+
+Show:
+
+like
+
+comment
+
+share
+
+save
+
+
+Optional:
+
+follow/join depending on object type
+
+
+SURNA-specific behavior
+
+If it is:
+
+team video → show View Team / Join
+
+event video → show View Event / Join
+
+coach video → show View Coach / Book
+
+challenge video → show Accept Challenge
+
+petition/protest video → show Support / Sign / Learn More
+
+
+So the video layer is not just entertainment. It becomes a gateway into the SURNA ecosystem.
+
+
+---
+
+10) Bottom area of video screen
+
+The bottom should feel interactive and premium.
+
+Include:
+
+caption preview
+
+creator/source name
+
+optional location/sport/type tag
+
+reply/comment field
+
+quick reactions if it’s more story-like
+
+plus button for deeper actions
+
+
+If this video came from feed and is more public-post style:
+
+emphasize comments, save, share
+
+
+If it came from a story-like layer:
+
+emphasize reply and reactions
+
+
+
+---
+
+11) Comments behavior from feed videos
+
+When someone opens comments on a video from the feed:
+
+comments should slide up as a bottom sheet
+
+video stays visible behind
+
+user should still feel in the same video context
+
+
+Do not navigate away to a separate comment page unless necessary.
+
+Comments should support:
+
+replies
+
+likes
+
+reactions
+
+@mentions
+
+report
+
+copy
+
+translation if needed later
+
+
+
+---
+
+12) Scroll behavior inside video stream
+
+Once user is in the video stream:
+
+Swipe up/down
+
+should snap naturally between videos
+
+no half-broken positions
+
+one strong video per screen
+
+
+Preloading
+
+preload next and previous video
+
+instant playback on next video
+
+avoid black loading flashes
+
+
+Animation
+
+smooth and tight
+
+no sluggish transitions
+
+
+
+---
+
+13) Category logic inside video mode
+
+You can make this much smarter than Instagram.
+
+When a user enters video mode from the feed, the viewer can know the source context:
+
+Possible contexts:
+
+For You
+
+Following
+
+Nearby
+
+Football
+
+Basketball
+
+Teams
+
+Coaches
+
+Events
+
+Challenges
+
+Community
+
+Protests/Petitions
+
+
+So if user tapped from a “Nearby sports” feed lane, the next videos can remain nearby-focused.
+
+That is a big advantage.
+
+
+---
+
+14) Identity difference from Instagram/TikTok
+
+Tell your developer clearly:
+
+We are not making a clone.
+
+We are borrowing:
+
+clean full-screen immersion
+
+swipe behavior
+
+fast reaction model
+
+comment bottom sheet
+
+nice transitions
+
+
+But SURNA differs because:
+
+the videos are tied to real entities
+
+it has sports/community context
+
+it can route users to teams, coaches, events, places, causes, profiles
+
+the feed and video layer should feel like one connected ecosystem
+
+
+
+---
+
+15) Suggested UI states
+
+Developer should support these states:
+
+loading video
+
+playing
+
+paused
+
+muted
+
+buffering
+
+liked
+
+saved
+
+followed/joined
+
+comments open
+
+share open
+
+related entity CTA visible
+
+unavailable/deleted video
+
+
+All these states should transition smoothly.
+
+
+---
+
+16) Micro-interactions that matter
+
+These details will make it feel premium:
+
+tap like → quick pop
+
+open comments → sheet glides up smoothly
+
+back button → returns exactly to feed position
+
+pause on hold
+
+subtle progress indicator if needed
+
+caption expands smoothly
+
+save/share feedback appears instantly
+
+reaction toast like “Saved” or “Reaction sent” fades out softly
+
+
+
+---
+
+17) What not to do
+
+Tell him not to do this:
+
+no random jump from feed into unrelated videos
+
+no losing feed position on back
+
+no cluttered TikTok copy with too many icons
+
+no hard page reload feeling
+
+no separate disconnected video universe
+
+no ugly lag when swiping to next video
+
+
+
+---
+
+18) Best product logic
+
+This is the cleanest rule:
+
+If user enters video from feed:
+
+Start with that exact video, then continue with contextually related videos
+
+If user enters from a dedicated Videos tab:
+
+Show a broader discovery-style video stream
+
+That keeps both experiences smart.
+
+
+---
+
+Final developer note
+
+Send him this line too:
+
+“When a user goes from Feed to Video, the transition must feel like deepening into the same content world, not leaving it. Keep the user anchored to the feed context, preserve their return position, and make the video layer a more immersive extension of the feed.”
+
+If you want, I can now package all of this into one clean **SURNA Feed + Stories + Videos + Comments + Messaging master developer brief**.

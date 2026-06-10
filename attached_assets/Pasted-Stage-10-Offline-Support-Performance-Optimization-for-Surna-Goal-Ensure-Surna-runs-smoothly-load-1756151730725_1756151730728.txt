@@ -1,0 +1,41 @@
+Stage 10: Offline Support & Performance Optimization for Surna
+Goal
+Ensure Surna runs smoothly, loads quickly, and offers offline support when network connectivity is poor.
+Symptoms Being Addressed
+• Slow load times on dashboard, feed, or media-heavy pages.
+• App becomes unusable with poor or intermittent connectivity.
+• Users lose unsaved messages or posts during network disruptions.
+• Heavy frontend bundle and slow rendering on low-end devices.
+Optimizations
+1. Service Workers & Offline Caching
+• Use service workers to cache key assets (JS, CSS, images) and API responses.
+• Enable offline mode for feed, messages, and user profiles.
+• Libraries: Workbox for advanced caching strategies.
+2. IndexedDB / Local Storage
+• Store unsent messages, drafts, or queued actions locally.
+• Sync to server when connectivity is restored.
+• Use idb or Dexie.js for easier IndexedDB handling.
+3. Lazy Loading & Code Splitting
+• Split large frontend bundles into smaller chunks using Vite / Webpack.
+• Lazy-load components and media only when visible.
+4. Image & Video Optimization
+• Serve properly sized images based on device screen size.
+• Compress media before upload.
+• Use CDN caching and adaptive streaming for videos.
+5. API & Query Optimization
+• Use pagination or infinite scroll for feed and event lists.
+• Batch multiple requests where possible.
+• Implement caching for frequent read-only queries (React Query / TanStack Query).
+6. Frontend Performance Monitoring
+• Use Lighthouse, Web Vitals, or Sentry to measure load time, FID, and CLS.
+• Optimize slow components and minimize unnecessary re-renders.
+Config / Code Snippets
+Service Worker Example (Workbox)
+import { registerRoute } from 'workbox-routing'; import { StaleWhileRevalidate } from 'workbox-strategies'; registerRoute( ({ request }) => request.destination === 'script' || request.destination === 'style', new StaleWhileRevalidate({ cacheName: 'static-resources' }) ); registerRoute( ({ url }) => url.pathname.startsWith('/api/'), new StaleWhileRevalidate({ cacheName: 'api-responses' }) ); 
+IndexedDB Example (Dexie.js)
+import Dexie from 'dexie'; const db = new Dexie('surnaDB'); db.version(1).stores({ drafts: '++id, userId, content' }); async function saveDraft(userId, content) { await db.drafts.add({ userId, content }); } 
+React Query Offline Handling
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'; const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 2, staleTime: 1000 * 60 }, }, }); <QueryClientProvider client={queryClient}> <App /> </QueryClientProvider> 
+Lazy Loading Component Example
+import { lazy, Suspense } from 'react'; const Feed = lazy(() => import('./Feed')); <Suspense fallback={<div>Loading...</div>}> <Feed /> </Suspense> 
+✅ Stage 10 ensures Surna is fast, resilient, and usable offline, enhancing user experience and retention.

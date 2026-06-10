@@ -1,0 +1,223 @@
+Stage 30: Platform Scalability & Multi-Region Deployment for Surna
+
+
+---
+
+Goal
+
+Handle millions of users with low latency and high availability by deploying Surna across multiple regions with elastic scaling and robust failover.
+
+
+---
+
+Symptoms Being Addressed
+
+Slow response times for users in distant regions.
+
+Outages or degraded performance under traffic spikes.
+
+Single-region risks causing full downtime.
+
+
+
+---
+
+Architecture Overview
+
+Global DNS + Anycast → API Gateway / Load Balancers → Regional Clusters (App + Realtime + Cache) → Global DB strategy (primary + replicas / sharding) → Object Storage + CDN.
+
+
+
+---
+
+Core Requirements
+
+1) Scalable Infrastructure
+
+Use managed Kubernetes (EKS/GKE/AKS) or autoscaling VM groups.
+
+Horizontal Pod Autoscaler (HPA) on CPU/RAM/RPS.
+
+Separate node pools for realtime (WebSocket) vs API workloads.
+
+
+2) Multi-Region Deployment
+
+Regions: EU-West, US-East, AP-Southeast (example).
+
+Global traffic routing: Cloudflare/AWS Route53 latency-based routing.
+
+Active-Active for stateless services; Active-Passive for stateful if needed.
+
+Health-checked failover and regional maintenance windows.
+
+
+3) Database Scaling
+
+Start with Primary in EU + read replicas in US/APAC.
+
+Use logical replication and read routing for GET-heavy endpoints.
+
+For scale >10M users: shard by user_id hash (e.g., 16 shards) with a routing layer.
+
+Use connection pooling (PgBouncer) and Drizzle query optimization.
+
+
+4) Caching Strategy
+
+Redis per region for:
+
+Session storage (sticky if required).
+
+Hot feed, profiles, team/event lookups.
+
+Rate limiting tokens.
+
+
+Cache invalidation via pub/sub and short TTLs (30–300s) where acceptable.
+
+
+5) Media & Static Delivery
+
+Store uploads in S3/Cloud Storage with regional replication.
+
+Serve via CDN (CloudFront/Cloudflare) with image resizing (WebP/AVIF) and video HLS.
+
+Signed URLs for private media.
+
+
+6) Microservices & API Gateway
+
+Split services: auth, users, posts, teams, events, coaches, chat, marketplace, payments.
+
+API Gateway handles routing, rate-limits, JWT verification, CORS.
+
+gRPC/HTTP between services with retries + circuit breakers (Envoy/Linkerd/Istio).
+
+
+7) Observability & Reliability
+
+Metrics: Prometheus + Grafana (RPS, p95 latency, error rate, queue depth, GC).
+
+Logs: ELK/Opensearch or Datadog; trace with OpenTelemetry.
+
+SLOs: 99.9% API, 99.95% auth, p95 < 250ms intra-region.
+
+Chaos/failover drills and game days.
+
+
+8) Cost Optimization
+
+Right-size resources; use spot/preemptible for stateless workers.
+
+Autoscale to zero for batch/cron workers.
+
+Lifecycle policies for cold media; compress JSON over the wire (Brotli/Gzip).
+
+
+
+---
+
+Implementation Checklist
+
+[ ] Provision multi-region clusters + VPC/peering.
+
+[ ] Configure latency-based DNS + health checks.
+
+[ ] Stand up Redis, PgBouncer, and read replicas per region.
+
+[ ] Move static assets to CDN with image optimization.
+
+[ ] Introduce API Gateway with rate limiting + JWT verification.
+
+[ ] Add connection pooling + query indexes for hot paths.
+
+[ ] Implement cache layer (keys, TTLs, invalidation via pub/sub).
+
+[ ] Add autoscaling (HPA) & pod disruption budgets.
+
+[ ] Instrument services with OTel; set alerts (latency, errors, saturation).
+
+[ ] Run load tests (k6/Locust) and failover tests; document RTO/RPO.
+
+
+
+---
+
+Code/Config Snippets
+
+Route53 Latency-Based Routing (example Terraform)
+
+resource "aws_route53_record" "api" {
+  zone_id = var.zone_id
+  name    = "api.surna.app"
+  type    = "A"
+
+  set_identifier = "eu-west"
+  alias {
+    name                   = aws_lb.eu.dns_name
+    zone_id                = aws_lb.eu.zone_id
+    evaluate_target_health = true
+  }
+  latency_routing_policy {
+    region = "eu-west-1"
+  }
+}
+
+Nginx Ingress Annotations (sticky for WebSockets if needed)
+
+nginx.ingress.kubernetes.io/affinity: "cookie"
+nginx.ingress.kubernetes.io/session-cookie-name: "surna_ws"
+nginx.ingress.kubernetes.io/websocket-services: "chat-service"
+
+Redis Rate Limiter (Node.js)
+
+import { createClient } from 'redis';
+const r = createClient({ url: process.env.REDIS_URL });
+
+export async function rateLimit(key, limit, windowSec) {
+  const now = Math.floor(Date.now() / 1000);
+  const tx = r.multi()
+    .zremrangeByScore(key, 0, now - windowSec)
+    .zadd(key, { score: now, value: `${now}` })
+    .zcard(key)
+    .expire(key, windowSec);
+  const [, , count] = await tx.exec();
+  if (count > limit) throw new Error('rate_limited');
+}
+
+PgBouncer + Drizzle (connection string)
+
+DATABASE_URL=postgres://user:pass@pgbouncer.surna.internal:6432/surna
+
+k6 Load Test (Smoke Example)
+
+import http from 'k6/http';
+import { sleep } from 'k6';
+
+export let options = { vus: 50, duration: '1m' };
+
+export default function () {
+  http.get('https://api.surna.app/health');
+  sleep(1);
+}
+
+
+---
+
+Acceptance Criteria
+
+Global users route to nearest healthy region automatically.
+
+p95 API latency < 300ms for regional users; < 700ms cross-region.
+
+Zero-downtime deployments with rolling updates.
+
+Documented RTO (≤ 15 min) and RPO (≤ 5 min) with tested failover.
+
+
+
+---
+
+✅ Stage 30 ensures Surna is globally available, fast, and resilient, with efficient scaling, strong observability, and cost-aware operations.
+

@@ -1,0 +1,212 @@
+I see it — Spotify's audiobook cards. Rich color from cover, big image, layered text, action buttons. This would make Events and Places/Gyms feel premium and distinct.
+
+---
+
+Concept: "Venue Cards" for Places/Gyms
+
+Like Spotify audiobooks — color extracted from venue photo, full-bleed card, immersive.
+
+```
+┌─────────────────────────┐
+│  [Gym photo - full]     │
+│  ┌─────────────────┐    │
+│  │ Gold's Gym      │    │
+│  │ ⭐ 4.8 • 2mi    │    │
+│  │                 │    │
+│  │ [Preview] [+]   │    │
+│  └─────────────────┘    │
+│  ↑ gradient from photo  │
+└─────────────────────────┘
+```
+
+---
+
+Structure
+
+Element	Style	
+Background	Color extracted from venue photo	
+Image	Left side, square, rounded	
+Title	Bold, white	
+Meta	Rating, distance, sport tags	
+Actions	"Preview" (tour), "+" (save)	
+Gradient	Photo color → dark	
+
+---
+
+For Events Section
+
+```
+┌─────────────────────────┐
+│  [Event photo - full]   │
+│  ┌─────────────────┐    │
+│  │ Boxing Night    │    │
+│  │ 🗓️ Sat 8PM     │    │
+│  │ 📍 Madison Sq   │    │
+│  │                 │    │
+│  │ [Get Tickets]   │    │
+│  └─────────────────┘    │
+│  ↑ gradient from event  │
+└─────────────────────────┘
+```
+
+---
+
+For Coaches Section
+
+Different — profile-forward, not event-forward:
+
+```
+┌─────────────────────────┐
+│  [Coach photo - full]   │
+│  ┌─────────────────┐    │
+│  │ Coach Mike      │    │
+│  │ 🥊 Boxing • 10yr│    │
+│  │ ⭐ 4.9 • $80/hr │    │
+│  │                 │    │
+│  │ [Book Session]  │    │
+│  └─────────────────┘    │
+│  ↑ gradient from photo  │
+└─────────────────────────┘
+```
+
+---
+
+Key Differences by Section
+
+Section	Card Style	Primary Action	
+Teams	List, minimal	Join	
+Events	Rich card, color	Get tickets	
+Places/Gyms	Rich card, color	Preview/Save	
+Coaches	Rich card, color	Book session	
+
+---
+
+CSS for Rich Cards
+
+```css
+.venue-card {
+  position: relative;
+  background: var(--extracted-color); /* From photo */
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 12px 16px;
+}
+
+.venue-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    var(--extracted-color) 0%,
+    rgba(0,0,0,0.6) 100%
+  );
+}
+
+.venue-content {
+  position: relative;
+  display: flex;
+  padding: 16px;
+  gap: 16px;
+}
+
+.venue-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.venue-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.venue-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.venue-meta {
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 12px;
+}
+
+.venue-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-preview {
+  background: rgba(0,0,0,0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.btn-save {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+```
+
+---
+
+Light Mode Version
+
+```css
+.light .venue-card::before {
+  background: linear-gradient(
+    90deg,
+    var(--extracted-color) 0%,
+    rgba(255,255,255,0.8) 100%
+  );
+}
+
+.light .venue-title {
+  color: #000;
+}
+
+.light .venue-meta {
+  color: rgba(0,0,0,0.7);
+}
+```
+
+---
+
+Visual Hierarchy
+
+```
+Teams (simple) → Events (rich) → Places (rich) → Coaches (rich)
+     ↓               ↓               ↓                ↓
+   Minimal       Immersive       Immersive        Immersive
+   List          Cards           Cards            Cards
+```
+
+---
+
+One More Thing: "Preview" for Gyms
+
+Like Spotify's audiobook preview — 30-second video tour of the gym:
+
+```
+[Tap Preview] → Video plays in card → [Book tour] or [Save]
+```
+
+Differentiates gyms from other sections.
+
+---
+
+Want me to spec the color extraction for venues or video preview player?

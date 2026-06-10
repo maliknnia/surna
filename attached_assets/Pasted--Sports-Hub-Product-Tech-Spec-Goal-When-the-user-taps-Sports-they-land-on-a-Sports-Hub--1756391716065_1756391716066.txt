@@ -1,0 +1,223 @@
+
+
+---
+
+Sports Hub — Product & Tech Spec
+
+Goal
+
+When the user taps Sports, they land on a Sports Hub that surfaces all sports features at a glance:
+
+Find, Coaches, Teams, Events, Book Fields, Challenges, Leaderboard, Nearby (Map).
+From here, each tile routes to its sub-page. Back from any sub-page returns to the Sports Hub, not Home.
+
+
+UX Rules
+
+Header: “Sports” + small subtitle “Find, book, join, play.”
+
+2-column tile grid (compact, touch-safe 44px min).
+
+Remember last visited sub-tab (optional nice-to-have).
+
+Fast, no blank flashes: prefetch the first 6 tiles’ data on idle.
+
+
+
+---
+
+Routes (Web, React Router v6)
+
+1) Route tree
+
+// App.tsx
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/sports" element={<SportsLayout />}>
+    <Route index element={<SportsHub />} />                 {/* default hub */}
+    <Route path="find" element={<SportsFind />} />
+    <Route path="coaches" element={<SportsCoaches />} />
+    <Route path="teams" element={<SportsTeams />} />
+    <Route path="events" element={<SportsEvents />} />
+    <Route path="book" element={<SportsFacilities />} />
+    <Route path="challenges" element={<SportsChallenges />} />
+    <Route path="leaderboard" element={<SportsLeaderboard />} />
+    <Route path="nearby" element={<SportsNearby />} />
+  </Route>
+</Routes>
+
+2) Home → Sports must link to /sports
+
+// Home tiles (fix the old link that went to /teams)
+<Link to="/sports" className="tile sports">
+  <UsersIcon />
+  <span>Sports</span>
+</Link>
+
+3) SportsHub component (grid of tiles)
+
+// SportsHub.tsx
+import { Link, useSearchParams } from "react-router-dom";
+import { Users, Search, Calendar, MapPin, Shield, Trophy, Medal, Navigation } from "lucide-react";
+
+const items = [
+  { to: "find",        label: "Find",         icon: Search,   desc: "Search sports & people" },
+  { to: "coaches",     label: "Coaches",      icon: Medal,    desc: "Hire trainers, book sessions" },
+  { to: "teams",       label: "Teams",        icon: Users,    desc: "Create or join teams" },
+  { to: "events",      label: "Events",       icon: Calendar, desc: "Matches, tournaments" },
+  { to: "book",        label: "Book Fields",  icon: MapPin,   desc: "Pitches, courts, gyms" },
+  { to: "challenges",  label: "Challenges",   icon: Shield,   desc: "Compete & earn points" },
+  { to: "leaderboard", label: "Leaderboard",  icon: Trophy,   desc: "Top players & teams" },
+  { to: "nearby",      label: "Nearby",       icon: Navigation,desc:"Map of activity around you" },
+];
+
+export default function SportsHub() {
+  return (
+    <div className="p-4">
+      <header className="mb-3">
+        <h1 className="text-2xl font-bold">Sports</h1>
+        <p className="text-sm text-gray-500">Find, book, join, play.</p>
+      </header>
+
+      <div className="grid grid-cols-2 gap-3">
+        {items.map((it) => (
+          <Link
+            key={it.to}
+            to={it.to}
+            className="rounded-2xl border border-black/10 bg-white/80 backdrop-blur p-4 shadow-sm
+                       hover:bg-white transition active:scale-[0.98]"
+          >
+            <div className="flex items-center gap-3">
+              <it.icon size={20} className="text-gray-700" />
+              <div>
+                <div className="font-semibold text-gray-800">{it.label}</div>
+                <div className="text-xs text-gray-500">{it.desc}</div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+4) SportsLayout (optional sticky tabs for quick switching)
+
+// SportsLayout.tsx
+import { NavLink, Outlet } from "react-router-dom";
+
+const tabs = [
+  { to: "/sports/find", label: "Find" },
+  { to: "/sports/coaches", label: "Coaches" },
+  { to: "/sports/teams", label: "Teams" },
+  { to: "/sports/events", label: "Events" },
+  { to: "/sports/book", label: "Book" },
+  { to: "/sports/challenges", label: "Challenges" },
+];
+
+export default function SportsLayout() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
+        <div className="mx-auto max-w-4xl px-4 py-2 flex gap-2 overflow-x-auto">
+          {tabs.map(t => (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              className={({isActive}) =>
+                `px-3 py-1.5 rounded-full text-sm ${isActive ? 'bg-black text-white' : 'bg-gray-100 text-gray-700'}`
+              }
+            >
+              {t.label}
+            </NavLink>
+          ))}
+        </div>
+      </div>
+      <div className="mx-auto max-w-4xl px-4">
+        <Outlet />
+      </div>
+    </div>
+  );
+}
+
+
+---
+
+React Native (Expo) version (if mobile app)
+
+1) Stack for Sports
+
+const SportsStack = createNativeStackNavigator();
+
+export function SportsStackScreen() {
+  return (
+    <SportsStack.Navigator screenOptions={{ headerShown: false }}>
+      <SportsStack.Screen name="SportsHub" component={SportsHubScreen} />
+      <SportsStack.Screen name="SportsFind" component={SportsFindScreen} />
+      <SportsStack.Screen name="SportsCoaches" component={SportsCoachesScreen} />
+      <SportsStack.Screen name="SportsTeams" component={SportsTeamsScreen} />
+      <SportsStack.Screen name="SportsEvents" component={SportsEventsScreen} />
+      <SportsStack.Screen name="SportsBook" component={SportsFacilitiesScreen} />
+      <SportsStack.Screen name="SportsChallenges" component={SportsChallengesScreen} />
+      <SportsStack.Screen name="SportsLeaderboard" component={SportsLeaderboardScreen} />
+      <SportsStack.Screen name="SportsNearby" component={SportsNearbyScreen} />
+    </SportsStack.Navigator>
+  );
+}
+
+2) Home tile must navigate to SportsHub
+
+<TouchableOpacity onPress={() => navigation.navigate('SportsHub')}>
+  <Tile icon="Users" label="Sports" />
+</TouchableOpacity>
+
+3) SportsHubScreen (RN)
+
+2-column grid of tiles; each TouchableOpacity navigates to the respective screen.
+
+Smooth 200ms press feedback (activeOpacity, or Scale transform).
+
+
+
+---
+
+Data/Performance
+
+Prefetch minimal data for: coaches, events, nearby on idle (React Query prefetch).
+
+Cache last tab in localStorage (web) or AsyncStorage (RN) as sports:lastTab.
+
+Back stack: From any /sports/* route, Back returns to /sports (use nested routes / stacks).
+
+No blocking spinners: Show skeleton cards for sub-pages.
+
+
+
+---
+
+QA / Acceptance Criteria
+
+[ ] Tapping Sports from Home opens /sports (Hub), not Teams.
+
+[ ] Hub shows 8 tiles: Find, Coaches, Teams, Events, Book Fields, Challenges, Leaderboard, Nearby.
+
+[ ] Each tile routes correctly under /sports/....
+
+[ ] Back from any sub-page returns to Sports Hub.
+
+[ ] Last visited tab can be remembered (optional).
+
+[ ] Prefetching makes sub-pages feel instant (no >300ms blank).
+
+[ ] No lost features (Coaches & Find visible again on day one).
+
+
+
+---
+
+One-liner for your dev (so there’s no confusion)
+
+> “Change the Home Sports button to route to /sports. Build a SportsHub grid with tiles for Find, Coaches, Teams, Events, Book Fields, Challenges, Leaderboard, Nearby. Keep all existing pages but nest them under /sports. Back should return to the hub. Prefetch data. No more dropping users straight into Teams.”
+
+
+

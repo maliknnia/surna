@@ -1,0 +1,623 @@
+Perfect — this is a very important part of SURNA.
+The map is not just a map… it’s your core differentiation (teams, events, people, protests, everything lives here).
+
+You’re using Leaflet for now, so I’ll design this in a way that:
+
+looks like Snapchat map quality
+
+but fits SURNA (purple/cream identity)
+
+and is actually implementable in Leaflet
+
+
+
+---
+
+🔥 SURNA Map — Leaflet Design System (Light + Dark)
+
+✅ Core Principle
+
+Clean like Snapchat
+
+Minimal like Apple Maps
+
+Functional like Google Maps
+
+Branded like SURNA
+
+
+👉 No clutter. No random colors. Everything intentional.
+
+
+---
+
+1) Map Base Style (Leaflet)
+
+Since you’re using Leaflet, use tile providers like:
+
+Mapbox styles
+
+Carto
+
+Stadia Maps
+
+
+
+---
+
+🌙 DARK MODE (Primary — your main vibe)
+
+Base Colors
+
+Background: #0B0B12 (deep purple-black)
+
+Roads: #2A2F3A
+
+Secondary roads: #1F2330
+
+Labels: #A0A6B3 (soft grey)
+
+Water: #0E1A2B (deep blue-purple)
+
+
+
+---
+
+Look & Feel
+
+Slightly desaturated map
+
+No bright greens
+
+No Google-style colors
+
+Everything muted and premium
+
+
+👉 Think: “luxury dark map”
+
+
+---
+
+SURNA Accent
+
+Use purple glow accents for:
+
+selected pins
+
+active areas
+
+user location
+
+
+
+
+---
+
+☀️ LIGHT MODE
+
+Base Colors
+
+Background: #F5F5F7 (light grey/cream)
+
+Roads: #FFFFFF
+
+Secondary roads: #E6E8EC
+
+Labels: #3A3F4B
+
+Water: #DCEBFF
+
+
+
+---
+
+Look & Feel
+
+Very clean
+
+Slight Apple Maps inspiration
+
+No heavy contrast
+
+
+
+---
+
+SURNA Accent
+
+Purple used for:
+
+active pins
+
+selection highlights
+
+navigation accents
+
+
+
+
+---
+
+2) Map Overlays (SURNA SYSTEM)
+
+This is where you win.
+
+
+---
+
+🟣 Pins System (CRITICAL)
+
+Different pin types:
+
+1. Players / People
+
+Small circular avatar pins
+
+Border:
+
+active → purple glow
+
+inactive → grey
+
+
+
+
+---
+
+2. Teams
+
+Slightly bigger circle
+
+Team logo inside
+
+Border: purple gradient
+
+
+
+---
+
+3. Events
+
+Pin with icon inside (📍 or sport icon)
+
+Color:
+
+upcoming → purple
+
+live → red/pink pulse
+
+
+
+
+---
+
+4. Coaches
+
+Clean badge style
+
+Slight gold/purple accent
+
+
+
+---
+
+5. Places (fields, gyms)
+
+Minimal icon pins
+
+Grey by default
+
+Purple when selected
+
+
+
+---
+
+6. Protests / Petitions
+
+More serious tone
+
+Dark + subtle red accent
+
+Not playful
+
+
+
+---
+
+🔥 Pin Behavior
+
+Tap → expands into bottom sheet
+
+Hover/press → slight scale (1.05)
+
+Active → glow + elevation
+
+
+
+---
+
+3) Clustering (IMPORTANT for Leaflet)
+
+When zoomed out:
+
+Combine pins into clusters
+
+Show number inside circle
+
+
+Style:
+
+Background: purple gradient
+
+Text: white
+
+Slight glow
+
+
+👉 Avoid default Leaflet ugly clusters
+
+
+---
+
+4) User Location
+
+Style:
+
+Dot: purple core
+
+Outer ring: soft animated pulse
+
+
+Optional:
+
+direction cone (light transparent purple)
+
+
+
+---
+
+5) Top Controls (like your screenshot)
+
+Pills (VERY GOOD idea — keep it)
+
+Buttons:
+
+Memories
+
+Footsteps
+
+Visited
+
+People
+
+
+
+---
+
+Style:
+
+Rounded pills
+
+Background:
+
+dark mode → black with slight transparency
+
+light mode → white
+
+
+Text:
+
+active → purple
+
+inactive → grey
+
+
+
+
+---
+
+Behavior:
+
+Tap → filter map instantly
+
+Active pill slightly brighter + subtle glow
+
+
+
+---
+
+6) Right Side Controls
+
+Stack vertically (like your image but refine)
+
+Buttons:
+
+Settings ⚙️
+
+Filters
+
+Map type (satellite / normal)
+
+Location button
+
+
+
+---
+
+Style:
+
+Circular buttons
+
+Size: 44px
+
+Background:
+
+dark → #1A1D26
+
+light → white
+
+
+Icon color:
+
+default → grey
+
+active → purple
+
+
+
+
+---
+
+Interaction:
+
+Tap → scale 0.96
+
+Smooth feedback
+
+
+
+---
+
+7) Bottom Area (VERY IMPORTANT)
+
+A) “Add Friends” Button
+
+Keep it — but improve:
+
+Style:
+
+Pill shape
+
+Height: 44–48px
+
+Background: black / dark purple
+
+Text: white
+
+Icon: subtle
+
+
+
+---
+
+B) Exploration Progress
+
+Example: 👉 “13% explored”
+
+Style:
+
+Small text
+
+Purple accent
+
+Bottom-left aligned
+
+
+
+---
+
+8) Bottom Sheet (when tapping pins)
+
+This is key to your whole app.
+
+Behavior:
+
+Slides up
+
+Map stays visible behind
+
+Can expand to full
+
+
+
+---
+
+Content depends on pin type:
+
+Example: Event
+
+Title
+
+Time
+
+Location
+
+Join button
+
+Participants
+
+
+
+---
+
+Example: Team
+
+Logo
+
+Members
+
+Join
+
+View profile
+
+
+
+---
+
+Example: Place
+
+Name
+
+Photos
+
+Events there
+
+Book / view
+
+
+
+---
+
+9) Map Movement & UX
+
+Gestures:
+
+pinch zoom
+
+drag pan
+
+tap pin
+
+swipe bottom sheet
+
+
+
+---
+
+Smoothness:
+
+No lag
+
+No heavy re-renders
+
+Debounce loading
+
+
+
+---
+
+10) Map Modes (FUTURE READY)
+
+Prepare structure for:
+
+Nearby
+
+Friends
+
+Events
+
+Teams
+
+Coaches
+
+Challenges
+
+
+👉 Switch via top pills
+
+
+---
+
+11) Leaflet Implementation Tips (IMPORTANT)
+
+Tell your developer:
+
+Use:
+
+Custom tile layer (Mapbox or Carto)
+
+Custom markers (SVG, not default)
+
+Marker clustering plugin
+
+Debounced loading on move
+
+
+
+---
+
+Avoid:
+
+Default Leaflet blue markers ❌
+
+Too many DOM elements ❌
+
+Re-rendering everything on move ❌
+
+
+
+---
+
+12) Animations
+
+Keep subtle:
+
+Pin tap → slight bounce
+
+Sheet open → smooth slide (200ms)
+
+Filter change → fade pins
+
+Location pulse → soft breathing effect
+
+
+
+---
+
+13) What NOT to do
+
+❌ No Google Maps color mess
+
+❌ No random pin colors
+
+❌ No clutter
+
+❌ No ugly default Leaflet styles
+
+❌ No lag when zooming
+
+
+
+---
+
+🎯 Final Vision
+
+Tell your developer this:
+
+👉 “The map is the heart of SURNA. It must feel alive, clean, and premium — like Snapchat map — but smarter, where every pin connects to real people, teams, events, and activity.”
+
+
+---
+
+🔥 My honest take
+
+This feature alone: 👉 Can make SURNA different from EVERY social app
+
+Because:
+
+Instagram = content
+
+TikTok = videos
+
+Snapchat = friends
+
+
+👉 SURNA = real-world connection on a live map
+
+
+---
+
+If you want next step: 👉 I can design the exact pin system (SVG + colors + states)
+👉 Or the bottom sheet UI for map objects (pixel perfect)

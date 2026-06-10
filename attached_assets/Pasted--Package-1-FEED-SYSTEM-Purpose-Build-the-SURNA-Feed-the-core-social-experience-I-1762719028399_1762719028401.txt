@@ -1,0 +1,234 @@
+
+
+---
+
+🧱 Package #1 — FEED SYSTEM
+
+🎯 Purpose
+
+Build the SURNA Feed — the core social experience.
+It must feel Instagram-smooth and ChatGPT-clean: black-and-white / dark-purple minimalist UI, every button working, no fake components.
+
+
+---
+
+🧩 Developer Sayings / Rules
+
+> Do not redesign. Keep SURNA theme:
+Dark Purple #1a001a | Cream #f3efe8 | Grey #a3a3a3 | Accent #4b006e
+
+Use same icon logic as ChatGPT: grey = idle, black = active.
+
+Never duplicate Feed schema; extend only.
+
+Every button must perform a real action (no dead UIs).
+
+All feed data connects to the same post table used by profiles and teams.
+
+Test after each merge; Feed crashes propagate across the app.
+
+
+
+
+
+---
+
+⚙️ Structure
+
+client/src/pages/feed/
+├── FeedPage.tsx
+├── components/
+│   ├── FeedPost.tsx
+│   ├── FeedHeader.tsx
+│   ├── StoryBar.tsx
+│   ├── StoryViewer.tsx
+│   ├── LivePlayer.tsx
+│   └── CreatePostModal.tsx
+└── services/
+    └── feedService.ts
+
+
+---
+
+🧠 Core Features
+
+1. Feed Layout
+
+Infinite scroll with pagination (/api/feed?page=n)
+
+Prefetch next 2 pages for smooth scrolling.
+
+Sticky top bar with:
+
+SURNA logo (black/white)
+
+Messenger icon (top-right → opens /messages)
+
+No top border line.
+
+
+
+
+---
+
+2. Post Card
+
+Each FeedPost includes:
+
+User avatar + username → opens Profile.
+
+Image/Video (tap to play/pause).
+
+Actions row: ❤️ Like  💬 Comment  📤 Share  💾 Save  ⋯ Menu
+
+Description text, hashtags clickable.
+
+Comments preview + “View All”.
+
+Live like / comment counts updated by socket.
+
+
+Schema outline
+
+Post {
+  id: string
+  authorId: string
+  mediaUrl: string[]
+  caption: string
+  type: "photo" | "video" | "live"
+  likes: string[]
+  comments: Comment[]
+  location?: LocationPin
+  createdAt: Date
+}
+
+
+---
+
+3. Interactions
+
+POST /api/posts/:id/like       // toggle like
+POST /api/posts/:id/comment    // add comment
+POST /api/posts/:id/share      // share to messenger
+POST /api/posts/:id/save       // toggle save
+
+Double-tap heart animation (opacity .7 → 0).
+
+Comments inline append + auto-scroll.
+
+
+
+---
+
+4. Story System
+
+Top Story Bar
+
+“Your Story +” (create) + others horizontally scrollable.
+
+Tap → opens StoryViewer (swipe left/right).
+
+
+StoryViewer
+
+Progress bar on top (auto 5 s per story).
+
+Swipe down = exit.
+
+Reply → opens Messenger thread.
+
+Auto-delete after 24 h (cron job backend).
+
+
+Schema
+
+Story {
+  id: string
+  userId: string
+  mediaUrl: string
+  caption?: string
+  expiresAt: Date
+  viewers: string[]
+}
+
+
+---
+
+5. Live Streaming
+
+Button: “Go Live” → opens modal (title + audience).
+
+Use socket.io room live_<userId>
+
+Viewers can heart/react/comment live.
+
+End → option to Save as Replay (Post type = "video", isReplay:true).
+
+
+
+---
+
+6. Explore / Discover (optional toggle)
+
+Later: small search icon top-left → filter posts by sport, team, location, hashtag.
+Keep placeholder component ready.
+
+
+---
+
+🎨 Design Specs
+
+Element	Color	Font	Notes
+
+Background	#0d0010	Inter / 15–16 px	Dark mode
+Text Primary	#f3efe8	400 weight	Cream
+Text Secondary	#a3a3a3	300 weight	Grey
+Accent	#4b006e	–	Buttons / progress
+Radius	16 px	–	All cards consistent
+
+
+
+---
+
+🔄 Connections
+
+Profiles: tapping avatar → /profile/:id
+
+Teams: if post tagged teamId → /team/:id
+
+Map: if post.location → center map on that pin
+
+Messenger: Share → /messages/new?to=:id
+
+Events: event posts show “Join Event” button → /event/:id
+
+Analytics: each interaction logs event (“like_post”, “comment_post”, etc.)
+
+
+
+---
+
+🧪 Testing Checklist
+
+✅ Like / unlike updates count instantly
+✅ Comment adds without refresh
+✅ Stories expire correctly after 24 h
+✅ Live start → join → end → replay flow
+✅ Dark/light mode consistent
+✅ Scroll performance 60 fps
+✅ No layout breaks on mobile
+
+
+---
+
+🧑‍💻 Developer Implementation Order
+
+1️⃣ Confirm backend routes exist (/posts, /stories, /live).
+2️⃣ Implement frontend components (FeedPost, StoryBar, etc.).
+3️⃣ Wire sockets for live updates.
+4️⃣ Connect all cross-links (Profile, Map, Messenger).
+5️⃣ Run regression test on Feed + Profile integration.
+6️⃣ Commit as branch dev-feed and request review.
+
+
+---

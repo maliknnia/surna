@@ -1,0 +1,358 @@
+/* Stage 7: RTL (Right-to-Left) Language Support */
+
+/* RTL Base Styles */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] * {
+  /* Reset text alignment for RTL */
+  text-align: inherit;
+}
+
+/* Navigation and Layout RTL Adjustments */
+[dir="rtl"] .flex {
+  /* Reverse flex direction for RTL languages */
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 0.5rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 1rem;
+  margin-left: 0;
+}
+
+[dir="rtl"] .space-x-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: 1.5rem;
+  margin-left: 0;
+}
+
+/* Icon and Text RTL Adjustments */
+[dir="rtl"] .flex.items-center {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] .ml-4 {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+[dir="rtl"] .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+[dir="rtl"] .mr-4 {
+  margin-right: 0;
+  margin-left: 1rem;
+}
+
+[dir="rtl"] .pl-4 {
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+[dir="rtl"] .pr-4 {
+  padding-right: 0;
+  padding-left: 1rem;
+}
+
+[dir="rtl"] .pl-6 {
+  padding-left: 0;
+  padding-right: 1.5rem;
+}
+
+[dir="rtl"] .pr-6 {
+  padding-right: 0;
+  padding-left: 1.5rem;
+}
+
+/* Border and Shadow RTL Adjustments */
+[dir="rtl"] .border-l {
+  border-left: none;
+  border-right: 1px solid;
+}
+
+[dir="rtl"] .border-r {
+  border-right: none;
+  border-left: 1px solid;
+}
+
+[dir="rtl"] .shadow-lg {
+  box-shadow: -0 10px 15px -3px rgba(0, 0, 0, 0.1), -0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Form Elements RTL */
+[dir="rtl"] input[type="text"],
+[dir="rtl"] input[type="email"],
+[dir="rtl"] input[type="password"],
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: right;
+  direction: rtl;
+}
+
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+/* Button RTL Adjustments */
+[dir="rtl"] .justify-between {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .justify-start {
+  justify-content: flex-end;
+}
+
+[dir="rtl"] .justify-end {
+  justify-content: flex-start;
+}
+
+/* Navigation Menu RTL */
+[dir="rtl"] .dropdown-menu {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .dropdown-menu-trigger {
+  text-align: right;
+}
+
+/* Card and Container RTL */
+[dir="rtl"] .rounded-l-lg {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+[dir="rtl"] .rounded-r-lg {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+
+/* Grid and Layout RTL */
+[dir="rtl"] .grid {
+  direction: ltr; /* Keep grid direction normal, but adjust content */
+}
+
+[dir="rtl"] .grid > * {
+  direction: rtl;
+}
+
+/* Navigation Breadcrumbs RTL */
+[dir="rtl"] .breadcrumb {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .breadcrumb-separator::before {
+  content: "‹";
+}
+
+/* Table RTL Adjustments */
+[dir="rtl"] table {
+  direction: rtl;
+}
+
+[dir="rtl"] th,
+[dir="rtl"] td {
+  text-align: right;
+}
+
+[dir="rtl"] th:first-child,
+[dir="rtl"] td:first-child {
+  text-align: right;
+}
+
+[dir="rtl"] th:last-child,
+[dir="rtl"] td:last-child {
+  text-align: left;
+}
+
+/* Notification and Toast RTL */
+[dir="rtl"] .toast {
+  left: auto;
+  right: 1rem;
+}
+
+/* Modal and Dialog RTL */
+[dir="rtl"] .dialog-content {
+  text-align: right;
+}
+
+[dir="rtl"] .dialog-close {
+  left: 1rem;
+  right: auto;
+}
+
+/* Sidebar RTL */
+[dir="rtl"] .sidebar {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .sidebar-open {
+  transform: translateX(0);
+}
+
+[dir="rtl"] .sidebar-closed {
+  transform: translateX(100%);
+}
+
+/* Progress Bar RTL */
+[dir="rtl"] .progress-bar {
+  direction: ltr; /* Progress bars typically go left to right even in RTL */
+}
+
+/* Tabs RTL */
+[dir="rtl"] .tabs-list {
+  flex-direction: row-reverse;
+}
+
+/* Avatar and Profile RTL */
+[dir="rtl"] .avatar-with-text {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .avatar-with-text .avatar {
+  margin-left: 0.75rem;
+  margin-right: 0;
+}
+
+/* Search and Input Groups RTL */
+[dir="rtl"] .input-group {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .input-group .input {
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+[dir="rtl"] .input-group .button {
+  border-radius: 0.375rem 0 0 0.375rem;
+}
+
+/* Specific Component RTL Overrides */
+
+/* Language Switcher RTL */
+[dir="rtl"] .language-switcher {
+  flex-direction: row-reverse;
+}
+
+/* Post Components RTL */
+[dir="rtl"] .post-header {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .post-actions {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .post-meta {
+  text-align: right;
+}
+
+/* Team Card RTL */
+[dir="rtl"] .team-card-header {
+  flex-direction: row-reverse;
+}
+
+/* Event Card RTL */
+[dir="rtl"] .event-details {
+  text-align: right;
+}
+
+/* Message RTL */
+[dir="rtl"] .message-sent {
+  align-self: flex-start;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+[dir="rtl"] .message-received {
+  align-self: flex-end;
+  background: #f3f4f6;
+}
+
+/* Responsive RTL Adjustments */
+@media (max-width: 768px) {
+  [dir="rtl"] .mobile-nav {
+    text-align: right;
+  }
+  
+  [dir="rtl"] .mobile-menu {
+    right: 0;
+    left: auto;
+  }
+}
+
+/* Animation RTL Adjustments */
+[dir="rtl"] .slide-in-right {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+[dir="rtl"] .slide-in-left {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Arabic and Hebrew specific adjustments */
+[dir="rtl"][lang="ar"],
+[dir="rtl"][lang="he"] {
+  font-family: 'Segoe UI', Tahoma, Arial, Helvetica, sans-serif;
+}
+
+/* Numbers in RTL languages should remain LTR */
+[dir="rtl"] .number,
+[dir="rtl"] .price,
+[dir="rtl"] .currency,
+[dir="rtl"] .score,
+[dir="rtl"] .count {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/* Override Tailwind's space utilities for RTL */
+[dir="rtl"] .space-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+[dir="rtl"] .divide-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-divide-x-reverse: 1;
+}

@@ -1,0 +1,429 @@
+---
+
+SURNA – Feature Module Handover
+
+Package #8 (Messenger): 1:1 + Groups + Voice Notes + Calls + Requests + Settings
+
+> Goal: A self-contained Messenger area you enter by tapping the Messenger icon. Includes:
+
+1:1 chats (text + voice messages)
+
+Group chats (create, add, requests/approvals, roles)
+
+Realtime (Socket.IO) + read receipts
+
+Call signaling (audio/video) via WebRTC (server = signaling only)
+
+Per-user Messenger settings
+
+B/W UI spec (like Instagram DM: monochrome, selected icon = black, idle = light gray)
+
+
+
+
+Works with existing Auth, Media, Notifications, Redis, Socket.IO.
+
+
+---
+
+0) ENV (add to .env)
+
+# WebRTC ICE (TURN optional but recommended)
+STUN_URL=stun:stun.l.google.com:19302
+TURN_URL=
+TURN_USERNAME=
+TURN_PASSWORD=
+
+
+---
+
+1) Database – migrations (all at once)
+
+-- 1:1 conversations (already from DM; keep)
+CREATE TABLE IF NOT EXISTS dm_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_a UUID NOT NULL,
+  user_b UUID NOT NULL,
+  last_message_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (LEAST(user_a,user_b), GREATEST(user_a,user_b))
+);
+CREATE INDEX IF NOT EXISTS idx_dm_conv_last ON dm_conversations (last_message_at DESC);
+
+-- 1:1 messages (text | audio)
+CREATE TABLE IF NOT EXISTS dm_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES dm_conversations(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'text',     -- 'text' | 'audio'
+  body TEXT NOT NULL DEFAULT '',
+  media_id UUID NULL,                    -- audio -> media.id
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_dm_msg_conv_time ON dm_messages (conversation_id, created_at DESC, id DESC);
+
+-- Read receipts for 1:1
+CREATE TABLE IF NOT EXISTS dm_reads (
+  conversation_id UUID NOT NULL REFERENCES dm_conversations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
+  last_read_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (conversation_id, user_id)
+);
+
+-- GROUPS
+CREATE TABLE IF NOT EXISTS group_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- membership roles: 'owner' | 'admin' | 'member'
+CREATE TABLE IF NOT EXISTS group_members (
+  group_id UUID NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member',
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (group_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id);
+
+-- group messages (text | audio)
+CREATE TABLE IF NOT EXISTS group_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id UUID NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'text',     -- 'text' | 'audio'
+  body TEXT NOT NULL DEFAULT '',
+  media_id UUID NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_group_msg_time ON group_messages (group_id, created_at DESC, id DESC);
+
+-- read receipts per user per group (last seen timestamp)
+CREATE TABLE IF NOT EXISTS group_reads (
+  group_id UUID NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
+  last_read_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (group_id, user_id)
+);
+
+-- invites (owner/admin invites someone)
+CREATE TABLE IF NOT EXISTS group_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id UUID NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+  inviter_id UUID NOT NULL,
+  invitee_id UUID NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',  -- 'pending'|'accepted'|'declined'|'canceled'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (group_id, invitee_id)
+);
+
+-- join requests (user requests to join)
+CREATE TABLE IF NOT EXISTS group_join_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id UUID NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+  requester_id UUID NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',  -- 'pending'|'approved'|'denied'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (group_id, requester_id)
+);
+
+-- Messenger settings per user
+CREATE TABLE IF NOT EXISTS messenger_settings (
+  user_id UUID PRIMARY KEY,
+  allow_message_requests BOOLEAN NOT NULL DEFAULT TRUE,
+  call_permission TEXT NOT NULL DEFAULT 'everyone', -- 'everyone'|'following'|'none'
+  read_receipts BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- (Optional) audio metadata in media
+ALTER TABLE media ADD COLUMN IF NOT EXISTS duration_ms INT NULL;
+ALTER TABLE media ADD COLUMN IF NOT EXISTS waveform JSONB NULL;
+
+
+---
+
+2) Server file layout
+
+server/features/messenger/
+  messenger.validation.ts
+  messenger.repo.ts
+  messenger.service.ts
+  messenger.router.ts
+  index.ts
+
+Register
+
+// server/features/index.ts
+import { messengerRouter } from "./messenger";
+export function registerFeatureRouters(api: Router) {
+  // …existing
+  api.use("/messenger", messengerRouter);
+}
+
+
+---
+
+3) “Sayings” (rules to follow)
+
+Rooms
+
+1:1: dm:<conversationId>
+
+Group: group:<groupId>
+
+Per-user: user:<userId> (already in your IO)
+
+
+Permissions
+
+Only conversation participants can read 1:1 thread.
+
+Group roles: owner can transfer ownership, add/remove admins/members; admin can invite/approve, remove members (not owner); member can post and leave.
+
+Settings: respect call_permission & allow_message_requests.
+
+
+Pagination
+
+All message histories use cursor (created_at, id).
+
+
+Voice notes
+
+Use Media Pkg to upload audio (audio/webm|ogg|mpeg), then send message with mediaId.
+
+
+Call signaling
+
+Server only forwards: call:invite, call:offer, call:answer, call:candidate, call:end, call:reject.
+
+Use STUN (free) + TURN (recommended) via env.
+
+
+
+
+---
+
+4) API – endpoints (compact)
+
+4.1 1:1
+
+POST /api/messenger/dm/conversations { peerId } → { id } (ensure/upsert)
+
+GET /api/messenger/dm/conversations → list my DM threads (sorted by last message)
+
+GET /api/messenger/dm/messages?conversationId=&cursorCreatedAt=&cursorId=&limit= → { items, nextCursor }
+
+POST /api/messenger/dm/messages { conversationId? | peerId?, body? | mediaId? } → creates text or audio
+
+POST /api/messenger/dm/read { conversationId } → sets read; emits dm:read
+
+
+4.2 Groups
+
+POST /api/messenger/groups { name, description? } → create + owner membership
+
+PATCH /api/messenger/groups/:groupId { name?, description? } (owner/admin)
+
+DELETE /api/messenger/groups/:groupId (owner)
+
+GET /api/messenger/groups → groups I’m in
+
+GET /api/messenger/groups/:groupId/messages?cursorCreatedAt=&cursorId=&limit= → history
+
+POST /api/messenger/groups/:groupId/messages { body? | mediaId? } → text/audio
+
+POST /api/messenger/groups/:groupId/read → set read
+
+
+Membership
+
+POST /api/messenger/groups/:groupId/members { userId, role? } (owner/admin add)
+
+DELETE /api/messenger/groups/:groupId/members/:userId (owner/admin remove or self-leave)
+
+PATCH /api/messenger/groups/:groupId/members/:userId { role } (owner → promote/demote)
+
+
+Invites / Requests
+
+POST /api/messenger/groups/:groupId/invites { inviteeId } (owner/admin)
+
+POST /api/messenger/groups/:groupId/invites/:inviteeId/accept (invitee)
+
+POST /api/messenger/groups/:groupId/invites/:inviteeId/decline (invitee)
+
+POST /api/messenger/groups/:groupId/requests (user asks to join)
+
+POST /api/messenger/groups/:groupId/requests/:requestId/approve (owner/admin)
+
+POST /api/messenger/groups/:groupId/requests/:requestId/deny (owner/admin)
+
+
+4.3 Settings
+
+GET  /api/messenger/settings/me
+
+PATCH /api/messenger/settings/me { allow_message_requests?, call_permission?, read_receipts? }
+
+
+> All routes require JWT (except future public invite deep-links, which you can add later).
+
+
+
+
+---
+
+5) Socket.IO – events to add
+
+Server (added to your io.on("connection")):
+
+io.on("connection", (socket) => {
+  const me = (socket as any).user.id;
+
+  // Rooms
+  socket.on("dm:join", ({ conversationId }) => socket.join(`dm:${conversationId}`));
+  socket.on("group:join", ({ groupId }) => socket.join(`group:${groupId}`));
+  socket.on("group:leave", ({ groupId }) => socket.leave(`group:${groupId}`));
+
+  // 1:1 realtime
+  // Emit "dm:new" on message creation (server service already does this)
+  // Emit "dm:read" on read receipt (server service already does this)
+
+  // Group realtime (server emits on post/add/remove/read)
+  // "group:new" { groupId, message }
+  // "group:read" { groupId, userId, at }
+  // "group:member:add" | "group:member:remove" | "group:member:role"
+
+  // Call signaling (1:1; optionally allow inside a group by picking a peer)
+  socket.on("call:invite", ({ toUserId, conversationId, media }) => {
+    io.to(`user:${toUserId}`).emit("call:ring", { fromUserId: me, conversationId, media, at: Date.now() });
+  });
+  socket.on("call:reject", ({ toUserId, conversationId }) => {
+    io.to(`user:${toUserId}`).emit("call:rejected", { fromUserId: me, conversationId });
+  });
+  socket.on("call:offer", (p) => io.to(`user:${p.toUserId}`).emit("call:offer", { ...p, fromUserId: me }));
+  socket.on("call:answer", (p) => io.to(`user:${p.toUserId}`).emit("call:answer", { ...p, fromUserId: me }));
+  socket.on("call:candidate", (p) => io.to(`user:${p.toUserId}`).emit("call:candidate", { ...p, fromUserId: me }));
+  socket.on("call:end", ({ toUserId, conversationId }) => {
+    io.to(`user:${toUserId}`).emit("call:end", { fromUserId: me, conversationId });
+  });
+});
+
+
+---
+
+6) Media: allow audio uploads (already covered)
+
+Accept: audio/mpeg, audio/webm, audio/ogg.
+
+No image resizing for audio; (optional) later: FFmpeg probe → duration_ms.
+
+
+
+---
+
+7) Minimal server code pointers (to keep this concise)
+
+You already saw full DM code earlier. For Groups, mirror 1:1 patterns:
+
+messenger.repo.ts: SQL for groups/members/messages/reads/invites/requests, plus role checks.
+
+messenger.service.ts: permission checks, emits WS events (group:new, group:member:add, group:read, etc.).
+
+messenger.router.ts: routes listed above; all behind JWT.
+
+
+> Tip: Reuse the cursor pagination helper you used for Feed and DMs.
+
+
+
+
+---
+
+8) Client UX (black & white like Instagram)
+
+Design rules (Messenger area):
+
+Palette: background #fff, text #000, UI chrome light gray borders (#e5e5e5).
+
+Icons: line icons in light gray when idle, solid black when selected/active (exactly like ChatGPT/Instagram).
+
+No color accents. Use only gray → black scale.
+
+Layout:
+
+Left: Chat List (DMs + Groups) with search.
+
+Right: Thread (messages) with input bar (text, mic, call).
+
+Mobile: list → thread as separate screens.
+
+
+Message bubbles: simple rounded rectangles, white BG, black text; my messages can have a thin black border to differentiate.
+
+Unread indicators: gray dot; counts in mono badges.
+
+Settings panel: switches and radio buttons in monochrome.
+
+
+Entry: tap the Messenger icon in the top bar → route to /messenger.
+
+
+---
+
+9) Quick tests (after wiring)
+
+1. Create DM + send text + voice
+
+
+2. Create group → add member → send text + voice
+
+
+3. Invite user → accept; Request join → approve
+
+
+4. Read receipts fire (both DM & Group).
+
+
+5. Call invite → answer → exchange ICE (with STUN; add TURN later).
+
+
+6. Settings: toggle read receipts / call permissions; verify enforcement.
+
+
+
+
+---
+
+10) Acceptance Criteria (single checklist)
+
+Navigation: Messenger icon opens /messenger area (B/W UI, IG-style).
+
+1:1: ensure convo, send/receive text & audio, cursor pagination, read receipts, realtime dm:new + dm:read.
+
+Groups: create, rename, add/remove members, roles (owner/admin/member), send text & audio, cursor pagination, read receipts, realtime group:new + membership events.
+
+Invites/Requests: invite/accept/decline; request/approve/deny; membership updates reflected in realtime.
+
+Calls: signaling events implemented; can complete a voice call on typical networks (STUN). TURN can be added via env for strict NATs.
+
+Settings: per-user Messenger settings work and are enforced.
+
+Monochrome UI: icons gray when idle, black when active; no color accents.
+
+No regressions to Auth/Profile/Feed/Media/Notifications.
+
+
+
+---
+
+11) Handoff to dev (copy/paste note)
+
+> “Implement Package #8 (Messenger) exactly as specified. Create the DB tables above, add the /api/messenger/... routes, hook up Socket.IO events, allow audio media, and enforce roles/permissions. The UI must be black/white like Instagram DM (icons: idle = light gray, active = black). When finished, show DM send/receive text+audio, group add/member flow, invites & requests, read receipts, and a basic voice call connecting with STUN.”
+
+

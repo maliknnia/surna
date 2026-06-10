@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    
+    <!-- Barlow Condensed (camera overlays only; body/display via @fontsource in main.tsx) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons: critical weights first; others load async -->
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" media="print" onload="this.media='all'" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/light/style.css" media="print" onload="this.media='all'" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/thin/style.css" media="print" onload="this.media='all'" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css" media="print" onload="this.media='all'" />
+    
+    <!-- System chrome (status bar + gesture bar) — updated by theme boot + ThemeContext -->
+    <meta id="surna-theme-color" name="theme-color" content="#121212" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+    <meta name="background-color" content="#121212" />
+    
+    <!-- Apple PWA / Add to Home Screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta id="surna-apple-status-bar" name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="SURNA" />
+    <link rel="apple-touch-icon" href="/vite.svg" />
+    
+    <!-- Microsoft PWA Support -->
+    <meta name="msapplication-TileColor" content="#121212" />
+    
+    <!-- SEO and Social Media -->
+    <meta name="description" content="Connect with athletes, discover events, find coaches, and manage your sports journey with Surna - the premier sports social network." />
+    <meta name="keywords" content="sports, social network, athletes, teams, events, coaches, fitness, training" />
+    <meta name="author" content="Surna" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://surna.com" />
+    <meta property="og:title" content="SURNA - Sports Social Network" />
+    <meta property="og:description" content="Connect with athletes, discover events, find coaches, and manage your sports journey" />
+    <meta property="og:image" content="/vite.svg" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://surna.com" />
+    <meta property="twitter:title" content="SURNA - Sports Social Network" />
+    <meta property="twitter:description" content="Connect with athletes, discover events, find coaches, and manage your sports journey" />
+    <meta property="twitter:image" content="/vite.svg" />
+    
+    <title>SURNA - Sports Social Network</title>
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      (function(){try{var s=localStorage.getItem("theme");var d=true;if(s==="light")d=false;else if(s==="dark")d=true;else if(s==="system")d=window.matchMedia("(prefers-color-scheme: dark)").matches;var c=d?"#121212":"#ffffff";var r=document.documentElement;if(d)r.classList.add("dark");else r.classList.remove("dark");r.style.colorScheme=d?"dark":"light";r.style.setProperty("--surna-nav-bar-bg",c);r.setAttribute("data-theme",d?"dark":"light");var m=document.getElementById("surna-theme-color");if(m)m.setAttribute("content",c);var a=document.getElementById("surna-apple-status-bar");if(a)a.setAttribute("content",d?"black":"default");}catch(e){}})();
+    </script>
+  </head>
+  <body style="background-color:#121212">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

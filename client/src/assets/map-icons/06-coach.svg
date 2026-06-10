@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="surna-map-pin-dual">
+  <path class="surna-map-pin-ink" d="M256 40 C220 40 190 60 180 90 C170 120 180 150 200 170 C190 180 180 200 180 220 L180 280 L200 300 L220 320 L240 340 L260 360 L280 380 L300 400 L320 420 L340 440 L360 460 L380 480 L400 480 L420 460 L440 440 L460 420 L480 400 L480 340 L480 280 L460 260 L440 240 L420 220 L400 200 L380 180 L360 160 L340 140 L320 120 L300 100 L280 80 L260 60 L256 40Z" fill="currentColor"/>
+  <rect class="surna-map-pin-cut" x="200" y="80" width="112" height="20" rx="10" fill="var(--beacon-fill)"/>
+  <path class="surna-map-pin-cut" d="M220 200 L220 280 L240 300 L260 320 L280 300 L300 280 L300 200Z" fill="var(--beacon-fill)"/>
+  <circle class="surna-map-pin-cut" cx="260" cy="240" r="20" fill="var(--beacon-fill)"/>
+  <rect class="surna-map-pin-cut" x="360" y="240" width="60" height="40" rx="10" fill="var(--beacon-fill)"/>
+  <rect class="surna-map-pin-ink" x="370" y="250" width="40" height="10" rx="5" fill="currentColor"/>
+</svg>

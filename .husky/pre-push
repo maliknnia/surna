@@ -1,0 +1,22 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+echo "⎇ $BRANCH"
+
+echo "$BRANCH" | grep -Eq '^(feature|fix|hotfix|chore|docs|refactor|release)\/[a-z0-9-]+(\/[A-Za-z]+-[0-9]+)?\/[a-z0-9-]{2,}$' || {
+  echo "❌ Invalid branch name. See CONTRIBUTING.md"
+  exit 1
+}
+
+# Ensure branch is based on latest main (avoids big surprise merges)
+if [ "$BRANCH" != "main" ]; then
+  git fetch origin main
+  BASE="$(git merge-base HEAD origin/main)"
+  if [ "$BASE" != "$(git rev-parse origin/main)" ]; then
+    echo "⚠️ Rebase on latest main first: git pull --rebase origin main"
+    exit 1
+  fi
+fi
+
+echo "✅ Branch name OK"

@@ -1,0 +1,196 @@
+I got you — map filters to reduce visual clutter. Too many pins = chaos. Smart filtering = clean, usable, fast.
+
+---
+
+The Problem
+
+Current	Issue	
+All pins visible	Overlapping, unreadable	
+No categorization	Can't find what you need	
+Same icon for everything	No visual hierarchy	
+
+---
+
+The Fix: Layered Filter System
+
+1. Quick Filters (Top Bar)
+
+```
+┌─────────────────────────────────────┐
+│  [All] [Sports] [Protests] [Teams]  │
+│  [Now] [Today] [Weekend] [Custom]   │
+└─────────────────────────────────────┘
+```
+
+2. Sport-Specific Filters (Expandable)
+
+```
+[All Sports] ▼
+  ├── Boxing
+  ├── Basketball
+  ├── Soccer
+  └── ...
+```
+
+3. Advanced Filters (Bottom Sheet)
+
+```
+[Distance] [Skill Level] [Spots Open] [Verified]
+```
+
+---
+
+Visual Map Design
+
+Pin Types by Category
+
+Type	Pin Style	Color	
+Sports - Casual	Circle	Sport color	
+Sports - Competitive	Diamond	Sport color + border	
+Protests	Star	Purple	
+Petition	Document	Teal	
+Coaches	Person	Gold	
+Venues/Gyms	Building	Gray	
+
+Pin States
+
+State	Visual	
+Available	Solid, pulsing gently	
+Filling fast	Solid, pulsing rapidly + coral ring	
+Full	Grayed out, smaller	
+Selected	Enlarged, ring glow	
+
+---
+
+Traffic Reduction: Clustering
+
+```javascript
+// When zoomed out, cluster pins
+map.addLayer({
+  id: 'clusters',
+  type: 'circle',
+  filter: ['has', 'point_count'],
+  paint: {
+    'circle-color': [
+      'step',
+      ['get', 'point_count'],
+      '#51bbd6',  // Small cluster
+      100,
+      '#f1f075',  // Medium
+      750,
+      '#f28cb1'   // Large
+    ],
+    'circle-radius': [
+      'step',
+      ['get', 'point_count'],
+      20,
+      100, 30,
+      750, 40
+    ]
+  }
+});
+```
+
+Zoom in → clusters split into individual pins
+
+---
+
+Filter UI Component
+
+```css
+.filter-bar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px;
+}
+
+.filter-pill {
+  background: rgba(30, 30, 30, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 8px 16px;
+  color: white;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.filter-pill.active {
+  background: var(--sport-color);
+  border-color: transparent;
+}
+```
+
+---
+
+Smart Defaults
+
+User Context	Default Filter	
+Open app	"All nearby, happening now"	
+From Teams tab	"Sports only"	
+From Events tab	"Events only"	
+First time user	"Casual, all sports, 5mi radius"	
+
+---
+
+Reduce Traffic: Visibility Toggles
+
+```
+┌─────────────────────────┐
+│  Show on map:           │
+│  ☑️ Sports venues       │
+│  ☑️ Active games        │
+│  ☐ Full teams (hide)    │
+│  ☑️ Coaches available   │
+│  ☐ Past events (hide)   │
+└─────────────────────────┘
+```
+
+Hide by default:
+- Full teams
+- Past events
+- 100+ miles away
+
+---
+
+Search Integration
+
+```
+┌─────────────────────────┐
+│  🔍 Search map...       │
+│                         │
+│  "Boxing near me"       │
+│  "Protests this weekend"│
+│  "Coaches under $50"    │
+└─────────────────────────┘
+```
+
+Search filters map in real-time
+
+---
+
+Visual Result
+
+```
+┌─────────────────────────┐
+│  [All][Sports][Now]     │ ← filter bar
+│                         │
+│    📍                   │
+│       📍📍              │ ← clustered
+│            📍           │
+│    📍                   │
+│                         │
+│  [⚙️ Filters] [📍 Me]   │ ← bottom controls
+└─────────────────────────┘
+```
+
+Clean. Focused. Fast.
+
+---
+
+Want me to spec the cluster animation or filter bottom sheet next?

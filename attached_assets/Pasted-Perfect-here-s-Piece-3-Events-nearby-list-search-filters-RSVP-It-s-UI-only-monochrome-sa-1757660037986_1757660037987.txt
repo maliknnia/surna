@@ -1,0 +1,303 @@
+Perfect — here’s Piece 3: Events (nearby list + search/filters + RSVP).
+It’s UI-only, monochrome, safe, and plugs into your existing /api/events + /api/events/:id/rsvp. No schema changes.
+
+
+---
+
+Piece 3 — EVENTS (List + RSVP)
+
+Dev rules (pin this)
+
+UI-only PR (no DB changes).
+
+Additive routes/components only (don’t edit shared hooks).
+
+Hide any control if its API isn’t ready (no dead UI).
+
+Monochrome (idle gray, active black).
+
+
+
+---
+
+Files (client)
+
+client/src/pages/hub/EventsListPage.tsx        // replace placeholder
+client/src/pages/events/EventDetailsPage.tsx   // simple details page
+client/src/lib/dates.ts                        // tiny date helpers
+
+client/src/lib/dates.ts
+
+export const toISO = (d: Date) => d.toISOString();
+export const startOfTodayISO = () => {
+  const d = new Date(); d.setHours(0,0,0,0); return d.toISOString();
+};
+export const endOfWeekISO = () => {
+  const d = new Date(); d.setDate(d.getDate() + (7 - d.getDay())); d.setHours(23,59,59,999);
+  return d.toISOString();
+};
+export const fmtRange = (a?: string, b?: string) => {
+  if (!a) return "";
+  const s = new Date(a).toLocaleString();
+  const e = b ? new Date(b).toLocaleString() : "";
+  return e ? `${s} — ${e}` : s;
+};
+
+
+---
+
+client/src/pages/hub/EventsListPage.tsx
+
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { endOfWeekISO, startOfTodayISO, fmtRange } from "@/lib/dates";
+
+type EventRow = {
+  id: string;
+  title: string;
+  description?: string;
+  category?: "sport"|"social"|"community"|string;
+  starts_at: string;
+  ends_at?: string;
+  coords?: { lat:number; lng:number };
+  fee_cents?: number|null;
+  distanceKm?: number; // server may provide; we can also compute later
+  rsvp_status?: "going"|"interested"|"not_going"|null;
+};
+
+export default function EventsListPage(){
+  const [q, setQ] = useState("");
+  const [category, setCategory] = useState("");
+  const [windowKey, setWindowKey] = useState<"today"|"week">("today");
+  const [me, setMe] = useState<{lat:number;lng:number}|null>(null);
+
+  useEffect(()=> {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(p => setMe({ lat:p.coords.latitude, lng:p.coords.longitude }));
+  }, []);
+
+  const timeRange = useMemo(() => ({
+    from: startOfTodayISO(),
+    to: windowKey === "today" ? undefined : endOfWeekISO(),
+  }), [windowKey]);
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status, refetch } =
+    useInfiniteQuery({
+      queryKey: ["events", q, category, windowKey, me?.lat, me?.lng],
+      queryFn: async ({ pageParam }) => {
+        const p = new URLSearchParams({
+          from: timeRange.from,
+          limit: "12",
+        });
+        if (timeRange.to) p.set("to", timeRange.to);
+        if (q) p.set("q", q);
+        if (category) p.set("category", category);
+        if (me) { p.set("lat", String(me.lat)); p.set("lng", String(me.lng)); }
+        if (pageParam?.cursorStartsAt) p.set("cursorStartsAt", pageParam.cursorStartsAt);
+        if (pageParam?.cursorId) p.set("cursorId", pageParam.cursorId);
+
+        const r = await fetch("/api/events?" + p.toString(), { credentials: "include" });
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      },
+      initialPageParam: undefined as any,
+      getNextPageParam: (last) => last.nextCursor ?? undefined,
+    });
+
+  const items: EventRow[] = data?.pages.flatMap((p:any)=>p.items) ?? [];
+  const sentinel = useRef<HTMLDivElement|null>(null);
+
+  useEffect(() => {
+    const el = sentinel.current; if (!el) return;
+    const io = new IntersectionObserver(e => {
+      if (e[0].isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage();
+    }, { rootMargin: "400px" });
+    io.observe(el); return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  async function rsvp(ev: EventRow, status: "going"|"interested"|"not_going") {
+    await fetch(`/api/events/${ev.id}/rsvp`,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      credentials:"include",
+      body: JSON.stringify({ status, issueTicket: status === "going" })
+    });
+    refetch();
+  }
+
+  return (
+    <main className="p-4 bg-white text-black">
+      <header className="mb-3">
+        <h2 className="text-xl font-semibold">Events</h2>
+        <p className="text-gray-600">Happening near you.</p>
+      </header>
+
+      <div className="flex flex-wrap gap-2 mb-3">
+        <input className="border rounded-xl px-3 py-2 flex-1 min-w-[220px]" placeholder="Search events…"
+               value={q} onChange={e=>setQ(e.target.value)} onKeyDown={(e)=>e.key==="Enter" && refetch()} />
+        <select className="border rounded-xl px-3 py-2" value={category} onChange={e=>setCategory(e.target.value)}>
+          <option value="">All</option>
+          <option value="sport">Sport</option>
+          <option value="social">Social</option>
+          <option value="community">Community</option>
+        </select>
+        <select className="border rounded-xl px-3 py-2" value={windowKey} onChange={e=>setWindowKey(e.target.value as any)}>
+          <option value="today">Today</option>
+          <option value="week">This week</option>
+        </select>
+        <button onClick={()=>refetch()} className="px-3 py-2 rounded-xl border bg-black text-white">Search</button>
+      </div>
+
+      {status==="pending" && <div className="text-gray-500">Loading…</div>}
+
+      <ul className="grid gap-3">
+        {items.map(ev => (
+          <li key={ev.id} className="border rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-lg font-semibold">{ev.title}</div>
+                <div className="text-sm text-gray-600">
+                  {fmtRange(ev.starts_at, ev.ends_at)}
+                  {typeof (ev as any).distanceKm === "number" ? ` · ${(ev as any).distanceKm.toFixed(1)} km` : ""}
+                  {typeof ev.fee_cents === "number" ? ` · €${(ev.fee_cents/100).toFixed(2)}` : " · Free"}
+                  {ev.category ? ` · ${ev.category}` : ""}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {/* RSVP buttons */}
+                <button
+                  className={"px-3 py-2 rounded-xl border " + (ev.rsvp_status==="interested" ? "bg-black text-white" : "")}
+                  onClick={()=>rsvp(ev,"interested")}
+                >Interested</button>
+                <button
+                  className={"px-3 py-2 rounded-xl border " + (ev.rsvp_status==="going" ? "bg-black text-white" : "")}
+                  onClick={()=>rsvp(ev,"going")}
+                >Going</button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button className="px-3 py-2 rounded-xl border"
+                      onClick={()=> window.location.href=`/events/${ev.id}`}>
+                Details
+              </button>
+              {ev.coords &&
+                <button className="px-3 py-2 rounded-xl border"
+                        onClick={()=> window.open(`https://www.google.com/maps/dir/?api=1&destination=${ev.coords!.lat},${ev.coords!.lng}`,"_blank")}>
+                  Navigate
+                </button>
+              }
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div ref={sentinel} />
+      {isFetchingNextPage && <div className="py-4 text-center text-gray-500">Loading more…</div>}
+      {!items.length && status==="success" && <div className="text-gray-500">No events found.</div>}
+    </main>
+  );
+}
+
+
+---
+
+client/src/pages/events/EventDetailsPage.tsx
+
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { fmtRange } from "@/lib/dates";
+
+export default function EventDetailsPage(){
+  const { id } = useParams();
+  const [ev, setEv] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(()=> { (async ()=>{
+    const r = await fetch(`/api/events/${id}`, { credentials:"include" });
+    setEv(r.ok ? await r.json() : null);
+    setLoading(false);
+  })(); }, [id]);
+
+  if (loading) return <main className="p-4">Loading…</main>;
+  if (!ev) return <main className="p-4">Not found.</main>;
+
+  return (
+    <main className="p-4 bg-white text-black">
+      <h1 className="text-2xl font-bold">{ev.title}</h1>
+      <div className="text-sm text-gray-600">{fmtRange(ev.starts_at, ev.ends_at)} {ev.location ? `· ${ev.location}` : ""}</div>
+      <div className="mt-4 text-gray-800 whitespace-pre-wrap">{ev.description || "No description."}</div>
+
+      <div className="mt-4 flex gap-2">
+        <button className="px-3 py-2 rounded-xl border bg-black text-white"
+          onClick={async ()=>{
+            await fetch(`/api/events/${ev.id}/rsvp`, { method:"POST", headers:{ "Content-Type":"application/json" }, credentials:"include", body: JSON.stringify({ status:"going", issueTicket:true }) });
+            window.history.back();
+          }}>Going</button>
+        <button className="px-3 py-2 rounded-xl border"
+          onClick={async ()=>{
+            await fetch(`/api/events/${ev.id}/rsvp`, { method:"POST", headers:{ "Content-Type":"application/json" }, credentials:"include", body: JSON.stringify({ status:"interested" }) });
+            window.history.back();
+          }}>Interested</button>
+        {ev.coords &&
+          <button className="px-3 py-2 rounded-xl border"
+            onClick={()=> window.open(`https://www.google.com/maps/dir/?api=1&destination=${ev.coords.lat},${ev.coords.lng}`,"_blank")}>
+            Navigate
+          </button>
+        }
+      </div>
+    </main>
+  );
+}
+
+Wire routes
+
+// add detail route
+import EventDetailsPage from "@/pages/events/EventDetailsPage";
+<Route path="/events/:id" element={<EventDetailsPage />} />
+
+
+---
+
+Server assumptions (works with Package #7)
+
+GET /api/events?from=&to=&q=&category=&lat=&lng=&limit=&cursorStartsAt=&cursorId= → { items, nextCursor }
+
+Optional: server may return distanceKm and rsvp_status per event.
+
+
+GET /api/events/:id → event details.
+
+POST /api/events/:id/rsvp body { status: "going"|"interested"|"not_going", issueTicket?: boolean }.
+
+
+> If category, lat/lng, or cursor params aren’t implemented on server yet, the UI still works (filters will be ignored). No dead UI — the list still loads and RSVP posts.
+
+
+
+
+---
+
+Acceptance (quick test)
+
+1. Go to /discover/events: see search, category, time window.
+
+
+2. Results load; Interested or Going posts successfully (button toggles).
+
+
+3. Click Details → event page shows; Going/Interested work there too.
+
+
+4. If event has coordinates → Navigate opens Google Maps.
+
+
+5. Infinite scroll loads the next page smoothly.
+
+
+6. Monochrome: black/white/gray only.
+
+
+
+
+---

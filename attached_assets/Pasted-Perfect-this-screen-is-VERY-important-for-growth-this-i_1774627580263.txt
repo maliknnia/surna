@@ -1,0 +1,434 @@
+Perfect — this screen is VERY important for growth (this is how users connect, build teams, and make SURNA alive).
+
+Right now it looks like Instagram…
+👉 we keep the good parts
+👉 but we upgrade it to SURNA-level
+
+
+---
+
+🔥 SURNA “Discover People” — Final Design + UX Spec
+
+✅ Core Principle
+
+Clean like Instagram
+
+Faster decisions (follow / ignore)
+
+Smarter suggestions (SURNA context)
+
+More useful (not just random people)
+
+
+
+---
+
+1) Page Structure (Top → Bottom)
+
+A) Header
+
+Title: Discover People
+
+Left: back button
+
+Right: optional filter/search icon
+
+
+
+---
+
+B) Sections
+
+1. Follow Requests (Priority)
+
+Always on top
+
+Show max 2–3 preview
+
+“See all” → full page
+
+
+
+---
+
+2. Suggested for You (Main list)
+
+
+---
+
+3. Optional Future Sections
+
+Nearby players
+
+Same sport
+
+Teammates of your teammates
+
+Event participants
+
+
+👉 This is where SURNA beats Instagram later
+
+
+---
+
+2) Follow Requests (Improve this)
+
+Layout:
+
+Avatar (40px)
+
+Username + small info
+
+Buttons:
+
+Confirm
+
+Delete
+
+
+
+
+---
+
+🔥 SURNA Upgrade
+
+Add context:
+
+Instead of just name:
+
+Show:
+
+Mutual friends
+
+Same sport
+
+Same area
+
+Team connection
+
+
+Example: 👉 “2 mutuals • Football • Cork”
+
+
+---
+
+Buttons:
+
+Confirm → purple gradient
+
+Delete → soft grey
+
+
+
+---
+
+Interaction:
+
+Confirm → instant state change (no reload)
+
+Remove → fades out smoothly
+
+
+
+---
+
+3) Suggested People (Main list)
+
+Layout (important):
+
+Each row:
+
+Avatar (44px)
+
+Name
+
+Subtext
+
+Actions on right
+
+
+
+---
+
+Subtext (THIS IS KEY)
+
+Instead of: “Suggested for you”
+
+👉 Show meaningful reasons:
+
+“3 mutuals”
+
+“Plays football nearby”
+
+“In your area”
+
+“Coach”
+
+“Joined same event”
+
+“From Cork”
+
+“Same team network”
+
+
+👉 This makes it feel intelligent
+
+
+---
+
+4) Follow Button Design
+
+Style:
+
+Rounded pill
+
+Height: 32–36px
+
+Background: purple gradient
+
+Text: white
+
+
+
+---
+
+States:
+
+Default:
+
+👉 Follow
+
+After click:
+
+👉 Following (grey background)
+
+Optional:
+
+👉 Requested (if private)
+
+
+---
+
+Interaction:
+
+Tap → instant change
+
+Small scale animation (0.97 → 1)
+
+
+
+---
+
+5) Remove (X) Button
+
+Keep it — but refine:
+
+Small, subtle
+
+Grey icon
+
+Tap → removes suggestion
+
+
+
+---
+
+Animation:
+
+Slide left + fade out
+
+Next item moves up smoothly
+
+
+
+---
+
+6) 🔥 SURNA Upgrade (VERY IMPORTANT)
+
+Add Mini Tags / Identity
+
+Under names, add small tags:
+
+Examples:
+
+⚽ Football
+
+🏀 Basketball
+
+🏋️ Gym
+
+🎾 Tennis
+
+
+OR:
+
+“Team player”
+
+“Coach”
+
+“Event organizer”
+
+
+👉 This makes it feel like a sports network, not just social media
+
+
+---
+
+7) Smart Ranking System
+
+Tell developer:
+
+Suggestions should be based on:
+
+Priority:
+
+1. Same location (very important)
+
+
+2. Same sport
+
+
+3. Mutual friends
+
+
+4. Same events
+
+
+5. Same teams
+
+
+6. Activity level
+
+
+
+
+---
+
+NOT:
+
+Random global users ❌
+
+Spam accounts ❌
+
+
+
+---
+
+8) Add “Quick Actions” (Optional but powerful)
+
+Instead of just Follow:
+
+Add:
+
+Message (if already connected)
+
+Invite to team
+
+View profile
+
+
+
+---
+
+9) Add Horizontal Section (Advanced but powerful)
+
+Above suggestions:
+
+“Nearby Players”
+
+Horizontal scroll:
+
+Avatars
+
+Distance
+
+Sport
+
+
+👉 Example: “Football players near you”
+
+
+---
+
+10) Animations (IMPORTANT)
+
+Follow → button morphs smoothly
+
+Remove → row slides out
+
+Load → fade in
+
+Scroll → smooth
+
+
+
+---
+
+11) Dark Mode / Light Mode
+
+Light:
+
+Background: cream/white
+
+Text: dark purple/black
+
+
+Dark:
+
+Background: deep purple-black
+
+Text: off-white
+
+
+Buttons:
+
+Always keep purple identity
+
+
+
+---
+
+12) What NOT to do
+
+❌ Don’t show random people
+
+❌ Don’t repeat same suggestions
+
+❌ Don’t make it static
+
+❌ Don’t overload with info
+
+❌ Don’t make it boring
+
+
+
+---
+
+🎯 Final Vision
+
+Tell your developer this:
+
+👉 “Discover People should feel like a smart connection engine — helping users find relevant people based on sports, location, and activity — not just random suggestions.”
+
+
+---
+
+🔥 My honest take
+
+This page can:
+
+Build teams
+
+Create communities
+
+Increase retention massively
+
+
+👉 If done right, this becomes one of your strongest features.
+
+
+---
+
+If you want next step: 👉 I can design **Profile page (PERSON PROFILE)** which connects EVERYTHING (teams, events, stats, messages)
+👉 Or build the **matching algorithm logic for suggestions**

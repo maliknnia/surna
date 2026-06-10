@@ -1,0 +1,147 @@
+I got you — coaches deserve respect, not flashy colors. Clean, neutral, professional. Let me design that.
+
+---
+
+Coaches: Neutral & Respectful
+
+Card Design
+
+```
+┌─────────────────────────┐
+│  [Photo]                │
+│  Elijah Martin          │
+│  🎾 Tennis • 4yr        │
+│  ⭐ 4.5  |  $103/hr     │
+│  [Book Session]         │
+└─────────────────────────┘
+```
+
+No color flood. White/light gray card. Photo is the focus.
+
+---
+
+CSS for Coaches
+
+```css
+.coach-card {
+  background: #FFFFFF; /* Light mode */
+  /* OR */
+  background: #1E1E1E; /* Dark mode */
+  
+  border: 1px solid rgba(0,0,0,0.05); /* Light */
+  /* OR */
+  border: 1px solid rgba(255,255,255,0.05); /* Dark */
+  
+  border-radius: 16px;
+  padding: 16px;
+  
+  /* NO shadow, NO gradient */
+  box-shadow: none;
+}
+
+.coach-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%; /* Circle, professional */
+  object-fit: cover;
+}
+
+.coach-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1A1A1A; /* Light */
+  /* OR */
+  color: #FFFFFF; /* Dark */
+}
+
+.coach-meta {
+  font-size: 14px;
+  color: #666666; /* Light */
+  /* OR */
+  color: #B3B3B3; /* Dark */
+}
+
+/* Only color: gold star, sport emoji */
+.star { color: #FFD700; }
+.sport { color: #0F9B4A; } /* Subtle green, not flood */
+```
+
+---
+
+Layout: Horizontal Scroll
+
+```
+[All] [Boxing] [Tennis] [Yoga]  ← filter pills
+
+┌────────┐ ┌────────┐ ┌────────┐
+│ Photo  │ │ Photo  │ │ Photo  │
+│ Name   │ │ Name   │ │ Name   │
+│ ⭐ $   │ │ ⭐ $   │ │ ⭐ $   │
+│ [Book] │ │ [Book] │ │ [Book] │
+└────────┘ └────────┘ └────────┘
+   ↑            ↑          ↑
+ 3 columns, not full width
+```
+
+---
+
+Card Size
+
+Element	Value	
+Width	160px (not full screen)	
+Photo	80px circle, centered	
+Border radius	16px	
+Spacing	12px gap	
+
+---
+
+Visual Hierarchy
+
+```
+PHOTO (big, round, human)
+  ↓
+NAME (bold, clear)
+  ↓
+SPORT + EXPERIENCE (small, gray)
+  ↓
+RATING + PRICE (star is gold, rest neutral)
+  ↓
+[Book Session] (subtle button, not loud)
+```
+
+---
+
+Comparison
+
+Teams/Events	Coaches	
+Bold sport colors	Neutral, clean	
+Full-width cards	Compact, 3-column	
+Action-focused	Person-focused	
+Energy	Trust	
+
+---
+
+Developer Spec
+
+```css
+.coaches-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.coach-card {
+  background: var(--bg-elevated);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid var(--border-subtle);
+}
+
+/* No gradients. No shadows. Clean. */
+```
+
+---
+
+Want me to spec the filter pills or Book Session button style next?

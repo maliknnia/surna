@@ -1,0 +1,425 @@
+Awesome — here’s a drop-in client package for EVENTS (list + details + RSVP) using React + TanStack Query. It’s compact, production-ready, and matches the server routes from Package #7.
+
+
+---
+
+Client Package — EVENTS (List + RSVP)
+
+1) Install client deps (if not already)
+
+npm i @tanstack/react-query
+
+Ensure your app already provides a QueryClientProvider (you likely have it; if not, I can share a tiny setup).
+
+
+---
+
+2) Hook: client/src/hooks/useEvents.ts
+
+// client/src/hooks/useEvents.ts
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+type EventRow = {
+  id: string;
+  creator_id: string;
+  title: string;
+  description?: string;
+  starts_at: string; // ISO
+  ends_at: string;   // ISO
+  location?: string;
+  visibility: "public" | "private" | "unlisted";
+  capacity?: number | null;
+  cover_media_id?: string | null;
+  created_at: string;
+};
+
+type EventsPage = {
+  items: EventRow[];
+  nextCursor: { cursorStartsAt: string; cursorId: string } | null;
+};
+
+async function getJSON<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { credentials: "include", ...init });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<T>;
+}
+
+export function useEventsList(params?: { from?: string; to?: string; q?: string; limit?: number }) {
+  const search = new URLSearchParams();
+  if (params?.from) search.set("from", params.from);
+  if (params?.to) search.set("to", params.to);
+  if (params?.q) search.set("q", params.q);
+  search.set("limit", String(params?.limit ?? 20));
+
+  return useInfiniteQuery<EventsPage, Error>({
+    queryKey: ["events", params],
+    queryFn: ({ pageParam }) => {
+      const p = new URLSearchParams(search);
+      if (pageParam?.cursorStartsAt) p.set("cursorStartsAt", pageParam.cursorStartsAt);
+      if (pageParam?.cursorId) p.set("cursorId", pageParam.cursorId);
+      return getJSON<EventsPage>("/api/events?" + p.toString());
+    },
+    initialPageParam: undefined as any,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+}
+
+export function useEvent(id?: string) {
+  return useQuery<EventRow, Error>({
+    queryKey: ["event", id],
+    queryFn: () => getJSON<EventRow>(`/api/events/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useRSVP(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { status: "going" | "interested" | "not_going"; issueTicket?: boolean }) => {
+      return getJSON(`/api/events/${eventId}/rsvp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event", eventId] });
+      qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["my-rsvps"] });
+    },
+  });
+}
+
+export function useMyRSVPs() {
+  return useQuery<{ items: any[] }, Error>({
+    queryKey: ["my-rsvps"],
+    queryFn: () => getJSON(`/api/events/me/rsvps`),
+  });
+}
+
+
+---
+
+3) UI: client/src/components/events/EventCard.tsx
+
+// client/src/components/events/EventCard.tsx
+import { useRSVP } from "@/hooks/useEvents";
+
+export default function EventCard({
+  ev,
+  compact = false,
+}: {
+  ev: {
+    id: string;
+    title: string;
+    description?: string;
+    starts_at: string;
+    ends_at: string;
+    location?: string;
+    capacity?: number | null;
+  };
+  compact?: boolean;
+}) {
+  const rsvp = useRSVP(ev.id);
+
+  return (
+    <article className="border rounded-2xl p-4 shadow-sm bg-white">
+      <header className="flex items-start gap-3">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold">{ev.title}</h3>
+          <div className="text-sm text-gray-600">
+            <time>{new Date(ev.starts_at).toLocaleString()}</time>
+            {" — "}
+            <time>{new Date(ev.ends_at).toLocaleString()}</time>
+            {ev.location ? <span> · {ev.location}</span> : null}
+          </div>
+        </div>
+      </header>
+
+      {!compact && ev.description ? (
+        <p className="mt-3 text-gray-800">{ev.description}</p>
+      ) : null}
+
+      <footer className="mt-4 flex gap-2">
+        <button
+          onClick={() => rsvp.mutate({ status: "going", issueTicket: true })}
+          disabled={rsvp.isPending}
+          className="px-3 py-2 rounded-xl border bg-black text-white hover:opacity-90"
+        >
+          I’m going
+        </button>
+        <button
+          onClick={() => rsvp.mutate({ status: "interested" })}
+          disabled={rsvp.isPending}
+          className="px-3 py-2 rounded-xl border"
+        >
+          Interested
+        </button>
+        <button
+          onClick={() => rsvp.mutate({ status: "not_going" })}
+          disabled={rsvp.isPending}
+          className="px-3 py-2 rounded-xl border"
+        >
+          Not going
+        </button>
+      </footer>
+    </article>
+  );
+}
+
+
+---
+
+4) UI: client/src/components/events/EventList.tsx
+
+// client/src/components/events/EventList.tsx
+import { useEffect, useRef, useState } from "react";
+import { useEventsList } from "@/hooks/useEvents";
+import EventCard from "./EventCard";
+
+export default function EventList() {
+  const [q, setQ] = useState("");
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } = useEventsList({
+    from: new Date().toISOString(), // upcoming
+    q,
+    limit: 12,
+  });
+  const sentinel = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!sentinel.current) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    io.observe(sentinel.current);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const items = data?.pages.flatMap((p) => p.items) ?? [];
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="flex gap-2 mb-4">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search events…"
+          className="flex-1 border rounded-xl px-3 py-2"
+        />
+      </div>
+
+      {status === "pending" ? <div>Loading…</div> : null}
+      {status === "error" ? <div>Couldn’t load events.</div> : null}
+
+      <div className="grid gap-4">
+        {items.map((ev) => (
+          <EventCard key={ev.id} ev={ev} />
+        ))}
+      </div>
+
+      <div ref={sentinel} />
+      {isFetchingNextPage ? <div className="py-4 text-center">Loading more…</div> : null}
+      {!hasNextPage && items.length ? (
+        <div className="py-6 text-center text-gray-500">No more events.</div>
+      ) : null}
+    </div>
+  );
+}
+
+
+---
+
+5) UI: (Optional) Page wrapper client/src/pages/events/EventsPage.tsx
+
+// client/src/pages/events/EventsPage.tsx
+import EventList from "@/components/events/EventList";
+
+export default function EventsPage() {
+  return (
+    <main className="p-4 md:p-6">
+      <h1 className="text-2xl font-bold mb-4">Upcoming Events</h1>
+      <EventList />
+    </main>
+  );
+}
+
+Wire this page into your router (however your app routes pages, e.g., React Router or file-based).
+
+
+---
+
+6) (Optional) Event details page client/src/components/events/EventDetails.tsx
+
+// client/src/components/events/EventDetails.tsx
+import { useEvent, useRSVP } from "@/hooks/useEvents";
+
+export default function EventDetails({ id }: { id: string }) {
+  const { data: ev, status } = useEvent(id);
+  const rsvp = useRSVP(id);
+
+  if (status === "pending") return <div>Loading…</div>;
+  if (!ev) return <div>Event not found</div>;
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <h2 className="text-2xl font-semibold">{ev.title}</h2>
+      <div className="text-sm text-gray-600">
+        <time>{new Date(ev.starts_at).toLocaleString()}</time> —{" "}
+        <time>{new Date(ev.ends_at).toLocaleString()}</time>
+        {ev.location ? <span> · {ev.location}</span> : null}
+      </div>
+      {ev.description ? <p className="mt-3">{ev.description}</p> : null}
+
+      <div className="mt-4 flex gap-2">
+        <button
+          onClick={() => rsvp.mutate({ status: "going", issueTicket: true })}
+          className="px-3 py-2 rounded-xl border bg-black text-white"
+        >
+          I’m going
+        </button>
+        <button
+          onClick={() => rsvp.mutate({ status: "interested" })}
+          className="px-3 py-2 rounded-xl border"
+        >
+          Interested
+        </button>
+        <button
+          onClick={() => rsvp.mutate({ status: "not_going" })}
+          className="px-3 py-2 rounded-xl border"
+        >
+          Not going
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+---
+
+7) Minimal “Create Event” form (creator-only) — optional
+
+// client/src/components/events/CreateEventForm.tsx
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+
+export default function CreateEventForm() {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    startsAt: "",
+    endsAt: "",
+    location: "",
+    visibility: "public",
+    capacity: "",
+  });
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const body = {
+        title: form.title,
+        description: form.description || undefined,
+        startsAt: new Date(form.startsAt).toISOString(),
+        endsAt: new Date(form.endsAt).toISOString(),
+        location: form.location || undefined,
+        visibility: form.visibility as "public" | "private" | "unlisted",
+        capacity: form.capacity ? Number(form.capacity) : undefined,
+      };
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events"] });
+      alert("Event created");
+    },
+  });
+
+  return (
+    <form
+      className="border rounded-2xl p-4 bg-white"
+      onSubmit={(e) => {
+        e.preventDefault();
+        create.mutate();
+      }}
+    >
+      <h3 className="font-semibold mb-3">Create Event</h3>
+      <div className="grid gap-2">
+        <input className="border rounded-xl px-3 py-2" placeholder="Title"
+          value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+        <textarea className="border rounded-xl px-3 py-2" placeholder="Description"
+          value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <input type="datetime-local" className="border rounded-xl px-3 py-2" placeholder="Starts"
+          value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} required />
+        <input type="datetime-local" className="border rounded-xl px-3 py-2" placeholder="Ends"
+          value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} required />
+        <input className="border rounded-xl px-3 py-2" placeholder="Location"
+          value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+        <select className="border rounded-xl px-3 py-2"
+          value={form.visibility} onChange={(e) => setForm({ ...form, visibility: e.target.value })}>
+          <option value="public">Public</option>
+          <option value="unlisted">Unlisted</option>
+          <option value="private">Private</option>
+        </select>
+        <input className="border rounded-xl px-3 py-2" placeholder="Capacity (optional)"
+          value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+      </div>
+      <button
+        type="submit"
+        disabled={create.isPending}
+        className="mt-3 px-3 py-2 rounded-xl border bg-black text-white"
+      >
+        {create.isPending ? "Creating…" : "Create Event"}
+      </button>
+    </form>
+  );
+}
+
+
+---
+
+8) Quick wiring notes
+
+These components call the server routes from Package #7:
+
+GET /api/events (with cursor)
+
+GET /api/events/:id
+
+POST /api/events/:id/rsvp
+
+GET /api/events/me/rsvps
+
+POST /api/events (creator form)
+
+
+They assume your auth middleware sets req.user from the JWT (Package #1).
+
+
+
+---
+
+9) Done checklist
+
+[ ] Events list shows upcoming items with infinite scroll.
+
+[ ] Clicking RSVP buttons posts to /api/events/:id/rsvp and updates UI.
+
+[ ] Optional: My RSVPs tab uses useMyRSVPs() to show joined events.
+
+[ ] Optional: Create Event form works for authenticated users.
+
+
+
+---

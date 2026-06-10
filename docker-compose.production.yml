@@ -1,0 +1,201 @@
+# Docker Compose for SURNA Sports Social Platform - Production
+version: '3.8'
+
+services:
+  # Application Service with Load Balancing
+  app:
+    image: ghcr.io/surna/surna:latest
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - VITE_STRIPE_PUBLIC_KEY=${VITE_STRIPE_PUBLIC_KEY}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+    volumes:
+      - app_logs:/app/logs
+      - app_temp:/app/temp
+    restart: unless-stopped
+    networks:
+      - surna-network
+      - monitoring-network
+
+  # PostgreSQL Database with High Availability
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/backup:/backup
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Redis Cluster for Caching and Sessions
+  redis:
+    image: redis:7-alpine
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Nginx Load Balancer with SSL
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - nginx_logs:/var/log/nginx
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Backup Service
+  backup:
+    image: postgres:15-alpine
+    environment:
+      - PGUSER=${DB_USER}
+      - PGPASSWORD=${DB_PASSWORD}
+      - PGHOST=db
+      - PGDATABASE=${DB_NAME}
+    volumes:
+      - ./scripts/backup.sh:/backup.sh
+      - backup_data:/backup
+    command: >
+      sh -c "
+        chmod +x /backup.sh &&
+        echo '0 2 * * * /backup.sh' | crontab - &&
+        crond -f
+      "
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - surna-network
+
+  # Log Shipper
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    user: root
+    volumes:
+      - ./logging/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - app_logs:/app/logs:ro
+      - nginx_logs:/nginx/logs:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_URL}
+    restart: unless-stopped
+    networks:
+      - monitoring-network
+
+  # Metrics Exporter for Application
+  app-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.exporter
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+    networks:
+      - monitoring-network
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/postgres
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/redis
+  backup_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /backup
+  app_logs:
+  nginx_logs:
+
+networks:
+  surna-network:
+    driver: overlay
+    attachable: true
+  monitoring-network:
+    driver: overlay
+    attachable: true

@@ -1,0 +1,202 @@
+
+---
+
+⚠️ SURNA MASTER DEVELOPER NOTE — READ BEFORE ANY CODE CHANGE
+
+
+---
+
+🧱 General Instruction
+
+This project, SURNA, is already structured with 13 connected feature packages (Feed, Sports, Map, Marketplace, Messenger, etc.).
+Every component is interlinked — meaning a small mistake can crash multiple systems.
+Therefore, every update, import, or commit must be done carefully, modularly, and test-driven.
+
+
+---
+
+🚫 Golden Rules (Never Break These)
+
+1. Do not rewrite or rename core components (Feed, Sports, Map, or Profile).
+
+Modify inside components, not their roots.
+
+If refactoring is needed, make a backup first.
+
+
+
+2. Do not duplicate files or schemas.
+
+Always update the existing ones (challengeSchema, userProfile, paymentSchema, etc.).
+
+One schema per module. No parallel versions.
+
+
+
+3. Do not override any UI base or global style files (like index.css or surna-theme.css).
+
+SURNA uses a strict dark purple / light cream palette.
+
+All components must follow this theme — no random colors, no inconsistent gradients.
+
+
+
+4. Do not break connections between packages.
+
+Feed ↔ Sports ↔ Map ↔ Messenger ↔ Marketplace are all connected.
+
+Check imports before deleting or renaming any file.
+
+
+
+5. Never commit untested code.
+
+Each feature must be tested standalone before merging (Feed test, Map test, etc.).
+
+Check for console errors, responsive design, and performance.
+
+
+
+
+
+---
+
+🎨 Design Consistency
+
+Follow SURNA’s design language:
+
+Background: dark purple or dark grey
+
+Text: light cream / off-white
+
+Icons: same tone as ChatGPT or Instagram (light grey when idle, black/dark when active)
+
+Buttons: minimal, round edges (consistent across all pages)
+
+
+All animations must be smooth and low intensity.
+
+No external colors, neon effects, or extra shadows unless pre-approved.
+
+
+
+---
+
+🧠 Feature Integration Notes
+
+1. Feed System
+
+Keep Instagram-like simplicity.
+
+Every feature (posts, videos, live, likes, comments) must be clickable and functional.
+
+Add “Stories” system carefully — don’t disturb post feed order.
+
+
+2. Sports Section
+
+Contains sub-panels: Places, Teams, Map, Coaches, Events.
+
+These panels must slide horizontally cleanly (no overlap or half-glitches).
+
+Map, Teams, and Coaches connect with ratings and analytics — never separate them.
+
+
+3. Map System
+
+Core of SURNA: connects all features.
+
+Each pin must be dynamic and open a clean modal.
+
+Integrate new Protest Pins (red-purple glow) without removing event/challenge pins.
+
+
+4. Marketplace
+
+Every shop is like a mini-profile.
+
+Ensure products, payments, and carts connect properly to Wallet system.
+
+
+5. Messenger
+
+Full-featured chat with text, voice, group chats, and video support.
+
+Must stay clean and lightweight (black & white layout).
+
+Messenger integrates with Teams, Profiles, and Events — all links should stay active.
+
+
+6. Protest System
+
+Integrated with Map + Feed.
+
+Live signature tracking.
+
+Follow the purple-red gradient glow for pins.
+
+Don’t reuse event schemas — make a separate protestSchema.
+
+
+7. Challenges / Matches
+
+Clean logic, shared schema for both 1v1 and team matches.
+
+Leaderboards update dynamically (no duplication).
+
+
+8. Payments / Wallet
+
+One wallet per verified account.
+
+Never hardcode balances or keys.
+
+Stripe and PayPal integrations must go through secure environment variables.
+
+All payments link back to events, gyms, or sponsorships.
+
+
+9. Performance & Analytics
+
+Pull data from existing modules only — no standalone databases.
+
+Keep visual graphs clean (Recharts / Chart.js).
+
+Match theme colors to SURNA purple tones.
+
+
+10. Admin Control
+
+Build on a separate admin route (/admin).
+
+Must not affect front-end routes.
+
+Log every admin action (ban, verify, edit) for transparency.
+
+
+
+---
+
+🔒 Testing & Backup Requirements
+
+Back up the entire codebase before every major addition.
+
+Use a dev branch for each package (e.g., dev-feed, dev-map, dev-payments).
+
+Merge only after full testing.
+
+Run performance tests after every integration to ensure app speed isn’t dropping.
+
+
+
+---
+
+💬 Final Notes
+
+SURNA’s foundation is fully modular and connected.
+Do not rebuild — extend.
+Do not override — upgrade.
+And above all, keep every line of code and every visual element aligned with the SURNA identity: professional, clean, connected, and purple-powered.
+
+
+---

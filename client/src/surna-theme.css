@@ -1,0 +1,121 @@
+/* SURNA DESIGN SYSTEM - Spotify-inspired */
+/* Dark, borderless, clean. Green Core for primary actions. */
+
+.dark-theme {
+  background-color: var(--surna-base) !important;
+  color: var(--surna-text) !important;
+}
+
+.dark-theme .bg-background {
+  background-color: var(--surna-base) !important;
+}
+
+.dark-theme .text-foreground {
+  color: var(--surna-text) !important;
+}
+
+.light-theme {
+  background-color: var(--surna-base) !important;
+  color: var(--surna-text) !important;
+}
+
+.light-theme .bg-background {
+  background-color: var(--surna-base) !important;
+}
+
+.light-theme .text-foreground {
+  color: var(--surna-text) !important;
+}
+
+.surna-hero-text {
+  color: var(--surna-text) !important;
+  font-size: clamp(1.75rem, 5vw, 2.5rem) !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+  text-align: left !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  letter-spacing: -0.02em !important;
+}
+
+.surna-level-text {
+  color: var(--surna-text) !important;
+  font-size: 3rem !important;
+  font-weight: 900 !important;
+}
+
+.surna-points-text {
+  color: var(--surna-text-secondary) !important;
+  font-size: 1.1rem !important;
+}
+
+.surna-progress-circle {
+  stroke: var(--surna-text) !important;
+  fill: none !important;
+  stroke-width: 6 !important;
+  stroke-linecap: round !important;
+}
+
+.surna-progress-circle.active {
+  opacity: 1 !important;
+}
+
+.surna-level-circle {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.surna-btn-primary {
+  background-color: var(--surna-text) !important;
+  color: var(--surna-base) !important;
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  transition: all 0.2s ease !important;
+}
+
+.surna-btn-primary:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+
+.surna-btn-primary:active {
+  opacity: 0.8 !important;
+  transform: translateY(0) !important;
+}
+
+.surna-btn-primary:disabled {
+  opacity: 0.5 !important;
+  transform: none !important;
+  cursor: not-allowed !important;
+}
+
+.surna-btn-urgent {
+  background-color: var(--surna-coral) !important;
+  color: var(--surna-white) !important;
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  transition: all 0.2s ease !important;
+}
+
+.surna-btn-urgent:hover {
+  background-color: var(--surna-coral-light) !important;
+  transform: translateY(-1px) !important;
+}
+
+.surna-btn-urgent:active {
+  background-color: var(--surna-coral-press) !important;
+  transform: translateY(0) !important;
+}
+
+.surna-input {
+  background-color: var(--surna-elevated) !important;
+  border: none !important;
+  color: var(--surna-text) !important;
+  border-radius: 9999px !important;
+}
+
+.surna-input:focus {
+  box-shadow: 0 0 0 2px var(--surna-text) !important;
+  outline: none !important;
+}

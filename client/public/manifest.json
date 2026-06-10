@@ -1,0 +1,172 @@
+{
+  "name": "Surna - Sports Social Network",
+  "short_name": "Surna",
+  "description": "Connect with athletes, discover events, find coaches, and manage your sports journey",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["sports", "social", "fitness", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-1.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Sports feed on mobile"
+    },
+    {
+      "src": "/screenshots/desktop-1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Sports feed on desktop"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Feed",
+      "short_name": "Feed",
+      "description": "View your personalized sports feed",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icons/shortcut-feed.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "short_name": "Events",
+      "description": "Discover sports events near you",
+      "url": "/events",
+      "icons": [
+        {
+          "src": "/icons/shortcut-events.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "short_name": "Teams",
+      "description": "Find and join sports teams",
+      "url": "/teams",
+      "icons": [
+        {
+          "src": "/icons/shortcut-teams.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "description": "Chat with other athletes",
+      "url": "/messages",
+      "icons": [
+        {
+          "src": "/icons/shortcut-messages.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "video/*"]
+        }
+      ]
+    }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+surna",
+      "url": "/handle?url=%s"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "display_override": ["window-controls-overlay", "minimal-ui"],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
+}

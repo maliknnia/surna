@@ -1,0 +1,158 @@
+
+---
+
+🗺️ SURNA MAP — SNAPCHAT-STYLE UPGRADE (Modern Redesign)
+
+🎯 GOAL
+
+Transform the map from old OpenStreetMap look → to a modern, real-time, dynamic map
+with dark theme, smooth animations, live user pins, and SURNA branding.
+
+
+---
+
+🧩 Developer Sayings
+
+> Replace default OpenStreetMap tiles with a custom Map Style.
+The map must look premium — dark gradient background, minimal roads, smooth zoom.
+Icons, pins, and overlays must match SURNA’s purple/cream palette.
+The map must support real-time updates (user pins, events, protests, matches).
+No borders, no white areas — full-screen, immersive.
+Map theme switches automatically with app dark/light mode.
+
+
+
+
+---
+
+⚙️ Recommended Tech
+
+✅ Use Mapbox or MapTiler (both free tiers available).
+They give modern, high-res vector maps and allow full styling.
+
+Install
+
+npm install react-map-gl mapbox-gl
+
+Basic Example (React / Next)
+
+import Map, { Marker } from 'react-map-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+export default function SurnaMap() {
+  return (
+    <Map
+      mapboxAccessToken={process.env.MAPBOX_TOKEN}
+      initialViewState={{
+        latitude: 51.505,
+        longitude: -0.09,
+        zoom: 13,
+      }}
+      mapStyle="mapbox://styles/mapbox/dark-v11"
+      style={{ width: '100vw', height: 'calc(100vh - 60px)' }}
+    >
+      <Marker latitude={51.505} longitude={-0.09}>
+        <img
+          src="/icons/surna-pin.svg"
+          alt="Pin"
+          style={{ width: 36, height: 36 }}
+        />
+      </Marker>
+    </Map>
+  );
+}
+
+
+---
+
+🎨 Design Requirements
+
+🎨 Theme (Dark Mode)
+
+Background: deep dark-purple gradient #0f0c1a → #1e1830.
+
+Roads/buildings: soft gray outlines.
+
+Water: slightly bluish-purple.
+
+Text/labels: subtle off-white.
+
+Pins/icons: glowing purple circle or avatar bubble like Snap Map.
+
+
+🎨 Light Mode
+
+Background: off-white #f5f3f0.
+
+Roads: soft gray.
+
+Pins: darker purple accent.
+
+
+🟣 Map Controls
+
+GPS icon → bottom right, floating, blurred background.
+
+Filter icon → top right corner.
+
+Smooth fade-in animation when user moves.
+
+
+📍 Pins / Markers
+
+Players → circular avatars with small glowing border.
+
+Teams → logo pins.
+
+Events / Matches → animated pulsing dots.
+
+Protests → raised flag icons.
+
+
+
+---
+
+⚡ Features to Enable
+
+✅ User live location (with toggle).
+✅ Nearby friends visibility (like Snap).
+✅ Realtime updates via WebSocket.
+✅ Smooth camera fly-to for any clicked pin.
+✅ Clustering (combine pins when zoomed out).
+✅ Tap pin → bottom sheet with details (join, chat, etc.).
+✅ Auto-theme switch with app mode.
+
+
+---
+
+🔒 Security
+
+All user locations must be permission-based.
+
+Never save exact GPS without consent.
+
+Show only “approximate” area when user disables precision mode.
+
+Refresh tokens regularly for Mapbox access.
+
+
+
+---
+
+✅ QA Checklist
+
+[ ] Map is edge-to-edge, no white padding.
+
+[ ] Moves smoothly under 60ms FPS.
+
+[ ] Works on mobile and desktop.
+
+[ ] Real-time pins render instantly.
+
+[ ] Map theme matches app mode.
+
+[ ] Zoom in/out transitions smooth.
+
+[ ] Touch gestures work naturally.
+
+

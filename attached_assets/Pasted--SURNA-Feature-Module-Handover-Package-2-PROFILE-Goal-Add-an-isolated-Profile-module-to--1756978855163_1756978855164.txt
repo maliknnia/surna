@@ -1,0 +1,228 @@
+---
+
+SURNA – Feature Module Handover (Package #2: PROFILE)
+
+Goal
+
+Add an isolated Profile module to read public profiles and update the signed-in user’s profile. Works alongside Package #1 (Auth). No side-effects to other features.
+
+
+---
+
+What to deliver (new files)
+
+server/
+  features/
+    profile/
+      profile.router.ts
+      profile.service.ts
+      profile.repo.ts
+      profile.types.ts
+      profile.validation.ts
+      index.ts
+
+Also register the router in server/features/index.ts.
+
+> Reuse existing server/core/env.ts, server/core/db.ts, server/middleware/auth.ts, and server/middleware/errorHandler.ts from Package #1.
+
+
+
+
+---
+
+“Sayings” (rules)
+
+Two endpoints:
+
+GET /api/profile/:username → public read (no auth required).
+
+PATCH /api/profile/me → update current user (auth required).
+
+
+Fields allowed to update: displayName, bio, avatarThumbUrl.
+
+No schema/DB redesign. Use current users table.
+
+Validate all inputs with Zod.
+
+Never expose sensitive columns (password_hash, emails if you don’t want to—adjust below).
+
+
+
+---
+
+Code (copy–paste)
+
+server/features/profile/profile.types.ts
+
+export interface PublicProfile {
+  id: string;
+  username: string;
+  displayName?: string | null;
+  bio?: string | null;
+  avatarThumbUrl?: string | null;
+  createdAt: string; // ISO
+}
+
+server/features/profile/profile.validation.ts
+
+import { z } from "zod";
+
+export const GetProfileParamsSchema = z.object({
+  username: z.string().min(3).max(32),
+});
+
+export const UpdateMeSchema = z.object({
+  displayName: z.string().min(1).max(64).optional(),
+  bio: z.string().max(280).optional(),
+  avatarThumbUrl: z.string().url().optional(),
+});
+
+server/features/profile/profile.repo.ts
+
+import { db } from "../../core/db";
+import { sql } from "drizzle-orm";
+
+export async function selectProfileByUsername(username: string) {
+  const q = await db.execute(sql`
+    SELECT id,
+           username,
+           display_name   AS "displayName",
+           bio,
+           avatar_thumb_url AS "avatarThumbUrl",
+           created_at     AS "createdAt"
+    FROM users
+    WHERE username = ${username}
+    LIMIT 1;
+  `);
+  return q.rows[0] ?? null;
+}
+
+export async function updateMe(userId: string, data: {
+  displayName?: string;
+  bio?: string;
+  avatarThumbUrl?: string;
+}) {
+  const q = await db.execute(sql`
+    UPDATE users
+    SET display_name    = COALESCE(${data.displayName}, display_name),
+        bio             = COALESCE(${data.bio}, bio),
+        avatar_thumb_url= COALESCE(${data.avatarThumbUrl}, avatar_thumb_url)
+    WHERE id = ${userId}
+    RETURNING id, username, display_name AS "displayName", bio,
+              avatar_thumb_url AS "avatarThumbUrl",
+              created_at AS "createdAt";
+  `);
+  return q.rows[0];
+}
+
+server/features/profile/profile.service.ts
+
+import { selectProfileByUsername, updateMe } from "./profile.repo";
+import type { PublicProfile } from "./profile.types";
+
+export async function getPublicProfile(username: string): Promise<PublicProfile | null> {
+  return await selectProfileByUsername(username);
+}
+
+export async function patchMe(userId: string, data: {
+  displayName?: string; bio?: string; avatarThumbUrl?: string;
+}) {
+  return await updateMe(userId, data);
+}
+
+server/features/profile/profile.router.ts
+
+import { Router } from "express";
+import { GetProfileParamsSchema, UpdateMeSchema } from "./profile.validation";
+import { getPublicProfile, patchMe } from "./profile.service";
+
+export const profileRouter = Router();
+
+// Public: GET /api/profile/:username
+profileRouter.get("/:username", async (req, res, next) => {
+  try {
+    const { username } = GetProfileParamsSchema.parse(req.params);
+    const profile = await getPublicProfile(username);
+    if (!profile) return res.status(404).json({ error: "USER_NOT_FOUND" });
+    res.json(profile);
+  } catch (e) { next(e); }
+});
+
+// Auth: PATCH /api/profile/me
+profileRouter.patch("/me", async (req: any, res, next) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const data = UpdateMeSchema.parse(req.body);
+    const updated = await patchMe(req.user.id, data);
+    res.json(updated);
+  } catch (e) { next(e); }
+});
+
+server/features/profile/index.ts
+
+export { profileRouter } from "./profile.router";
+
+Register it
+
+// server/features/index.ts
+import { Router } from "express";
+import { authRouter } from "./auth";
+import { profileRouter } from "./profile";
+
+export function registerFeatureRouters(api: Router) {
+  api.use("/auth", profileRouter ? authRouter : authRouter); // keep auth
+  api.use("/profile", profileRouter);
+}
+
+(If that line looks odd in your editor, just ensure both auth and profile are mounted:)
+
+api.use("/auth", authRouter);
+api.use("/profile", profileRouter);
+
+
+---
+
+Env / DB
+
+No new env vars.
+
+No new tables. Ensure users has: id, username, display_name, bio, avatar_thumb_url, created_at.
+
+Optional indexes (nice to have):
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+
+
+---
+
+Quick test (curl/Postman)
+
+Get public profile
+
+curl http://localhost:3000/api/profile/joe
+
+Expect 200 with { id, username, displayName, bio, avatarThumbUrl, createdAt } or 404.
+
+Update my profile
+
+TOKEN="Bearer <JWT_FROM_LOGIN>"
+curl -X PATCH http://localhost:3000/api/profile/me \
+  -H "Authorization: $TOKEN" -H "Content-Type: application/json" \
+  -d '{"displayName":"Joe Niazi","bio":"Love football","avatarThumbUrl":"https://cdn.example.com/a.jpg"}'
+
+Expect 200 with updated profile.
+
+
+---
+
+Acceptance Criteria
+
+GET /api/profile/:username returns 200 with public fields, 404 if not found.
+
+PATCH /api/profile/me returns 401 without token; 200 with updated profile when authorized.
+
+No other features are changed or broken. Server boots clean.
+
+

@@ -1,0 +1,398 @@
+
+
+---
+
+📦 SURNA DESIGN SYSTEM — FULL DEVELOPER INSTRUCTIONS (LIGHT + DARK MODE)
+
+
+---
+
+🎨 1. COLOR SYSTEM (GLOBAL)
+
+Developer must remove all unapproved colors.
+Only use the following:
+
+
+---
+
+🌞 LIGHT MODE
+
+Element	Color
+
+Background	#FFF9F3 (warm cream)
+Cards	#FFFFFF with slight shadow OR rgba(0,0,0,0.03) border
+Text Primary	#2A1E35 (deep purple/black)
+Text Secondary	#645A6F
+Icons	#2A1E35 idle / #000000 active
+Accent Purple	#A894D9
+Progress Bar (filled)	#C9A8E9
+Progress Background	rgba(0,0,0,0.1)
+Borders	rgba(0,0,0,0.06)
+
+
+
+---
+
+🌚 DARK MODE
+
+Element	Color
+
+Background	#130E22
+Secondary background	#1A142A
+Cards	rgba(255,255,255,0.03) or #1A142A
+Text Primary	#F6F0E8 (cream)
+Text Secondary	#CFC3BA
+Icons	#CFC3BA idle / #F6F0E8 active
+Accent Purple	#A894D9
+Progress Bar (filled)	#A894D9
+Progress Background	rgba(255,255,255,0.1)
+Borders	rgba(255,255,255,0.08)
+
+
+
+---
+
+🧱 2. SPACING SYSTEM (GLOBAL)
+
+Every component must follow this EXACT scale.
+
+Name	Pixels
+
+Micro	4px
+Small	8px
+Medium	12px
+Standard	16px
+Section	24px
+Block	32px
+
+
+🚫 No custom spacing.
+✔ Only use these values.
+
+
+---
+
+📐 3. TYPOGRAPHY (GLOBAL)
+
+Headlines (H1/H2)
+
+font-family: Inter or Poppins  
+font-weight: 600  
+color: primaryText (light/dark depends on mode)
+
+Subtitles
+
+font-weight: 500  
+color: secondaryText
+
+Body Text
+
+font-weight: 400  
+line-height: 1.35
+
+Tiny Labels
+
+font-size: 12px  
+color: secondaryText
+
+
+---
+
+🧊 4. CARDS (GLOBAL COMPONENT)
+
+All cards across the entire SURNA app (Profile, Stats, Teams, Events, Marketplace, etc.) follow this:
+
+🌞 Light Mode
+
+background: #FFFFFF
+border: 1px solid rgba(0,0,0,0.06)
+border-radius: 24px
+padding: 20px
+
+🌚 Dark Mode
+
+background: rgba(255,255,255,0.03)
+backdrop-filter: blur(4px)
+border-radius: 24px
+border: 1px solid rgba(255,255,255,0.08)
+padding: 20px
+
+
+---
+
+📌 5. ICONS (GLOBAL)
+
+☑ All icons must:
+
+Be outline-only
+
+Use consistent stroke-width: 1.75px
+
+No filled icons except for “Activity” circle when selected
+
+Same size everywhere (24px)
+
+
+🎨 Light Mode Icon Color
+
+idle: #2A1E35  
+active: #000000
+
+🌚 Dark Mode Icon Color
+
+idle: #CFC3BA  
+active: #F6F0E8
+
+
+---
+
+📍 6. MAIN DASHBOARD (FEED / SPORTS / MARKETPLACE / ACTIVITY)
+
+This applies to light AND dark mode.
+
+
+---
+
+🔹 A. Header (SURNA + icons)
+
+padding: 0 24px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+height: 64px;
+
+Icons must match global color rules.
+
+
+---
+
+🔹 B. Motivational Quote
+
+margin-top: 16px;
+font-size: 28px;
+font-weight: 600;
+line-height: 1.25;
+text-align: left;
+padding: 0 24px;
+
+
+---
+
+🔹 C. Performance Card
+
+Critical Fixes (current version is wrong):
+
+Wrong colors
+
+Wrong border
+
+Wrong progress bar
+
+Wrong card background
+
+Wrong spacing
+
+
+Light mode:
+
+background: #FFFFFF;
+border: 1px solid rgba(0,0,0,0.06)
+border-radius: 24px;
+padding: 24px;
+
+Dark mode:
+
+background: rgba(255,255,255,0.03);
+border: 1px solid rgba(255,255,255,0.08)
+border-radius: 24px;
+padding: 24px;
+
+Level badge:
+
+background: rgba(255,255,255,0.08)
+border-radius: 12px
+padding: 4px 10px
+font-size: 12px
+
+Progress bar:
+
+height: 6px
+border-radius: 6px
+background: progressBackground
+fill: accentPurple
+
+
+---
+
+🔹 D. Stats (KM, STEPS, CAL)
+
+Each must follow card style, but smaller:
+
+padding: 20px;
+border-radius: 20px;
+min-width: 100px;
+text-align: center;
+
+Numbers:
+
+font-size: 26px;
+font-weight: 600;
+color: primaryText;
+
+Labels:
+
+font-size: 14px;
+color: secondaryText;
+
+Spacing:
+
+gap: 12px
+margin-top: 20px
+
+
+---
+
+🔹 E. Bottom Navigation Bar
+
+Big problem in your app — must be fixed:
+
+Bar background
+
+Light mode
+
+background: #FFF9F3;
+border-top: 1px solid rgba(0,0,0,0.08);
+
+Dark mode
+
+background: rgba(0,0,0,0.12);
+backdrop-filter: blur(6px);
+
+Icons
+
+Follow global icon rules.
+
+“+ Activity” button
+
+Light mode
+
+background: rgba(0,0,0,0.06)
+color: #2A1E35
+border-radius: 22px
+padding: 10px 18px
+font-weight: 600
+
+Dark mode
+
+background: rgba(255,255,255,0.1)
+color: #F6F0E8
+border-radius: 22px
+padding: 10px 18px
+font-weight: 600
+
+
+---
+
+📦 7. DEVELOPMENT RULES (MOST IMPORTANT)
+
+❗ Rule 1 — Don’t Change The Design
+
+If a component is defined here, DO NOT modify it.
+
+❗ Rule 2 — No duplicate components
+
+PerformanceCard must be ONE component.
+StatsCard must be ONE component.
+Themed colors come from ONE theme file.
+
+❗ Rule 3 — Theme switch must swap ONLY colors
+
+Not layout.
+Not structure.
+Not spacing.
+
+❗ Rule 4 — Only SURNA palette
+
+No pinks
+No bright whites in dark mode
+No random greys
+No bootstrap colors
+No tailwind defaults unless mapped to SURNA colors.
+
+❗ Rule 5 — EVERYTHING must be clickable
+
+No dead icons, no broken routing.
+
+
+---
+
+📦 8. COPY/PASTE FINAL MESSAGE TO DEVELOPER
+
+Here is the final single text to give the developer:
+
+
+---
+
+📌 SURNA DESIGN SYSTEM (DM + LM)
+Implement these rules globally:
+
+Colors:
+
+Use SURNA palettes ONLY (light + dark provided).
+
+Remove all unapproved colors.
+
+
+Components:
+
+Cards must use the official card style (light/dark).
+
+Icons must be outline-only, same stroke width, same size.
+
+Typography must follow weights, sizes, and line-heights.
+
+Progress bar, badges, stats, bottom bar all follow specified styling.
+
+
+Spacing:
+
+Use the SURNA spacing scale (4–32px).
+
+No custom spacing.
+
+
+Dark Mode:
+
+Apply correct dark purple backgrounds.
+
+Use cream text, not pure white.
+
+Use purple accents correctly.
+
+
+Light Mode:
+
+Use warm cream background.
+
+Soft borders.
+
+Dark text, but not pure black.
+
+
+Rules:
+
+Do NOT redesign anything.
+
+Do NOT create duplicate components.
+
+Do NOT break routing.
+
+Do NOT use random colors.
+
+Do NOT use old leftover code.
+
+Every element MUST be clickable and functional.
+
+
+
+---

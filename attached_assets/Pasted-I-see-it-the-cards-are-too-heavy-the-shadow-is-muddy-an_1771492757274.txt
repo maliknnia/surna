@@ -1,0 +1,186 @@
+I see it — the cards are too heavy, the shadow is muddy, and that green in the nav icons clashes with everything. Let me fix this.
+
+---
+
+The Problems
+
+Issue	Why It Hurts	
+Dark shadow on gradient	Looks dirty, not premium	
+Red → black gradient	Too dramatic, feels aggressive	
+Green active icon	Doesn't match the coral/blue sport colors	
+No consistency	Each card fights for attention	
+
+---
+
+The Fix: Clean, No Shadow, Sport Color Only
+
+New Card Style
+
+```
+┌─────────────────────────┐
+│  [Coral sport color]    │ ← solid, no gradient
+│  🥊 BOXING               │
+│                         │
+│  NYC Fight Academy      │
+│  12 / 25 members        │
+│                         │
+│  [Join Team]            │
+└─────────────────────────┘
+```
+
+No shadow. No black fade. Just clean color.
+
+---
+
+CSS Fix for Cards
+
+```css
+.team-card {
+  /* Remove gradient, use solid sport color */
+  background: var(--sport-color); /* #FF6B4B for boxing */
+  
+  /* Remove shadow */
+  box-shadow: none;
+  
+  /* Subtle border for definition */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  border-radius: 20px;
+  padding: 20px;
+  
+  /* Or if you want VERY subtle lift */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Almost invisible */
+}
+```
+
+---
+
+Sport Colors (Solid, No Gradient)
+
+Sport	Color	Hex	
+Boxing	Coral	`#FF6B4B`	
+Baseball	Blue	`#4A90D9`	
+Basketball	Orange	`#F5A623`	
+Soccer	Green	`#7ED321`	
+Tennis	Lime	`#B8E986`	
+Swimming	Cyan	`#50E3C2`	
+Volleyball	Yellow	`#F8E71C`	
+Protest	Purple	`#9013FE`	
+Petition	Teal	`#4A90E2`	
+
+---
+
+Light Mode Version
+
+```css
+.light .team-card {
+  background: var(--sport-color-light); /* Lighter version */
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Example: boxing light */
+--boxing-light: #FF8A75;
+```
+
+---
+
+Fix Bottom Nav: Remove Green
+
+Current (Bad)
+
+```
+Home  Teams  Map  Coaches  Events
+      🟢Green
+```
+
+Fixed (Good)
+
+```
+Home  Teams  Map  Coaches  Events
+⚪️    🟢     ⚪️    ⚪️      ⚪️
+```
+
+All icons white/gray when inactive. White fill when active. No green.
+
+---
+
+CSS for Nav Fix
+
+```css
+.nav-item {
+  color: #B3B3B3; /* Gray inactive */
+}
+
+.nav-item.active {
+  color: #FFFFFF; /* White active, NOT green */
+  background: rgba(255, 255, 255, 0.15); /* Subtle white bg */
+}
+
+/* Remove this */
+.nav-item.active {
+  color: #0F9B4A; /* ❌ DELETE THIS */
+}
+```
+
+---
+
+Alternative: Match Nav to Card Color
+
+When viewing Boxing section, active icon could be coral to match cards:
+
+```css
+.nav-item.active[data-section="boxing"] {
+  color: #FF6B4B;
+  background: rgba(255, 107, 75, 0.15);
+}
+
+.nav-item.active[data-section="baseball"] {
+  color: #4A90D9;
+  background: rgba(74, 144, 217, 0.15);
+}
+```
+
+But simpler = all white active.
+
+---
+
+Visual Comparison
+
+Before	After	
+Gradient + shadow	Solid color, clean	
+Green nav icons	White nav icons	
+Muddy dark fade	No fade, pure color	
+Aggressive contrast	Soft, premium	
+
+---
+
+Developer Instructions
+
+```css
+/* 1. REMOVE from team cards */
+background: linear-gradient(...); /* DELETE */
+box-shadow: 0 8px 32px ...; /* DELETE or reduce */
+
+/* 2. ADD to team cards */
+background: var(--sport-color);
+border: 1px solid rgba(255,255,255,0.1);
+border-radius: 20px;
+
+/* 3. REMOVE green from nav */
+.nav-item.active {
+  color: #FFFFFF; /* was #0F9B4A */
+  background: rgba(255,255,255,0.15);
+}
+```
+
+---
+
+One Question
+
+Do you want all cards solid color (boxing = coral, baseball = blue) or all cards same neutral (white/gray) with only sport tag colored?
+
+Option	Feel	
+Solid color cards	Bold, energetic, Spotify-like	
+Neutral cards + colored tags	Clean, minimal, Apple-like	
+
+Which direction?

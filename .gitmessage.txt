@@ -1,0 +1,14 @@
+# SURNA Commit Template (one change per commit)
+# [TYPE] Short summary (<=50 chars)
+#
+# Body: WHAT & WHY (not HOW)
+# - Feature/area touched
+# - Backward compatible? (Yes/No + plan)
+# - Migrations or env vars?
+#
+# Types: [DB] [API] [UI] [DOCS] [CHORE] [REFACTOR]
+
+# Examples:
+# [UI] Messenger: monochrome bubbles
+# [DB] Add 'kind' to dm_messages (safe default)
+# [API] Add POST /api/messenger/groups

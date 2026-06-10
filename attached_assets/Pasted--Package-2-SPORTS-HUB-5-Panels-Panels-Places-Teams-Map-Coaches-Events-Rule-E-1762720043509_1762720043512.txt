@@ -1,0 +1,354 @@
+
+---
+
+🧱 Package #2 — SPORTS HUB (5 Panels)
+
+Panels: Places • Teams • Map • Coaches • Events
+Rule: Each panel is its own route/component; the horizontal slider only switches panels. No shared, tangled state that can break others.
+
+
+---
+
+🧩 Developer Sayings / Hard Rules
+
+> Do not redesign. Use SURNA tokens/colors only.
+
+Each panel must be independently testable (mount/unmount without errors).
+
+No duplicate schemas or components—extend existing shared types.
+
+Every visible element is clickable and functional (no placeholders).
+
+All cross-links must work (Profile, Team, Event, Map, Messenger).
+
+Lazy-load non-active panels to keep sliding smooth (no jank).
+
+
+
+
+
+---
+
+⚙️ Folder Structure
+
+client/src/pages/sports/
+├── SportsHub.tsx            (tab slider/layout only)
+├── panels/
+│   ├── Places.tsx
+│   ├── Teams.tsx
+│   ├── Map.tsx
+│   ├── Coaches.tsx
+│   └── Events.tsx
+└── components/
+    ├── PlaceCard.tsx
+    ├── TeamCard.tsx
+    ├── CoachCard.tsx
+    ├── EventCard.tsx
+    └── FiltersBar.tsx
+server/sports/
+├── places.routes.ts
+├── teams.routes.ts
+├── coaches.routes.ts
+├── events.routes.ts
+└── map.routes.ts
+
+
+---
+
+🧠 Shared Types (extend only; don’t fork)
+
+type Rating = { value: number; count: number };
+type LocationPin = { lat: number; lng: number; address?: string; venueId?: string };
+
+type Place = {
+  id: string; name: string; type: 'gym'|'field'|'court'|'hall';
+  gallery: string[]; pricePerHour?: number; amenities: string[]; rating: Rating;
+  location: LocationPin; openHours?: { day: string; open: string; close: string }[];
+  ownerId?: string; sponsored?: boolean;
+};
+
+type Team = {
+  id: string; name: string; logo: string; cover?: string; city?: string;
+  rating: Rating; record?: { W: number; L: number; D: number };
+  members: { userId: string; role: 'captain'|'player'|'coach' }[];
+  sponsors?: { name: string; logo: string; link?: string }[];
+};
+
+type Coach = {
+  id: string; userId: string; name: string; avatar: string; verified?: boolean;
+  sports: string[]; ratePerHour?: number; rating: Rating; location?: LocationPin; bio?: string;
+};
+
+type SportEvent = {
+  id: string; title: string; sport: string; hostType: 'team'|'user'|'gym';
+  hostId: string; timeStart: string; timeEnd?: string; location: LocationPin;
+  entryFee?: number; capacity?: number; attendees: string[]; sponsored?: boolean;
+};
+
+
+---
+
+1) PLACES Panel
+
+Goal: Discover venues (gyms/fields) and book or view details.
+
+UI/Behavior
+
+Grid/List of PlaceCards: image, name, distance, rating, price/hour.
+
+Tap → Place Profile (photos, amenities, price, reviews, Book Now, View on Map, Message).
+
+FiltersBar: Type • Distance • Price • Open Now • Amenities.
+
+Sponsored places have subtle badge (SURNA accent).
+
+
+Required actions
+
+Book Now → Payment flow (Package #11) and Calendar add.
+
+View on Map → opens Sports Map centered on pin.
+
+Message → opens Messenger thread with owner/manager.
+
+
+Backend endpoints
+
+GET /api/places?type=&near=&openNow=&amenities=
+
+GET /api/places/:id
+
+POST /api/places/:id/book (hooks Payment/Wallet)
+
+GET /api/places/:id/reviews / POST /api/places/:id/reviews
+
+
+Done when
+
+List loads fast; filters work; booking completes; map & messenger links work.
+
+
+
+---
+
+2) TEAMS Panel
+
+Goal: Browse teams, open Team Profile, join/challenge/follow.
+
+UI/Behavior
+
+TeamCard: logo, name, city, rating, W-L-D bar, members count, Follow.
+
+Tap → Team Profile (from your saved spec):
+
+Header (cover + logo + sponsors)
+
+Actions: Follow, Message, Join Request, Challenge, Team Feed
+
+Tabs: About, Members, Schedule, Photos, Sponsors
+
+
+“Challenge” opens challenge creation (Package #10).
+
+“Join Request” pings captain/admin; status visible.
+
+
+Backend endpoints
+
+GET /api/teams?city=&sport=&minRating=
+
+GET /api/teams/:id
+
+POST /api/teams/:id/follow
+
+POST /api/teams/:id/join-request
+
+POST /api/teams/:id/challenge (delegates to Challenges API)
+
+
+Done when
+
+Profiles complete; join/challenge/follow flows work; schedule pulls from Events.
+
+
+
+---
+
+3) MAP Panel (Snapchat-like)
+
+Goal: Live layer showing Players, Teams, Events, Coaches, Places with filters.
+
+UI/Behavior
+
+Default opens map view centered around user (ask permission; fall back to manual).
+
+Floating Filters (toggle layers + sport + time window).
+
+Pin tap → bottom-sheet preview + primary action (Join, View, Book, Message).
+
+Protest pins (from Protest Package) also render here with distinct red-purple pulse.
+
+“Explore” jumps to hotspots (sponsored events or high activity).
+
+
+Backend endpoints
+
+GET /api/map/pins?bounds=&layers=players,teams,events,coaches,places,protests&sport=&time=
+
+Live updates via socket channel map_activity.
+
+
+Done when
+
+All pin types open correct entity, filters accurate, no stutter on pan/zoom.
+
+
+
+---
+
+4) COACHES Panel
+
+Goal: Find/Book coaches; open Coach Profile.
+
+UI/Behavior
+
+CoachCard: avatar, name, sports, rating, rate/hour, verified badge.
+
+Tap → Coach Profile with Book Session, Message, Reviews, Schedule.
+
+Filters: sport specialization, rating, price, distance, verified.
+
+
+Backend endpoints
+
+GET /api/coaches?sport=&verified=&minRating=
+
+GET /api/coaches/:id
+
+POST /api/coaches/:id/book (Payment + Calendar)
+
+GET/POST /api/coaches/:id/reviews
+
+
+Done when
+
+Booking works, chat opens, verified badge logic, filters return correct results.
+
+
+
+---
+
+5) EVENTS Panel
+
+Goal: List sports events; join/share/calendar.
+
+UI/Behavior
+
+EventCard: title, sport, host, time, distance, attendees, sponsored tag if any.
+
+Tap → Event Page (Join, Share, Add to Calendar, Chat/Comments).
+
+Filters: Today | This Week | Upcoming, Free | Paid, Sport.
+
+Creating events accessible via 3-dots menu (Package #9/Events structure you approved).
+
+
+Backend endpoints
+
+GET /api/events?sport=&from=&to=&paid=
+
+GET /api/events/:id
+
+POST /api/events/:id/join
+
+POST /api/events/:id/share
+
+
+Done when
+
+Joining works; appears in Calendar; event shows on Map; share posts to Feed.
+
+
+
+---
+
+🔗 Cross-Connections (must wire, no exceptions)
+
+Profile: every avatar/username opens correct Person Profile.
+
+Team Profile: team taps route correctly; challenge/join integrate.
+
+Map: all entities have a map pin; “View on Map” centers the pin.
+
+Messenger: “Message” always opens a thread with the correct recipient.
+
+Payments/Wallet: bookings, tickets, coaching sessions route through Package #11.
+
+Analytics: card views, filter usage, joins, bookings fire analytics events.
+
+
+
+---
+
+🧪 QA Checklist (per panel)
+
+Loads < 1s on warm cache; smooth slide between panels.
+
+All chips/filters respond instantly and persist on back navigation.
+
+Offline/poor network: show graceful fallbacks (retry, cached last list).
+
+Dark/light mode consistent; no contrast issues.
+
+No console errors on rapid tab switching.
+
+
+
+---
+
+🧑‍💻 Implementation Order
+
+1. Build SportsHub container + tab slider; lazy-load panels.
+
+
+2. Implement Places (cards → profile → booking/map/chat).
+
+
+3. Implement Teams (cards → profile; join/challenge/follow).
+
+
+4. Implement Map (pins + filters + bottom-sheet).
+
+
+5. Implement Coaches (profile + booking/reviews).
+
+
+6. Implement Events (list → detail; join/calendar/share).
+
+
+7. Cross-link all actions (Profile, Map, Messenger, Payments).
+
+
+8. Run panel-isolation tests (mount each page standalone; no shared breakage).
+
+
+9. Merge as dev-sports-hub → staging QA → tag release.
+
+
+
+
+---
+
+🚫 Don’ts (to prevent breakage)
+
+Don’t fetch everything in the hub parent—each panel fetches its own data.
+
+Don’t mutate shared state across panels; use scoped state or query cache.
+
+Don’t hardcode colors/spacing; use SURNA tokens.
+
+Don’t duplicate TeamCard/PlaceCard variants; add variant props if needed.
+
+
+
+---

@@ -1,0 +1,395 @@
+---
+
+SURNA – Feature Module Handover (Package #6: Marketplace Skeleton)
+
+Goal
+
+Add a lightweight marketplace that’s safe to merge and easy to extend:
+
+Products (created by users/sellers)
+
+Public listings (browse/search/paginate)
+
+Cart (per user, server-side)
+
+Orders (records only; payment stubbed for later)
+
+
+No payment gateway yet—just the data + endpoints. Works with existing Auth, Media, Notifications.
+
+
+---
+
+Env (add to .env)
+
+CURRENCY_DEFAULT=USD
+MARKETPLACE_PAGE_SIZE=20
+TAX_RATE_BPS=0          # 0 for now; e.g., 825 = 8.25%
+
+
+---
+
+DB (migrations)
+
+-- products the user lists for sale
+CREATE TABLE IF NOT EXISTS products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  seller_id UUID NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  media_id UUID NULL,                           -- link to media table
+  status TEXT NOT NULL DEFAULT 'active',        -- 'active' | 'hidden' | 'sold'
+  stock INTEGER NOT NULL DEFAULT 1 CHECK (stock >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_products_status_created ON products (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_text ON products USING GIN (to_tsvector('simple', title || ' ' || coalesce(description,'')));
+
+-- carts (one active cart per user)
+CREATE TABLE IF NOT EXISTS carts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS cart_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cart_id UUID NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id),
+  qty INTEGER NOT NULL CHECK (qty > 0),
+  unit_price_cents INTEGER NOT NULL CHECK (unit_price_cents >= 0),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  UNIQUE(cart_id, product_id)
+);
+
+-- orders (record of checkout; payment stubbed)
+CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  subtotal_cents INTEGER NOT NULL,
+  tax_cents INTEGER NOT NULL,
+  total_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL DEFAULT 'created',   -- 'created' | 'paid' | 'canceled'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL,
+  seller_id UUID NOT NULL,
+  title TEXT NOT NULL,
+  qty INTEGER NOT NULL,
+  unit_price_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL
+);
+
+
+---
+
+Files to add
+
+server/features/marketplace/
+  marketplace.types.ts
+  marketplace.validation.ts
+  marketplace.repo.ts
+  marketplace.service.ts
+  marketplace.router.ts
+  index.ts
+
+Register:
+
+// server/features/index.ts
+import { marketplaceRouter } from "./marketplace";
+export function registerFeatureRouters(api: Router) {
+  // ...existing
+  api.use("/marketplace", marketplaceRouter);
+}
+
+
+---
+
+“Sayings” (rules we follow)
+
+Product create/edit requires auth; only seller can update their product.
+
+Public list endpoint returns only status='active' and stock > 0.
+
+Search uses simple q param against title+description with pagination by (created_at,id).
+
+Cart is server-side; prices are copied to cart_items.unit_price_cents at add time.
+
+Checkout endpoint just creates an order (no payment processing yet) and decrements stock atomically; cart is cleared.
+
+All money fields are integer cents; currency on products and line items must match the cart/order currency.
+
+
+
+---
+
+Code (compact)
+
+marketplace.types.ts
+
+export type ProductStatus = "active" | "hidden" | "sold";
+
+export interface ProductInput {
+  title: string;
+  description?: string;
+  priceCents: number;
+  currency?: string;
+  stock?: number;
+  mediaId?: string | null;
+}
+
+marketplace.validation.ts
+
+import { z } from "zod";
+
+export const CreateProduct = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  priceCents: z.number().int().nonnegative(),
+  currency: z.string().default(process.env.CURRENCY_DEFAULT || "USD"),
+  stock: z.number().int().min(0).default(1),
+  mediaId: z.string().uuid().optional().nullable(),
+});
+
+export const UpdateProduct = CreateProduct.partial().extend({
+  status: z.enum(["active","hidden","sold"]).optional(),
+});
+
+export const ListQuery = z.object({
+  q: z.string().optional(),
+  cursorCreatedAt: z.string().datetime().optional(),
+  cursorId: z.string().uuid().optional(),
+  limit: z.coerce.number().min(1).max(50).default( Number(process.env.MARKETPLACE_PAGE_SIZE ?? 20) ),
+});
+
+export const CartItemInput = z.object({
+  productId: z.string().uuid(),
+  qty: z.number().int().min(1),
+});
+
+marketplace.repo.ts
+
+import { db } from "../../core/db";
+import { sql } from "drizzle-orm";
+
+export async function createProduct(sellerId: string, p: any) {
+  const q = await db.execute(sql`
+    INSERT INTO products (seller_id, title, description, price_cents, currency, stock, media_id)
+    VALUES (${sellerId}, ${p.title}, ${p.description ?? ''}, ${p.priceCents}, ${p.currency}, ${p.stock ?? 1}, ${p.mediaId ?? null})
+    RETURNING *;
+  `); return q.rows[0];
+}
+
+export async function updateProduct(sellerId: string, id: string, p: any) {
+  const q = await db.execute(sql`
+    UPDATE products SET
+      title = COALESCE(${p.title}, title),
+      description = COALESCE(${p.description}, description),
+      price_cents = COALESCE(${p.priceCents}, price_cents),
+      currency = COALESCE(${p.currency}, currency),
+      stock = COALESCE(${p.stock}, stock),
+      media_id = COALESCE(${p.mediaId}, media_id),
+      status = COALESCE(${p.status}, status)
+    WHERE id = ${id} AND seller_id = ${sellerId}
+    RETURNING *;
+  `); return q.rows[0] ?? null;
+}
+
+export async function getProduct(id: string) {
+  const q = await db.execute(sql`SELECT * FROM products WHERE id=${id} LIMIT 1;`);
+  return q.rows[0] ?? null;
+}
+
+export async function listPublic(qs: { q?: string, cursorCreatedAt?: string, cursorId?: string, limit: number }) {
+  const whereSearch = qs.q
+    ? sql`AND to_tsvector('simple', title || ' ' || coalesce(description,'')) @@ plainto_tsquery('simple', ${qs.q})`
+    : sql``;
+  const cursor = (qs.cursorCreatedAt && qs.cursorId)
+    ? sql`AND (created_at, id) < (${qs.cursorCreatedAt}::timestamptz, ${qs.cursorId}::uuid)`
+    : sql``;
+
+  const q = await db.execute(sql`
+    SELECT * FROM products
+    WHERE status='active' AND stock > 0
+    ${whereSearch}
+    ${cursor}
+    ORDER BY created_at DESC, id DESC
+    LIMIT ${qs.limit};
+  `);
+  return q.rows;
+}
+
+export async function ensureCart(userId: string) {
+  const got = await db.execute(sql`SELECT id FROM carts WHERE user_id=${userId} LIMIT 1;`);
+  if (got.rows[0]) return got.rows[0].id as string;
+  const ins = await db.execute(sql`INSERT INTO carts (user_id) VALUES (${userId}) RETURNING id;`);
+  return ins.rows[0].id as string;
+}
+
+export async function upsertCartItem(cartId: string, productId: string, qty: number) {
+  // copy price snapshot from product
+  const p = await db.execute(sql`SELECT price_cents, currency FROM products WHERE id=${productId} LIMIT 1;`);
+  const price = p.rows[0];
+  await db.execute(sql`
+    INSERT INTO cart_items (cart_id, product_id, qty, unit_price_cents, currency)
+    VALUES (${cartId}, ${productId}, ${qty}, ${price.price_cents}, ${price.currency})
+    ON CONFLICT (cart_id, product_id) DO UPDATE SET qty = cart_items.qty + EXCLUDED.qty;
+  `);
+}
+
+export async function getCart(cartId: string) {
+  const items = await db.execute(sql`
+    SELECT ci.id, ci.product_id, ci.qty, ci.unit_price_cents, ci.currency, p.title, p.seller_id
+    FROM cart_items ci JOIN products p ON p.id = ci.product_id
+    WHERE ci.cart_id=${cartId};
+  `); return items.rows;
+}
+
+export async function clearCart(cartId: string) {
+  await db.execute(sql`DELETE FROM cart_items WHERE cart_id=${cartId};`);
+}
+
+export async function checkout(userId: string, cartId: string, taxBps: number) {
+  // compute totals
+  const items = await getCart(cartId);
+  const subtotal = items.reduce((s,i)=>s + i.unit_price_cents*i.qty, 0);
+  const tax = Math.floor(subtotal * (taxBps/10000));
+  const total = subtotal + tax;
+
+  // create order + items; decrement stock
+  const order = await db.execute(sql`
+    INSERT INTO orders (user_id, subtotal_cents, tax_cents, total_cents, currency)
+    VALUES (${userId}, ${subtotal}, ${tax}, ${total}, ${items[0]?.currency ?? 'USD'})
+    RETURNING *;
+  `);
+  const orderId = order.rows[0].id as string;
+
+  for (const i of items) {
+    await db.execute(sql`
+      INSERT INTO order_items (order_id, product_id, seller_id, title, qty, unit_price_cents, currency)
+      VALUES (${orderId}, ${i.product_id}, ${i.seller_id}, ${i.title}, ${i.qty}, ${i.unit_price_cents}, ${i.currency});
+    `);
+    await db.execute(sql`
+      UPDATE products SET stock = GREATEST(stock - ${i.qty}, 0)
+      WHERE id=${i.product_id};
+    `);
+  }
+
+  await clearCart(cartId);
+  return { order: order.rows[0], items };
+}
+
+marketplace.service.ts
+
+import * as repo from "./marketplace.repo";
+
+export const Marketplace = {
+  createProduct: repo.createProduct,
+  updateProduct: repo.updateProduct,
+  getProduct: repo.getProduct,
+  listPublic: repo.listPublic,
+  ensureCart: repo.ensureCart,
+  addToCart: repo.upsertCartItem,
+  getCart: repo.getCart,
+  checkout: (userId: string, cartId: string) => repo.checkout(userId, cartId, Number(process.env.TAX_RATE_BPS ?? 0)),
+};
+
+marketplace.router.ts
+
+import { Router } from "express";
+import { CreateProduct, UpdateProduct, ListQuery, CartItemInput } from "./marketplace.validation";
+import { Marketplace as MP } from "./marketplace.service";
+
+export const marketplaceRouter = Router();
+
+// PUBLIC: list/search products
+marketplaceRouter.get("/products", async (req:any,res,next)=>{
+  try {
+    const q = ListQuery.parse(req.query);
+    const rows = await MP.listPublic(q);
+    const nextCursor = rows.length ? { createdAt: rows[rows.length-1].created_at, id: rows[rows.length-1].id } : null;
+    res.json({ items: rows, nextCursor });
+  } catch(e){ next(e); }
+});
+
+// AUTH: create product
+marketplaceRouter.post("/products", async (req:any,res,next)=>{
+  try {
+    if(!req.user?.id) return res.status(401).json({error:"UNAUTHORIZED"});
+    const body = CreateProduct.parse(req.body);
+    const row = await MP.createProduct(req.user.id, body);
+    res.status(201).json(row);
+  } catch(e){ next(e); }
+});
+
+// AUTH: update own product
+marketplaceRouter.patch("/products/:id", async (req:any,res,next)=>{
+  try {
+    if(!req.user?.id) return res.status(401).json({error:"UNAUTHORIZED"});
+    const body = UpdateProduct.parse(req.body);
+    const row = await MP.updateProduct(req.user.id, req.params.id, body);
+    if(!row) return res.status(404).json({error:"NOT_FOUND"});
+    res.json(row);
+  } catch(e){ next(e); }
+});
+
+// AUTH: cart operations
+marketplaceRouter.get("/cart", async (req:any,res,next)=>{
+  try {
+    if(!req.user?.id) return res.status(401).json({error:"UNAUTHORIZED"});
+    const cartId = await MP.ensureCart(req.user.id);
+    const items = await MP.getCart(cartId);
+    res.json({ cartId, items });
+  } catch(e){ next(e); }
+});
+
+marketplaceRouter.post("/cart/items", async (req:any,res,next)=>{
+  try {
+    if(!req.user?.id) return res.status(401).json({error:"UNAUTHORIZED"});
+    const cartId = await MP.ensureCart(req.user.id);
+    const { productId, qty } = CartItemInput.parse(req.body);
+    await MP.addToCart(cartId, productId, qty);
+    const items = await MP.getCart(cartId);
+    res.status(201).json({ cartId, items });
+  } catch(e){ next(e); }
+});
+
+// AUTH: checkout (stub – records order, reduces stock, clears cart)
+marketplaceRouter.post("/checkout", async (req:any,res,next)=>{
+  try {
+    if(!req.user?.id) return res.status(401).json({error:"UNAUTHORIZED"});
+    const cartId = await MP.ensureCart(req.user.id);
+    const out = await MP.checkout(req.user.id, cartId);
+    res.status(201).json(out);
+  } catch(e){ next(e); }
+});
+
+index.ts
+
+export { marketplaceRouter } from "./marketplace.router";
+
+
+---
+
+Acceptance Criteria
+
+Public listing: GET /api/marketplace/products?q=&limit=&cursor* returns only active/in-stock products with cursor pagination.
+
+Sellers can POST /api/marketplace/products and PATCH /.../:id (only their own).
+
+Cart works: GET /cart, POST /cart/items { productId, qty }.
+
+Checkout creates orders + order_items, decrements products.stock, clears cart (no payments yet).
+
+All monetary values stored in cents, currency consistent.
+
+
+
+---

@@ -1,0 +1,188 @@
+# Prometheus alerting rules for SURNA
+groups:
+  - name: surna.rules
+    rules:
+      # Application Health
+      - alert: ApplicationDown
+        expr: up{job="surna-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          route: oncall
+        annotations:
+          summary: "SURNA application is down"
+          description: "SURNA application has been down for more than 1 minute."
+
+      # Page on /health probe failures (the on-call alert in docs/SCALING.md).
+      - alert: HealthEndpointDown
+        expr: probe_success{job="surna-health"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          route: oncall
+        annotations:
+          summary: "/health is returning non-200"
+          description: "The /health probe has failed for 1m. See docs/SCALING.md → Production monitoring."
+
+      # p95 latency SLO: < 800ms over a 5m window.
+      # http_request_duration_ms_p95_5m is pre-aggregated server-side over the
+      # exact trailing 5m, so we just require it to stay above 800ms for 5m.
+      - alert: HighP95Latency
+        expr: http_request_duration_ms_p95_5m > 800
+        for: 5m
+        labels:
+          severity: warning
+          route: oncall
+        annotations:
+          summary: "p95 latency above 800ms for 5m"
+          description: "p95 = {{ $value }}ms over the last 5m. SLO is < 800ms."
+
+      # Error-rate SLO: < 1% over a 5m window. Computed from monotonic counters
+      # via PromQL rate() so the window is exact and survives buffer rotation.
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_request_errors_total{class="all"}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) * 100 > 1
+        for: 5m
+        labels:
+          severity: critical
+          route: oncall
+        annotations:
+          summary: "HTTP error rate above 1% for 5m"
+          description: "Error rate = {{ $value }}% over the last 5m. SLO is < 1%."
+
+      # DB pool exhaustion warning — fed by db_pool_utilization_percent in /metrics.
+      - alert: DbPoolNearExhaustion
+        expr: avg_over_time(db_pool_utilization_percent[5m]) > 80
+        for: 5m
+        labels:
+          severity: warning
+          route: oncall
+        annotations:
+          summary: "Postgres pool utilization above 80% for 5m"
+          description: "Active/max = {{ $value }}%. Bump DB_POOL_MAX or scale instances per docs/SCALING.md."
+
+      # BullMQ worker — pages on-call when the background job queue stalls.
+      # bullmq_queue_depth is per-queue waiting+active+delayed+prioritized;
+      # >1000 sustained for 5m means the worker is falling behind faster than
+      # it can drain.
+      - alert: BullMqQueueBacklog
+        expr: max by(queue) (bullmq_queue_depth) > 1000
+        for: 5m
+        labels:
+          severity: critical
+          route: oncall
+        annotations:
+          summary: "BullMQ queue {{ $labels.queue }} backlog above 1000 for 5m"
+          description: "Queue depth = {{ $value }} jobs. Worker is falling behind — check worker logs and Redis. See docs/SCALING.md → Worker monitoring."
+
+      # Worker heartbeat — bullmq_worker_heartbeat_timestamp_seconds is the
+      # unix timestamp of the last worker tick (updated once per minute). If
+      # the gap exceeds 3m the worker process is wedged or dead.
+      - alert: BullMqWorkerHeartbeatMissed
+        expr: time() - max(bullmq_worker_heartbeat_timestamp_seconds) > 180
+        for: 0m
+        labels:
+          severity: critical
+          route: oncall
+        annotations:
+          summary: "BullMQ worker heartbeat missed for 3m"
+          description: "No worker heartbeat in {{ $value }}s. The background job process is stuck or down. See docs/SCALING.md → Worker monitoring."
+
+      # Database Health
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          route: oncall
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL database has been down for more than 1 minute."
+
+      - alert: DatabaseHighConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL high connection usage"
+          description: "PostgreSQL connection usage is {{ $value | humanizePercentage }}."
+
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_database_blk_read_time[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "PostgreSQL is experiencing slow queries with average read time {{ $value }}ms."
+
+      # Redis Health
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis cache has been down for more than 1 minute."
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}."
+
+      # System Resources
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}."
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}."
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}."
+
+      # Application Specific
+      - alert: HighUserRegistrations
+        expr: increase(user_registrations_total[1h]) > 100
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: "High user registration rate"
+          description: "{{ $value }} new users registered in the last hour."
+
+      - alert: PaymentFailures
+        expr: increase(payment_failures_total[5m]) > 5
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High payment failure rate"
+          description: "{{ $value }} payment failures in the last 5 minutes."

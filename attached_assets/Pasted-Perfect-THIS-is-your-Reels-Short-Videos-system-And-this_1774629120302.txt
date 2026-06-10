@@ -1,0 +1,422 @@
+Perfect — THIS is your Reels / Short Videos system 🔥
+And this part can literally make SURNA go viral if done right.
+
+Right now what you showed = Instagram Reels
+👉 Good base
+👉 But we upgrade it into SURNA Reels (ACTION + SPORTS + SOCIAL)
+
+
+---
+
+🎬 SURNA REELS — FULL DESIGN (DEVELOPER READY)
+
+🎯 Core Rule
+
+👉 Not just watching
+👉 Users should react, connect, and act
+
+
+---
+
+1) FULLSCREEN VIDEO (BASE)
+
+Layout:
+
+Full screen vertical (9:16)
+
+Edge-to-edge
+
+No borders
+
+
+
+---
+
+Behavior:
+
+Auto-play
+
+Loop
+
+Tap → sound on/off
+
+
+
+---
+
+2) TOP BAR (VERY IMPORTANT)
+
+Instagram shows:
+
+Reels / Friends
+
+
+---
+
+🔥 SURNA VERSION:
+
+Replace with:
+
+For You
+
+Nearby
+
+Following
+
+
+
+---
+
+Behavior:
+
+Swipe horizontally to switch
+
+Default = For You
+
+
+
+---
+
+Right side (top):
+
+🔍 Search OR filters
+
+
+
+---
+
+3) RIGHT ACTION BAR
+
+Keep structure but upgrade meaning:
+
+Vertical icons:
+
+❤️ Like
+
+💬 Comment
+
+➤ Share
+
+🔖 Save
+
+
+
+---
+
+🔥 ADD (THIS IS KEY):
+
+⚡ Join
+
+Appears if:
+
+Event video
+
+Looking for players
+
+
+
+---
+
+👥 Connect
+
+Quick follow / add friend
+
+
+
+---
+
+👉 This is what makes SURNA different
+
+
+---
+
+4) VIDEO INFO (BOTTOM LEFT)
+
+Instagram style:
+
+Username + caption
+
+
+---
+
+🔥 SURNA VERSION:
+
+Structure:
+
+Username
+
+badge (coach / player / team)
+
+
+Caption
+
++ Context line: 👉 “Football • Cork • 2km away”
+
+
+---
+
+🔥 Add tags:
+
+📍 Location
+
+⚽ Sport
+
+🏟 Event
+
+
+
+---
+
+👉 This is VERY powerful
+
+
+---
+
+5) FOLLOW BUTTON
+
+Keep it:
+
+Small pill button
+
+Next to username
+
+
+
+---
+
+Behavior:
+
+Tap → instant follow
+
+Turns to “Following”
+
+
+
+---
+
+6) COMMENTS SYSTEM (YOU ASKED THIS)
+
+Open from right side
+
+
+---
+
+Style:
+
+Comments feel:
+
+Casual
+
+Fast
+
+Social
+
+
+
+---
+
+Example comments:
+
+“Bro what is this 😂”
+
+“Where is this?”
+
+“I’m coming next time 🔥”
+
+“Add me to this team”
+
+
+
+---
+
+UI:
+
+Avatar left
+
+Text
+
+Like button right
+
+
+
+---
+
+🔥 Add reactions:
+
+❤️ 😂 😮 🔥
+
+
+
+---
+
+7) DOUBLE TAP LIKE
+
+Big heart animation ❤️
+
+Slight vibration (if possible)
+
+
+
+---
+
+8) SWIPE SYSTEM
+
+Vertical:
+
+Next video
+
+
+Horizontal:
+
+Switch tabs (For You / Nearby / Following)
+
+
+
+---
+
+9) 🔥 SURNA KILLER FEATURE (IMPORTANT)
+
+Contextual Actions
+
+Depending on video:
+
+
+---
+
+Example 1:
+
+Football match video
+
+👉 Show:
+
+⚡ Join match
+
+📍 View on map
+
+
+
+---
+
+Example 2:
+
+Gym video
+
+👉 Show:
+
+👥 Follow coach
+
+📅 Book session
+
+
+
+---
+
+Example 3:
+
+Casual funny video
+
+👉 Normal interactions only
+
+
+---
+
+👉 THIS is what makes your app UNIQUE
+
+
+---
+
+10) SMALL DETAILS (THIS MAKES IT PREMIUM)
+
+Progress bar (top)
+
+Pause when holding screen
+
+Resume when released
+
+Smooth transitions
+
+No lag
+
+
+
+---
+
+11) DARK MODE (MAIN MODE)
+
+Background:
+
+Deep purple/black
+
+
+Text:
+
+White / light grey
+
+
+Accents:
+
+Purple glow
+
+
+
+---
+
+12) WHAT NOT TO DO ❌
+
+❌ Don’t make it just TikTok clone
+
+❌ Don’t remove context (location/sport)
+
+❌ Don’t overload UI
+
+❌ Don’t autoplay sound
+
+❌ Don’t make actions hidden
+
+
+
+---
+
+🎯 FINAL INSTRUCTION FOR DEV
+
+Tell them EXACTLY:
+
+👉 “Reels should feel like Instagram in smoothness, but smarter — every video should carry context (sport, location, event) and allow actions like join, connect, or view on map.”
+
+
+---
+
+🔥 My honest take
+
+If you do this right:
+
+👉 People will:
+
+Watch
+
+Join games
+
+Find players
+
+Connect instantly
+
+
+
+---
+
+This becomes:
+
+👉 TikTok + Snapchat + Meetup + Sports app in ONE
+
+
+---
+
+Next step (important)
+
+I can design next:
+
+🔥 “Create Reel / Upload system”
+🔥 “Event-based video posts (this is huge)”
+🔥 “AI feed algorithm (what shows first)”
+
+Just tell me.

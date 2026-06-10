@@ -1,0 +1,480 @@
+Good — THIS is where SURNA either becomes 🔥 or just another app.
+
+What you showed me is basically Instagram feed…
+👉 We don’t copy it blindly
+👉 We upgrade it for SURNA (sports + real-life connection + clean UX)
+
+
+---
+
+🔥 SURNA FEED PAGE — FULL DESIGN SPEC (DEVELOPER READY)
+
+🎯 Core Rule
+
+👉 Feed = Clean + Fast + Useful + Action-driven
+NOT just scrolling videos.
+
+
+---
+
+1) TOP SECTION (Stories / Quick Access)
+
+Layout:
+
+Horizontal scroll (Instagram-style but better)
+
+Story circles (60–70px)
+
+Ring: Purple + Red gradient
+
+First item: + Add Story
+
+
+
+---
+
+🔥 SURNA Upgrade:
+
+Add types:
+
+🔴 Live (red pulse)
+
+🟣 Story (normal)
+
+⚡ Event (special ring)
+
+🟡 Team update
+
+
+👉 Different rings = more meaning
+
+
+---
+
+2) FEED TYPE SWITCH (VERY IMPORTANT)
+
+Under stories:
+
+Tabs (Slideable like ChatGPT / Instagram):
+
+For You
+
+Following
+
+Events
+
+Nearby
+
+
+
+---
+
+Behavior:
+
+Default = For You
+
+Swipe horizontally to switch
+
+Smooth animation
+
+
+
+---
+
+3) POST CARD (MAIN FEED ITEM)
+
+Structure:
+
+A) Header
+
+Profile pic (40px)
+
+Username
+
+Small info under: 👉 “Football • Cork • 2km away”
+
+Right:
+
+3 dots menu
+
+
+
+
+---
+
+🔥 Add BADGES:
+
+Verified
+
+Coach
+
+Team
+
+Event organizer
+
+
+
+---
+
+4) CONTENT (IMAGE / VIDEO)
+
+Layout:
+
+Full width
+
+Rounded corners (12–16px)
+
+Clean edges
+
+
+
+---
+
+Video Behavior:
+
+Auto-play ONLY when visible
+
+Tap → sound ON
+
+Double tap → like ❤️
+
+
+
+---
+
+🔥 SURNA Upgrade (IMPORTANT):
+
+Add overlay (small info):
+
+Bottom-left on video:
+
+📍 Location
+
+🏟 Event name
+
+⚽ Sport type
+
+
+👉 This is what makes it DIFFERENT
+
+
+---
+
+5) ACTION BAR (LIKE INSTAGRAM BUT BETTER)
+
+Left:
+
+❤️ Like
+
+💬 Comment
+
+➤ Share
+
+
+Right:
+
+🔖 Save
+
+
+
+---
+
+🔥 Add:
+
+⚡ Join (if event/team post)
+
+👥 Join Team
+
+
+👉 THIS is your killer feature
+
+
+---
+
+6) CAPTION
+
+Style:
+
+Username bold
+
+Caption normal
+
+“See more”
+
+
+
+---
+
+Example:
+
+“JoeNiazi – Looking for 2 players tonight ⚽”
+
+
+---
+
+7) COMMENTS PREVIEW
+
+Show 1–2 comments
+
+“View all comments”
+
+
+
+---
+
+🔥 COMMENT STYLE (IMPORTANT FROM YOUR REQUEST)
+
+Comments should feel:
+
+Casual:
+
+“Bro this is crazy 😂”
+
+“Where is this?”
+
+“I’m joining next time 🔥”
+
+
+
+---
+
+UI:
+
+Small avatar
+
+Clean spacing
+
+Like button on right
+
+
+
+---
+
+Reactions:
+
+❤️ 😂 😮 🔥
+
+
+
+---
+
+8) ADS (LIKE THE ONE YOU SENT)
+
+We keep ads but improve them:
+
+
+---
+
+A) Label:
+
+“Sponsored” (small, subtle)
+
+
+
+---
+
+B) CTA:
+
+“Book now”
+
+“Join event”
+
+“Learn more”
+
+
+
+---
+
+🔥 SURNA Upgrade:
+
+Turn ads into useful content
+
+Example:
+
+Dental event → shows map location
+
+Has “Add to calendar”
+
+Has “Join event”
+
+
+👉 Not just useless ads
+
+
+---
+
+9) FEED SCROLL BEHAVIOR
+
+Smooth:
+
+No lag
+
+Preload next post
+
+
+
+---
+
+Smart:
+
+Pause video when scrolling
+
+Resume when visible
+
+
+
+---
+
+10) FLOATING BUTTON (VERY IMPORTANT)
+
+Bottom right:
+
+➕ Create Button
+
+
+---
+
+When clicked:
+
+Opens:
+
+Post
+
+Event
+
+Team
+
+Story
+
+
+
+---
+
+👉 This is your “power button”
+
+
+---
+
+11) NOTIFICATION IN FEED (YOUR QUESTION)
+
+DO NOT mix heavily
+
+Feed notifications:
+
+Light
+
+Contextual
+
+
+Example:
+
+“Ali joined your event”
+
+“2 players needed nearby”
+
+
+
+---
+
+Main notifications:
+
+Full system (likes, follows, etc.)
+
+
+
+---
+
+12) DARK MODE / LIGHT MODE
+
+Light:
+
+Cream background
+
+Black/dark text
+
+Purple accents
+
+
+Dark:
+
+Deep purple/black
+
+Soft white text
+
+Purple highlights
+
+
+
+---
+
+13) MICRO INTERACTIONS (THIS MAKES IT PREMIUM)
+
+Like → heart pop animation
+
+Follow → smooth change
+
+Join → pulse feedback
+
+Scroll → buttery smooth
+
+
+
+---
+
+14) WHAT MAKES SURNA FEED DIFFERENT 🔥
+
+Instagram = watching
+TikTok = entertainment
+
+👉 SURNA = ACTION
+
+
+---
+
+Every post should allow:
+
+Join
+
+Connect
+
+Play
+
+Message
+
+Discover
+
+
+
+---
+
+🎯 FINAL INSTRUCTION FOR DEV
+
+Tell them this EXACTLY:
+
+👉 “Feed should not be passive like Instagram. Every post must have context (location, sport, event) and allow action (join, message, connect). Keep UI minimal but interactions powerful.”
+
+
+---
+
+🔥 My honest opinion (important)
+
+If you mess up the feed → app dies
+If you get this right → people stay daily
+
+👉 This is your MAIN WEAPON.
+
+
+---
+
+Next step (tell me):
+
+I can design:
+
+🔥 Event post (SUPER IMPORTANT for SURNA)
+
+🔥 Team post system
+
+🔥 Feed ranking algorithm (how content shows)
+
+
+Just say.

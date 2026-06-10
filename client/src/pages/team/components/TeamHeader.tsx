@@ -1,0 +1,205 @@
+import { MapPin, Star, Users, Heart, MessageCircle, UserPlus, Trophy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useState } from 'react';
+import { useLocation } from 'wouter';
+
+interface SportConfig {
+  emoji: string;
+  colors: [string, string];
+  ringColor: string;
+}
+
+interface TeamHeaderProps {
+  team: any;
+  sportConfig: SportConfig;
+}
+
+export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [isFollowing, setIsFollowing] = useState(!!team.isFollowing);
+  const [followersCount, setFollowersCount] = useState(team.followersCount || 0);
+  const [hasJoined, setHasJoined] = useState(!!team.hasJoined);
+  const [hasRequested, setHasRequested] = useState(!!team.hasRequestedToJoin);
+  const [memberCountState, setMemberCountState] = useState<number>(
+    team.currentMembers || team.memberCount || 0
+  );
+  const accentColor = sportConfig.ringColor;
+
+  const handleFollow = async () => {
+    // Flip state immediately so the button reflects the tap, snapshot
+    // prior values so we can revert if the request fails.
+    const wasFollowing = isFollowing;
+    const prevCount = followersCount;
+    const nextFollowing = !wasFollowing;
+    const nextCount = wasFollowing ? Math.max(0, prevCount - 1) : prevCount + 1;
+    setIsFollowing(nextFollowing);
+    setFollowersCount(nextCount);
+
+    try {
+      const res = await apiRequest('POST', `/api/teams/${team.id}/follow`);
+      const data = await res.json().catch(() => ({}));
+      if (typeof data.followersCount === 'number') setFollowersCount(data.followersCount);
+      if (typeof data.following === 'boolean') setIsFollowing(data.following);
+      queryClient.invalidateQueries({ queryKey: ['/api/teams', team.id] });
+      toast({
+        title: nextFollowing ? "Following!" : "Unfollowed",
+        description: nextFollowing ? `You're now following ${team.name}` : `You unfollowed ${team.name}`,
+      });
+    } catch (error) {
+      setIsFollowing(wasFollowing);
+      setFollowersCount(prevCount);
+      toast({ title: "Couldn't update follow", description: "Please try again in a moment.", variant: "destructive" });
+    }
+  };
+
+  const handleMessage = () => {
+    const captainId = team.captainId || team.captainUserId;
+    if (captainId) {
+      setLocation(`/messages?userId=${encodeURIComponent(captainId)}`);
+      return;
+    }
+    toast({
+      title: "Message unavailable",
+      description: "Could not find the team captain to message.",
+      variant: "destructive",
+    });
+  };
+
+  const handleJoin = async () => {
+    if (hasJoined || hasRequested) return;
+    // This endpoint sends a join *request* — the captain still has to
+    // approve it — so optimistically flip only the button state, not
+    // the member count. The count will reconcile from the server when
+    // the request is actually accepted.
+    const prevRequested = hasRequested;
+    setHasRequested(true);
+
+    try {
+      const res = await apiRequest('POST', `/api/teams/${team.id}/join-request`, { message: "I'd like to join your team!" });
+      const data = await res.json().catch(() => ({}));
+      // If the server reports immediate membership (e.g. open team),
+      // sync both the joined flag and the authoritative member count.
+      if (data.joined === true) {
+        setHasJoined(true);
+        if (typeof data.currentMembers === 'number') {
+          setMemberCountState(data.currentMembers);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/teams', team.id] });
+      toast({ title: "Request Sent", description: "Your join request has been sent to the team captain" });
+    } catch (error) {
+      setHasRequested(prevRequested);
+      toast({ title: "Couldn't send request", description: "Please try again in a moment.", variant: "destructive" });
+    }
+  };
+
+  const handleChallenge = () => {
+    setLocation(`/challenges/create?opponentId=${encodeURIComponent(team.id)}&opponentType=team`);
+  };
+
+  const memberCount = memberCountState;
+  const maxMembers = team.maxMembers || 25;
+
+  return (
+    <div className="spotify-hero-inner">
+      {/* Large team logo/photo — Spotify album art style */}
+      <div className="spotify-album-art">
+        {team.logo || team.logoUrl ? (
+          <img src={team.logo || team.logoUrl} alt={team.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-7xl"
+            style={{ background: `linear-gradient(135deg, ${sportConfig.colors[0]}88, ${sportConfig.colors[1]}88)` }}>
+            {sportConfig.emoji}
+          </div>
+        )}
+        <div className="spotify-album-shadow" style={{ boxShadow: `0 24px 64px ${accentColor}44, 0 12px 32px rgba(0,0,0,0.6)` }} />
+      </div>
+
+      {/* Team name + metadata */}
+      <h1 className="text-[28px] font-extrabold text-foreground leading-tight mt-6 mb-2 tracking-tight">
+        {team.name}
+      </h1>
+
+      <div className="flex items-center gap-2 mb-5 flex-wrap justify-center">
+        <span className="spotify-sport-badge" style={{
+          background: `${accentColor}18`,
+          color: accentColor,
+          border: `1px solid ${accentColor}30`,
+        }}>
+          {sportConfig.emoji} {team.sport || 'Sports'}
+        </span>
+        {team.city && (
+          <span className="flex items-center gap-1 text-[12px] text-muted-foreground">
+            <MapPin size={11} />
+            {team.city}
+          </span>
+        )}
+      </div>
+
+      {/* Stats row — glassmorphism pill */}
+      <div className="spotify-stats-pill">
+        <div className="text-center">
+          <p className="text-[17px] font-bold text-foreground">{memberCount}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Members</p>
+        </div>
+        <div className="w-px h-8 bg-muted/40" />
+        <div className="text-center">
+          <p className="text-[17px] font-bold text-foreground">{followersCount}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Followers</p>
+        </div>
+        <div className="w-px h-8 bg-muted/40" />
+        <div className="text-center">
+          <div className="flex items-center gap-1 justify-center">
+            <Star size={14} style={{ color: '#FFD700' }} />
+            <p className="text-[17px] font-bold text-foreground">{team.rating || '—'}</p>
+          </div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Rating</p>
+        </div>
+      </div>
+
+      {/* Primary CTA buttons */}
+      <div className="flex items-center gap-2.5 w-full max-w-sm mt-5">
+        <button onClick={handleJoin} disabled={hasJoined || hasRequested}
+          className="flex-1 h-12 rounded-full text-[14px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.96] disabled:active:scale-100"
+          style={{
+            background: accentColor,
+            color: '#fff',
+            textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+            boxShadow: `0 8px 24px ${accentColor}44`,
+            opacity: (hasJoined || hasRequested) ? 0.85 : 1,
+          }}>
+          <UserPlus size={16} />
+          {hasJoined ? 'Joined' : hasRequested ? 'Requested' : 'Join Team'}
+        </button>
+        <button onClick={handleFollow}
+          className="h-12 px-5 rounded-full text-[13px] font-semibold flex items-center gap-2 transition-all active:scale-[0.96] bg-muted/60 hover:bg-muted text-foreground border border-border backdrop-blur-sm">
+          <Heart size={15} className={isFollowing ? 'fill-current' : ''} style={isFollowing ? { color: '#FF6B6B' } : {}} />
+          {isFollowing ? 'Following' : 'Follow'}
+        </button>
+      </div>
+
+      {/* Secondary actions */}
+      <div className="flex items-center gap-2 mt-3">
+        <button onClick={handleMessage}
+          className="h-9 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 transition-all active:scale-[0.96] bg-muted/40 text-muted-foreground border border-border backdrop-blur-sm">
+          <MessageCircle size={14} />
+          Message
+        </button>
+        <button onClick={handleChallenge}
+          className="h-9 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 transition-all active:scale-[0.96] bg-muted/40 text-muted-foreground border border-border backdrop-blur-sm">
+          <Trophy size={14} />
+          Challenge
+        </button>
+      </div>
+
+      {team.record && (
+        <div className="mt-4 px-4 py-2 rounded-xl bg-muted/40">
+          <span className="text-[11px] uppercase tracking-wider mr-2 text-muted-foreground">Record</span>
+          <span className="text-sm font-bold text-foreground">{team.record.W}-{team.record.L}-{team.record.D}</span>
+        </div>
+      )}
+    </div>
+  );
+}

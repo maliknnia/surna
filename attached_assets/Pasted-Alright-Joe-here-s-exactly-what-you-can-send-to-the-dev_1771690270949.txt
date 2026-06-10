@@ -1,0 +1,196 @@
+Alright Joe — here’s exactly what you can send to the developer.
+This is NOT pricing. This is the full Pro “feature inventory + data model blueprint” (category by category) and it’s built as an extension of SURNA, not a separate app.
+Message to developer (copy/paste)
+SURNA Pro is NOT a separate app — it’s an extension layer connected to the main SURNA system.
+Everything in Pro must connect to existing SURNA entities: User, Person Profile, Team, Place, Event, Map, Messenger, Calendar, Feed.
+Pro = advanced tools for teams/clubs/coaches, but using the same SURNA database + same team IDs + same events + same profiles.
+Build Pro as modular “sections” under Team/Club, each section has its own tables + routes + permissions.
+Do NOT redesign UI now, just implement the backend + core logic + CRUD + relationships so we don’t pay extra later.
+SURNA Pro Categories (what each manager needs) + what to build
+Below is the blueprint per category:
+What it does
+Key objects/tables
+Main routes
+Important connections to SURNA
+You can implement these one-by-one.
+0) Pro Base Layer (Required)
+Purpose: permissions + roles + audit + settings per team.
+Tables (minimum)
+team_roles (owner/admin/coach/manager/assistant/physio/scout)
+team_role_members (teamId, userId, roleId)
+team_permissions (roleId → permissions array)
+team_audit_logs (who changed what/when)
+team_pro_settings (teamId, locale, default formations, notification rules)
+Routes
+GET /pro/team/:teamId/permissions
+POST /pro/team/:teamId/role/assign
+GET /pro/team/:teamId/audit
+Connects to SURNA
+teamId links to SURNA teams
+userId links to SURNA profiles
+messenger notifications reuse SURNA notifications
+1) Team Management (Roster + Staff + Documents)
+Purpose: real club management.
+What manager needs
+Player list + statuses (active/injured/suspended)
+Contracts/documents (optional storage refs)
+Staff directory (coach, assistant, physio)
+Player attributes & positions
+Tables
+team_players (teamId, userId/personId, role: player/staff, jerseyNumber, positions[], status)
+team_staff (teamId, userId/personId, staffType, certifications)
+team_documents (teamId, type, title, fileUrl, permissions)
+team_equipment_issued (teamId, userId, itemId, assignedAt, returnedAt)
+Routes
+POST /pro/team/:teamId/player/add
+PATCH /pro/team/:teamId/player/:playerId
+GET /pro/team/:teamId/roster
+POST /pro/team/:teamId/docs/upload
+Connects to SURNA
+Person Profile = source of identity
+Team = SURNA team object
+Pro adds “manager tools” not new identity
+2) Training Plans (Sessions, Drills, Attendance)
+Purpose: plan sessions like a real coach.
+What manager needs
+Weekly plan
+Drill library
+Assign drills to session
+Attendance + notes
+Tables
+training_sessions (teamId, dateTime, placeId, focus, notes)
+training_drills (teamId/global, name, duration, description, videoUrl)
+training_session_drills (sessionId, drillId, order, notes)
+training_attendance (sessionId, userId, status, reason)
+Routes
+POST /pro/team/:teamId/training/session
+GET /pro/team/:teamId/training/calendar
+POST /pro/training/session/:sessionId/attendance
+Connects
+uses SURNA Place for location
+can create a SURNA Event or link to it
+3) Match Day (Lineups like FIFA, Tactics, Substitutions)
+Purpose: the “FIFA lineup” system you said.
+What manager needs
+Formation templates (4-3-3, 4-2-3-1, futsal formations)
+Starting XI / bench
+Position assignment per player
+Live substitutions + match notes
+Tables
+formations (teamId, sportType, name, layoutJson)
+match_squads (eventId/matchId, teamId, formationId, captainUserId)
+match_squad_players (squadId, userId, positionKey, isStarter, shirtNo)
+match_substitutions (matchId, minute, playerOutId, playerInId, reason)
+match_notes (matchId, staffUserId, minute, note)
+Routes
+POST /pro/match/:matchId/squad/set
+POST /pro/match/:matchId/substitution
+GET /pro/match/:matchId/lineup
+Connects
+matchId should connect to SURNA Event (eventType=match)
+lineup appears on Team page + match page in SURNA main app (read-only if non-pro)
+4) Equipment & Inventory
+Purpose: track balls, bibs, kits, cones, etc.
+What manager needs
+Inventory list
+Assign equipment to players
+Maintenance reminders
+Tables
+team_inventory_items (teamId, name, category, quantity, condition, photoUrl)
+team_inventory_logs (itemId, action, delta, userId, notes, createdAt)
+Routes
+POST /pro/team/:teamId/inventory/item
+POST /pro/inventory/item/:itemId/log
+GET /pro/team/:teamId/inventory
+5) Scheduling & Availability (Advanced)
+Purpose: this is like Pro-level calendar control.
+What manager needs
+Team availability grid
+RSVP automation
+recurring training
+travel time + meeting points
+Tables
+team_schedule_rules (teamId, recurringJson)
+team_rsvp (eventId, userId, status, updatedAt)
+team_availability (userId, sport, days/times, radiusKm)
+Routes
+POST /pro/team/:teamId/event/create-advanced
+POST /pro/event/:eventId/rsvp
+GET /pro/team/:teamId/availability
+Connects
+links to your Instant Join system too (same availability concept)
+6) Performance Stats (Player + Team Analytics)
+Purpose: store match/training metrics.
+What manager needs
+Player match ratings
+goals/assists/clean sheets
+minutes played
+training attendance %
+coach notes
+Tables
+player_match_stats (matchId, userId, metricsJson, rating, notes)
+team_match_stats (matchId, teamId, metricsJson)
+player_training_stats (sessionId, userId, metricsJson)
+Routes
+POST /pro/match/:matchId/player-stats
+GET /pro/team/:teamId/player/:userId/stats
+GET /pro/team/:teamId/analytics
+Connects
+Show summary graphs in main SURNA Profile/Team pages (if pro enabled)
+7) Communication Center (Pro Broadcast + Groups)
+Purpose: manager announcements without chaos.
+What manager needs
+announcement posts (pinned)
+message groups (starting XI, staff, injured)
+automated reminders (training tomorrow)
+Tables
+team_announcements (teamId, title, body, pinned, createdBy)
+team_message_groups (teamId, name)
+team_message_group_members (groupId, userId)
+Routes
+POST /pro/team/:teamId/announcement
+POST /pro/team/:teamId/message-group
+Integrate with SURNA messenger threads
+8) Recruitment & Trials (Scouting)
+Purpose: find players & manage tryouts.
+What manager needs
+trial requests
+scouting shortlist
+evaluation forms
+Tables
+team_trials (teamId, placeId, dateTime, requirementsJson)
+trial_applications (trialId, userId, status, notes)
+scout_shortlist (teamId, userId, tags[], notes)
+Routes
+POST /pro/team/:teamId/trial/create
+POST /pro/trial/:trialId/apply
+GET /pro/team/:teamId/shortlist
+Connects
+uses Map discovery + person profiles
+9) Club/Academy Layer (Multi-team)
+Purpose: if a club has multiple squads.
+What manager needs
+club entity containing many teams
+shared inventory + staff
+academy player progression
+Tables
+clubs (ownerId, name, location)
+club_teams (clubId, teamId)
+academy_profiles (clubId, userId, ageGroup, progressJson)
+Routes
+POST /pro/club/create
+GET /pro/club/:clubId/dashboard
+“Sayings” you wanted (to prevent extra charges)
+Use these exact lines:
+Implement backend first, UI minimal.
+These are extensions of existing SURNA tables, not new systems.
+No redesign work, no extra “planning hours” — just implement the listed tables + endpoints + relationships.
+Every Pro section must connect to SURNA TeamId + EventId + UserId.
+Build in modules so we can enable/disable later, but the logic must exist.
+What I’ll do next (without asking more)
+In the next message I can generate the actual code files in your stack style:
+shared/schema.ts full tables for ALL categories above
+server/routes/pro.ts full Express routes
+server/services/pro/* services (lineup engine, training engine, stats engine)
+frontend route shells for each section
+Just tell me your stack exactly (one line): Are you using Drizzle + Express + React/TS with Vite (like before), or Next.js?

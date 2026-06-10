@@ -1,0 +1,110 @@
+📱 SURNA – Main Page (Home) Design Spec
+Goal
+Redesign the main/home page to feel alive, clean, and Revolut-level polished, without clutter.
+This page is the entry point to everything, but not everything lives here.
+1️⃣ Overall Structure (High level)
+Scrollable main page
+Sections stacked vertically
+Clean spacing, no heavy shadows, no shiny/glow effects
+Cards feel embedded, not floating aggressively
+2️⃣ Top Bar (Header)
+Left
+Circular user profile avatar (tap → profile)
+Center
+“SURNA” wordmark or nothing (keep minimal)
+Right
+🔍 Search icon (stays)
+💬 Messenger icon (important)
+⋮ Three-dot menu
+Three-dot menu opens:
+Leaderboards
+Challenges
+Start Petition / Gathering
+Create Event
+Calendar / My Schedule
+(Advanced actions live here, not cluttering main UI)
+3️⃣ Background (Very important)
+Simple, calm background like Revolut
+Dark mode: deep purple / near-black gradient
+Light mode: soft off-white / cream
+NO literal basketball courts or busy photos
+Optional: very subtle texture or noise
+Cards must remain readable at all times
+Accent color:
+Dark mode → muted green highlights
+Light mode → soft green accents (dots, labels, progress)
+4️⃣ Performance Card (Top Card)
+First visible card
+Contents:
+Trophy icon + “Performance”
+Level badge (Level 1, etc.)
+Points + progress bar
+Small stats row:
+Events
+Teams
+Challenges
+Design:
+Rounded rectangle
+Embedded look (low contrast border)
+Progress bar uses green accent
+No glow, no glass effect
+5️⃣ Activity Metrics (Simplified)
+Instead of 3 chunky cards:
+One compact horizontal strip or segmented card
+Steps
+Distance
+Calories
+Icons only + numbers
+No heavy labels
+This sits directly under Performance
+Goal: clean + fast glance
+6️⃣ Main Content Cards (Scrollable)
+After metrics, user scrolls into:
+A. Feed Preview Card
+“Latest from Feed”
+1–2 preview items
+Tap → full Feed page
+B. Events Near You
+Location-aware
+Horizontal cards
+Clean images or icon + gradient
+Tap → Events page
+C. Marketplace Preview
+Featured gear / services
+Clean cards
+Tap → Marketplace
+These cards:
+Slightly bigger
+Calm visuals
+Clear CTA text (Join / View / Explore)
+7️⃣ Bottom Navigation (Very Important)
+Single bottom bar, one container
+Icons (same as Sports section icons):
+Places
+Teams
+Map
+Events
+Sports
+❌ Remove Feed & Marketplace from bottom nav
+✅ Feed & Marketplace are accessed via main page cards
+Why:
+Reduces confusion
+Main page becomes the hub
+Bottom bar = discovery tools
+8️⃣ Quick Access (QA)
+NO separate QA icon in bottom bar
+QA actions live:
+In the main page cards
+In the three-dot menu
+This avoids duplication and clutter
+9️⃣ Design Rules (Non-negotiable)
+Consistent spacing (8 / 16 / 24 system)
+Same icon style everywhere
+No random colors
+Dark purple + cream + green accents only
+Minimal text, strong hierarchy
+Everything must feel intentional
+10️⃣ This is ONLY Phase 1
+Tell them clearly:
+“This is just the main page.
+We will design each section page (Teams, Places, Map, Events, Sports) one by one after this.”

@@ -1,0 +1,19 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+MSG_FILE="$1"
+MSG="$(cat "$MSG_FILE" | head -n1)"
+
+# Must start with allowed type
+echo "$MSG" | grep -Eq '^\[(DB|API|UI|DOCS|CHORE|REFACTOR)\]' || {
+  echo "❌ Commit must start with [DB|API|UI|DOCS|CHORE|REFACTOR]"
+  exit 1
+}
+
+# First line max 72 chars
+[ $(printf "%s" "$MSG" | wc -c) -le 72 ] || {
+  echo "❌ First line too long (>72 chars)"
+  exit 1
+}
+
+echo "✅ Commit message OK"

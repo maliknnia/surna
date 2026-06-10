@@ -1,0 +1,382 @@
+---
+
+💬 Package #8 — MESSENGER (DMs, Groups, Media, Voice/Video, Polls, Requests)
+
+🎯 Purpose
+
+Provide a fast, reliable, Instagram/WhatsApp-grade messenger inside SURNA: DMs, group chats, media (images/video/audio), voice & video calls, message requests, polls, and tight links to Profiles, Teams, Events, Marketplace, Sports — all in SURNA’s purple/cream theme.
+
+
+---
+
+🧩 Developer Sayings / Hard Rules
+
+> Do not redesign: bubbles, icons, colors follow SURNA (dark purple / cream, grey idle → dark active).
+
+One canonical thread/message schema. No forks for team chats vs DMs.
+
+Every visible control must work (no dummy buttons).
+
+Real-time required (socket). Persist everything (no local-only).
+
+Media uploads go to secure storage; messages store links + metadata.
+
+Calls via WebRTC; signaling via socket; use TURN fallback.
+
+Keep message list virtualized (smooth on long histories).
+
+Role/permissions for group admins; log all admin actions.
+
+
+
+
+
+---
+
+⚙️ Folder Structure
+
+client/src/pages/messages/
+├── Inbox.tsx                // thread list + requests tab
+├── Thread.tsx               // chat view (DM/group)
+├── CallOverlay.tsx          // voice/video call UI
+├── NewMessageDrawer.tsx
+├── GroupSettings.tsx
+└── components/
+    ├── MessageBubble.tsx
+    ├── Composer.tsx
+    ├── MediaPreview.tsx
+    ├── PollComposer.tsx
+    ├── ReadReceipts.tsx
+    ├── TypingDots.tsx
+    └── AttachmentPicker.tsx
+
+server/messenger/
+├── messenger.routes.ts
+├── messenger.service.ts
+└── rtc.signaling.ts          // WebRTC signaling via socket
+
+
+---
+
+🧠 Canonical Schemas (extend only; don’t fork)
+
+type ParticipantRole = 'owner'|'admin'|'member';
+
+type Thread = {
+  id: string;
+  type: 'dm'|'group';
+  title?: string;                 // groups only
+  avatar?: string;                // group photo
+  participants: { userId: string; role: ParticipantRole }[];
+  lastMessageAt: string;
+  createdBy: string;
+  createdAt: string;
+  isArchived?: boolean;
+  isMuted?: boolean;
+  requestPending?: boolean;       // for message requests
+};
+
+type Message = {
+  id: string;
+  threadId: string;
+  senderId: string;
+  kind: 'text'|'image'|'video'|'audio'|'file'|'location'|'poll'|'system'|'payment';
+  text?: string;                  // for kind='text'
+  media?: { url: string; mime: string; width?: number; height?: number; durationMs?: number };
+  poll?: { id: string; question: string; options: string[]; closesAt?: string };
+  location?: { lat: number; lng: number; label?: string };
+  payment?: { amount: number; currency: 'EUR'|'USD'|'GBP'; status: 'pending'|'paid'|'failed' };
+  replyToId?: string;
+  createdAt: string;
+  editedAt?: string;
+  deletedAt?: string;
+  reads?: string[];               // userIds who read
+};
+
+type CallSession = {
+  id: string;
+  threadId: string;
+  kind: 'voice'|'video';
+  initiatorId: string;
+  participants: string[];         // userIds
+  startedAt: string;
+  endedAt?: string;
+  status: 'ringing'|'active'|'missed'|'ended';
+};
+
+
+---
+
+🧱 Screens & UX
+
+1) Inbox
+
+Tabs: Chats, Requests, Archived.
+
+Each thread row shows: avatar(s), name, last message, time, unread badge.
+
+New Message FAB → opens NewMessageDrawer (search users/teams/shops).
+
+Swipe actions: Mute, Archive, Delete (confirm modal).
+
+
+2) Thread (DM / Group)
+
+Header: back, avatar & title, presence (Active / last seen), actions (call, video, info).
+
+Virtualized message list (top → loads older).
+
+Message types supported:
+
+Text (with emoji & mentions @name)
+
+Image/Video (tap to preview, pinch to zoom)
+
+Voice note (waveform + duration)
+
+File (doc/pdf)
+
+Location (mini map preview)
+
+Poll (vote + live tally)
+
+System (e.g., “Joe joined the group”)
+
+Payment (donation/fee receipts, later)
+
+
+Composer: text, emoji, attachment, mic (press-hold to record), send.
+
+Reply/Forward/Delete/Edit (own messages) via long-press.
+
+Typing indicators, read receipts per message.
+
+Linkify usernames, hashtags, URLs.
+
+
+3) Group Settings
+
+Title, photo, description.
+
+Members list with roles; add/remove members (admin only).
+
+Permissions: who can post, start calls, change title, create polls.
+
+Polls list; ability to close polls.
+
+Team mode: if thread.linkedTeamId, show shortcut to Team Page.
+
+
+4) Calls (Voice/Video)
+
+Incoming overlay with Accept / Decline.
+
+In-call UI: mute, camera toggle, switch audio output, end call.
+
+Group calls: grid layout for video; speaker view for large calls.
+
+Network resilience: auto-reconnect with TURN server fallback.
+
+
+
+---
+
+🔌 Backend API (REST + Socket)
+
+# Threads
+GET    /api/messages/threads?tab=chats|requests|archived
+POST   /api/messages/threads       # create DM or group
+PATCH  /api/messages/threads/:id   # title/photo/mute/archive
+POST   /api/messages/threads/:id/invite   # add member(s)
+POST   /api/messages/threads/:id/kick     # remove member
+DELETE /api/messages/threads/:id          # delete (admin/owner)
+
+# Messages
+GET    /api/messages/:threadId?before=&limit=
+POST   /api/messages/:threadId           # send (text/media/poll/location)
+PATCH  /api/messages/:threadId/:msgId    # edit
+DELETE /api/messages/:threadId/:msgId    # delete (soft delete)
+POST   /api/messages/:threadId/:msgId/read    # mark read
+POST   /api/messages/:threadId/:msgId/vote    # poll vote
+
+# Requests flow
+POST   /api/messages/request/:userId     # send request (new DM)
+POST   /api/messages/request/:threadId/accept
+POST   /api/messages/request/:threadId/decline
+
+# Calls (signaling)
+POST   /api/calls/:threadId/start?kind=voice|video
+POST   /api/calls/:callId/answer
+POST   /api/calls/:callId/end
+
+Socket channels
+
+/messenger
+  event: 'thread:update'     // title/photo/members
+  event: 'message:new'       // push new message
+  event: 'message:edit'
+  event: 'message:delete'
+  event: 'message:read'
+  event: 'typing'            // {threadId, userId}
+  event: 'call:ring'
+  event: 'call:answer'
+  event: 'call:end'
+
+
+---
+
+📦 Media Handling
+
+Uploads: image/video/audio/files → secure object storage.
+
+Before send: show MediaPreview (cancel/confirm).
+
+Generate thumbnails server-side.
+
+Limit sizes: images ≤ 10MB, videos ≤ 100MB, audio ≤ 10MB, files ≤ 25MB (configurable).
+
+Virus scan / MIME validation on server.
+
+
+
+---
+
+🔗 Cross-Connections (must wire)
+
+Profiles: tap avatar/name → Person Profile (Pkg 5).
+
+Teams: group threads can be linked to a Team; open Team Page (Pkg 4).
+
+Events: event threads auto-created for attendees (host toggle); open Event page.
+
+Sports: polls in group used for availability (e.g., “Who can play Sat?”); results can populate Team Schedule.
+
+Marketplace: “Message seller” from Product/Shop opens DM with product context.
+
+Payments: payment receipts can be posted as kind='payment' message (Pkg 11).
+
+
+
+---
+
+🎨 Design Specs (SURNA theme)
+
+Background: near-black / dark purple.
+
+Sent bubbles: light cream bg, dark purple text.
+
+Received bubbles: dark purple bg, cream text.
+
+Timestamp & meta in subtle grey.
+
+Icons: grey idle, dark when active (ChatGPT-style).
+
+Roundness: 16px; spacing consistent with Feed/Profiles.
+
+No extra colors; no heavy gradients or shadows.
+
+
+
+---
+
+🔒 Security & Privacy
+
+Auth required on all routes; thread membership enforced server-side.
+
+End-to-end encryption (optional v2) — for now, transport encrypted (TLS), server storage encrypted at rest.
+
+Signed URLs for media; expire links.
+
+Profanity/spam filter on public/group chats; report + block user flow.
+
+Rate-limit message sends & uploads to prevent abuse.
+
+Log moderation events (admin tools in Pkg 13).
+
+
+
+---
+
+⚙️ Performance
+
+Virtualized list (windowed rendering).
+
+Batch read receipts (coalesce in 500ms).
+
+Typing indicators throttled (1s).
+
+Lazy-load media; prefetch thumbnails.
+
+Reconnect logic for socket; exponential backoff.
+
+
+
+---
+
+🧪 QA — “Done When” Checklist
+
+✅ Realtime send/receive across devices.
+✅ Media uploads preview → send → download/playback OK.
+✅ Voice notes record/play; waveforms render; durations correct.
+✅ Polls create/vote/close; results live.
+✅ Requests inbox: accept/decline works; accepted threads move to Chats.
+✅ Voice/video calls connect; mute/camera toggle; end call transitions.
+✅ Group admin: add/remove, change title/photo; permissions enforced.
+✅ Links to Profiles/Teams/Events/Marketplace open correct pages.
+✅ Dark/light mode perfect; long histories stay smooth.
+✅ No duplicate schemas/components; no console errors.
+
+
+---
+
+🧑‍💻 Implementation Order (safe)
+
+1. Build Inbox (tabs + thread rows + request inbox).
+
+
+2. Build Thread (message list + composer + attachments + typing/read).
+
+
+3. Add media (upload, preview, thumbnails, storage links).
+
+
+4. Add voice notes (record/play).
+
+
+5. Add polls (compose, vote, close, tally live).
+
+
+6. Implement requests flow (DM requests + accept/decline).
+
+
+7. Implement groups (roles, admin controls, settings).
+
+
+8. Implement calls (WebRTC + signaling + TURN fallback).
+
+
+9. Wire cross-links (Profiles, Teams, Events, Marketplace, Payments).
+
+
+10. Mobile QA, perf pass, merge dev-messenger.
+
+
+
+
+---
+
+🚫 Don’ts
+
+Don’t store media blobs in DB; store URLs + metadata only.
+
+Don’t allow message deletes to purge for others without “deleted” placeholder (avoid confusion).
+
+Don’t overload socket with per-keystroke typing events; throttle.
+
+Don’t show presence/last-seen if user privacy disables it.
+
+Don’t create separate schemas for team chat vs normal chat — use one + linkedTeamId if needed.
+
+
+
+---

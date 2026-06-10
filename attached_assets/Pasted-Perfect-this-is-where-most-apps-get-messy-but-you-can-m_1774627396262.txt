@@ -1,0 +1,479 @@
+Perfect — this is where most apps get messy, but you can make SURNA feel clean + smart + premium.
+
+You’re right:
+👉 Main notifications ≠ Feed notifications
+They should feel connected, but serve different purposes
+
+I’ll break it properly for your developer 👇
+
+
+---
+
+🔥 SURNA Notifications System (Main vs Feed)
+
+✅ Core Principle
+
+Main Notifications = personal + important
+
+Feed Notifications = contextual + lightweight
+
+Both must feel:
+
+fast
+
+clean
+
+not overwhelming
+
+actionable
+
+
+
+
+---
+
+1) 🔔 MAIN NOTIFICATIONS PAGE (Full Screen)
+
+Purpose:
+
+Everything important to YOU
+
+
+---
+
+Sections (Top → Bottom)
+
+1. Priority (always on top)
+
+Follow requests
+
+Messages (missed / new)
+
+Mentions (@you)
+
+Invites (team, event, challenge)
+
+
+👉 These should never get buried
+
+
+---
+
+2. Today
+
+3. Yesterday
+
+4. Last 7 Days
+
+
+---
+
+Layout (like your screenshot but improved)
+
+Each item:
+
+Avatar (36–40px)
+
+Title (bold part)
+
+Description
+
+Time (small)
+
+Action button (if needed)
+
+
+
+---
+
+🔥 SURNA Upgrade — Smart Actions
+
+Instead of just showing text, every notification should allow action:
+
+Examples:
+
+Team invite → [View] [Join]
+
+Event → [View] [Join]
+
+Follow suggestion → [Follow]
+
+Message → [Reply]
+
+Challenge → [Accept]
+
+
+---
+
+Style
+
+Background:
+
+Light mode → cream/white
+
+Dark mode → deep purple/black
+
+
+Buttons:
+
+Rounded pill
+
+Purple gradient for primary
+
+Grey for secondary
+
+
+
+---
+
+Interaction
+
+Tap notification → opens related content
+
+Swipe:
+
+right → mark as read
+
+left → delete
+
+
+
+
+---
+
+🔥 Smart Features (IMPORTANT)
+
+1. “You’re all caught up”
+
+Keep it — but better:
+
+Add subtle icon animation
+
+Add “Explore more” button
+
+
+
+---
+
+2. Filter Button (top right)
+
+Options:
+
+All
+
+Mentions
+
+Teams
+
+Events
+
+Messages
+
+Activity
+
+
+
+---
+
+3. Grouping
+
+Instead of: “X liked your post” “Y liked your post”
+
+👉 Group:
+
+“12 people liked your post”
+
+Tap → expand
+
+
+---
+
+2) 🔴 FEED / MAIN PAGE NOTIFICATIONS (Lightweight)
+
+This is what appears:
+
+top icons
+
+badges
+
+subtle alerts
+
+
+
+---
+
+A) Notification Dot System
+
+Icons:
+
+Messages
+
+Notifications
+
+Activity
+
+
+
+---
+
+Behavior:
+
+Small red dot:
+
+Something new exists
+
+
+Number badge:
+
+Only for important items
+
+
+
+---
+
+🔥 SURNA Upgrade:
+
+Different dot types:
+
+🔴 Red → urgent (messages, mentions)
+
+🟣 Purple → activity (likes, follows)
+
+🟢 Green → live (events happening)
+
+
+
+---
+
+3) 🔔 Notification Preview (Feed Interaction)
+
+Instead of forcing user to go to notification page:
+
+👉 Add peek system
+
+
+---
+
+Behavior:
+
+When tapping notification icon:
+
+Slide up a mini panel (bottom sheet)
+
+Shows last 5–8 notifications
+
+
+
+---
+
+Actions:
+
+Tap → open
+
+Swipe → clear
+
+“See all” → full notifications page
+
+
+
+---
+
+👉 This feels very Apple / modern
+
+
+---
+
+4) 🔥 Contextual Notifications (SURNA SPECIAL)
+
+This is where you win.
+
+
+---
+
+Based on user behavior:
+
+If user is active in football:
+
+→ show football-related notifications first
+
+If user joined events:
+
+→ prioritize event updates
+
+If user uses map:
+
+→ show nearby activity
+
+
+---
+
+👉 Not random like Instagram
+👉 Feels intelligent
+
+
+---
+
+5) Notification Types (SURNA SYSTEM)
+
+Your system should support:
+
+
+---
+
+Social
+
+Likes
+
+Comments
+
+Mentions
+
+Follows
+
+
+
+---
+
+Messaging
+
+New message
+
+Reply
+
+Voice message
+
+
+
+---
+
+Teams
+
+Invite
+
+Join request
+
+Updates
+
+
+
+---
+
+Events
+
+Invitation
+
+Reminder
+
+Live now
+
+
+
+---
+
+Map / Nearby
+
+Nearby match
+
+Nearby players
+
+Nearby event
+
+
+
+---
+
+Challenges / Protests
+
+New challenge
+
+Someone accepted
+
+Petition updates
+
+
+
+---
+
+System
+
+Updates
+
+Announcements
+
+
+
+---
+
+6) Animation & Feel
+
+Must feel alive:
+
+New notification → slight slide + fade
+
+Badge appears → soft pop
+
+Mark as read → fade out
+
+Open → smooth transition
+
+
+
+---
+
+7) Performance Rules
+
+Tell developer:
+
+No lag when opening notifications
+
+Load progressively
+
+Cache recent notifications
+
+Avoid reloading entire list
+
+
+
+---
+
+8) What NOT to do
+
+❌ Don’t flood user with notifications
+
+❌ Don’t make everything same priority
+
+❌ Don’t use random colors
+
+❌ Don’t make it feel like spam
+
+❌ Don’t force full-page navigation always
+
+
+
+---
+
+🎯 Final Vision
+
+Tell your developer this:
+
+👉 “Notifications should feel like a smart assistant — showing the right things at the right time, not just a list of everything that happened.”
+
+
+---
+
+🔥 My honest take
+
+If you get this right:
+
+Users will check your app more
+
+Engagement will increase naturally
+
+App feels alive and intelligent
+
+
+
+---
+
+If you want next step: 👉 I can design the exact notification UI (pixel-perfect spacing + colors)
+👉 Or build the logic system (priority ranking + backend flow)

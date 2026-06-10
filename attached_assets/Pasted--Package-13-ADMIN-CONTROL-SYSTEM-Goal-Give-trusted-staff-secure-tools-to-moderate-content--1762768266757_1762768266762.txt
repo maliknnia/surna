@@ -1,0 +1,360 @@
+
+🛡️ Package #13 — ADMIN CONTROL SYSTEM
+
+Goal: Give trusted staff secure tools to moderate content, manage users/teams/shops/events/protests, review payments/payouts, view global analytics, and configure platform settings — with full audit logs and role-based access.
+
+
+---
+
+🧩 Developer Sayings / Hard Rules
+
+> Single Admin app (separate route or subdomain), role-based access control (RBAC).
+
+Do not touch public UI/UX; admin is isolated under /admin.
+
+Every admin action writes an immutable audit log.
+
+No duplicate schemas; extend canonical models only.
+
+Sensitive ops (payouts, deletions, bans) require 2-step confirm + reason.
+
+Respect GDPR: export/delete user data flows.
+
+Dark-purple/cream theme; minimal, no extra colors.
+
+
+
+
+
+---
+
+⚙️ Folder Structure
+
+client/src/pages/admin/
+├── AdminLayout.tsx
+├── Dashboard.tsx
+├── Users.tsx
+├── Teams.tsx
+├── Content.tsx            // feed posts, comments, media
+├── Protests.tsx
+├── Events.tsx
+├── Marketplace.tsx        // shops, products, orders
+├── Payments.tsx           // wallets, txs, payouts
+├── Analytics.tsx          // global KPIs
+├── Settings.tsx           // feature flags, configuration
+└── components/
+    ├── DataTable.tsx
+    ├── AuditDrawer.tsx
+    ├── BulkActionsBar.tsx
+    ├── RiskBadge.tsx
+    ├── StatTile.tsx
+    └── ConfirmDialog.tsx
+
+server/admin/
+├── admin.routes.ts
+├── rbac.ts                 // roles & permissions
+├── audit.service.ts        // immutable audit log
+└── actions.service.ts      // high-level admin operations
+
+
+---
+
+🧠 Canonical Models (extend only)
+
+type Role = 'super_admin'|'moderator'|'finance_admin'|'event_admin'|'support';
+type Permission =
+  | 'user:read'|'user:ban'|'user:verify'|'user:gdpr_export'|'user:gdpr_delete'
+  | 'content:read'|'content:remove'|'content:restore'
+  | 'team:read'|'team:verify'|'team:remove'
+  | 'event:approve'|'event:remove'
+  | 'protest:approve'|'protest:remove'
+  | 'shop:read'|'shop:verify'|'shop:remove'|'order:refund'
+  | 'payments:read'|'payouts:approve'|'refunds:approve'
+  | 'settings:read'|'settings:write'
+  | 'analytics:read';
+
+type AdminAudit = {
+  id: string;
+  adminId: string;
+  action: string; // e.g., 'user.ban', 'post.remove', 'payout.approve'
+  target?: { type: string; id: string };
+  reason?: string;
+  before?: any;  // redacted snapshot
+  after?: any;   // redacted snapshot
+  createdAt: string;
+  ip?: string;
+};
+
+
+---
+
+🧱 Screens & Capabilities
+
+1) Dashboard
+
+Stat tiles: DAU/MAU, GMV/Revenue, Refund Rate, Active Protests, Open Disputes, Abuse Reports.
+
+Queues: Reports, Pending approvals (protests/events/shops), Payout requests.
+
+Quick links: “Today’s audit log”, “Error rate”, “Queues”.
+
+
+2) Users
+
+Search, filters (status: active/suspended/verified).
+
+Actions: Ban/Suspend/Unsuspend, Verify, Reset 2FA, Export Data (GDPR), Delete (GDPR).
+
+View: profile snapshot, recent posts, payments summary, reports filed.
+
+All actions write AdminAudit.
+
+
+3) Content Moderation (Feed & Media)
+
+Tables: Posts, Comments, Stories, Media.
+
+Tools: Remove/Restore, Shadowban, Warn user, Hash-ban media (block re-uploads).
+
+AI assist flags (nudity/hate/spam) with risk levels (Low/Med/High).
+
+Deep link to original content/profile.
+
+
+4) Teams
+
+Verify team, edit metadata (city/sport), remove, transfer ownership (with consent).
+
+View sponsors, challenges history, rating adjustments (with reason).
+
+Schedule overview; disputes attached.
+
+
+5) Events
+
+Approve public events; edit time/location on organizer request; remove illegal duplicates.
+
+See tickets sold, refunds, attendees; contact organizer.
+
+
+6) Protests
+
+Approve/Reject; reason required on reject.
+
+Monitor signatures, growth, reports; remove/close if policy violation.
+
+Link to Feed post and Map pin.
+
+
+7) Marketplace
+
+Shops: verify, suspend, remove.
+
+Products: flag/remove counterfeit content.
+
+Orders: refund (with reason & policy window), see dispute threads.
+
+Seller KPIs: cancellation rate, refund rate, chargeback risk (RiskBadge).
+
+
+8) Payments
+
+Wallet search; transaction explorer; export CSV for finance.
+
+Payout approvals (Stripe Connect): amount, account, risk score, history → Approve/Reject.
+
+Refund queue (manual review); escrow overrides (with supervisor approval).
+
+
+9) Analytics (Global)
+
+DAU/MAU charts, revenue/GMV, refunds, top sports/cities heatmap, message volume, calls.
+
+Drill-downs open filtered lists (facts/rollups from Pkg 12).
+
+
+10) Settings
+
+Feature flags (enable/disable modules).
+
+Abuse thresholds (rate limits, spam score).
+
+Content policy strings (copy shown in reports).
+
+API keys management (read-only masked).
+
+Maintenance mode toggle.
+
+
+
+---
+
+🔌 REST API (admin-only, JWT + role checks)
+
+# Auth & RBAC
+POST   /api/admin/login
+GET    /api/admin/me
+GET    /api/admin/permissions
+
+# Users
+GET    /api/admin/users?q=&status=
+POST   /api/admin/users/:id/ban           {reason}
+POST   /api/admin/users/:id/unban
+POST   /api/admin/users/:id/verify
+POST   /api/admin/users/:id/gdpr-export
+POST   /api/admin/users/:id/gdpr-delete   {confirm:true}
+
+# Content
+GET    /api/admin/content/posts?q=&status=
+POST   /api/admin/content/posts/:id/remove   {reason}
+POST   /api/admin/content/posts/:id/restore
+POST   /api/admin/media/:id/hashban
+
+# Teams
+GET    /api/admin/teams?q=&status=
+POST   /api/admin/teams/:id/verify
+POST   /api/admin/teams/:id/remove         {reason}
+
+# Events
+GET    /api/admin/events?status=pending|approved
+POST   /api/admin/events/:id/approve
+POST   /api/admin/events/:id/remove        {reason}
+
+# Protests
+GET    /api/admin/protests?status=pending|approved
+POST   /api/admin/protests/:id/approve
+POST   /api/admin/protests/:id/close       {reason}
+POST   /api/admin/protests/:id/remove      {reason}
+
+# Marketplace
+GET    /api/admin/shops?q=&status=
+POST   /api/admin/shops/:id/verify
+POST   /api/admin/shops/:id/suspend        {reason}
+POST   /api/admin/products/:id/remove      {reason}
+POST   /api/admin/orders/:id/refund        {reason, amountCents}
+
+# Payments
+GET    /api/admin/wallets?q=
+GET    /api/admin/transactions?ownerType=&ownerId=&from=&to=
+GET    /api/admin/payouts?status=pending
+POST   /api/admin/payouts/:id/approve      {reason}
+POST   /api/admin/payouts/:id/reject       {reason}
+POST   /api/admin/escrow/:challengeId/release  {winnerIds[]}
+POST   /api/admin/escrow/:challengeId/refund   {reason}
+
+# Analytics
+GET    /api/admin/analytics/global?period=day|week|month
+
+# Audit
+GET    /api/admin/audit?adminId=&from=&to=&action=
+
+
+---
+
+🔒 Security & Compliance
+
+Admin auth: separate login, short JWT lifetime, enforced 2FA.
+
+RBAC: granular permissions; no “god mode” without super_admin.
+
+Audit everything: action, target, before/after redacted snapshots, IP, timestamp.
+
+Rate-limit admin APIs; IP allow-list for payout ops.
+
+PII handling: mask emails/phones; “reveal” requires permission + reason prompt.
+
+Backups: encrypted, tested restores; runbooks for incidents.
+
+GDPR: export (JSON/CSV bundle) + delete user workflows (with grace period).
+
+
+
+---
+
+🎨 Admin UI (SURNA theme)
+
+Same tokens (dark purple bg, cream text, grey meta).
+
+DataTable with column filters, bulk select, CSV export.
+
+RiskBadge: Low/Med/High using subtle shades within theme (no neon).
+
+ConfirmDialog with reason textarea for every destructive action.
+
+AuditDrawer slides in from right with full context.
+
+
+
+---
+
+⚙️ Performance & Ops
+
+Use server-side pagination for tables.
+
+Queue heavy jobs (exports, large refunds) to workers.
+
+Observability: log levels, request tracing, error dashboard.
+
+Health endpoints for admin services; alerting on queue backlog.
+
+
+
+---
+
+🧪 QA — “Done When” Checklist
+
+✅ RBAC verified: each role sees only allowed modules/actions.
+✅ Every destructive action requires confirmation + reason; appears in Audit.
+✅ Reports queue flows: view → act → resolved status.
+✅ Approvals (events/protests/shops) gate public visibility correctly.
+✅ Refunds & payouts apply to wallets/ledgers and reflect in Payments (Pkg 11).
+✅ GDPR export produces bundle; delete anonymizes user and cascades safely.
+✅ Global analytics load quickly; drill-downs open the right lists.
+✅ No impact on public app routes; no console errors.
+
+
+---
+
+🧑‍💻 Implementation Order (safe)
+
+1. Build RBAC + admin auth (2FA).
+
+
+2. Implement Audit service and wire every action.
+
+
+3. Ship Dashboard + Users modules first (ban/verify/GDPR).
+
+
+4. Add Content moderation, then Teams/Events/Protests.
+
+
+5. Integrate Marketplace moderation + Payments (refund/payout).
+
+
+6. Add Analytics view reading Package 12 rollups.
+
+
+7. Add Settings (feature flags, thresholds).
+
+
+8. End-to-end QA → merge dev-admin → staging → release.
+
+
+
+
+---
+
+🚫 Don’ts
+
+Don’t expose admin APIs on public domain without auth/ACL.
+
+Don’t allow silent destructive actions — audit or it didn’t happen.
+
+Don’t keep raw PII in logs.
+
+Don’t bypass payouts approval flow.
+
+Don’t modify public schemas; extend and gate via admin services.
+
+

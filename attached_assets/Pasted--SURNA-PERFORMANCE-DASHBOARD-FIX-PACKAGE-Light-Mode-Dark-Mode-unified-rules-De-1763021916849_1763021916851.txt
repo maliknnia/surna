@@ -1,0 +1,233 @@
+
+📦 SURNA — PERFORMANCE DASHBOARD FIX PACKAGE
+
+(Light Mode + Dark Mode — unified rules)
+
+
+---
+
+🛑 Developer Hard Rules (MUST FOLLOW)
+
+> ❗ Do NOT redesign anything.
+❗ Do NOT change colors, shapes, fonts, or spacing outside the theme system.
+❗ Fix only what is broken, inconsistent, or misaligned.
+❗ Use the global SURNA theme tokens, not random hex codes.
+❗ Light mode and dark mode must mirror each other exactly — only colors invert.
+❗ No duplicated components — everything use the same PerformanceCard component.
+❗ Fix paddings and shadows without breaking structure.
+
+
+
+
+---
+
+🎨 GLOBAL THEME TOKENS (use these only)
+
+Dark Mode
+
+Background: #16131F (near-black purple)
+
+Surface card: #1F1A2B
+
+Text primary: #F4ECE6 (cream)
+
+Text secondary: #C7C0BA
+
+Icons: cream
+
+Borders: rgba(255,255,255,0.06)
+
+
+Light Mode
+
+Background: #F7F4EF (cream)
+
+Surface card: #FFFFFF
+
+Text primary: #2A1F35
+
+Text secondary: #70687A
+
+Icons: dark purple
+
+Borders: rgba(0,0,0,0.08)
+
+
+
+---
+
+🧱 STRUCTURE FIX — UNIFY BOTH MODES
+
+Your performance modal currently has:
+
+❌ inconsistent spacing
+❌ wrong border radius
+❌ inconsistent icon alignment
+❌ different card shadows
+❌ weird top/bottom padding
+❌ misaligned grid
+❌ modal background is not the same in both themes
+
+We fix that with a SINGLE consistent layout…
+
+
+---
+
+📐 Final Correct Layout (copy this)
+
+<View style={styles.modalContainer}>
+  
+  <View style={styles.header}>
+    <Icon trophy />
+    <Text style={styles.title}>Performance Dashboard</Text>
+    <Pressable style={styles.closeButton}><X /></Pressable>
+  </View>
+
+  <Text style={styles.subtitle}>
+    Track your progress and redeem rewards
+  </Text>
+
+  <View style={styles.statsGrid}>
+    <PerformanceCard icon="bolt" label="Total Points" value={33} />
+    <PerformanceCard icon="trend" label="Events" value={0} />
+    <PerformanceCard icon="trophy" label="Teams" value={0} />
+    <PerformanceCard icon="star" label="Challenges" value={0} />
+  </View>
+
+  <View style={styles.sectionHeader}>
+    <Icon gift />
+    <Text>Available Rewards</Text>
+  </View>
+
+  <Text style={styles.emptyText}>
+    No rewards available at the moment
+  </Text>
+
+</View>
+
+
+---
+
+📏 SPACING RULES (important)
+
+Modal container
+
+Padding top: 36px
+
+Padding horizontal: 28px
+
+Padding bottom: 48px
+
+Width: 100%
+
+Border radius: 32px (your box is too small and inconsistent)
+
+Inner background uses the theme surface color
+
+
+Title
+
+Font size: 28px
+
+Weight: 700
+
+Center aligned
+
+Top spacing from trophy icon: 8px
+
+
+Subtitle
+
+Font size: 16px
+
+Weight: 400
+
+Line height: 24px
+
+Margin top: 4px
+
+Margin bottom: 32px
+
+
+Stats grid
+
+Use 2 x 2 grid, equal spacing:
+
+Column gap: 18px
+Row gap: 22px
+Card height: 130px
+Card radius: 22px
+Shadow: subtle
+
+
+---
+
+🎁 Rewards Section
+
+Spacing MUST be:
+
+Header spacing top: 40px
+
+Icon + text: 12px gap
+
+Empty text spacing: 16px under header
+
+Empty text aligned center
+
+
+
+---
+
+🔍 SPECIFIC PROBLEMS IN YOUR SCREENSHOTS
+
+❌ Light mode issue #1
+
+Background behind modal is dirty grey instead of blurred overlay.
+Fix: Use theme.backdrop = rgba(0,0,0,0.45) blurred.
+
+❌ Light mode issue #2
+
+Cards have uneven border-radius (looks cheap).
+Fix: Force 22px everywhere.
+
+❌ Light mode issue #3
+
+Icons are different sizes.
+Fix: Use uniform 28px icons.
+
+
+---
+
+❌ Dark mode issue #1
+
+Cards look darker than they should—they should match dark surface level.
+Use #1F1A2B.
+
+❌ Dark mode issue #2
+
+Text secondary color is too bright.
+Use #C7C0BA.
+
+❌ Dark mode issue #3
+
+Grid spacing is uneven.
+Fix is above.
+
+
+---
+
+🧨 Final Developer Warning
+
+> ⚠️ DO NOT change any component by hand.
+⚠️ Use theme tokens only.
+⚠️ Fix layout using global spacing units.
+⚠️ Do NOT create copies.
+⚠️ This modal must be identical in light + dark mode except colors.
+⚠️ All these rules will be reused in 30+ places later in the app.
+
+
+
+This makes SURNA consistent and future-proof.
+
+
+---

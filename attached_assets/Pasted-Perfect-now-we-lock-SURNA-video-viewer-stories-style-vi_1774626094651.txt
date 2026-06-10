@@ -1,0 +1,541 @@
+Perfect — now we lock SURNA video viewer (stories-style videos) the same way:
+👉 same smoothness as Instagram/TikTok
+👉 but SURNA identity + deeper connection
+
+I’ll keep it clean, specific, developer-ready 👇
+
+
+---
+
+🔥 SURNA Video Viewer (Stories Style) — Final Spec
+
+✅ Core Principle
+
+Feels like Instagram Stories + TikTok smoothness
+
+BUT:
+
+cleaner UI
+
+less clutter
+
+deeper interaction (SURNA ecosystem)
+
+
+
+
+---
+
+1) Full Screen Layout
+
+Structure (top → bottom):
+
+1. Progress bars (if multi-story)
+
+
+2. User info
+
+
+3. Video content (full screen)
+
+
+4. Right-side actions (optional/minimal)
+
+
+5. Bottom interaction bar
+
+
+
+
+---
+
+📐 Layout rules
+
+Edge-to-edge video
+
+No heavy borders
+
+Keep UI floating, not boxed
+
+Use safe areas properly (top & bottom)
+
+
+
+---
+
+2) Video Behavior
+
+Playback:
+
+Autoplay instantly
+
+Loop if single video
+
+Sync with progress bar
+
+
+Controls:
+
+Tap right → next story/video
+
+Tap left → previous
+
+Hold → pause
+
+Release → resume
+
+
+
+---
+
+🔥 SURNA Upgrade:
+
+Slight haptic feedback on tap (if possible)
+
+Smooth pause (not abrupt freeze)
+
+
+
+---
+
+3) Top Area (User + Info)
+
+Layout:
+
+Top padding: 12px
+
+Horizontal padding: 12px
+
+
+Contains:
+
+Profile pic (32px)
+
+Username
+
+Time (e.g. 29m ago)
+
+Optional tag:
+
+Team
+
+Event
+
+Coach
+
+Place
+
+
+
+
+---
+
+Style:
+
+Text: off-white (not pure white)
+
+Slight shadow for readability
+
+Keep minimal
+
+
+
+---
+
+4) Progress Bars (if story format)
+
+Height: 2.5px
+
+Gap: 4px
+
+Smooth animation
+
+White with opacity for inactive
+
+Full white for active
+
+
+
+---
+
+5) Right Side Actions (DON’T copy TikTok fully)
+
+Keep it minimal:
+
+Like ❤️
+
+Comment 💬
+
+Share ↗
+
+Save 🔖
+
+
+Layout:
+
+Vertical stack
+
+Right side center-aligned
+
+Spacing between icons: 18–22px
+
+
+
+---
+
+🔥 SURNA Upgrade:
+
+Only show these when needed:
+
+If video is from feed → show all
+
+If pure story → reduce to:
+
+React
+
+Reply
+
+
+
+👉 Less clutter = more premium
+
+
+---
+
+6) Bottom Interaction Bar (VERY IMPORTANT)
+
+Layout:
+
+Full width rounded bar
+
+Height:
+
+48–52px
+
+Padding:
+
+Left/right: 12px
+
+Bottom: respect safe area
+
+
+
+---
+
+Structure:
+
+Left → Right:
+
+“Reply…” input
+
+Quick reactions (❤️ 😂 😮)
+
+Plus (+)
+
+
+
+---
+
+Style:
+
+Background: dark translucent blur
+
+Border: subtle light stroke
+
+Rounded full pill
+
+
+
+---
+
+🔥 SURNA Upgrade (IMPORTANT)
+
+1. Smart Reply Field
+
+Placeholder changes:
+
+“Reply to story”
+
+“React to moment”
+
+“Join this event”
+
+“Comment on play”
+
+
+👉 Context-aware = premium feel
+
+
+---
+
+2. Quick Reaction Feedback
+
+When user taps emoji:
+
+Small popup: 👉 “Reaction sent” (like your screenshot)
+
+
+Animation:
+
+Fade + scale
+
+Duration: 140–180ms
+
+Center or near tap point
+
+
+
+---
+
+7) Plus (+) Button — POWER FEATURE
+
+On tap → bottom sheet
+
+Options:
+
+Reply with message
+
+Send voice note
+
+Create poll (in reply)
+
+Share this video
+
+Invite to event
+
+Save to plan
+
+Tag team / coach
+
+
+
+---
+
+👉 This is where SURNA becomes deeper than Instagram
+
+
+---
+
+8) Video Types (SURNA advantage)
+
+Videos should not all be the same.
+
+Types:
+
+Normal user story
+
+Team highlight
+
+Match clip
+
+Coach tip
+
+Event promo
+
+Challenge clip
+
+Protest / petition content
+
+
+
+---
+
+Based on type → change UI:
+
+Example:
+
+If it's a team video:
+
+Show:
+
+“View Team”
+
+“Join Team”
+
+
+
+If it's an event video:
+
+Show:
+
+“View Event”
+
+“Join Event”
+
+
+
+If it's a challenge:
+
+Show:
+
+“Accept Challenge”
+
+
+
+
+---
+
+👉 This is MASSIVE — no one does this properly
+
+
+---
+
+9) Caption / Text Overlay
+
+Style:
+
+Bottom-left aligned
+
+Max 2–3 lines
+
+Fade after few seconds (optional)
+
+
+
+---
+
+Behavior:
+
+Tap → expand full caption
+
+Keep clean, not heavy like TikTok
+
+
+
+---
+
+10) Gesture System
+
+Required:
+
+Tap left/right → navigate
+
+Hold → pause
+
+Swipe up → open details (optional)
+
+Swipe down → exit
+
+
+
+---
+
+Smoothness:
+
+No lag
+
+No delay
+
+Gesture priority must feel natural
+
+
+
+---
+
+11) Animations (CRITICAL)
+
+Must have:
+
+Open video → soft zoom (180–220ms)
+
+Reaction → pop
+
+Swipe → fluid transition
+
+Exit → smooth fade/slide
+
+
+
+---
+
+12) “Reaction Sent” Feedback (from your image)
+
+Keep it — but refine:
+
+Style:
+
+Rounded pill
+
+Dark translucent background
+
+White text
+
+Slight blur
+
+
+Position:
+
+Center or slightly above bottom
+
+
+Duration:
+
+Show: 1–1.5s
+
+Fade out smoothly
+
+
+
+---
+
+13) Performance Rules
+
+Tell your developer:
+
+Preload next video
+
+No buffering delays
+
+Optimize video size
+
+Use adaptive streaming if possible
+
+Keep UI thread smooth
+
+
+
+---
+
+❌ What NOT to do
+
+❌ Don’t copy TikTok fully
+
+❌ Don’t overload right side with icons
+
+❌ Don’t make bottom bar heavy
+
+❌ Don’t use random colors
+
+❌ Don’t break flow with slow animations
+
+
+
+---
+
+🎯 Final Vision
+
+Tell your developer this:
+
+👉 “Videos should feel like stories — fast, immersive, and clean — but smarter, with context-based actions tied to SURNA (teams, events, challenges, etc.)”
+
+
+---
+
+🔥 My honest feedback
+
+You’re building something strong here because:
+
+You’re copying only the good UX patterns
+
+You’re adding real functional depth
+
+You’re not making it messy
+
+
+👉 That’s exactly how big apps are built.
+
+
+---
+
+If you want next level: 👉 I can design the exact bottom sheet for video actions + SURNA-specific UI components
+👉 Or map how videos connect to feed, profiles, teams, and map system

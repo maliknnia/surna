@@ -1,0 +1,342 @@
+
+---
+
+🏟️ Package #7 — GYMS / FACILITIES (Booking + Memberships + Virtual Mode)
+
+🎯 Purpose
+
+Enable users to discover gyms/venues, view details, book sessions or memberships, chat with managers, join virtual classes, and see gym-hosted events — all fully connected to Map, Payments, Messenger, Profiles, and Analytics.
+
+
+---
+
+🧩 Developer Sayings / Hard Rules
+
+> Do not redesign: SURNA dark-purple + cream theme; same radii/spacing/icons.
+
+One canonical Gym schema; no forks. Extend via fields only.
+
+Every button is functional (Book, Message, Join, Pay, View on Map).
+
+Wire Payments (Pkg 11) for bookings/memberships; Messenger for contact.
+
+Virtual Mode uses the app’s Live/Video primitives (from Feed/Live).
+
+Tabs lazy-load; page shell instant.
+
+All writes return updated counters to keep UI in sync.
+
+
+
+
+
+---
+
+⚙️ Folder Structure
+
+client/src/pages/gyms/
+├── GymPage.tsx                 // shell + header + tabs
+├── sections/
+│   ├── Overview.tsx
+│   ├── Memberships.tsx
+│   ├── Reviews.tsx
+│   ├── TrainersClasses.tsx
+│   ├── Events.tsx
+│   └── VirtualGym.tsx          // live & recorded sessions
+└── components/
+    ├── GymHeader.tsx           // cover, logo, actions, rating
+    ├── AmenitiesList.tsx
+    ├── PriceCard.tsx
+    ├── ClassSchedule.tsx
+    ├── BookingDialog.tsx
+    ├── PaymentSummary.tsx
+    └── PartnerStrip.tsx
+
+server/gyms/
+├── gyms.routes.ts
+└── gyms.service.ts
+
+
+---
+
+🧠 Canonical Types (extend only)
+
+type Rating = { value: number; count: number };
+
+type Gym = {
+  id: string;
+  name: string;
+  slug: string;
+  logo?: string;
+  cover?: string;
+  verified?: boolean;
+  description?: string;
+  location: { lat: number; lng: number; address?: string };
+  openHours?: { day: string; open: string; close: string }[];
+  amenities: string[];               // wifi, showers, sauna...
+  basePrice?: { amount: number; currency: 'EUR'|'USD'|'GBP' };
+  rating: Rating;
+  contact?: { phone?: string; email?: string };
+  partners?: { id:string; name:string; logo?:string; link?:string }[];
+  social?: { instagram?: string; web?: string };
+  createdAt: string;
+};
+
+type MembershipPlan = {
+  id: string;
+  gymId: string;
+  name: string;                      // Monthly, Annual, Day Pass
+  description?: string;
+  price: { amount: number; currency: 'EUR'|'USD'|'GBP' };
+  billing: 'one_time'|'monthly'|'yearly';
+  perks?: string[];                  // classes included, sauna access, etc.
+  active: boolean;
+};
+
+type GymClass = {
+  id: string;
+  gymId: string;
+  title: string;                     // HIIT, Yoga, Boxing
+  trainerId?: string;                // link to Person Profile
+  startsAt: string;                  // ISO
+  endsAt?: string;
+  capacity?: number;
+  attendees: string[];               // userIds
+  price?: { amount: number; currency: string }; // optional override
+  virtual?: boolean;                 // used by Virtual Mode too
+};
+
+type Booking = {
+  id: string;
+  gymId: string;
+  userId: string;
+  itemType: 'membership'|'class'|'slot';
+  itemId: string;                    // MembershipPlan.id or GymClass.id
+  status: 'pending'|'confirmed'|'cancelled'|'refunded';
+  paymentId?: string;                // link to Payments
+  createdAt: string;
+};
+
+
+---
+
+🧱 Screen / Page Layout
+
+Gym Header
+
+Cover image + circular logo, gym name, verified badge.
+
+Rating ⭐ + review count, Open Now/Closed (based on hours).
+
+Actions: Book, View on Map, Message, Favorite.
+
+PartnerStrip (brand logos) if present.
+
+
+Tabs (lazy-loaded)
+
+1. Overview — description, amenities (icons), gallery slider, base price, hours, address.
+
+
+2. Memberships & Payment — list of MembershipPlans with Subscribe/Buy buttons.
+
+
+3. Reviews — ratings breakdown + verified member reviews, reply from gym.
+
+
+4. Trainers & Classes — list Trainers (links to Person Profiles) + ClassSchedule (join/pay).
+
+
+5. Events — gym-hosted or partner events (connects to Events pages).
+
+
+6. Virtual Gym — Live classes + Recorded library (join/watch/pay).
+
+
+
+
+---
+
+🧩 Required Actions (must work)
+
+Book (membership/class/slot) → opens BookingDialog → PaymentSummary → pay (Pkg 11) → confirmed → Calendar add → Receipt saved.
+
+View on Map → open Map centered on gym’s pin (Pkg 3).
+
+Message → opens Messenger with gym manager (Pkg 8).
+
+Favorite → toggles & persists to user profile.
+
+Join Virtual Class → start player (live) or open recording page; chat/reactions enabled.
+
+Review → verified attendees only; gym can reply.
+
+
+
+---
+
+🔌 Backend Endpoints
+
+# Gyms
+GET    /api/gyms?near=&amenities=&openNow=&verified=
+GET    /api/gyms/:id
+POST   /api/gyms/:id/favorite
+POST   /api/gyms/:id/message
+
+# Memberships & Classes
+GET    /api/gyms/:id/memberships
+GET    /api/gyms/:id/classes?from=&to=&virtual=
+POST   /api/gyms/:id/book          # { itemType, itemId } -> creates Booking + payment intent
+GET    /api/bookings/:id
+
+# Reviews
+GET    /api/gyms/:id/reviews
+POST   /api/gyms/:id/reviews       # verified attendee only
+
+# Virtual Gym
+GET    /api/gyms/:id/virtual/sessions      # list live & recorded
+POST   /api/gyms/:id/virtual/start         # gym/trainer starts live
+POST   /api/gyms/:id/virtual/stop
+POST   /api/gyms/:id/virtual/upload        # add recording (owner only)
+
+Rules
+
+Bookings create payment intents (Stripe/PayPal/Wallet).
+
+On success: set Booking.status = confirmed, add to user Calendar.
+
+Refunds flow through Pkg 11; update booking to refunded.
+
+
+
+---
+
+🎥 Virtual Gym Mode (details)
+
+Live: uses the same live/video infra as Feed Live; room = gym_live_<gymId>.
+
+Viewer actions: Join, React (hearts), Chat (moderated).
+
+Recorded: store in gym library; paywall via Payments; show duration, trainer, difficulty.
+
+Performance link: If enabled, users can opt-in to send session stats to Performance (Pkg 12) for their profile progress.
+
+
+
+---
+
+🔗 Cross-Connections
+
+Map: gym pin opens GymPage; “View on Map” centers pin (Pkg 3).
+
+Messenger: Message gym manager (Pkg 8).
+
+Payments: memberships/classes/virtual purchases via Wallet/Stripe (Pkg 11).
+
+Profiles: Trainers link to Person Profiles (Pkg 5).
+
+Events: gym events list → Event pages (Pkg 2).
+
+Analytics: bookings, revenue, attendance logged (Pkg 12).
+
+Admin: gym verification, review moderation (Pkg 13).
+
+
+
+---
+
+🎨 Design Specs (SURNA)
+
+Background: dark purple / near black.
+
+Text: cream; secondary grey for meta.
+
+Buttons: cream bg + purple text (invert when needed).
+
+Cards: 16px radius; soft shadow; consistent paddings.
+
+Icons: grey idle → dark purple active (ChatGPT style).
+
+No new colors, no heavy gradients.
+
+
+
+---
+
+🧪 QA — “Done When” Checklist
+
+✅ Gym page loads fast; tabs lazy-load without flicker.
+✅ Book flow works: select → pay → confirmed → receipt → calendar.
+✅ Memberships show active status; renewal info visible.
+✅ Classes show capacity and attendee count; join/pay works; refunds update.
+✅ Virtual Gym live join + reactions work; recordings play smoothly; paywall enforced.
+✅ Map, Messenger, Profiles, Events links are correct.
+✅ Reviews only from verified attendees; gym replies visible.
+✅ Dark/light mode perfect; no layout shifts on mobile.
+✅ No duplicate schemas/components.
+
+
+---
+
+🧑‍💻 Implementation Order (safe)
+
+1. Build GymPage shell + header + tabs.
+
+
+2. Implement Overview (amenities, hours, gallery, map link).
+
+
+3. Implement Memberships (plans list → Book → Payment).
+
+
+4. Implement Trainers & Classes (schedule + join/pay + calendar).
+
+
+5. Implement Reviews (write/reply; verified checks).
+
+
+6. Implement Events (link to event pages).
+
+
+7. Implement Virtual Gym (live + recordings; payments + chat).
+
+
+8. Wire Messenger, Map, Payments, Analytics.
+
+
+9. Mobile QA → merge as dev-gyms.
+
+
+
+
+---
+
+🔒 Security & Integrity
+
+Validate booking availability server-side (capacity, time clash).
+
+Prevent fake reviews: only Booking.status = confirmed users can review.
+
+Don’t expose stream keys; use secure tokens per session.
+
+Sanitize all text fields (bio, descriptions).
+
+Rate-limit booking attempts and reviews.
+
+
+
+---
+
+🚫 Don’ts
+
+Don’t fork Gym schema or create secondary booking tables.
+
+Don’t deduct capacity on “view”; only on paid booking.
+
+Don’t embed external colors/gradients.
+
+Don’t couple Virtual Mode to Feed code; reuse the video/live primitives but keep gym logic scoped.
+
+
+
+---

@@ -1,0 +1,282 @@
+---
+
+🗺️ Package #3 — MAP SYSTEM (LIVE SPORTS MAP)
+
+🎯 Purpose
+
+The SURNA Map is the central live layer of the app — it connects Players, Teams, Events, Gyms, Coaches, and Protests visually.
+Users can explore, join, book, or message directly through pins.
+It must be ultra-smooth, real-time, and beautifully minimalist (dark purple + cream theme).
+
+
+---
+
+🧩 Developer Sayings / Rules
+
+> Do not duplicate maps; there is only one SURNA Map component.
+
+All entities (places, events, teams, protests, coaches, players) use a shared schema.
+
+Every pin must open a bottom sheet preview (not a new page).
+
+Pin types = colors/icons only — no custom shapes.
+
+Smooth zoom & drag > 30 fps required on mobile.
+
+All filters and actions must sync with other modules (Feed, Messenger, Events).
+
+
+
+
+
+---
+
+⚙️ Folder Structure
+
+client/src/pages/map/
+├── MapPage.tsx
+├── components/
+│   ├── MapContainer.tsx
+│   ├── Pin.tsx
+│   ├── BottomSheet.tsx
+│   ├── FiltersBar.tsx
+│   ├── LiveLegend.tsx
+│   └── RecenterButton.tsx
+server/map/
+├── map.routes.ts
+└── map.service.ts
+
+
+---
+
+🌍 Pin Taxonomy (Types + Colors)
+
+Entity	Color/Glow	Icon	Action on Tap
+
+Player	Light Cream dot	🧍	Open Profile + Message
+Team	Purple dot	🏆	Open Team Profile + Challenge
+Event	Light Blue dot	🎟️	Open Event Details + Join
+Coach	Yellow dot	🎓	Open Coach Profile + Book
+Gym/Place	Grey dot	🏠	Open Place + Book
+Protest	Red-Purple pulse	✊	Open Protest Page + Sign
+
+
+Note: Icons match SURNA’s minimal line style (black / grey).
+
+
+---
+
+🧠 Shared Schema
+
+type MapPin = {
+  id: string;
+  entity: 'player'|'team'|'event'|'coach'|'place'|'protest';
+  entityId: string;
+  name: string;
+  lat: number;
+  lng: number;
+  sport?: string;
+  icon?: string;
+  color?: string;
+  active: boolean;
+  meta?: Record<string, any>; // details for bottom sheet
+  updatedAt: Date;
+};
+
+
+---
+
+🔌 Backend Routes
+
+GET  /api/map/pins?bounds=&layers=&sport=&time=
+WS   /map_activity  // Socket channel for live pin updates (join, leave, move)
+POST /api/map/reportPin
+GET  /api/map/pin/:id // fetch full entity info
+
+
+---
+
+🧭 UI Flow
+
+1️⃣ Initial Load
+
+Ask for geolocation; fallback to manual entry.
+
+Center map to user + radius 5 km default.
+
+Load pins within bounds → group dense areas with clusters.
+
+Floating buttons: 📍 Recenter  ⚙️ Filters  📶 Live Toggle.
+
+
+
+---
+
+2️⃣ FiltersBar
+
+Checkboxes: Players, Teams, Events, Coaches, Places, Protests.
+
+Dropdowns: Sport, Date Range, Distance.
+
+Toggle: “Show only active matches” / “Show sponsored”.
+
+Auto-refresh pins on filter change (debounce 300 ms).
+
+
+
+---
+
+3️⃣ Bottom Sheet
+
+Opens on pin tap.
+
+Content:
+
+Thumbnail / Cover
+
+Name + Type Icon
+
+Short info (e.g., “Football match – Today 17:00”)
+
+Primary Action (Join, Book, Sign, Message)
+
+Secondary: View Full Page, Share.
+
+
+Swipe up → full details modal of that entity.
+
+Swipe down → close.
+
+
+
+---
+
+4️⃣ Live Mode
+
+Toggle to receive socket updates (map_activity).
+
+Players moving update pin positions in real time (with throttling).
+
+Events starting glow animation for 1 minute then static.
+
+Protests with 1000+ signatures pulse slowly.
+
+
+
+---
+
+5️⃣ Map Interactions
+
+Pin tap → open bottom sheet.
+
+Double-tap → zoom in (center pin).
+
+Two-finger swipe → rotate disabled (default).
+
+Long-press → “Create something here” menu (Event, Challenge, Protest).
+
+Map idle → fetch new pins in view if moved > 1 km.
+
+
+
+---
+
+🎨 Design Specs
+
+Element	Color	Style
+
+Map bg	#0d0010	Dark theme tiles (custom style JSON)
+Text	#f3efe8	Cream
+Buttons	#4b006e	Rounded (14–16 px radius)
+BottomSheet	Semi-transparent purple bg + blur	
+Pins	SVG icons (white/purple/grey variants)	
+Cluster bubble	Purple outline, cream count text	
+
+
+
+---
+
+🧩 Cross-Connections
+
+Feed → posts with location open Map at that pin.
+
+Events → Join redirects to Map pin center.
+
+Profiles → “View on Map” center pin of user if available.
+
+Protests → Map pins render with signature progress.
+
+Messenger → “Meet Location” inserts pin link in chat.
+
+
+
+---
+
+⚙️ Performance Rules
+
+Use WebGL renderer for pins (Mapbox GL or Leaflet GL).
+
+Batch pin updates (> 50 pins = cluster mode).
+
+Throttle socket updates to 1/s per entity.
+
+Keep memory < 100 MB in use on mobile.
+
+No DOM repaints > 16 ms budget on pan.
+
+
+
+---
+
+🔒 Security & Privacy
+
+Never store precise user location in DB without consent.
+
+Round lat/lng to 3 decimals (~100 m) for public pins.
+
+Private sessions (e.g., 1v1 challenge location) marked private:true.
+
+Hide coordinates if user profile visibility = private.
+
+
+
+---
+
+🧪 QA Checklist
+
+✅ Pins load correctly for each entity.
+✅ Filters work and persist on back.
+✅ Bottom sheet swipe smooth (no lag).
+✅ Real-time updates function (socket connected).
+✅ Dark / Light mode map tiles swap correctly.
+✅ No crashes switching between Map and SportsHub.
+
+
+---
+
+🧑‍💻 Implementation Order
+
+1️⃣ Create MapContainer with base tile + pin layers.
+2️⃣ Add Pin.tsx renderer (shared schema).
+3️⃣ Build BottomSheet component (reusable for other modules).
+4️⃣ Add FiltersBar + query hook.
+5️⃣ Connect socket for live activity.
+6️⃣ Implement cross-linking (Feed, Profile, Events, Protests).
+7️⃣ Run mobile QA for performance + accuracy.
+8️⃣ Merge to dev-map → test → release.
+
+
+---
+
+🚫 Don’ts
+
+Don’t hardcode coordinates or bounds.
+
+Don’t use separate map instances for different panels.
+
+Don’t replace icons with raster images (keep SVG).
+
+Don’t mix state between Map and Feed stores.
+
+Don’t remove existing entity schemas (extend only).
+

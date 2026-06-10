@@ -1,0 +1,349 @@
+
+
+---
+
+✊ Package #9 — PROTESTS & PETITIONS (Map + Feed + Live Signatures)
+
+🎯 Purpose
+
+Allow users/teams to create petitions/protests, collect signatures in real time, optionally host physical rallies, and connect everything to Map pins, Feed posts, Profiles, Events, and Messenger.
+
+
+---
+
+🧩 Developer Sayings / Hard Rules
+
+> Do not reuse Event schema; protests are a separate entity.
+
+Do not redesign: use SURNA tokens only (dark purple / cream; red-purple pulse for protest pins).
+
+All actions must be functional (Sign, Share, Join Rally, Message Host).
+
+Live signature counts must sync across Map + Feed + Protest page (socket).
+
+Support both online-only petitions and physical protests with a location & time.
+
+Tabs lazy-load; page shell instant.
+
+Add moderation hooks (report/approve) for Admin (Pkg 13).
+
+
+
+
+
+---
+
+⚙️ Folder Structure
+
+client/src/pages/protests/
+├── ProtestPage.tsx                 // shell + header + tabs
+├── CreateProtest.tsx               // creation flow
+├── components/
+│   ├── ProtestHeader.tsx           // title, host, counters, actions
+│   ├── SignatureBar.tsx            // animated progress
+│   ├── SupportersList.tsx
+│   ├── ProtestUpdateCard.tsx
+│   └── ShareActions.tsx
+└── sections/
+    ├── Overview.tsx                // description, target, tags
+    ├── Supporters.tsx              // signatures (public names if opted)
+    ├── Updates.tsx                 // organizer updates
+    ├── Media.tsx                   // photos/videos
+    └── Rally.tsx                   // if physical: date/time/map/join
+
+server/protests/
+├── protests.routes.ts
+└── protests.service.ts
+
+
+---
+
+🧠 Canonical Schemas (extend only; don’t fork)
+
+type ProtestVisibility = 'public'|'unlisted'|'private';
+
+type Protest = {
+  id: string;
+  title: string;
+  description: string;
+  coverImage?: string;
+  hostType: 'user'|'team'|'gym'|'brand';
+  hostId: string;
+  target?: string;                 // e.g., city council, federation
+  tags?: string[];                 // sport, city, cause
+  goalSignatures?: number;         // e.g., 20000
+  signaturesCount: number;         // live counter (denormalized)
+  visibility: ProtestVisibility;
+  isPhysical: boolean;
+  location?: { lat: number; lng: number; address?: string };
+  startsAt?: string;               // for rallies
+  endsAt?: string;
+  sponsored?: boolean;             // if backed by a brand
+  status: 'active'|'closed'|'removed';
+  createdBy: string;               // userId
+  createdAt: string;
+  updatedAt: string;
+  approved?: boolean;              // admin moderation flag
+};
+
+type Signature = {
+  id: string;
+  protestId: string;
+  userId: string;
+  publicName?: string;             // if user opts to display
+  message?: string;                // optional note
+  createdAt: string;
+};
+
+type ProtestUpdate = {
+  id: string;
+  protestId: string;
+  title: string;
+  body: string;
+  media?: string[];                // images/videos
+  createdAt: string;
+  createdBy: string;               // host/admin
+};
+
+
+---
+
+🧱 Screens & UX
+
+1) Create Protest (flow)
+
+Fields: Title, Description, Cover, Tags, Target, Visibility, Goal
+
+Toggle: Online only or Physical rally
+
+If physical: pick location + date/time (map picker)
+
+
+Preview → Publish
+
+On publish:
+
+Create Map pin (if physical)
+
+Create Feed post (auto) with live counter
+
+Optionally send invites via Messenger
+
+
+
+2) Protest Page (ProtestPage)
+
+Header: title, host (clickable), cover image, SignatureBar (live), buttons: Sign, Share, Message Host, Report
+Stat row: X signed / Goal + “Trending” badge if rapid growth
+Tabs:
+
+Overview — description, target, tags
+
+Supporters — list of public signers (avatars + time)
+
+Updates — organizer updates (cards)
+
+Media — gallery
+
+Rally — if physical: time, mini-map, Join Rally → adds to Calendar
+
+
+Sign Drawer:
+
+“Sign Petition” → (optional) display my name toggle, add a short message → Confirm
+
+On success: increment counter live, add to user profile “Causes Supported”.
+
+
+3) Map Integration
+
+Protest pins shown with red-purple pulsing glow.
+
+Tap → bottom sheet: title, short desc, counter, Sign, View Full.
+
+Filter toggle in Map: “Show Protests”.
+
+
+4) Feed Integration
+
+On creation, auto create Protest post with live counter and Sign action.
+
+When major milestones hit (25%, 50%, 100%), auto-post Update (host can disable).
+
+
+
+---
+
+🔌 Backend API (REST + Socket)
+
+# Protests
+POST   /api/protests                        # create (auth, rate-limited)
+GET    /api/protests?near=&tag=&status=&hostId=
+GET    /api/protests/:id
+PATCH  /api/protests/:id                    # update (owner/admin)
+POST   /api/protests/:id/close              # mark closed (owner/admin)
+POST   /api/protests/:id/report             # user report
+DELETE /api/protests/:id                    # admin remove (Pkg 13)
+
+# Signatures
+GET    /api/protests/:id/signatures?publicOnly=true|false&limit=&cursor=
+POST   /api/protests/:id/sign               # create signature
+GET    /api/protests/:id/signed             # did current user sign?
+
+# Updates
+GET    /api/protests/:id/updates
+POST   /api/protests/:id/updates            # owner/admin
+
+# Rally (physical)
+POST   /api/protests/:id/joinRally          # add attendee (optional)
+GET    /api/protests/:id/attendees
+
+# Sockets
+WS     /protests
+  event: 'protest:created'
+  event: 'protest:updated'
+  event: 'protest:signed'            // {protestId, signaturesCount}
+  event: 'protest:update:posted'
+
+Rules
+
+Increment signaturesCount atomically on sign; broadcast via socket.
+
+If physical rally: also create/update a lightweight Event record for Calendar/Map (linked, not duplicated).
+
+
+
+---
+
+🔗 Cross-Connections (must wire)
+
+Map: pins (pulsing) + bottom sheet → ProtestPage.
+
+Feed: protest post with live counter + Sign action.
+
+Profiles: signer list (public opt-in) updates user’s profile “Causes Supported”.
+
+Teams: team-hosted protests appear on team page (Sponsors tab can back cause).
+
+Events: physical rallies sync to Calendar & Map; attendees visible.
+
+Messenger: Message Host opens DM thread; Share sends protest to chats.
+
+Payments (optional future): donation button to support cause logistics (Pkg 11).
+
+Admin: protests require approval or can be auto-approved with heuristics (Pkg 13).
+
+
+
+---
+
+🎨 Design Specs (SURNA)
+
+Background: near-black / dark purple.
+
+Text: cream; meta grey.
+
+Progress bar: purple → red gradient (subtle), animated on growth.
+
+Protest map pin: red-purple pulse (SVG + CSS animation).
+
+Buttons: cream bg + purple text; Sign is primary.
+
+No extra colors; no heavy gradients. Minimal, respectful, legible.
+
+
+
+---
+
+🔒 Security, Privacy & Moderation
+
+Creation rate-limit (e.g., 3/hour per user).
+
+Content moderation on title/description (profanity/abuse filters).
+
+Approval flow: if approved=false, hide from discovery (only direct link visible).
+
+Signature privacy: default private; user must opt-in to display name.
+
+Anti-spam: 1 signature per user per protest; bot detection (IP/device checks).
+
+Reporting: any user can report; admin tools to remove/close with audit log.
+
+Location safety: for rallies, show approximate location radius until user joins.
+
+
+
+---
+
+⚙️ Performance
+
+Debounce feed/map updates; use socket for counter increments.
+
+Paginate supporters list (cursor-based).
+
+CDN for cover/media.
+
+Keep ProtestPage hydration < 600 ms; tabs lazy-load.
+
+
+
+---
+
+🧪 QA — “Done When” Checklist
+
+✅ Create → auto Feed post → (if physical) Map pin appears.
+✅ Sign → counter increments live across all open clients.
+✅ Share to Messenger works; deep link opens ProtestPage.
+✅ Rally join → Calendar add; attendees visible; Map centers correctly.
+✅ Supporters list respects privacy toggle.
+✅ Updates render and notify followers.
+✅ Report/close flows work; admin approval respected.
+✅ Dark/light modes correct; no layout shifts.
+✅ No duplicate schemas/components; no console errors.
+
+
+---
+
+🧑‍💻 Implementation Order (safe)
+
+1. Implement schemas + POST /api/protests + detail GET.
+
+
+2. Build ProtestPage (shell + header + SignatureBar) with tabs lazy-loaded.
+
+
+3. Wire Sign flow + sockets for live counter.
+
+
+4. Add CreateProtest flow; on publish → Feed post (+ Map pin if physical).
+
+
+5. Implement Updates + Supporters (privacy rules).
+
+
+6. Implement Rally (join → Calendar; attendees list).
+
+
+7. Add report/approve/close flows + admin hooks.
+
+
+8. QA across Map/Feed/Profiles/Messenger; merge dev-protests.
+
+
+
+
+---
+
+🚫 Don’ts
+
+Don’t reuse Event schema; keep Protest as a separate entity (link only if physical).
+
+Don’t show signer names publicly by default.
+
+Don’t bypass moderation flags.
+
+Don’t hardcode colors/animations; use tokens + CSS utilities.
+
+Don’t compute counters client-side; use atomic server updates + broadcast.
+
+

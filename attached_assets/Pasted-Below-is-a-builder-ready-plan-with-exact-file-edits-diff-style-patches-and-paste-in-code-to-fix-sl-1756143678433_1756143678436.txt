@@ -1,0 +1,491 @@
+Below is a builder-ready plan with exact file edits, diff-style patches, and paste-in code to fix slowness and harden scalability. Apply Stage 1 first (safe/low-risk), then Stage 2. Keep ENV notes at hand and commit after each section.
+
+
+---
+
+ENV — New variables (add to .env and deployment secrets)
+
+# Redis (for cache + websockets, choose one provider)
+REDIS_URL=redis://user:pass@host:6379
+
+# Neon / Postgres pooling (pgBouncer or Neon pooled connection)
+DATABASE_URL=<your current neon postgres connection string>
+
+# CDN / Caching (optional edge caches)
+CDN_ENABLED=true
+
+# Rate limiting / security (optional future use)
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX=200
+
+> If using Upstash Redis, the URL will be provided. If not using Redis yet, you can still apply Stage 1 and leave Stage 2 (websocket scaling + cache) for later.
+
+
+
+
+---
+
+Stage 1 — Core Review & Cleanup
+
+1) Database: add high-impact indexes (Drizzle migration)
+
+Create a new migration file, e.g. drizzle/2025_08_25_perf_indexes.sql (or with drizzle-kit name). Paste:
+
+-- Posts feed & lookups
+CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts ("createdAt" DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_author ON posts ("authorId");
+CREATE INDEX IF NOT EXISTS idx_posts_team ON posts ("teamId");
+
+-- Messages / conversations
+CREATE INDEX IF NOT EXISTS idx_messages_conv_time ON messages ("conversationId", "createdAt" DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages ("receiverId");
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages ("senderId");
+
+-- Events (listings & upcoming views)
+CREATE INDEX IF NOT EXISTS idx_events_date ON events (date DESC);
+CREATE INDEX IF NOT EXISTS idx_events_location ON events (location);
+
+-- Teams (search by name)
+CREATE INDEX IF NOT EXISTS idx_teams_name ON teams (name);
+
+-- Users (search and login lookups)
+CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+
+-- Coach marketplace
+CREATE INDEX IF NOT EXISTS idx_coaches_rating ON coaches (rating DESC);
+CREATE INDEX IF NOT EXISTS idx_coaches_sport ON coaches (sport);
+
+-- Marketplace products
+CREATE INDEX IF NOT EXISTS idx_products_updated ON products ("updatedAt" DESC);
+CREATE INDEX IF NOT EXISTS idx_products_price ON products (price);
+
+-- Points system
+CREATE INDEX IF NOT EXISTS idx_points_user_time ON points ("userId", "createdAt" DESC);
+
+Run your usual drizzle migration command after saving.
+
+> Tip: If you support full-text search, add a GIN index on a TSVECTOR column separately.
+
+
+
+
+---
+
+2) Postgres/Drizzle connection pooling (server/db.ts)
+
+Goal: ensure minimal connection overhead and add query logging for slow queries.
+
+Edit: server/db.ts
+
+// server/db.ts
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 10, // tune per deployment size (10–50)
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+
+export const db = drizzle(pool, {
+  logger: {
+    logQuery: (query, params) => {
+      // lightweight slow-query log (threshold ~150ms)
+      const start = Date.now();
+      return {
+        then: (onfulfilled: any, onrejected: any) =>
+          Promise.resolve()
+            .then(() => onfulfilled?.(null))
+            .catch(onrejected)
+            .finally(() => {
+              const ms = Date.now() - start;
+              if (ms > 150) console.warn(`[DB SLOW ${ms}ms]`, query.slice(0, 120), params?.slice?.(0, 5));
+            }),
+      } as any;
+    },
+  },
+});
+
+> If you’re already using neon-http, you can keep it; the pg pool above is a safe default and generally faster for Node servers.
+
+
+
+
+---
+
+3) Express: static asset caching + security hardening (server/index.ts)
+
+Edit: server/index.ts — add static caching, Helmet, and compression.
+
+// server/index.ts
+import express from 'express';
+import helmet from 'helmet';
+import compression from 'compression';
+
+const app = express();
+
+app.use(helmet({
+  contentSecurityPolicy: false, // adjust if you have strict CSP elsewhere
+}));
+app.use(compression());
+
+// Long-term cache for built assets
+app.use('/assets', express.static('dist/assets', {
+  immutable: true,
+  maxAge: '365d',
+}));
+
+// (keep your existing CSRF/session/middleware here)
+
+
+---
+
+4) React route-level code splitting (client/src/App.tsx)
+
+Edit: Convert heavy pages to lazy-loaded routes.
+
+// client/src/App.tsx
+import { Suspense, lazy } from 'react';
+import { Router, Route } from 'wouter';
+
+const Home = lazy(() => import('./pages/Home'));
+const Feed = lazy(() => import('./pages/Feed'));
+const Messages = lazy(() => import('./pages/Messages'));
+const Marketplace = lazy(() => import('./pages/Marketplace'));
+const Coaches = lazy(() => import('./pages/Coaches'));
+const Events = lazy(() => import('./pages/Events'));
+// ...add other heavy pages
+
+export default function App() {
+  return (
+    <Router>
+      <Suspense fallback={<div className="p-6">Loading…</div>}>
+        <Route path="/" component={Home} />
+        <Route path="/feed" component={Feed} />
+        <Route path="/messages" component={Messages} />
+        <Route path="/marketplace" component={Marketplace} />
+        <Route path="/coaches" component={Coaches} />
+        <Route path="/events" component={Events} />
+        {/* other routes */}
+      </Suspense>
+    </Router>
+  );
+}
+
+
+---
+
+5) Vite manual chunks (vite.config.ts)
+
+Edit: make vendor chunks cache-friendly.
+
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['wouter', '@tanstack/react-query'],
+        },
+      },
+    },
+  },
+});
+
+
+---
+
+6) React Query tuning (client/src/lib/queryClient.ts)
+
+Edit: set sensible caching windows to cut network spam.
+
+// client/src/lib/queryClient.ts
+import { QueryClient } from '@tanstack/react-query';
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000, // 30s
+      gcTime: 5 * 60_000, // 5m
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+    mutations: { retry: 0 },
+  },
+});
+
+
+---
+
+7) API pagination — cursor-based for feed & messages (server/routes.ts)
+
+Edit: implement cursor pagination using createdAt cursors. Ensure idx_*_created_at indexes exist (from Step 1).
+
+// server/routes.ts (excerpt)
+import express from 'express';
+import { db } from './db';
+
+const router = express.Router();
+
+router.get('/api/feed', async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 20, 50);
+  const cursor = req.query.cursor ? new Date(String(req.query.cursor)) : null;
+
+  const rows = await db.execute(
+    `SELECT * FROM posts
+     WHERE ($1::timestamptz IS NULL OR "createdAt" < $1)
+     ORDER BY "createdAt" DESC
+     LIMIT $2`,
+    [cursor, limit + 1]
+  );
+
+  const next = rows.length > limit ? rows[limit - 1]?.createdAt : null;
+  res.json({ items: rows.slice(0, limit), nextCursor: next });
+});
+
+router.get('/api/messages', async (req, res) => {
+  const { conversationId } = req.query as { conversationId: string };
+  const limit = Math.min(Number(req.query.limit) || 30, 100);
+  const cursor = req.query.cursor ? new Date(String(req.query.cursor)) : null;
+
+  const rows = await db.execute(
+    `SELECT * FROM messages
+     WHERE "conversationId" = $1
+       AND ($2::timestamptz IS NULL OR "createdAt" < $2)
+     ORDER BY "createdAt" DESC
+     LIMIT $3`,
+    [conversationId, cursor, limit + 1]
+  );
+
+  const next = rows.length > limit ? rows[limit - 1]?.createdAt : null;
+  res.json({ items: rows.slice(0, limit), nextCursor: next });
+});
+
+export default router;
+
+
+---
+
+8) Client-side infinite scroll for feed/messages (example)
+
+Edit: client/src/pages/Feed.tsx — use useInfiniteQuery.
+
+// client/src/pages/Feed.tsx (excerpt)
+import { useInfiniteQuery } from '@tanstack/react-query';
+
+function fetchFeed({ pageParam }: { pageParam?: string }) {
+  const url = new URL('/api/feed', window.location.origin);
+  if (pageParam) url.searchParams.set('cursor', pageParam);
+  url.searchParams.set('limit', '20');
+  return fetch(url.toString(), { credentials: 'include' }).then(r => r.json());
+}
+
+export default function Feed() {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['feed'],
+    queryFn: ({ pageParam }) => fetchFeed({ pageParam }),
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+  // render list and a Load More / IntersectionObserver to call fetchNextPage()
+}
+
+
+---
+
+9) Client media compression before upload
+
+Create: client/src/lib/media.ts
+
+// client/src/lib/media.ts
+export async function compressImage(file: File, maxW = 1600, quality = 0.82) {
+  const img = document.createElement('img');
+  img.src = URL.createObjectURL(file);
+  await img.decode();
+
+  const scale = Math.min(1, maxW / img.naturalWidth);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.naturalWidth * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/jpeg', quality));
+  if (!blob) return file;
+  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+}
+
+Use it in CreatePost.tsx/uploaders before sending to server.
+
+
+---
+
+10) Server-side cache headers for API reads (optional safe boost)
+
+Edit: near your read-only endpoints, set short-lived caching.
+
+// inside route handlers for public, non-personalized GETs
+res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
+
+
+---
+
+Stage 2 — Performance Scaling
+
+11) Redis cache wrapper (server/storage.ts)
+
+Goal: cache hot list endpoints (feed, coaches, products) for ~15–30s.
+
+// server/storage.ts (excerpt)
+import Redis from 'ioredis';
+const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : null;
+
+export async function cacheGet<T>(key: string): Promise<T | null> {
+  if (!redis) return null;
+  const raw = await redis.get(key);
+  return raw ? JSON.parse(raw) as T : null;
+}
+
+export async function cacheSet(key: string, val: any, ttlSeconds = 30) {
+  if (!redis) return;
+  await redis.set(key, JSON.stringify(val), 'EX', ttlSeconds);
+}
+
+Use it inside feed route:
+
+router.get('/api/feed', async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 20, 50);
+  const cursor = req.query.cursor ? new Date(String(req.query.cursor)) : null;
+  const k = `feed:${limit}:${cursor?.toISOString() ?? 'null'}`;
+
+  const hit = await cacheGet(k);
+  if (hit) return res.json(hit);
+
+  // ... run DB query as in Stage 1
+  const payload = { items: rows.slice(0, limit), nextCursor: next };
+  await cacheSet(k, payload, 20);
+  res.json(payload);
+});
+
+
+---
+
+12) WebSocket horizontal scaling (Socket.IO + Redis adapter)
+
+Edit: in server/index.ts where you set up WebSocket.
+
+// server/index.ts (excerpt)
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { createClient } from 'redis';
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, { cors: { origin: '*', credentials: true } });
+
+if (process.env.REDIS_URL) {
+  const pubClient = createClient({ url: process.env.REDIS_URL });
+  const subClient = pubClient.duplicate();
+  await pubClient.connect();
+  await subClient.connect();
+  io.adapter(createAdapter(pubClient, subClient));
+}
+
+io.on('connection', (socket) => {
+  // existing message handlers
+});
+
+httpServer.listen(process.env.PORT || 3000);
+
+This lets multiple server instances share socket rooms/events via Redis pub/sub.
+
+
+---
+
+13) Background jobs for heavy tasks (optional)
+
+Add BullMQ for notifications/emails to avoid blocking request cycle.
+
+// server/jobs/queue.ts
+import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
+const connection = new IORedis(process.env.REDIS_URL!);
+export const notifyQueue = new Queue('notify', { connection });
+
+Use notifyQueue.add('send', { userId, payload }) in routes; run a worker process to handle.
+
+
+---
+
+14) Rate limiting (optional but good)
+
+// server/index.ts (excerpt)
+import rateLimit from 'express-rate-limit';
+const limiter = rateLimit({
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 60000),
+  max: Number(process.env.RATE_LIMIT_MAX || 200),
+});
+app.use('/api/', limiter);
+
+
+---
+
+15) Monitoring basics
+
+Add response-time logging and a health endpoint.
+
+// server/index.ts (excerpt)
+import responseTime from 'response-time';
+app.use(responseTime((req, res, time) => {
+  if (time > 300) console.warn(`[SLOW ${Math.round(time)}ms] ${req.method} ${req.originalUrl}`);
+}));
+
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+
+---
+
+Quick Validation Checklist
+
+[ ] DB migration applied without table locks (run off-peak).
+
+[ ] Feed/messages endpoints return nextCursor and UI paginates.
+
+[ ] First-load bundle shrank (check network tab). Time-to-interactive improved.
+
+[ ] Redis present? Feed cached for ~20s, reduced DB QPS under load.
+
+[ ] Multiple server instances can exchange socket events.
+
+[ ] Static assets served with 1-year immutable cache.
+
+
+
+---
+
+Rollback Plan (safe guard)
+
+Use feature flags: keep Redis/cache code behind if (redis) checks.
+
+Revert vite manualChunks if chunking causes any import errors.
+
+Remove new indexes individually if a migration fails (unlikely with IF NOT EXISTS).
+
+
+
+---
+
+Notes for the Builder
+
+Apply edits exactly as shown; adjust imports to match your existing structure.
+
+If you already have conflicting code, prefer keeping existing security/middleware and blend the snippets in place.
+
+After Stage 1, profile again; most “slow” complaints are fixed by indexes + lazy routes + pagination.
+
+

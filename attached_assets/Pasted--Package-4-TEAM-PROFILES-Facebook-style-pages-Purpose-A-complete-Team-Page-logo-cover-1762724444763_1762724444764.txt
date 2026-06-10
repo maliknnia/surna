@@ -1,0 +1,257 @@
+🧱 Package #4 — TEAM PROFILES (Facebook-style pages)
+
+🎯 Purpose
+
+A complete Team Page (logo + cover, sponsors, actions, tabs, feed) that connects cleanly to Map, Events, Challenges, Messenger, Payments, Analytics. One canonical implementation — no duplicates.
+
+
+---
+
+🧩 Developer Sayings / Hard Rules
+
+> Do not change global design: dark-purple + cream only; same radii/spacing.
+
+Keep one Team schema & one Team Profile page. Extend via props/tabs, not copies.
+
+Every visible button must work (no dead UI).
+
+Cross-link everything: Team ↔ Profile ↔ Map ↔ Events ↔ Challenges ↔ Payments.
+
+Load tabs lazily; page shell mounts instantly.
+
+All actions audited (analytics + optional admin log).
+
+
+
+
+
+---
+
+⚙️ Folders & Files
+
+client/src/pages/team/
+├── TeamPage.tsx                // shell + header + tab router
+├── sections/
+│   ├── TeamAbout.tsx
+│   ├── TeamMembers.tsx
+│   ├── TeamSchedule.tsx
+│   ├── TeamPhotos.tsx
+│   ├── TeamSponsors.tsx
+│   ├── TeamFeed.tsx
+│   └── TeamDonations.tsx       // optional, shows wallet/sponsor CTA
+└── components/
+    ├── TeamHeader.tsx          // cover, logo, actions bar
+    ├── TeamStatChips.tsx       // W-L-D, rating, followers
+    └── TeamActions.tsx         // Follow, Message, Join, Challenge, View Feed
+server/teams/
+├── teams.routes.ts
+└── teams.service.ts
+
+
+---
+
+🧠 Canonical Types (extend only; don’t fork)
+
+type Rating = { value: number; count: number };
+
+type Team = {
+  id: string;
+  name: string;
+  slug: string;
+  logo: string;
+  cover?: string;
+  city?: string;
+  sport?: string;
+  rating: Rating;                // aggregate of matches + reviews
+  record?: { W: number; L: number; D: number };
+  members: { userId: string; role: 'captain'|'player'|'coach' }[];
+  sponsors?: { id: string; name: string; logo: string; link?: string; tier: 'bronze'|'silver'|'gold' }[];
+  verified?: boolean;
+  createdAt: string;
+};
+
+type TeamScheduleItem = {
+  id: string;
+  title: string;
+  type: 'match'|'training'|'event';
+  timeStart: string;
+  timeEnd?: string;
+  location: { lat: number; lng: number; address?: string };
+  opponentTeamId?: string;       // for matches
+  eventId?: string;              // Events package link
+  status: 'upcoming'|'live'|'finished';
+};
+
+
+---
+
+🧱 Page Layout (no redesign)
+
+Header (TeamHeader):
+
+Cover image (wide), overlaid circular logo, name, verified badge.
+
+Action bar (right): Follow • Message • Join Request • Challenge • View Feed.
+
+Stat chips: rating ⭐, W-L-D, followers, city.
+
+Sponsor strip (mini logos) below header.
+
+
+Tabs (lazy-loaded):
+
+About: bio, city, founded date, home pitch (map “View on Map”).
+
+Members: grid with roles; tap → person profile.
+
+Schedule: list of TeamScheduleItem; actions: Join/Attend/Share/Navigate.
+
+Photos: gallery; opens viewer; can post if admin.
+
+Sponsors: tiers, description, link to brand pages.
+
+Feed: team-only feed; fans can view, admins can post.
+
+Donations (optional): connect to Wallet/Payments (“Sponsor the Team”, preset amounts).
+
+
+
+---
+
+🧩 Required Actions (all must work)
+
+Follow / Unfollow team → updates counts everywhere.
+
+Message → opens Messenger thread with team admins.
+
+Join Request → queued for captain approval; shows pending state.
+
+Challenge → opens Package #10 flow (1v1 team vs team).
+
+View Feed → dedicated team feed route (still SURNA style).
+
+Map → “View home pitch” centers Map on pin (Package #3).
+
+Donate / Sponsor → Payment modal (Package #11), logs sponsorship.
+
+Post to Team Feed (admins) → appears in global Feed for followers.
+
+
+
+---
+
+🔌 Backend Endpoints
+
+GET    /api/teams/:id
+POST   /api/teams/:id/follow             // toggle
+POST   /api/teams/:id/message            // creates/opens thread
+POST   /api/teams/:id/join-request       // user → captain queue
+POST   /api/teams/:id/challenge          // delegates to challenges API
+GET    /api/teams/:id/schedule
+GET    /api/teams/:id/sponsors
+POST   /api/teams/:id/sponsor            // wallet/payment flow
+GET    /api/teams/:id/feed
+POST   /api/teams/:id/feed               // admins only
+
+Notes
+
+Use auth & role checks (captain/admin) for privileged actions.
+
+Emit analytics events: team_follow, team_challenge_start, team_donation.
+
+All writes return updated counters to keep UI in sync.
+
+
+
+---
+
+🔗 Cross-Connections (wire them or it’s not “done”)
+
+Profiles: tapping any member opens Person Profile (Package #5).
+
+Events: schedule items link to Event pages; joining an event adds to Calendar.
+
+Map: “View Pitch” centers on team pin; team appears on Map layer.
+
+Messenger: Message button → thread; Join Requests notify captain(s).
+
+Payments: Donations/Sponsorships credit team wallet (Package #11).
+
+Analytics: follow growth, engagement, donations visible in Package #12.
+
+Admin: moderation tools for team content in Package #13.
+
+
+
+---
+
+🎨 Design Specs (same tokens)
+
+Keep current SURNA tokens (no hexes).
+
+Cover height: ~220–260px; logo size: 96–128px; radius consistent with app.
+
+Sponsor strip uses subtle divider (token outline), logos in grayscale unless hovered.
+
+
+
+---
+
+🧪 QA — “Done When” Checklist
+
+✅ Page shell loads < 600ms on warm cache; tabs lazy-load without flashing.
+✅ All action buttons perform real operations (follow, message, join, challenge, feed).
+✅ Schedule items open correct Event; Map centers on pitch pin.
+✅ Sponsors render with tier labels; click opens brand page.
+✅ Team Feed posts propagate to follower feeds.
+✅ Dark/light mode perfect; no layout shifts on mobile.
+✅ No duplicate team schemas/components added in PR.
+
+
+---
+
+🧑‍💻 Implementation Order (safe)
+
+1. Build TeamPage.tsx shell + Header + Tabs (lazy routes).
+
+
+2. Wire About + Members (profile links) + Sponsors.
+
+
+3. Wire Schedule (Events links + Map).
+
+
+4. Add Team Feed (read → then write for admins).
+
+
+5. Enable actions: Follow, Message, Join Request, Challenge.
+
+
+6. Integrate Donations/Sponsor (Payment modal + wallet credit).
+
+
+7. Analytics hooks + Admin moderation endpoints.
+
+
+8. Mobile QA → merge as dev-team-profiles.
+
+
+
+
+---
+
+🚫 Don’ts (to keep app stable)
+
+Don’t fork Team type; extend the shared model only.
+
+Don’t inline map instances per tab; use a modal/open Map page.
+
+Don’t add new colors/spacing; stay on tokens.
+
+Don’t bundle large images; lazy-load gallery.
+
+Don’t post to Team Feed without permission checks.
+
+
+
+---

@@ -1,0 +1,230 @@
+
+
+---
+
+⚙️ SURNA — Final Integration & Verification Instructions
+
+(To Developer / AI System — MUST EXECUTE IN FULL)
+
+
+---
+
+🧩 SAYINGS (GENERAL COMMANDS)
+
+> 1️⃣ Do not redesign, duplicate, or overwrite any component.
+Keep every layout, icon, color, and spacing as defined in the SURNA documentation.
+2️⃣ Everything visible must work.
+Every button, action, and tab must trigger a real function.
+3️⃣ No broken routes or ghost pages.
+If a component exists in UI but no backend path or socket connection — build or connect it.
+4️⃣ No conflicting imports, no duplicates, no orphan code.
+Merge all codebases cleanly. Remove old/dead logic from earlier builds.
+5️⃣ Keep it clean, lightweight, and fast.
+All packages must load in <1s on modern devices. Use caching, lazy-load, and socket compression.
+6️⃣ Everything must be wired together properly — Feed, Sports, Messenger, Marketplace, Profiles, Payments, Analytics, Admin — all connected.
+7️⃣ No console errors or warnings.
+Run every section in dev mode and clear all build warnings.
+8️⃣ Do not create new color tokens or random themes.
+Dark purple / cream + grey only.
+9️⃣ Each change must be tested before merge.
+Run preflight QA checklist for every package (1–13).
+🔟 Never break something to fix something else.
+Keep isolated updates per feature. Test before commit.
+
+
+
+
+---
+
+🧠 CORE VALIDATION STEPS
+
+🧩 1. Integrity Scan
+
+Run script:
+
+npm run lint && npm run build
+
+✅ No errors or warnings.
+✅ Verify all imports resolve.
+✅ Confirm that every src/pages folder has all defined files from package docs.
+✅ Check every server folder (e.g., /server/messenger/, /server/payments/) exists and matches structure.
+
+
+---
+
+⚙️ 2. Functionality Checklist
+
+Frontend
+
+Run each of these routes in browser (or simulate in tests):
+
+/feed — scroll, like, comment, post, live, stories, share → all functional.
+
+/sports — slide through 5 sections (Places, Teams, Map, Coaches, Events). Map opens, pins clickable, filters work.
+
+/messenger — send message, media, voice note, poll, call → all real-time synced.
+
+/marketplace — shops open, filters work, checkout completes.
+
+/profiles — persons, teams, gyms open; ratings and analytics visible.
+
+/protests — sign petition → counter increments → feed updates → map pin visible.
+
+/challenges — create → accept → start → report result → confirm → XP and rating update.
+
+/payments — add funds, pay, donate, refund, withdraw → all succeed with correct ledgers.
+
+/analytics — charts display live data, filters work, links deep-link properly.
+
+/admin — all sections open, audit logs populate, roles respected.
+
+
+Backend
+
+Run:
+
+npm run test
+
+✅ All 13 package test suites pass (integration, routes, socket events).
+✅ No failed promises or timeouts.
+✅ DB migrations are up to date.
+✅ Redis/Socket/Worker queues running without dropped jobs.
+
+
+---
+
+🪜 3. Schema & Data Consistency
+
+For each module folder in /server, verify schemas:
+
+grep -R "type " server/ | wc -l
+
+✅ Only one canonical schema per entity (e.g., Challenge, Message, Wallet).
+✅ No duplicates or renamed forks.
+✅ Every schema extends or references existing shared types.
+
+Run DB introspection:
+
+drizzle-kit introspect
+
+✅ All tables align with latest schema (no orphan or outdated columns).
+
+
+---
+
+🔗 4. Cross-Package Connectivity Test
+
+Run socket simulation:
+
+npm run socket:test
+
+Verify:
+
+Feed connects to Messenger correctly for comments & mentions.
+
+Sports events trigger calendar + messenger threads.
+
+Payments trigger receipts inside messenger and analytics increments.
+
+Challenges update leaderboards + profiles.
+
+Admin approval toggles change visibility across Feed/Map.
+
+Map pins open correct entities (events, protests, challenges, gyms).
+
+
+✅ No undefined or null responses in any route.
+✅ Live counters (signatures, ratings, messages) all update instantly.
+
+
+---
+
+🧮 5. Performance Metrics
+
+Run:
+
+npm run analyze
+
+✅ Total JS bundle < 5MB (split chunks).
+✅ Lighthouse: Performance ≥ 90, Accessibility ≥ 95.
+✅ Cold load < 2s; interactive < 1.5s.
+✅ Socket ping < 100ms average.
+
+
+---
+
+🔒 6. Security Validation
+
+TLS & HTTPS enabled.
+
+JWT expiration set to ≤ 24h.
+
+Admin endpoints protected by RBAC.
+
+Payment webhooks verified by signature.
+
+Database backups auto-run daily.
+
+No secrets in client bundle.
+Run:
+
+
+npm audit && npm outdated
+
+✅ No high/critical vulnerabilities.
+
+
+---
+
+🧪 7. Final QA Checklist (All Packages)
+
+Package	Functionality	Cross Links	Errors	Status
+
+Feed	✅ Posts, Likes, Live, Comments	✅ Messenger, Profiles	None	✅
+Sports	✅ 5 Tiles + Map + Filters	✅ Events, Teams	None	✅
+Marketplace	✅ Shops, Filters, Checkout	✅ Payments	None	✅
+Messenger	✅ DM, Groups, Calls	✅ Profiles, Teams	None	✅
+Profiles	✅ Ratings, Analytics	✅ Teams, Challenges	None	✅
+Protests	✅ Pins, Signatures	✅ Feed, Map	None	✅
+Challenges	✅ Match Flow, Ratings	✅ Teams, Analytics	None	✅
+Payments	✅ Wallets, Escrow	✅ Challenges, Shops	None	✅
+Analytics	✅ Charts, Filters	✅ Global Rollups	None	✅
+Admin	✅ RBAC, Audits, Refunds	✅ All	None	✅
+
+
+
+---
+
+🧾 8. Post-Verification Actions
+
+After all packages verified:
+
+git commit -am "SURNA verified — all 13 packages operational"
+git tag -a v1.0.0-stable -m "Stable release — verified all packages"
+git push origin main --tags
+
+Then export logs:
+
+npm run healthcheck
+
+✅ Output “All systems operational”.
+Store report in /logs/healthcheck.txt.
+
+
+---
+
+🧩 SAYING TO DEVELOPER / AI DIRECTLY:
+
+> “Now run full system verification.
+Confirm every SURNA package (1–13) exists, is functional, and cross-wired correctly.
+No broken routes, no missing schemas, no duplicate folders, no undefined data.
+Each visible icon, page, and feature must be clickable and real.
+
+Once verified, generate a final build labeled:
+SURNA v1.0.0 — Fully Functional Cross-Connected Version.
+
+After build success, print a summary log:
+‘✅ SURNA verification complete — all features online and stable.’”
+
+
+

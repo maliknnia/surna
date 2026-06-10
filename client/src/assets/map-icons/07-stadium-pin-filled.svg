@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="surna-map-pin-dual">
+  <path class="surna-map-pin-ink" d="M256 40 C160 40 80 120 80 216 C80 280 140 360 200 400 L256 480 L312 400 C372 360 432 280 432 216 C432 120 352 40 256 40Z" fill="currentColor"/>
+  <circle class="surna-map-pin-cut" cx="256" cy="180" r="100" fill="var(--beacon-fill)"/>
+  <polygon class="surna-map-pin-ink" points="256,120 290,160 270,160 270,200 242,200 242,160 222,160" fill="currentColor"/>
+  <polygon class="surna-map-pin-ink" points="200,160 234,200 214,200 214,240 186,240 186,200 166,200" fill="currentColor"/>
+  <polygon class="surna-map-pin-ink" points="312,160 346,200 326,200 326,240 298,240 298,200 278,200" fill="currentColor"/>
+  <polygon class="surna-map-pin-ink" points="228,240 262,280 242,280 242,320 214,320 214,280 194,280" fill="currentColor"/>
+  <polygon class="surna-map-pin-ink" points="284,240 318,280 298,280 298,320 270,320 270,280 250,280" fill="currentColor"/>
+</svg>

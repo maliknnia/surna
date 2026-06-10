@@ -1,0 +1,268 @@
+I got you — "Team Creation Journey" with a cart-like progress system. Gamified, guided, with optional marketplace integration. Smart.
+
+---
+
+Core Concept: "Team Builder" Journey
+
+Like a shopping cart, but for building a team. Each step adds to your "cart" — finish checkout, team is live.
+
+---
+
+The Flow
+
+```
+Start → Choose Sport → Find Venue → Invite Players → Gear Up → Launch
+   ↑                                                    ↓
+   └────────────── Cart shows progress ←───────────────┘
+```
+
+---
+
+The Cart System
+
+Visual: Floating Progress Pill
+
+```css
+.builder-cart {
+  position: fixed;
+  bottom: 100px; /* Above nav */
+  left: 50%;
+  transform: translateX(-50%);
+  
+  background: rgba(30, 30, 30, 0.9);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 12px 24px;
+  
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+```
+
+What's Inside
+
+```
+[🥊 Boxing]  [📍 Central Park]  [👥 3/5]  [⚙️]  [Launch →]
+     ↑            ↑                ↑       ↑
+   Sport        Venue           Players   Settings
+   (locked)    (locked)        (locked)  (optional)
+```
+
+---
+
+Step-by-Step Journey
+
+Step 1: Choose Sport
+
+```
+┌─────────────────────────┐
+│  What sport?            │
+│                         │
+│  [🥊 Boxing]  [⚽ Soccer]│
+│  [🏀 Basketball] etc    │
+│                         │
+│  [Next →]  [Skip]       │
+└─────────────────────────┘
+↓
+Adds to cart: "Boxing team"
+```
+
+Step 2: Find Venue (Map Integration)
+
+```
+┌─────────────────────────┐
+│  Where do you play?     │
+│                         │
+│  [🗺️ Map with pins]     │
+│                         │
+│  [📍 Central Park]      │
+│  [🏟️ NYC Fight Academy] │
+│  [+ Add new venue]      │
+│                         │
+│  [Next →]  [Skip]       │
+└─────────────────────────┘
+↓
+Adds to cart: "Venue: Central Park"
+```
+
+Step 3: Invite Players
+
+```
+┌─────────────────────────┐
+│  Who's on your team?    │
+│                         │
+│  [Invite from contacts] │
+│  [Share link]           │
+│  [Find nearby players]  │
+│                         │
+│  [👥 3 invited]         │
+│                         │
+│  [Next →]  [Skip]       │
+└─────────────────────────┘
+↓
+Adds to cart: "3 players"
+```
+
+Step 4: Gear Up (Marketplace)
+
+```
+┌─────────────────────────┐
+│  Need equipment?        │
+│                         │
+│  [🥊 Gloves $50]        │
+│  [🦷 Mouthguard $15]    │
+│  [👟 Shoes $120]        │
+│                         │
+│  [Skip]  [Add to cart]  │
+│  [I'll bring my own]    │
+└─────────────────────────┘
+↓
+Optional: Adds marketplace items
+```
+
+Step 5: Boost (Ads/Optional)
+
+```
+┌─────────────────────────┐
+│  Want more visibility?  │
+│                         │
+│  [📢 Promote team +$5]  │
+│  [🏅 Verified badge]    │
+│  [🎯 Find sponsors]     │
+│                         │
+│  [Skip all]  [Continue] │
+└─────────────────────────┘
+```
+
+Step 6: Review & Launch
+
+```
+┌─────────────────────────┐
+│  Ready to launch?       │
+│                         │
+│  🥊 Thunder Boxing      │
+│  📍 Central Park        │
+│  👥 3 players           │
+│  🛒 $65 gear (optional) │
+│                         │
+│  [🚀 Launch Team]       │
+│  +500 points!           │
+└─────────────────────────┘
+```
+
+---
+
+Gamification: Points System
+
+Action	Points	
+Complete team creation	+500	
+Add venue	+100	
+Invite 5+ players	+200	
+Buy gear	+50 per item	
+Verify team	+300	
+First match played	+1000	
+
+Rewards
+- 1000 pts → Team badge
+- 2500 pts → Featured listing
+- 5000 pts → Free promotion
+- 10000 pts → Verified status
+
+---
+
+Cart Logic
+
+```javascript
+const teamBuilder = {
+  steps: ['sport', 'venue', 'players', 'gear', 'boost'],
+  currentStep: 0,
+  data: {
+    sport: null,
+    venue: null,
+    players: [],
+    gear: [],
+    boosts: []
+  },
+  
+  canLaunch() {
+    // Required: sport + venue
+    return this.data.sport && this.data.venue;
+  },
+  
+  skipStep(step) {
+    // Mark as skipped, continue
+    this.data[step] = 'skipped';
+    this.next();
+  },
+  
+  calculatePoints() {
+    let points = 500; // Base
+    if (this.data.venue) points += 100;
+    if (this.data.players.length >= 5) points += 200;
+    points += this.data.gear.length * 50;
+    return points;
+  }
+};
+```
+
+---
+
+Visual: Progress Bar
+
+```css
+.progress-pill {
+  display: flex;
+  gap: 8px;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.step-dot.completed {
+  background: var(--green-primary);
+}
+
+.step-dot.current {
+  background: white;
+  transform: scale(1.2);
+}
+```
+
+---
+
+Key Features
+
+Feature	Why It Works	
+Skip option	No friction, user controls pace	
+Cart always visible	Progress feels tangible	
+Points at launch	Instant reward, dopamine hit	
+Marketplace integration	Natural monetization	
+Optional boosts	Revenue without forcing	
+
+---
+
+Alternative: "Team Kit" Metaphor
+
+Instead of cart, call it "Team Kit" — you're packing a bag for your team.
+
+```
+[🎒 Team Kit]
+  🥊 Sport: Boxing
+  📍 Venue: Central Park  
+  👥 Players: 3/5
+  🥊 Gear: Gloves, Wraps
+  [🚀 Launch]
+```
+
+More sports-native than "cart."
+
+---
+
+Which metaphor feels right — Cart, Kit, or something else? And want me to spec the points economy deeper?

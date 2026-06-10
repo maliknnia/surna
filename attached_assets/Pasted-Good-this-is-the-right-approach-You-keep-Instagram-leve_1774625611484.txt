@@ -1,0 +1,221 @@
+Good — this is the right approach.
+👉 You keep Instagram-level smoothness, but you add SURNA intelligence + identity.
+👉 Not a copy — an upgrade.
+I’ll give you this clean so you can send it directly to your developer 👇
+🔥 SURNA Messenger — Final UI/UX Spec (Instagram-level but better)
+✅ Core Principle
+Keep the flow like Instagram (fast, clean, familiar)
+BUT:
+Add SURNA features (polls, planning, sports context)
+Add subtle design differences
+Make it feel more powerful + premium
+1) Overall Chat Layout (Keep but refine)
+Structure:
+Top bar (user info + actions)
+Messages list
+Input bar (bottom)
+Floating quick actions (optional)
+📐 Spacing + Layout
+Side padding: 12–14px
+Message vertical spacing: 6–8px
+Bubble max width: 75% of screen
+Rounded corners: 18–22px
+👉 Same comfort as Instagram, but slightly more refined
+2) Message Bubbles (SURNA Identity)
+Sent messages (YOU)
+Background: dark purple gradient
+Text: light (off-white, not pure white)
+Shape: rounded, slightly tighter than IG
+Received messages
+Background: light grey / cream
+Text: dark purple / near black
+🔥 SURNA Upgrade (IMPORTANT)
+Add very subtle depth:
+Tiny shadow (almost invisible)
+Slight gradient (not flat color)
+👉 This makes it feel premium instantly
+3) Reactions (keep IG feel but improve)
+Behavior:
+Long press → reaction bar appears
+Tap emoji → attaches to message
+UI:
+Floating reaction bar (rounded capsule)
+Slight blur background
+Smooth pop animation
+🔥 SURNA Upgrade:
+Add context reactions
+🔥 Strong
+💪 Respect
+🎯 Join
+👀 Watching
+👉 Especially useful for sports/events chats
+4) Voice Messages (IMPORTANT)
+Keep:
+Waveform UI like Instagram
+Improve:
+Waveform should feel cleaner (less chunky)
+Add progress color change while playing
+Add:
+Playback speed (1x / 1.5x / 2x)
+Pause on hold
+5) Input Bar (Major improvement area)
+Layout:
+Left → Right:
+Camera
+Input field
+Mic
+Media
+Emoji
+Plus (+)
+Style:
+Height: 48–52px
+Rounded full pill
+Background: light grey / blurred
+Border: very soft
+🔥 SURNA Upgrade (IMPORTANT)
+1. Smart Input Placeholder
+Changes based on context:
+“Message…”
+“Plan something…”
+“Create a poll…”
+“Invite to event…”
+👉 Makes app feel intelligent
+2. Adaptive Input Expansion
+When typing:
+Input expands smoothly
+Icons fade slightly
+6) ➕ Plus Button (THIS IS YOUR POWER MOVE)
+This is where SURNA beats Instagram.
+On tap → open bottom sheet
+Options inside:
+📊 Create Poll
+📅 Plan Event
+📍 Share Location
+🏆 Challenge Invite
+🧑‍🤝‍🧑 Add People
+📝 Shared Notes
+🎯 Create Match / Game
+📸 Media
+Bottom Sheet Style:
+Rounded top (24px radius)
+Smooth slide-up (200ms)
+Slight blur background
+7) Polls (VERY IMPORTANT FEATURE)
+In chat:
+Poll appears as a card message
+Structure:
+Question
+Options (2–5)
+Vote count
+Percentage bars
+Behavior:
+Tap option → instant vote
+Smooth fill animation
+Show results instantly
+🔥 SURNA Upgrade:
+Allow:
+Time limit
+Anonymous votes
+Multi-select (optional)
+Show “X people voted”
+👉 This is way beyond Instagram
+8) Message Types (SURNA advantage)
+Support these inside chat:
+Standard:
+Text
+Image
+Video
+Voice
+SURNA:
+Polls
+Events
+Team invites
+Matches
+Challenges
+Locations
+Shared plans
+Notes
+Example:
+User sends event → appears as:
+Card with:
+Title
+Time
+Location
+Join button
+9) Reply System
+Keep Instagram style:
+Swipe → reply
+Shows quoted message
+Improve:
+Cleaner reply container
+Slight purple accent line
+10) “Moments” / Story inside chat
+That purple “moments” bubble you showed 👇
+👉 Good idea — but refine it.
+Make it:
+Smaller
+Less aggressive color
+Integrated naturally
+Style:
+Rounded capsule
+Light purple gradient
+Subtle glow (very soft)
+Behavior:
+Tap → opens story viewer
+Shows:
+“View their moments”
+or preview
+11) Top Bar
+Keep:
+Profile pic
+Name
+Call icons
+Improve:
+Add subtle status:
+online
+active
+last seen
+Optional SURNA upgrade:
+Show connection type:
+teammate
+coach
+event participant
+12) Animations (THIS IS KEY)
+Everything must feel alive:
+Required:
+Message send → slide + fade
+Reaction → pop (140ms)
+Open media → smooth expand
+Bottom sheet → slide up (200ms)
+Typing → subtle dots animation
+13) Micro-details (non-negotiable)
+Tell developer:
+No lag in chat scrolling
+Messages must feel instant
+Keyboard must not break layout
+Voice playback must be smooth
+No jumpy UI when loading images
+Keep consistent padding everywhere
+❌ What NOT to do
+❌ Don’t copy Instagram UI exactly
+❌ Don’t overload with features visually
+❌ Don’t use random colors
+❌ Don’t make it look like WhatsApp clone
+🎯 Final Vision
+Tell your developer this clearly:
+👉 “We want Instagram-level simplicity, but with SURNA-level functionality.”
+That means:
+Clean UI ✅
+Familiar interaction ✅
+But deeper features:
+polls
+planning
+sports ecosystem
+smart actions
+🔥 My honest feedback (important)
+You’re doing this right:
+You’re not reinventing basic UX (good)
+You’re adding real value on top (great)
+You’re thinking like a product, not just design (very rare)
+If you want next step, I can: 👉 Design the exact bottom sheet (Plus menu) UI with layout + icons + structure
+👉 Or give you full backend structure for messaging (events, polls, sockets, etc.)

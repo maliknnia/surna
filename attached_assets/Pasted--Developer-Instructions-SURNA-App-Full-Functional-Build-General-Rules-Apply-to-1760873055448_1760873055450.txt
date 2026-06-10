@@ -1,0 +1,193 @@
+
+
+---
+
+🟣 Developer Instructions — SURNA App Full Functional Build
+
+
+---
+
+🔹 General Rules (Apply to All Sections)
+
+1. Everything visible must be functional and clickable — no fake buttons or placeholders.
+
+
+2. If a feature depends on another one (e.g., likes need a user database, map needs live location data, etc.), you must build that dependent feature too.
+
+
+3. Avoid duplicates or repeated components. If there are multiple versions of the same feature, use only the best one — clean, stable, and fully integrated.
+
+
+4. The design and function must match the original SURNA concept — no design improvisation or off-theme colors.
+
+
+5. No missing features. If a page or button implies something exists, it must actually work.
+
+
+
+
+---
+
+🟣 Feed Page (Main Page)
+
+(already has post, live, like, comment, and share features — all must work smoothly and be clickable)
+
+Add Stories (24-hour system, clickable, swipe left/right, with viewers, reply, delete, add story).
+
+Go Live, Create Post, Comments, Likes, Shares, and Saved posts must all be functional.
+
+Everything on Feed — usernames, photos, videos — must link properly (e.g., username → profile).
+
+If any feed feature needs something else (e.g., profile, message, or notification), build that part too.
+
+
+
+---
+
+🟣 Places Page
+
+This section is where users discover sports venues, gyms, and activity spots.
+
+Each place card must be clickable → leads to the Place Details Page with:
+
+Photos
+
+Address
+
+Contact info
+
+Map location (embedded map view)
+
+Reviews & ratings
+
+“Join” or “Check in” button (connects to user’s activity feed)
+
+
+Integrate with Map Page (see below) so places appear dynamically on the map pins.
+
+If there are duplicate “places” features in the code, keep only one, the best optimized one — clean it up, don’t duplicate structures.
+
+
+
+---
+
+🟣 Teams Page
+
+Displays local and international teams users can follow or join.
+
+Each team card must open a Team Profile page:
+
+Team info, logo, and banner
+
+Player list
+
+Join/Request button
+
+Chat group or discussion thread
+
+Team events and results
+
+
+If there’s an old “team” feature elsewhere, merge it, don’t duplicate.
+
+Any backend needed (team creation, membership, notifications) must be built properly.
+
+
+
+---
+
+🟣 Coaches Page
+
+Directory of verified or public coaches.
+
+Each coach card → opens Coach Profile Page:
+
+Photo, specialty, pricing (if any), schedule, rating/reviews, “Book session” or “Contact” button.
+
+
+If coaching involves payment or messaging, build the systems required (booking backend, chat link, etc.).
+
+Integrate this page with the Map (coach locations visible if they enable location).
+
+
+
+---
+
+🟣 Map Page
+
+This is one of the most important parts.
+
+The map should function like Snapchat’s map, showing:
+
+Real-time positions of users (if they enable location).
+
+Pins for Places, Teams, Events, and Coaches.
+
+Tap on any pin → open the full detail page for that object (e.g., place details, event info).
+
+
+Allow filters at the top to toggle visibility (e.g. show only places, only events, only people).
+
+If live location or map backend is missing — build it.
+
+Map should auto-refresh and load cleanly without lag.
+
+
+
+---
+
+🟣 Events Page
+
+Shows upcoming matches, tournaments, meetups, etc.
+
+Each event card → opens Event Details Page with:
+
+Title, description, time/date, organizer, location (map link).
+
+“Join Event” button (adds to calendar + user’s activity).
+
+Option to share to Feed or Story.
+
+
+Events should also appear on the Map Page automatically as event pins.
+
+
+
+---
+
+🟣 3-Dot Menu (Global Menu on Top Right)
+
+Menu options should include and fully function for:
+
+Leaderboards (global/local ranking system)
+
+Create (new post, event, team, or place — depending on section)
+
+Challenge (send or accept sports challenges between users)
+
+Calendar (show upcoming joined events, matches, bookings)
+
+Join Us / Sponsorship
+
+Add a section where brands, gyms, or companies can apply to sponsor events, teams, or sections of the app.
+
+Build necessary backend for sponsorship requests, forms, and admin approval.
+
+Integrate sponsorship banners or tags within Events/Teams/Places.
+
+
+
+
+---
+
+🟣 Performance & Integrity
+
+No dummy links — every clickable icon or name should open something meaningful.
+
+Test all dependencies. If something doesn’t work because another feature isn’t built, you must build it — no “later” features.
+
+No duplicates or half-broken screens. Keep the most stable and logical structure.
+
+Everything should load quickly and stay synced with the backend.
+
+

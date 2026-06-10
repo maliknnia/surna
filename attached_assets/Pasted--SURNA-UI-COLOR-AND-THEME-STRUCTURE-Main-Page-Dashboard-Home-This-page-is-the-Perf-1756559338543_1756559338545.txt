@@ -1,0 +1,117 @@
+🌑 SURNA UI COLOR AND THEME STRUCTURE
+
+
+---
+
+🏠 Main Page (Dashboard / Home)
+
+This page is the "Performance Hub" — sleek, dark, focused.
+
+✅ Layout:
+
+// MAIN PAGE BACKGROUND
+background-color: #1a1522; // Dark violet / midnight purple
+
+// MAIN TEXT, HEADINGS, LEVELS, ICONS, STATS
+color: #e3cedc; // Soft creamy-lavender (for max contrast on dark)
+
+// CIRCULAR PROGRESS INDICATORS
+progress-circle-stroke: #e3cedc; // Same as text color
+
+// ICONS (Bell, Menu, etc.)
+icon-color: #e3cedc;
+
+✅ Behavior:
+
+Smooth transitions to other pages with fade-in or slide-left animation.
+
+Font size slightly larger than other pages for motivational effect.
+
+
+
+---
+
+🧾 Other Pages (Explore, Marketplace, Profile, Teams, Chat, etc.)
+
+This is where users browse, shop, or connect — lighter, more breathable.
+
+✅ Layout:
+
+// PAGE BACKGROUND (OPPOSITE OF MAIN)
+background-color: #e3cedc; // Creamy-lavender
+
+// TEXT, BUTTONS, ICONS, HEADINGS
+color: #6c4e8c; // Deep SURNA Purple (example: #6c4e8c)
+
+// ICONS
+icon-color: #6c4e8c;
+
+// BUTTON BACKGROUND (PRIMARY)
+button-background: #6c4e8c;
+button-text-color: #ffffff;
+
+// CIRCULAR ELEMENTS (BADGES, COUNT, STATS, ETC.)
+accent-color: #6c4e8c;
+
+
+---
+
+✏️ Fonts & Feel
+
+font-family: 'Poppins', sans-serif; // Clean, modern
+font-weight: 500–700 for headers, 400 for body
+
+
+---
+
+🌐 Global UX Notes for Developer:
+
+App should feel like Instagram meets ChatGPT:
+
+Fluid animations
+
+Relaxing but professional
+
+Clean icons (suggestion: use Feather or Lucide icons)
+
+High padding/margin spacing for breathing room
+
+
+Avoid harsh whites and full blacks — always use these soft hues
+
+Reuse the same components across the app — one button style, one card style, one font
+
+Add theme context if you're using React Native or Flutter to switch between these layouts based on page.
+
+
+
+---
+
+🎨 Suggested Color Palette (Hex Codes)
+
+Color Role	Hex	Description
+
+Dark Base	#1a1522	Main page background
+Creamy Accent	#e3cedc	Main text on dark, or light BG
+Surna Purple	#6c4e8c	Text on light pages, buttons, icons
+White (Minimal)	#ffffff	Button text, contrast if needed
+
+
+
+---
+
+🧠 Naming Convention for Consistency
+
+--color-bg-dark: #1a1522;
+--color-bg-light: #e3cedc;
+--color-text-dark: #6c4e8c;
+--color-text-light: #e3cedc;
+--color-button: #6c4e8c;
+--color-icon: #6c4e8c or #e3cedc depending on bg;
+
+
+---
+
+✨ Summary for Dev
+
+> "Main page should be dark, bold, and focused — using deep violet background and soft creamy writing. All other app pages must flip this scheme: creamy background and purple writing. Keep everything smooth, minimal, ChatGPT-ish clean and Instagram modern. Only two main colors used throughout the entire UI. Reuse components. Make every tap and animation buttery."

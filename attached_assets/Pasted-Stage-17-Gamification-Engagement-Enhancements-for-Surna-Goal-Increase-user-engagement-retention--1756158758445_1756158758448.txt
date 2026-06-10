@@ -1,0 +1,42 @@
+Stage 17: Gamification & Engagement Enhancements for Surna
+Goal
+Increase user engagement, retention, and excitement by introducing gamified elements and interactive features.
+Symptoms Being Addressed
+• Users are not consistently engaging with content or events.
+• Low participation in challenges, teams, or social features.
+• Lack of fun or reward mechanisms to motivate continued use.
+Optimizations
+1. Points & Badges System
+• Award points for actions: posting, attending events, joining teams, coach bookings, referrals.
+• Users unlock badges for milestones (first post, 10 events joined, etc.).
+• Display badges on profiles.
+2. Leaderboards
+• Show top users by points, engagement, or achievements.
+• Weekly, monthly, and all-time leaderboards.
+• Optionally segmented by sport or region.
+3. Challenges & Competitions
+• Create weekly or monthly challenges (e.g., attend 3 events, participate in 5 matches).
+• Users earn rewards or points for completing challenges.
+• Display progress visually with progress bars.
+4. Rewards & Redemption
+• Convert points into tangible rewards (discounts, merch, premium features).
+• Integrate with e-commerce or partner platforms.
+• Show a catalog of rewards within the app.
+5. Interactive Notifications
+• Send notifications for milestones, challenge completions, leaderboard status.
+• Encourage users to re-engage after inactivity.
+• Use push notifications or in-app toasts.
+6. Progress Tracking & Feedback
+• Show users their progress in events, skill levels, and challenges.
+• Encourage goal-setting and social sharing of achievements.
+• Provide feedback loops for continuous engagement.
+Config / Code Snippets
+User Points Table (PostgreSQL)
+CREATE TABLE user_points ( id SERIAL PRIMARY KEY, user_id INT NOT NULL, points INT DEFAULT 0, last_updated TIMESTAMP DEFAULT NOW() ); 
+Award Points Function (Node.js)
+async function awardPoints(userId, points) { await db.query('UPDATE user_points SET points = points + $1, last_updated = NOW() WHERE user_id = $2', [points, userId]); } 
+Leaderboard Query (PostgreSQL)
+SELECT users.id, users.username, user_points.points FROM users JOIN user_points ON users.id = user_points.user_id ORDER BY user_points.points DESC LIMIT 10; 
+React Progress Bar Example
+function ProgressBar({ current, goal }) { const percentage = (current / goal) * 100; return <div className="progress-bar"><div style={{ width: `${percentage}%` }} className="filled" /></div>; } 
+✅ Stage 17 ensures Surna motivates users through gamification, challenges, rewards, and interactive progress tracking, increasing retention and engagement.

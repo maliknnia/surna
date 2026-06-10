@@ -1,0 +1,411 @@
+
+---
+
+💳 Package #11 — PAYMENTS & WALLET (Wallets, Checkout, Escrow, Payouts)
+
+🎯 Purpose
+
+Provide a unified, secure payment layer for SURNA covering:
+
+Wallets (user/team/gym/brand)
+
+One-time checkouts (events, classes, products)
+
+Donations & sponsorships
+
+Escrow (challenges entry fees)
+
+Refunds & disputes
+
+Payouts to external bank accounts All connected to Feed, Profiles, Teams, Marketplace, Gyms, Events, Challenges, Analytics, Admin — without changing the app’s design.
+
+
+
+---
+
+🧩 Developer Sayings / Hard Rules
+
+> One canonical wallet + transaction + payment intent schema. No forks.
+
+Never update balances client-side; server is source of truth.
+
+No plaintext keys in repo; use env vars only.
+
+Every UI button that mentions money must complete a real payment or show a clear error.
+
+All money ops are idempotent (safe to retry).
+
+Record immutable ledgers; never edit historical transaction amounts.
+
+Comply with KYC/AML where required before payouts.
+
+Keep SURNA theme (dark purple/cream); do not redesign.
+
+
+
+
+
+---
+
+⚙️ Folder Structure
+
+server/payments/
+├── payments.routes.ts          // REST endpoints
+├── payments.service.ts         // core logic
+├── wallet.service.ts           // balance, ledger, transfers
+├── escrow.service.ts           // challenge escrow
+├── gateways/
+│   ├── stripe.gateway.ts
+│   └── paypal.gateway.ts
+└── webhooks/
+    ├── stripe.webhook.ts
+    └── paypal.webhook.ts
+
+client/src/modules/payments/
+├── PaymentModal.tsx            // card/PayPal/Wallet selector
+├── AddFundsModal.tsx
+├── WithdrawModal.tsx
+├── DonationSheet.tsx
+├── ReceiptDialog.tsx
+└── components/
+    ├── AmountInput.tsx
+    ├── MethodSelector.tsx
+    └── SummaryCard.tsx
+
+
+---
+
+🧠 Canonical Schemas (extend only; don’t fork)
+
+type Currency = 'EUR'|'USD'|'GBP';
+type Money = { amount: number; currency: Currency }; // amount in cents
+
+type WalletOwner = { type: 'user'|'team'|'gym'|'brand'; id: string };
+
+type Wallet = {
+  id: string;
+  owner: WalletOwner;         // unique (type,id) pair
+  balance: Money;             // available
+  escrow: Money;              // held funds (challenges)
+  pending: Money;             // unsettled incoming
+  createdAt: string;
+  updatedAt: string;
+  payoutEnabled?: boolean;    // after KYC
+  externalAccountId?: string; // Stripe connected account ID, etc.
+};
+
+type TxKind =
+  | 'add_funds' | 'purchase' | 'donation' | 'sponsorship'
+  | 'event_ticket' | 'class_booking' | 'product_sale'
+  | 'challenge_escrow_hold' | 'challenge_escrow_release' | 'challenge_refund'
+  | 'transfer' | 'withdrawal' | 'refund' | 'fee';
+
+type TxStatus = 'pending'|'completed'|'failed'|'refunded';
+
+type Transaction = {
+  id: string;
+  walletId: string;           // affected wallet
+  kind: TxKind;
+  direction: 'credit'|'debit';
+  amount: Money;
+  fee?: Money;                // platform fee taken
+  balanceAfter: Money;        // snapshot after tx
+  relatedEntity?: { type: 'order'|'event'|'booking'|'product'|'challenge'|'donation'|'sponsorship'; id: string };
+  counterparty?: WalletOwner; // optional
+  processor?: 'stripe'|'paypal'|'wallet';
+  processorRef?: string;      // intent/charge id
+  status: TxStatus;
+  createdAt: string;
+  meta?: Record<string, any>; // notes, reason, etc.
+};
+
+type PaymentIntent = {
+  id: string;
+  amount: Money;
+  payer: WalletOwner;         // who pays
+  payee?: WalletOwner;        // who receives (if direct)
+  purpose: 'checkout'|'donation'|'sponsorship'|'booking'|'ticket'|'escrow';
+  relatedEntity?: { type: string; id: string };
+  method: 'card'|'paypal'|'wallet';
+  status: 'requires_payment'|'processing'|'succeeded'|'failed'|'cancelled';
+  processor?: 'stripe'|'paypal'|'wallet';
+  processorRef?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type Escrow = {
+  id: string;
+  challengeId: string;
+  currency: Currency;
+  totalHeld: number;          // cents
+  participants: { walletId: string; amount: number }[];
+  status: 'open'|'released'|'refunded'|'cancelled';
+  createdAt: string;
+  updatedAt: string;
+};
+
+
+---
+
+🧱 User Flows (must all work)
+
+1) Add Funds / Withdraw
+
+Add Funds: user chooses amount → Stripe/PayPal → on webhook success: Transaction(add_funds, credit); wallet.balance increases.
+
+Withdraw: to connected bank (Stripe Connect). Requires KYC; create payout; record withdrawal tx.
+
+
+2) One-Time Checkout
+
+Used by Event tickets, Gym classes, Marketplace products.
+
+Client creates PaymentIntent with purpose and relatedEntity.
+
+Method: card/PayPal/Wallet.
+
+On success (webhook or wallet debit):
+
+Create immutable Order/Booking/Ticket record.
+
+purchase (debit payer) + product_sale/event_ticket (credit payee).
+
+Send ReceiptDialog + email.
+
+Post an optional payment message in Messenger thread (contextual).
+
+
+
+3) Donations & Sponsorships
+
+From Team/Person profiles → DonationSheet.
+
+Public or anonymous toggle; optional message.
+
+On success:
+
+Credit receiver wallet (donation/sponsorship).
+
+Update profile sponsor list.
+
+Optional Feed highlight (“sponsored by …”, if public).
+
+
+
+4) Challenge Escrow (Entry Fees)
+
+Both sides pay entry fee → escrow.service holds funds (move to wallet.escrow).
+
+On confirmed result (Pkg 10):
+
+Release to winner(s) (challenge_escrow_release).
+
+Platform fee taken as fee tx.
+
+
+On cancel/dispute resolved to refund: challenge_refund back to participants.
+
+
+5) Refunds & Disputes
+
+Initiated from Orders/Bookings/Payments (time-boxed policy).
+
+If processor = Stripe/PayPal → create refund through gateway; mirror a refund tx and adjust wallet.
+
+If Wallet-internal → create compensating refund tx.
+
+Update order/booking status; notify both parties; analytics event.
+
+
+
+---
+
+🔌 REST API (idempotent)
+
+# Wallet
+GET    /api/wallets/me
+GET    /api/wallets/:ownerType/:ownerId            # admin/owner
+GET    /api/wallets/:walletId/transactions?cursor=&limit=
+POST   /api/wallets/:walletId/transfer             # internal transfer (admin/owner rules)
+
+# Payment Intents
+POST   /api/payments/intents                       # {amount, currency, method, purpose, relatedEntity, payee}
+GET    /api/payments/intents/:id
+POST   /api/payments/intents/:id/cancel
+
+# Add funds / Withdraw
+POST   /api/payments/add-funds                     # creates gateway checkout session
+POST   /api/payments/withdraw                      # {amount} → payout (requires KYC)
+
+# Checkout hooks
+POST   /api/payments/confirm                       # wallet-method confirmation
+POST   /api/webhooks/stripe                        # verify signature; update intent/tx
+POST   /api/webhooks/paypal                        # verify signature; update intent/tx
+
+# Donations / Sponsorships
+POST   /api/payments/donate                        # {to: owner, amount, message, anonymous}
+
+# Escrow (challenges)
+POST   /api/payments/escrow/hold                   # {challengeId, amount}
+POST   /api/payments/escrow/release                # {challengeId, winnerIds[]}
+POST   /api/payments/escrow/refund                 # {challengeId, reason}
+
+# Refunds
+POST   /api/payments/refund                        # {relatedEntity, reason}
+
+Gateway config via env:
+
+STRIPE_SECRET=...
+STRIPE_WEBHOOK_SECRET=...
+STRIPE_CONNECT=true|false
+PAYPAL_CLIENT_ID=...
+PAYPAL_SECRET=...
+PAYMENTS_CURRENCY=EUR
+
+
+---
+
+🧩 Cross-Connections (wire them all)
+
+Feed: payment highlights (donations, big sponsorships) as optional posts.
+
+Profiles/Teams/Gyms: sponsor lists, donations totals, “Support” buttons.
+
+Marketplace: orders, sales, refunds, seller payouts.
+
+Gyms/Events: tickets, bookings, memberships; receipts and calendar entries.
+
+Challenges: escrow hold/release/refund tied to result flow.
+
+Messenger: send contextual payment receipts to threads.
+
+Analytics: revenue, GMV, refund rate, AOV, donor counts (Pkg 12).
+
+Admin: fraud flags, manual refunds, payout review (Pkg 13).
+
+
+
+---
+
+🎨 UI Specs (SURNA theme)
+
+PaymentModal / DonationSheet / WithdrawModal:
+
+Background near-black; text cream; meta grey.
+
+Primary CTA with subtle purple outline/hover.
+
+SummaryCard shows line items (subtotal, fees, total) in clean stacked rows.
+
+Icons: grey idle → dark active.
+
+
+Receipts: minimal; show payer, payee, item(s), total, method, id.
+
+
+
+---
+
+🔒 Security, Compliance & Integrity
+
+HTTPS everywhere; HSTS; secure cookies.
+
+Verify webhook signatures; reject mismatched amounts/currency.
+
+Idempotency keys on client submits and server writes.
+
+Ledger is immutable: never edit past tx values; append corrective txs.
+
+Enforce KYC (Stripe Connect onboarding) before enabling withdrawals.
+
+PCI-DSS: do not touch card data; Stripe/PayPal handle it.
+
+GDPR: store only necessary personal/payment metadata; allow export/delete requests.
+
+Anti-fraud: velocity limits, device/IP fingerprinting, risk scoring → manual review queue.
+
+Access control: owners can see their wallets; admins can audit with reason logging.
+
+
+
+---
+
+⚙️ Performance & Reliability
+
+Use webhooks as source of truth for processor events.
+
+Retry webhook processing with backoff; mark intents as processing until final.
+
+Queue heavy tasks (PDF receipts, emails) to background worker.
+
+Cache read-only totals (donation sums, shop sales) and invalidate on new txs.
+
+All money operations wrapped in DB transactions.
+
+
+
+---
+
+🧪 QA — “Done When” Checklist
+
+✅ Add Funds → balance increases after webhook; receipt available.
+✅ Checkout (events/classes/products) completes via card/PayPal/Wallet; order/booking created; receipts saved; Messenger receipt sent.
+✅ Donations/Sponsorships credit receiver; appear on Profile/Team pages (if public).
+✅ Escrow: both sides pay; hold visible; after confirmed result, funds release to winner; platform fee booked; refunds on cancel/dispute.
+✅ Withdraw: blocked until KYC; succeeds afterwards; shows payout tx.
+✅ Refunds: processor + wallet refunds mirror to ledger; buyer/seller states updated.
+✅ All totals (wallet balance, escrow, pending) remain consistent under concurrency.
+✅ Dark/light modes perfect; no UI hangs; no console errors.
+
+
+---
+
+🧑‍💻 Implementation Order (safe)
+
+1. Wallet + Ledger tables/services; GET /wallets/me + tx history.
+
+
+2. PaymentIntent create/confirm; Stripe/PayPal gateways + webhooks.
+
+
+3. Checkout flow (shared PaymentModal) + ReceiptDialog.
+
+
+4. Donations/Sponsorships UI + endpoints + profile/team linking.
+
+
+5. Escrow hold/release/refund integrated with Challenges (Pkg 10).
+
+
+6. Withdrawals / KYC (Stripe Connect) + admin toggles.
+
+
+7. Refunds & disputes path across orders/bookings.
+
+
+8. Wire Messenger receipts + Analytics events.
+
+
+9. QA full matrix (Marketplace, Events, Gyms, Challenges).
+
+
+10. Merge dev-payments → staging → release.
+
+
+
+
+---
+
+🚫 Don’ts (to prevent breakage)
+
+Don’t deduct inventory or confirm bookings before payment success webhook.
+
+Don’t credit payouts without passing KYC/Connect checks.
+
+Don’t “edit” historical txs; always append corrective entries.
+
+Don’t compute wallet totals on the client; fetch from server.
+
+Don’t leak processor IDs to other users; mask where appropriate.
+

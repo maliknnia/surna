@@ -1,0 +1,15 @@
+name: Branch name check
+on:
+  pull_request:
+jobs:
+  validate-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch naming
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "Branch: $BRANCH"
+          if ! echo "$BRANCH" | grep -Eq '^(feature|fix|hotfix|chore|docs|refactor|release)\/[a-z0-9-]+(\/[A-Za-z]+-[0-9]+)?\/[a-z0-9-]{2,}$'; then
+            echo "::error ::Invalid branch name. See CONTRIBUTING.md"
+            exit 1
+          fi

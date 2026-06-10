@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="256" cy="256" rx="200" ry="120" transform="rotate(-30 256 256)"/>
+  <line x1="120" y1="160" x2="392" y2="352"/>
+  <line x1="160" y1="120" x2="432" y2="312"/>
+  <path d="M220 220 L240 200 L260 220 L280 200 L300 220 L320 200 L340 220 L360 200 L380 220"/>
+  <path d="M200 240 L220 260 L240 240 L260 260 L280 240 L300 260 L320 240 L340 260 L360 240"/>
+</svg>
