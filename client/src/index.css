@@ -1564,12 +1564,23 @@
   --beacon-label-text: rgba(0, 0, 0, 0.82);
 }
 
-.surna-map-root .leaflet-tile-pane,
-.surna-map-root .maplibregl-canvas {
+.surna-map-root .leaflet-tile-pane {
   filter: saturate(0.6) contrast(1.15) brightness(1.0);
+}
+/* MapLibre uses WebGL — CSS filters desaturate to grey or blank the canvas */
+.surna-map-root .maplibregl-canvas {
+  filter: none;
 }
 .surna-map-light .leaflet-tile-pane {
   filter: saturate(0.85) contrast(1.02) brightness(1.0) sepia(0.08);
+}
+
+.surna-map-light .surna-leaflet {
+  background: #e4e0d6;
+}
+.surna-map-dark .surna-leaflet,
+.surna-map-root:not(.surna-map-light) .surna-leaflet {
+  background: #050508;
 }
 
 .surna-map-vignette {
@@ -1577,10 +1588,10 @@
   position: absolute;
   inset: 0;
   z-index: 401;
-  background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 35%, rgba(0, 0, 0, 0.45) 100%);
+  background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 45%, rgba(0, 0, 0, 0.22) 100%);
 }
 .surna-map-light .surna-map-vignette {
-  background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 40%, rgba(0, 0, 0, 0.08) 100%);
+  background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.04) 100%);
 }
 .surna-map-grain {
   pointer-events: none;

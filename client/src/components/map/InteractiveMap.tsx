@@ -8,15 +8,450 @@ import {
   createSurnaMarker,
   createSurnaUserMarker,
 } from "./surnaMapMarkers";
+import { applySurnaMapTrees } from "./surnaMapTreeLayer";
 
 const DEFAULT_MAP_ZOOM = 15;
 const CLUSTER_MAX_ZOOM = 14;
 const LONG_PRESS_MS = 500;
+/** Snap-style default — steep angle; user can still pitch flat with two-finger drag. */
+const DEFAULT_MAP_PITCH = 52;
+const MAX_MAP_PITCH = 60;
+
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY?.trim() || "";
 
 const OPENFREE_MAP_STYLES = {
   dark: "https://tiles.openfreemap.org/styles/dark",
   light: "https://tiles.openfreemap.org/styles/positron",
 } as const;
+
+function mapStyleUrl(dark: boolean): string {
+  if (MAPTILER_KEY) {
+    const style = dark ? "streets-v2-dark" : "streets-v2";
+    return `https://api.maptiler.com/maps/${style}/style.json?key=${MAPTILER_KEY}`;
+  }
+  return dark ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
+}
+
+const MAPTILER_POI_LAYERS_HIDE = [
+  "Public",
+  "Shopping",
+  "Transport",
+  "Healthcare",
+  "Education",
+  "Housenumber",
+  "Ferry",
+  "Gondola",
+  "Oneway",
+  "Station",
+  "Airport gate",
+  "Airport",
+  "Highway junction",
+  "Highway shield",
+  "Highway shield (US)",
+  "Highway shield interstate top (US)",
+  "Highway shield interstate (US)",
+] as const;
+
+/** Snap-style POIs — sport venues, parks, food, local places */
+const MAPTILER_POI_LAYERS_KEEP = ["Sport", "Park", "Food", "Tourism", "Culture"] as const;
+
+const MAPTILER_PATH_LAYERS_HIDE = [
+  "Path",
+  "Path minor",
+  "Path outline",
+  "Footway tunnel",
+  "Footway tunnel outline",
+  "Cablecar dash",
+] as const;
+
+const MAPTILER_GREEN_LAYERS = [
+  "Grass",
+  "Forest",
+  "Wood",
+  "Meadow",
+  "Scrub",
+  "Crop",
+  "Stadium",
+] as const;
+
+function applyDarkSnapchatStreets(map: maplibregl.Map) {
+  if (map.getLayer("Background")) {
+    map.setPaintProperty("Background", "background-color", "hsl(228, 52%, 9%)");
+  }
+  if (map.getLayer("Residential")) {
+    map.setPaintProperty("Residential", "fill-color", "hsl(228, 48%, 11%)");
+  }
+  if (map.getLayer("Pedestrian")) {
+    map.setLayoutProperty("Pedestrian", "visibility", "none");
+  }
+
+  const minorGlow = "hsl(215, 26%, 56%)";
+  const majorGlow = "hsl(212, 30%, 62%)";
+
+  if (map.getLayer("Minor road outline")) {
+    map.setLayoutProperty("Minor road outline", "visibility", "visible");
+    map.setPaintProperty("Minor road outline", "line-color", minorGlow);
+    map.setPaintProperty("Minor road outline", "line-opacity", 0.9);
+  }
+  if (map.getLayer("Minor road")) {
+    map.setPaintProperty("Minor road", "line-color", "hsl(220, 22%, 34%)");
+    map.setPaintProperty("Minor road", "line-opacity", 1);
+  }
+  if (map.getLayer("Major road outline")) {
+    map.setLayoutProperty("Major road outline", "visibility", "visible");
+    map.setPaintProperty("Major road outline", "line-color", majorGlow);
+    map.setPaintProperty("Major road outline", "line-opacity", 0.92);
+  }
+  if (map.getLayer("Major road")) {
+    map.setPaintProperty("Major road", "line-color", "hsl(215, 28%, 42%)");
+    map.setPaintProperty("Major road", "line-opacity", 1);
+  }
+  if (map.getLayer("Highway outline")) {
+    map.setLayoutProperty("Highway outline", "visibility", "visible");
+    map.setPaintProperty("Highway outline", "line-color", "hsl(210, 32%, 66%)");
+    map.setPaintProperty("Highway outline", "line-opacity", 0.9);
+  }
+  if (map.getLayer("Highway")) {
+    map.setPaintProperty("Highway", "line-color", "hsl(212, 30%, 46%)");
+    map.setPaintProperty("Highway", "line-opacity", 1);
+  }
+}
+
+function applyDarkWater(map: maplibregl.Map) {
+  ["Water", "Water intermittent"].forEach((layerId) => {
+    if (map.getLayer(layerId)) {
+      map.setPaintProperty(layerId, "fill-color", "#050508");
+      map.setPaintProperty(layerId, "fill-opacity", 1);
+    }
+  });
+}
+
+function applyDarkGreenery(map: maplibregl.Map) {
+  // Snap-style: muted olive canopy on dark ground — not neon lime
+  const greenFills: Record<string, string> = {
+    Grass: "hsl(115, 18%, 16%)",
+    Forest: "hsl(98, 28%, 24%)",
+    Wood: "hsl(96, 30%, 26%)",
+    Meadow: "hsl(105, 22%, 20%)",
+    Scrub: "hsl(100, 20%, 19%)",
+    Crop: "hsl(102, 18%, 18%)",
+    Stadium: "hsl(108, 24%, 22%)",
+  };
+
+  MAPTILER_GREEN_LAYERS.forEach((layerId) => {
+    if (map.getLayer(layerId)) {
+      map.setPaintProperty(layerId, "fill-color", greenFills[layerId]);
+      map.setPaintProperty(layerId, "fill-opacity", 0.92);
+    }
+  });
+}
+
+/** Muted POI colors; logos visible at normal city zoom (no strict rank filters). */
+function applySurnaPoiTraffic(map: maplibregl.Map, dark: boolean) {
+  const poiIconColors: Record<string, string> = dark
+    ? {
+        Park: "hsl(98, 22%, 58%)",
+        Sport: "hsl(108, 28%, 62%)",
+        Food: "hsl(28, 28%, 72%)",
+        Tourism: "hsl(278, 28%, 72%)",
+        Culture: "hsl(310, 26%, 74%)",
+      }
+    : {
+        Park: "hsl(98, 32%, 42%)",
+        Sport: "hsl(108, 35%, 38%)",
+        Food: "hsl(28, 30%, 45%)",
+        Tourism: "hsl(278, 30%, 48%)",
+        Culture: "hsl(310, 28%, 48%)",
+      };
+
+  const iconFade = (fromZoom: number): maplibregl.ExpressionSpecification => [
+    "step",
+    ["zoom"],
+    0,
+    fromZoom,
+    0.88,
+    fromZoom + 1,
+    0.92,
+  ];
+
+  const textFade = (fromZoom: number): maplibregl.ExpressionSpecification => [
+    "step",
+    ["zoom"],
+    0,
+    fromZoom,
+    0.82,
+    fromZoom + 1,
+    0.88,
+  ];
+
+  const poiRules: Record<string, { from: number; textFrom: number }> = {
+    Park: { from: 13, textFrom: 14 },
+    Sport: { from: 14, textFrom: 15 },
+    Food: { from: 14, textFrom: 15 },
+    Tourism: { from: 14, textFrom: 15 },
+    Culture: { from: 14, textFrom: 15 },
+  };
+
+  Object.entries(poiRules).forEach(([layerId, rules]) => {
+    if (!map.getLayer(layerId)) return;
+
+    const color = poiIconColors[layerId];
+    if (color) {
+      map.setPaintProperty(layerId, "icon-color", color);
+      map.setPaintProperty(layerId, "text-color", color);
+    }
+
+    map.setPaintProperty(layerId, "icon-opacity", iconFade(rules.from));
+    map.setPaintProperty(layerId, "text-opacity", textFade(rules.textFrom));
+    map.setLayoutProperty(layerId, "icon-size", [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      rules.from,
+      0.85,
+      16,
+      0.95,
+      18,
+      1,
+    ]);
+  });
+
+  if (map.getLayer("Road labels")) {
+    map.setPaintProperty("Road labels", "text-opacity", [
+      "step",
+      ["zoom"],
+      0.85,
+      13,
+      1,
+    ]);
+  }
+}
+
+function applyLightSnapchatStreets(map: maplibregl.Map) {
+  if (map.getLayer("Background")) {
+    map.setPaintProperty("Background", "background-color", "hsl(42, 22%, 91%)");
+  }
+  if (map.getLayer("Residential")) {
+    map.setPaintProperty("Residential", "fill-color", "hsl(40, 18%, 87%)");
+  }
+  if (map.getLayer("Pedestrian")) {
+    map.setLayoutProperty("Pedestrian", "visibility", "none");
+  }
+
+  const minorGlow = "hsl(42, 12%, 78%)";
+  const majorGlow = "hsl(38, 10%, 72%)";
+
+  if (map.getLayer("Minor road outline")) {
+    map.setLayoutProperty("Minor road outline", "visibility", "visible");
+    map.setPaintProperty("Minor road outline", "line-color", minorGlow);
+    map.setPaintProperty("Minor road outline", "line-opacity", 0.85);
+  }
+  if (map.getLayer("Minor road")) {
+    map.setPaintProperty("Minor road", "line-color", "hsl(40, 8%, 96%)");
+    map.setPaintProperty("Minor road", "line-opacity", 1);
+  }
+  if (map.getLayer("Major road outline")) {
+    map.setLayoutProperty("Major road outline", "visibility", "visible");
+    map.setPaintProperty("Major road outline", "line-color", majorGlow);
+    map.setPaintProperty("Major road outline", "line-opacity", 0.8);
+  }
+  if (map.getLayer("Major road")) {
+    map.setPaintProperty("Major road", "line-color", "hsl(42, 10%, 98%)");
+    map.setPaintProperty("Major road", "line-opacity", 1);
+  }
+  if (map.getLayer("Highway outline")) {
+    map.setLayoutProperty("Highway outline", "visibility", "visible");
+    map.setPaintProperty("Highway outline", "line-color", "hsl(36, 12%, 68%)");
+    map.setPaintProperty("Highway outline", "line-opacity", 0.75);
+  }
+  if (map.getLayer("Highway")) {
+    map.setPaintProperty("Highway", "line-color", "hsl(40, 12%, 94%)");
+    map.setPaintProperty("Highway", "line-opacity", 1);
+  }
+}
+
+function applyLightWater(map: maplibregl.Map) {
+  ["Water", "Water intermittent"].forEach((layerId) => {
+    if (map.getLayer(layerId)) {
+      map.setPaintProperty(layerId, "fill-color", "hsl(205, 42%, 72%)");
+      map.setPaintProperty(layerId, "fill-opacity", 1);
+    }
+  });
+}
+
+function applyLightGreenery(map: maplibregl.Map) {
+  const greenFills: Record<string, string> = {
+    Grass: "hsl(108, 38%, 74%)",
+    Forest: "hsl(98, 46%, 48%)",
+    Wood: "hsl(96, 44%, 44%)",
+    Meadow: "hsl(105, 40%, 68%)",
+    Scrub: "hsl(100, 32%, 65%)",
+    Crop: "hsl(102, 35%, 70%)",
+    Stadium: "hsl(108, 38%, 72%)",
+  };
+
+  MAPTILER_GREEN_LAYERS.forEach((layerId) => {
+    if (map.getLayer(layerId)) {
+      map.setPaintProperty(layerId, "fill-color", greenFills[layerId]);
+      map.setPaintProperty(layerId, "fill-opacity", 0.95);
+    }
+  });
+}
+
+function applySnapchatBuildings(map: maplibregl.Map, dark: boolean, insertBefore?: string) {
+  if (!map.getSource("maptiler_planet")) {
+    console.warn("[InteractiveMap] maptiler_planet missing — 3D buildings skipped");
+    return;
+  }
+
+  const beforeId = map.getLayer("Road labels") ? "Road labels" : insertBefore;
+  const buildingHeight = [
+    "coalesce",
+    ["to-number", ["get", "render_height"]],
+    ["to-number", ["get", "height"]],
+    10,
+  ] as maplibregl.ExpressionSpecification;
+
+  const windowLit = dark ? "#d8ecff" : "#fff0c8";
+
+  try {
+    ["surna-building-glow", "surna-building-windows", "surna-building-windows-high", "surna-3d-buildings"].forEach((id) => {
+      if (map.getLayer(id)) map.removeLayer(id);
+    });
+
+    const buildingColor = dark ? "#0c0e22" : "#c8c4bb";
+
+    map.addLayer(
+      {
+        id: "surna-3d-buildings",
+        source: "maptiler_planet",
+        "source-layer": "building",
+        type: "fill-extrusion",
+        minzoom: 14,
+        paint: {
+          "fill-extrusion-color": buildingColor,
+          "fill-extrusion-height": buildingHeight,
+          "fill-extrusion-base": [
+            "coalesce",
+            ["to-number", ["get", "render_min_height"]],
+            ["to-number", ["get", "min_height"]],
+            0,
+          ],
+          "fill-extrusion-opacity": 1,
+          "fill-extrusion-vertical-gradient": dark,
+        },
+      },
+      beforeId,
+    );
+
+    // One large lit block per apartment — Snap-style, not a repeating grid
+    map.addLayer({
+      id: "surna-building-windows",
+      source: "maptiler_planet",
+      "source-layer": "building",
+      type: "fill-extrusion",
+      minzoom: 15,
+      filter: [">=", buildingHeight, 6],
+      paint: {
+        "fill-extrusion-color": windowLit,
+        "fill-extrusion-base": ["*", buildingHeight, 0.38],
+        "fill-extrusion-height": ["*", buildingHeight, 0.62],
+        "fill-extrusion-opacity": dark ? 0.78 : 0.62,
+      },
+    });
+
+    // Second window row only on taller blocks
+    map.addLayer({
+      id: "surna-building-windows-high",
+      source: "maptiler_planet",
+      "source-layer": "building",
+      type: "fill-extrusion",
+      minzoom: 15,
+      filter: [">=", buildingHeight, 14],
+      paint: {
+        "fill-extrusion-color": windowLit,
+        "fill-extrusion-base": ["*", buildingHeight, 0.68],
+        "fill-extrusion-height": ["*", buildingHeight, 0.86],
+        "fill-extrusion-opacity": dark ? 0.7 : 0.55,
+      },
+    });
+  } catch (error) {
+    console.error("[InteractiveMap] 3D buildings failed:", error);
+  }
+}
+
+function applyMapTilerStyleLoad(map: maplibregl.Map, dark: boolean) {
+  if (!MAPTILER_KEY) return;
+
+  try {
+    if (map.getLayer("sky")) {
+      map.removeLayer("sky");
+    }
+
+    MAPTILER_POI_LAYERS_HIDE.forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, "visibility", "none");
+      }
+    });
+
+    MAPTILER_POI_LAYERS_KEEP.forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, "visibility", "visible");
+      }
+    });
+
+    MAPTILER_PATH_LAYERS_HIDE.forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, "visibility", "none");
+      }
+    });
+
+    if (dark) {
+      applyDarkSnapchatStreets(map);
+      applyDarkGreenery(map);
+      applyDarkWater(map);
+    } else {
+      applyLightSnapchatStreets(map);
+      applyLightGreenery(map);
+      applyLightWater(map);
+    }
+
+    applySurnaPoiTraffic(map, dark);
+
+    map.setTerrain(null);
+    const mapWithFog = map as maplibregl.Map & { setFog?: (fog: object | null) => void };
+    if (dark) {
+      mapWithFog.setFog?.(null);
+    } else {
+      mapWithFog.setFog?.({
+        color: "rgb(232, 228, 218)",
+        "high-color": "rgb(238, 234, 224)",
+        "horizon-blend": 0.06,
+        "space-color": "rgb(228, 224, 214)",
+      });
+    }
+
+    if (map.getLayer("Building")) {
+      map.setLayoutProperty("Building", "visibility", "none");
+    }
+    if (map.getLayer("Building 3D")) {
+      map.setLayoutProperty("Building 3D", "visibility", "none");
+    }
+  } catch (error) {
+    console.error("[InteractiveMap] style tweaks failed:", error);
+  }
+
+  const labelLayerId = map.getStyle().layers.find(
+    (layer) => layer.type === "symbol" && layer.layout?.["text-field"],
+  )?.id;
+
+  const apply3DEnhancements = () => {
+    applySnapchatBuildings(map, dark, labelLayerId);
+    applySurnaMapTrees(map);
+  };
+
+  map.once("idle", apply3DEnhancements);
+}
 
 export interface MapPin {
   id: string;
@@ -147,6 +582,8 @@ export default function InteractiveMap({
   const prevCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   const onPinClickRef = useRef(onPinClick);
   const styleRef = useRef<string>("");
+  const mapTilerFallbackRef = useRef(false);
+  const initialPitchSetRef = useRef(false);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -158,11 +595,38 @@ export default function InteractiveMap({
     ? center
     : { lat: 51.8985, lng: -8.4756 };
   const youCoords = userDisplayCoords ?? mapCenter;
-  const tileStyle = useDarkTiles ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
+  const mapTheme = useDarkTiles ? "dark" : "light";
+  const tileStyle = MAPTILER_KEY
+    ? useDarkTiles
+      ? `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`
+      : `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`
+    : mapStyleUrl(useDarkTiles);
+  const useMapTiler3D = Boolean(MAPTILER_KEY);
+
+  const useDarkTilesRef = useRef(useDarkTiles);
+  const tileStyleRef = useRef(tileStyle);
+
+  useEffect(() => {
+    useDarkTilesRef.current = useDarkTiles;
+    tileStyleRef.current = tileStyle;
+  }, [useDarkTiles, tileStyle]);
 
   const clearPinMarkers = () => {
     pinMarkersRef.current.forEach((marker) => marker.remove());
     pinMarkersRef.current = [];
+  };
+
+  const finishStyleLoad = (map: maplibregl.Map) => {
+    const theme = useDarkTilesRef.current ? "dark" : "light";
+    const styleUrl = tileStyleRef.current;
+    console.log(`[InteractiveMap] style.load — ${theme}:`, styleUrl);
+    applyMapTilerStyleLoad(map, useDarkTilesRef.current);
+    if (MAPTILER_KEY && !initialPitchSetRef.current) {
+      map.setPitch(DEFAULT_MAP_PITCH);
+      initialPitchSetRef.current = true;
+    }
+    map.resize();
+    syncPinMarkers();
   };
 
   const syncPinMarkers = () => {
@@ -257,29 +721,56 @@ export default function InteractiveMap({
   useEffect(() => {
     if (!mounted || !mapActive || !mapContainerRef.current) return;
 
+    console.log("[InteractiveMap] loading map style:", mapTheme, tileStyle);
+
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: tileStyle,
       center: [mapCenter.lng, mapCenter.lat],
       zoom: DEFAULT_MAP_ZOOM,
+      pitch: useMapTiler3D ? DEFAULT_MAP_PITCH : 0,
+      maxPitch: MAX_MAP_PITCH,
+      touchPitch: useMapTiler3D,
       attributionControl: false,
     });
 
     mapRef.current = map;
     styleRef.current = tileStyle;
+    mapTilerFallbackRef.current = false;
+    initialPitchSetRef.current = false;
     prevCenterRef.current = { lat: mapCenter.lat, lng: mapCenter.lng };
 
-    const onMapReady = () => {
-      map.resize();
-      syncPinMarkers();
+    const onStyleReady = () => finishStyleLoad(map);
+
+    const onMapError = (event: maplibregl.ErrorEvent) => {
+      if (mapTilerFallbackRef.current || !MAPTILER_KEY) return;
+      if (!styleRef.current.includes("maptiler.com")) return;
+      const message = event.error?.message ?? "";
+      if (/layer|fill-extrusion|paint|sprite|style/i.test(message)) {
+        console.warn("[InteractiveMap] layer/style error (keeping MapTiler):", message);
+        return;
+      }
+      mapTilerFallbackRef.current = true;
+      const fallback = useDarkTilesRef.current ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
+      styleRef.current = fallback;
+      tileStyleRef.current = fallback;
+      console.log("[InteractiveMap] loading map style:", useDarkTilesRef.current ? "dark" : "light", fallback);
+      map.setStyle(fallback);
+      console.warn("MapTiler unavailable, using OpenFreeMap fallback.", event.error?.message);
     };
 
-    map.on("load", onMapReady);
+    map.on("style.load", onStyleReady);
+    map.on("error", onMapError);
     map.on("zoomend", syncPinMarkers);
     map.on("moveend", syncPinMarkers);
 
+    if (map.isStyleLoaded()) {
+      finishStyleLoad(map);
+    }
+
     return () => {
-      map.off("load", onMapReady);
+      map.off("style.load", onStyleReady);
+      map.off("error", onMapError);
       map.off("zoomend", syncPinMarkers);
       map.off("moveend", syncPinMarkers);
       clearPinMarkers();
@@ -295,12 +786,11 @@ export default function InteractiveMap({
     if (!map || styleRef.current === tileStyle) return;
 
     styleRef.current = tileStyle;
+    tileStyleRef.current = tileStyle;
+    mapTilerFallbackRef.current = false;
+    console.log("[InteractiveMap] loading map style:", mapTheme, tileStyle);
     map.setStyle(tileStyle);
-    map.once("style.load", () => {
-      map.resize();
-      syncPinMarkers();
-    });
-  }, [tileStyle]);
+  }, [tileStyle, mapTheme]);
 
   useEffect(() => {
     const map = mapRef.current;
