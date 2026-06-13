@@ -51,9 +51,14 @@ export async function issueEmailVerificationCode(userId: string): Promise<{ sent
   const firstName = user.firstName || user.displayName || "Athlete";
   const sent = await EmailCampaignService.sendVerificationEmail(user.email, firstName, code);
 
-  const payload: { sent: boolean; devCode?: string } = { sent };
+  const payload: { sent: boolean; devCode?: string; autoVerified?: boolean } = { sent };
   if (process.env.NODE_ENV !== "production" && !process.env.SENDGRID_API_KEY) {
     payload.devCode = code;
+  }
+  // Railway / early deploy: no SMTP — don't trap users behind un-sendable verification emails.
+  if (!sent && !process.env.SENDGRID_API_KEY?.trim()) {
+    await markEmailVerified(userId);
+    payload.autoVerified = true;
   }
   return payload;
 }
