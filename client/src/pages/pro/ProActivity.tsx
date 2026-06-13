@@ -7,6 +7,7 @@ import {
   PageShell, Card, Button, Tag, StatCard, EmptyState, ContextBar, FilterChips,
 } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
+import { useProTeam } from "./components/ProTeamContext";
 import { useActivity, type ActivityEntry, type ActivityKind } from "./components/proWorkflowApi";
 
 type EventKind = ActivityKind;
@@ -76,10 +77,12 @@ function dayOf(iso: string) {
 
 export default function ProActivity() {
   const { can } = useProRole();
+  const { teamId: rawTeamId } = useProTeam();
+  const teamId = rawTeamId ?? undefined;
   const canView = can("analytics.view"); // gate behind analytics view
   const [bucket, setBucket] = useState<Bucket>("all");
   const [search, setSearch] = useState("");
-  const { data } = useActivity();
+  const { data } = useActivity(teamId);
   const log: LogEntry[] = useMemo(
     () => (data ?? []).map((d) => ({ ...d, ts: relTime(d.iso) })),
     [data]
@@ -145,8 +148,8 @@ export default function ProActivity() {
       subtitle="A timeline of every change made in this workspace, by whom and when."
       actions={
         <>
-          <Button variant="secondary" leadingIcon={<Filter size={14} />}>Filters</Button>
-          <Button variant="primary" leadingIcon={<Download size={14} />} disabled={!can("analytics.export")}>Export</Button>
+          <Button variant="secondary" leadingIcon={<Filter size={14} />} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Filters</Button>
+          <Button variant="primary" leadingIcon={<Download size={14} />} disabled={!can("analytics.export")} onClick={() => { const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "surna-activity.json"; a.click(); }}>Export</Button>
         </>
       }
       rightPanel={RightPanel}

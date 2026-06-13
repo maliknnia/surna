@@ -1584,14 +1584,7 @@
 }
 
 .surna-map-vignette {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 401;
-  background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 45%, rgba(0, 0, 0, 0.22) 100%);
-}
-.surna-map-light .surna-map-vignette {
-  background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.04) 100%);
+  display: none;
 }
 .surna-map-grain {
   pointer-events: none;

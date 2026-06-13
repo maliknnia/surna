@@ -118,9 +118,7 @@ export function getMapOverlayTheme(isDark: boolean): MapOverlayTheme {
     tileActiveText: p.textPrimary,
     tileText: p.textSecondary,
     tileTextFaint: p.textMuted,
-    mapOverlayGradient: isDark
-      ? "linear-gradient(to bottom, rgba(0, 0, 0, 0.45) 0%, transparent 100%)"
-      : "linear-gradient(to bottom, rgba(255, 255, 255, 0.55) 0%, transparent 100%)",
+    mapOverlayGradient: "transparent",
   };
 }
 

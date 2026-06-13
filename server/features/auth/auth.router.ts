@@ -86,19 +86,18 @@ authRouter.post("/password/reset", authRouteRateLimit, async (req, res) => {
 });
 
 // Test endpoint to verify JWT authentication
-authRouter.get("/me", async (req, res, next) => {
+authRouter.get("/me", authMiddleware(), bridgeSessionUser, async (req: any, res, next) => {
   try {
-    // This endpoint requires JWT authentication
-    if (!req.jwtUser) {
+    if (!req.jwtUser?.id) {
       return res.status(401).json({
         error: "UNAUTHORIZED",
-        message: "JWT authentication required"
+        message: "Authentication required",
       });
     }
 
     res.json({
-      message: "JWT authentication successful",
-      user: req.jwtUser
+      message: "Authentication successful",
+      user: req.jwtUser,
     });
   } catch (error) {
     next(error);

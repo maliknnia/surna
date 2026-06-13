@@ -234,9 +234,9 @@ export default function ProStats() {
       <Card>
         <h3 style={{ margin: 0, marginBottom: 10 }}>Suggested actions</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <Button variant="secondary" size="sm" fullWidth>Boost top event</Button>
-          <Button variant="ghost" size="sm" fullWidth>Schedule weekly digest</Button>
-          <Button variant="ghost" size="sm" fullWidth>Re-engage inactive members</Button>
+          <Button variant="secondary" size="sm" fullWidth href="/pro/schedule">Boost top event</Button>
+          <Button variant="ghost" size="sm" fullWidth href="/pro/comms">Schedule weekly digest</Button>
+          <Button variant="ghost" size="sm" fullWidth href="/pro/roster">Re-engage inactive members</Button>
         </div>
       </Card>
     </>
@@ -257,8 +257,8 @@ export default function ProStats() {
       actions={
         <>
           <RangeSelector value={range} onChange={setRange} />
-          <Button variant="secondary" leadingIcon={<Filter size={14} />}>Filters</Button>
-          <Button variant="primary" leadingIcon={<Download size={14} />}>Export</Button>
+          <Button variant="secondary" leadingIcon={<Filter size={14} />} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Filters</Button>
+          <Button variant="primary" leadingIcon={<Download size={14} />} onClick={() => { const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString() })], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "surna-analytics.json"; a.click(); }}>Export</Button>
         </>
       }
       rightPanel={RightPanel}
@@ -310,9 +310,7 @@ export default function ProStats() {
                   Use Match Day to prep your squad, then file results to unlock {sportProfile.statLabels[0]?.toLowerCase() ?? "performance"} tracking.
                 </p>
               </div>
-              <Link href="/pro/match-day">
-                <Button variant="primary" leadingIcon={<Swords size={14} />}>Open match day</Button>
-              </Link>
+              <Button href="/pro/match-day" variant="primary" leadingIcon={<Swords size={14} />}>Open match day</Button>
             </div>
           </Card>
         </>
@@ -362,7 +360,7 @@ export default function ProStats() {
                 <h3 style={{ margin: 0 }}>Top performing content</h3>
                 <p className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", marginTop: 2 }}>Ranked by views in selected range</p>
               </div>
-              <Button variant="ghost" size="sm" trailingIcon={<ArrowRight size={13} />}>See all</Button>
+              <Button variant="ghost" size="sm" trailingIcon={<ArrowRight size={13} />} href="/pro/activity">See all</Button>
             </div>
             <div style={{ overflowX: "auto" }}>
               <table className="pro-table">

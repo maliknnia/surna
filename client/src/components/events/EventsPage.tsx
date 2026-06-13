@@ -140,13 +140,6 @@ function FeaturedEventBanner({ isDark }: { isDark: boolean }) {
             </span>
           )}
         </div>
-        <button
-          className="mt-3 px-5 py-2 rounded-full text-[12px] font-bold active:scale-95 transition-transform"
-          style={{ background: "rgba(255,255,255,0.95)", color: "var(--surna-text)" }}
-          onClick={(e) => { e.stopPropagation(); setLocation(`/events/${ev.id}`); }}
-        >
-          View Event →
-        </button>
       </div>
     </div>
   );

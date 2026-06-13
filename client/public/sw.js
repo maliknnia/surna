@@ -2,7 +2,7 @@ const CACHE_NAME = 'surna-v3';
 const STATIC_CACHE = 'surna-static-v3';
 const DYNAMIC_CACHE = 'surna-dynamic-v3';
 const API_CACHE = 'surna-api-v3';
-const DEV_MODE = true; // Force network-first for all requests during development
+const DEV_MODE = false; // Production: use cache strategies below
 
 // Assets to cache on install
 const STATIC_ASSETS = [

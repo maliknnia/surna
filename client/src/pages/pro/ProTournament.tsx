@@ -230,19 +230,19 @@ function RegisterPaymentForm({
 
 function WinnerCelebration({ winnerName, standings, onClose }: { winnerName: string; standings: Standing[]; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.85)" }}>
-      <Card style={{ maxWidth: 420, width: "100%", textAlign: "center", background: "linear-gradient(180deg, #1a0a2e 0%, #000 100%)", border: "2px solid #803FE1" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}>
+      <Card style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
         <div style={{ fontSize: 56, marginBottom: 8 }}>🏆</div>
-        <h2 style={{ margin: 0, color: "#fff", fontSize: 22 }}>Champions!</h2>
-        <p style={{ fontSize: 18, fontWeight: 800, color: "#803FE1", margin: "12px 0" }}>{winnerName}</p>
+        <h2 style={{ margin: 0, fontSize: 22 }}>Champions!</h2>
+        <p style={{ fontSize: 18, fontWeight: 800, margin: "12px 0", color: "var(--pro-text)" }}>{winnerName}</p>
         {standings.length > 0 && (
-          <ol style={{ margin: "16px 0 0", paddingLeft: 18, fontSize: 13, textAlign: "left" }}>
+          <ol style={{ margin: "16px 0 0", paddingLeft: 18, fontSize: 13, textAlign: "left", color: "var(--pro-text-muted)" }}>
             {standings.slice(0, 5).map((s, i) => (
               <li key={s.teamId}>{i + 1}. {s.teamName} — {s.points} pts</li>
             ))}
           </ol>
         )}
-        <Button variant="primary" fullWidth style={{ marginTop: 20, background: "#803FE1" }} onClick={onClose}>Done</Button>
+        <Button variant="primary" fullWidth style={{ marginTop: 20 }} onClick={onClose}>Done</Button>
       </Card>
     </div>
   );
@@ -526,7 +526,7 @@ export default function ProTournament() {
           icon={<Shield size={20} />}
           title="Cannot manage this tournament"
           description="You may not have access, or it may not exist. Co-managers need an active Pro subscription and a staff role assigned by the organizer."
-          action={<Link href="/pro/tournament"><Button variant="primary">Back to tournaments</Button></Link>}
+          action={<Button href="/pro/tournament" variant="primary">Back to tournaments</Button>}
         />
       </PageShell>
     );
@@ -542,10 +542,8 @@ export default function ProTournament() {
         subtitle={`${formatLabel(detail.format)} · ${detail.sport} · €${detail.entryFeeEur} entry · ${tProfile.rosterHint}${detail.hostingTeamName ? ` · Hosted by ${detail.hostingTeamName}` : ""}`}
         actions={
           <>
-            <Link href={`/tournament/${detail.id}`}>
-              <Button variant="secondary" leadingIcon={<Share2 size={14} />}>Registration page</Button>
-            </Link>
-            <Link href="/pro/tournament"><Button variant="ghost">All tournaments</Button></Link>
+            <Button href={`/tournament/${detail.id}`} variant="secondary" leadingIcon={<Share2 size={14} />}>Registration page</Button>
+            <Button href="/pro/tournament" variant="ghost">All tournaments</Button>
           </>
         }
       >
@@ -619,7 +617,7 @@ export default function ProTournament() {
                 <h3 style={{ margin: 0 }}>Approved teams ({approvedRegs.length})</h3>
               </div>
               {approvedRegs.length === 0 ? (
-                <EmptyState icon={<Users size={18} />} title="No approved teams yet" description="Share the registration link. Teams matching your sport can apply." action={<Link href={`/tournament/${detail.id}`}><Button variant="primary">Open registration page</Button></Link>} />
+                <EmptyState icon={<Users size={18} />} title="No approved teams yet" description="Share the registration link. Teams matching your sport can apply." action={<Button href={`/tournament/${detail.id}`} variant="primary">Open registration page</Button>} />
               ) : (
                 <table className="pro-table">
                   <thead><tr><th>Team</th><th>Goals / notes</th><th>Status</th><th></th></tr></thead>
@@ -1051,7 +1049,7 @@ export default function ProTournament() {
                     <td>{formatLabel(t.format)}</td>
                     <td>{t.maxTeams}</td>
                     <td><Tag tone={t.status === "completed" ? "success" : "muted"}>{t.status}</Tag></td>
-                    <td><Link href={`/pro/tournament/${t.id}`}><Button size="sm" variant="secondary">Manage</Button></Link></td>
+                    <td><Button href={`/pro/tournament/${t.id}`} size="sm" variant="secondary">Manage</Button></td>
                   </tr>
                 ))}
               </tbody>

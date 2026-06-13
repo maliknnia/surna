@@ -48,7 +48,7 @@ function EventList({ items }: { items: EventItem[] }) {
           icon={<CalendarIcon size={18} />}
           title="No events match"
           description="Try clearing filters or change the date range."
-          action={<Button variant="primary" leadingIcon={<Plus size={13} />}>Create event</Button>}
+          action={<Button variant="primary" leadingIcon={<Plus size={13} />} href="/events/create">Create event</Button>}
         />
       </Card>
     );
@@ -270,10 +270,10 @@ export default function ProSchedule() {
       <Card>
         <h3 style={{ margin: 0, marginBottom: 10 }}>Quick actions</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <Link href="/events"><Button variant="secondary" size="sm" fullWidth leadingIcon={<Plus size={13} />}>Create in SURNA</Button></Link>
-          <Link href="/pro/comms"><Button variant="ghost" size="sm" fullWidth leadingIcon={<MessageSquare size={13} />}>Message team</Button></Link>
+          <Button href="/events" variant="secondary" size="sm" fullWidth leadingIcon={<Plus size={13} />}>Create in SURNA</Button>
+          <Button href="/pro/comms" variant="ghost" size="sm" fullWidth leadingIcon={<MessageSquare size={13} />}>Message team</Button>
           {sportProfile.supportsMatchDay && (
-            <Link href="/pro/match-day"><Button variant="ghost" size="sm" fullWidth leadingIcon={<CalendarIcon size={13} />}>Match Day</Button></Link>
+            <Button href="/pro/match-day" variant="ghost" size="sm" fullWidth leadingIcon={<CalendarIcon size={13} />}>Match Day</Button>
           )}
         </div>
       </Card>
@@ -320,7 +320,7 @@ export default function ProSchedule() {
               }}
             ><CalendarIcon size={13} />Calendar</button>
           </div>
-          {can("events.create") && <Button variant="primary" leadingIcon={<Plus size={14} />}>New event</Button>}
+          {can("events.create") && <Button variant="primary" leadingIcon={<Plus size={14} />} href="/events/create">New event</Button>}
         </>
       }
       rightPanel={RightPanel}
@@ -328,7 +328,7 @@ export default function ProSchedule() {
       <ContextBar
         context={<><CalendarIcon size={13} /><span>Plan, publish and follow up on every event.</span></>}
         actions={[
-          { key: "new", label: "New event", icon: <Plus size={13} />, hidden: !can("events.create"), href: "/events" },
+          { key: "new", label: "New event", icon: <Plus size={13} />, hidden: !can("events.create"), href: "/events/create" },
           { key: "remind", label: "Send reminder", icon: <MessageSquare size={13} />, href: "/pro/comms", hidden: !can("messages.announce") },
           { key: "lowatt", label: `${counts.low} low-attendance`, icon: <Users size={13} />, onClick: () => setStatusFilter("low") },
         ]}

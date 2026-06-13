@@ -47,5 +47,24 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>SURNA uses the camera for profile photos, stories, and event media.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SURNA lets you choose photos and videos from your library to share.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>SURNA can save photos you capture in the app to your library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SURNA uses your location to show nearby events, teams, and map features.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.surna.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>surna</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

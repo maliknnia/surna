@@ -76,10 +76,12 @@ async function main() {
   await sleep(800);
 
   console.log(`[restart-dev] Starting SURNA on port ${port}…`);
+  const env = { ...process.env };
+  delete env.SERVE_BUILT_CLIENT;
   const child = spawn("npm", ["run", "dev"], {
     stdio: "inherit",
     shell: true,
-    env: process.env,
+    env,
   });
   child.on("exit", (code) => process.exit(code ?? 0));
 }

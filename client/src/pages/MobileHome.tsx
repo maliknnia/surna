@@ -295,7 +295,7 @@ export default function MobileHome() {
             className="surna-header-title text-base tracking-tight truncate"
             style={{ color: 'var(--surna-text)' }}
           >
-            {isHomePanel ? 'SURNA' : shellPanel.title}
+            {isHomePanel ? 'For you' : shellPanel.title}
           </span>
         </div>
         <div className="flex items-center gap-0.5">

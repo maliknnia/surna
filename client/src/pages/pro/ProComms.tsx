@@ -122,13 +122,9 @@ export default function ProComms() {
             </Button>
           )}
           {teamGroupId && (
-            <Link href={`/messages?groupId=${teamGroupId}`}>
-              <Button variant="secondary">Open team group</Button>
-            </Link>
+            <Button href={`/messages?groupId=${teamGroupId}`} variant="secondary">Open team group</Button>
           )}
-          <Link href="/messages">
-            <Button variant="secondary">Open full messenger</Button>
-          </Link>
+          <Button href="/messages" variant="secondary">Open full messenger</Button>
         </>
       }
     >
@@ -175,7 +171,7 @@ export default function ProComms() {
               description={teamName
                 ? `Create a messenger group with “${teamName}” in the name, or broadcast to the squad.`
                 : "Start a group in messenger with “team” or “squad” in the name, or open full messenger."}
-              action={<Link href="/messages"><Button variant="primary">Open messenger</Button></Link>}
+              action={<Button href="/messages" variant="primary">Open messenger</Button>}
             />
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>

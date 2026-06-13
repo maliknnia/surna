@@ -1,13 +1,8 @@
 import { apiRequest } from "@/lib/queryClient";
 
-/** Demo / seed ids — skip API, still show UX feedback */
+/** Skip API for legacy demo video ids in the video rail only */
 export function isDemoMediaId(id: string): boolean {
-  return (
-    id.startsWith("dv") ||
-    id.startsWith("fv") ||
-    id.startsWith("fp") ||
-    id.startsWith("demo-")
-  );
+  return id.startsWith("dv") || id.startsWith("fv") || id.startsWith("demo-");
 }
 
 export async function togglePostLike(postId: string, currentlyLiked: boolean): Promise<void> {

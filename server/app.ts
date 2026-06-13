@@ -43,6 +43,9 @@ const PerformanceMonitor = PerformanceMonitorMod.default;
 
 const app = express();
 
+// Required for HTTPS tunnels (Cloudflare, ngrok) and correct secure cookies behind a proxy.
+app.set("trust proxy", 1);
+
 app.use(responseTime((req: Request, res, time) => {
   if (time > 300) console.warn(`[SLOW ${Math.round(time)}ms] ${req.method} ${req.originalUrl}`);
 }));
@@ -197,7 +200,8 @@ try {
     res.status(status).json({ message });
   });
 
-  if (app.get("env") === "development") {
+  const serveBuiltClient = process.env.SERVE_BUILT_CLIENT === "1";
+  if (app.get("env") === "development" && !serveBuiltClient) {
     await setupVite(app, httpServer);
   } else {
     serveStatic(app);

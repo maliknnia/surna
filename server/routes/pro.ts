@@ -568,6 +568,16 @@ proRouter.get("/team/:teamId/equipment", async (req, res) => {
   }
 });
 
+/** Alias for ProInventory UI */
+proRouter.get("/team/:teamId/inventory", async (req, res) => {
+  try {
+    const equipment = await storage.getProEquipment(req.params.teamId);
+    res.json(equipment);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 proRouter.post("/team/:teamId/equipment/issue", async (req, res) => {
   const user = getUser(req);
   if (!user) return unauthorized(res);

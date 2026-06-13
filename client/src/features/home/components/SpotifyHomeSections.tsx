@@ -210,7 +210,7 @@ type MixedPick =
       cardKind: "event" | "team" | "challenge" | "instantJoin";
       route: string;
       imageUrl?: string | null;
-      cta: string;
+      cta?: string;
       captionBelow?: string;
       attendeeEntity?: { type: "event" | "team" | "challenge" | "instant"; id: string; count?: number };
     }
@@ -220,7 +220,7 @@ type MixedPick =
       title: string;
       subtitle?: string;
       captionBelow?: string;
-      cta: string;
+      cta?: string;
       route: string;
       icon: "team" | "event" | "challenge" | "instant";
       imageUrl?: string | null;
@@ -401,7 +401,7 @@ function HomeMixedStack({
           cardKind: "team",
           route: `/teams/${team.id}`,
           imageUrl: team.cover || team.logo || team.logoUrl || getEventCoverUrl({ sport: team.sport, title: team.name }),
-          cta: "View",
+          cta: undefined,
           attendeeEntity: { type: "team", id: String(team.id), count: memberCount },
         });
       }
@@ -697,7 +697,7 @@ function FeaturedHero({
       meta={featured.meta}
       sport={featured.sport}
       cardKind={featured.cardKind}
-      cta="View"
+      cta={undefined}
       attendeeEntity={featured.attendeeEntity}
       onClick={() => {
         markNavReturn("/");
@@ -733,7 +733,6 @@ export function SpotifyHomeFeed({
         contentSeed={contentSeed}
         showNew={newIndicators.happeningNearYou}
       />
-      <MarketplacePicksRow />
       <HomeMixedStack
         events={events}
         teams={teams}

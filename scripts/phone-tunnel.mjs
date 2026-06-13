@@ -52,7 +52,13 @@ child.stdout.on("data", (buf) => {
     console.log("\n--- On your phone ---");
     console.log(`  Open: ${url}`);
     console.log(`  Login: ${url}/api/login?dev=1`);
-    console.log("\n  First visit: tap Continue on the localtunnel warning page.");
+    console.log("\n  localtunnel shows a warning page first.");
+    console.log("  If it asks for a password, enter your PC's public IP (shown below).");
+    fetch("https://api.ipify.org?format=text")
+      .then((r) => r.text())
+      .then((ip) => console.log(`  Tunnel password: ${ip.trim()}`))
+      .catch(() => console.log("  Tunnel password: your public IP — search 'what is my ip' on the PC"));
+    console.log("\n  Easier option: npm run phone:cf  (no password page)");
     console.log("  Keep this terminal open while testing.\n");
   }
 });

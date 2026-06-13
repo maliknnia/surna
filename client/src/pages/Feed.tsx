@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
 import NotificationPeekSheet from "@/components/notifications/NotificationPeekSheet";
-import { Heart, MessageCircle, Share2, Users, Zap, TrendingUp, UserPlus, Camera, Play, Home, Trophy, ArrowLeft, Bell, User as UserProfile, Loader2, MoreVertical, Calendar, MapPin, RefreshCw, Bookmark } from "lucide-react";
+import { Heart, MessageCircle, Share2, Users, Zap, TrendingUp, UserPlus, Camera, Play, Trophy, ArrowLeft, Bell, User as UserProfile, Loader2, MoreVertical, Calendar, MapPin, RefreshCw, Bookmark } from "lucide-react";
+import { NavHomeIcon } from "@/components/icons/NavHomeIcon";
 import { Icon } from "@/components/Icon";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -745,25 +746,9 @@ export default function Feed() {
   }, [posts]);
 
   const handleShare = useCallback((postId: string) => {
-    if (postId.startsWith("fp")) {
-      void (async () => {
-        const url = `${window.location.origin}/feed`;
-        try {
-          if (navigator.share) {
-            await navigator.share({ title: "SURNA Feed", url });
-            return;
-          }
-          await navigator.clipboard.writeText(url);
-          toast({ title: "Link copied", description: "Feed link copied to clipboard." });
-        } catch {
-          toast({ title: "Could not share", variant: "destructive" });
-        }
-      })();
-      return;
-    }
     setSharePostId(postId);
     setShowShareModal(true);
-  }, [toast]);
+  }, []);
 
   // Preserve scroll position on the feed scroller (not inner post list)
   useEffect(() => {
@@ -785,7 +770,6 @@ export default function Feed() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  // Fetch suggested users (merge demo accounts so the feed never looks empty)
   const { data: apiSuggestedUsers = [] } = useQuery<User[]>({
     queryKey: ["/api/users/suggested"],
     enabled: isAuthenticated,
@@ -1301,7 +1285,7 @@ export default function Feed() {
         aria-label="Feed navigation"
       >
         <button type="button" onClick={handleHomePress} className={cn("nav-item", (activeTab === "home" || activeTab === "feed") && "active")} data-testid="tab-home" aria-label="Home">
-          <Home className="w-6 h-6" strokeWidth={activeTab === "home" || activeTab === "feed" ? 2.5 : 1.5} />
+          <NavHomeIcon size={24} active={activeTab === "home" || activeTab === "feed"} />
           <span className="nav-label">Home</span>
         </button>
         <button

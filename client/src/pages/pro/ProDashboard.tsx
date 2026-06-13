@@ -139,7 +139,7 @@ export default function ProDashboard() {
     { label: "Create event",    to: "/pro/schedule",    icon: <Calendar size={15} />,       allowed: can("events.create") },
     { label: "Post update",     to: "/pro/comms",       icon: <Megaphone size={15} />,      allowed: can("messages.announce") },
     { label: "Invite members",  to: "/pro/recruitment", icon: <UserPlus size={15} />,       allowed: can("members.invite") },
-    { label: "Review requests", to: "/pro/roster",      icon: <CheckCircle2 size={15} />,   allowed: can("members.approve") },
+    { label: "Review requests", to: "/pro/approvals",      icon: <CheckCircle2 size={15} />,   allowed: can("members.approve") },
     { label: "Open analytics",  to: "/pro/stats",       icon: <BarChart3 size={15} />,      allowed: can("analytics.view") },
   ].filter((q) => q.allowed);
 
@@ -229,14 +229,10 @@ export default function ProDashboard() {
       actions={
         <>
           {can("events.create") && (
-            <Link href="/pro/schedule">
-              <Button variant="secondary" leadingIcon={<Calendar size={14} />}>New event</Button>
-            </Link>
+            <Button href="/pro/schedule" variant="secondary" leadingIcon={<Calendar size={14} />}>New event</Button>
           )}
           {can("messages.announce") && (
-            <Link href="/pro/comms">
-              <Button variant="primary" leadingIcon={<Plus size={14} />}>Post update</Button>
-            </Link>
+            <Button href="/pro/comms" variant="primary" leadingIcon={<Plus size={14} />}>Post update</Button>
           )}
         </>
       }
@@ -258,7 +254,7 @@ export default function ProDashboard() {
           </>
         }
         actions={[
-          { key: "approve", label: "Approvals",  icon: <CheckCircle2 size={13} />, href: "/pro/roster",      hidden: !can("members.approve") },
+          { key: "approve", label: "Approvals",  icon: <CheckCircle2 size={13} />, href: "/pro/approvals",      hidden: !can("members.approve") },
           { key: "events",  label: "Events",     icon: <Calendar size={13} />,     href: "/pro/schedule" },
           { key: "inbox",   label: "Inbox",      icon: <MessageSquare size={13} />,href: "/pro/comms" },
           { key: "stats",   label: "Analytics",  icon: <BarChart3 size={13} />,    href: "/pro/stats",       hidden: !can("analytics.view") },
@@ -347,7 +343,7 @@ export default function ProDashboard() {
         <div style={{ padding: "16px 18px 8px" }}>
           <SectionHeader
             title="Upcoming events"
-            actions={<Link href="/pro/schedule"><Button variant="ghost" size="sm" trailingIcon={<ArrowRight size={13} />}>View all</Button></Link>}
+            actions={<Button href="/pro/schedule" variant="ghost" size="sm" trailingIcon={<ArrowRight size={13} />}>View all</Button>}
           />
         </div>
         <div>

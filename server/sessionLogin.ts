@@ -423,35 +423,52 @@ export function registerSessionLoginRoutes(app: Express) {
 
 export function devQuickLogin(req: Request, res: Response) {
   void (async () => {
+    const devEmail = process.env.LOCAL_DEV_USER_EMAIL || "dev@surna.local";
     const claims = {
       sub: "local-dev-user",
-      email: process.env.LOCAL_DEV_USER_EMAIL || "dev@surna.local",
+      email: devEmail,
       first_name: "Local",
       last_name: "Developer",
       profile_image_url: "/avatars/me.png",
     };
-    try {
-      await storage.createUserWithClaims(claims.sub, {
-        email: claims.email,
-        firstName: claims.first_name,
-        lastName: claims.last_name,
-        profileImageUrl: claims.profile_image_url,
-        emailVerified: true,
-      });
-    } catch (err) {
-      console.warn("[devQuickLogin] Could not upsert dev user:", err);
+
+    let dbUser = await storage.getUser(claims.sub).catch(() => undefined);
+    if (!dbUser) {
+      dbUser = await storage.getUserByEmail(devEmail).catch(() => undefined);
     }
+    if (!dbUser) {
+      try {
+        dbUser = await storage.createUserWithClaims(claims.sub, {
+          email: claims.email,
+          firstName: claims.first_name,
+          lastName: claims.last_name,
+          profileImageUrl: claims.profile_image_url,
+          emailVerified: true,
+        });
+      } catch (err) {
+        console.warn("[devQuickLogin] Could not create dev user:", err);
+        dbUser = await storage.getUserByEmail(devEmail).catch(() => undefined);
+      }
+    }
+
+    const sessionId = dbUser?.id ?? claims.sub;
     establishSession(req, {
       dbUser: {
-        id: claims.sub,
-        email: claims.email,
-        firstName: claims.first_name,
-        lastName: claims.last_name,
-        profileImageUrl: claims.profile_image_url,
-        emailVerified: true,
+        id: sessionId,
+        email: dbUser?.email ?? claims.email,
+        firstName: dbUser?.firstName ?? claims.first_name,
+        lastName: dbUser?.lastName ?? claims.last_name,
+        profileImageUrl: dbUser?.profileImageUrl ?? claims.profile_image_url,
+        emailVerified: dbUser?.emailVerified ?? true,
       },
-      claims,
+      claims: {
+        ...claims,
+        sub: sessionId,
+      },
     });
-    res.redirect(loginRedirect(req));
+    req.session.save((err) => {
+      if (err) console.error("[devQuickLogin] session save failed:", err);
+      res.redirect(loginRedirect(req));
+    });
   })();
 }

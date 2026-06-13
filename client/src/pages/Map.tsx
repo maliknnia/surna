@@ -646,13 +646,6 @@ export default function MapPage({
               </div>
             )}
 
-            {embedded && (
-              <div
-                className="absolute top-0 left-0 right-0 z-50 pointer-events-none"
-                style={{ height: 120, background: mt.mapOverlayGradient }}
-                aria-hidden
-              />
-            )}
 
             {embedded && !mapChromeHidden && (
               <div className="absolute top-0 left-0 z-[1001] p-3 pointer-events-none">

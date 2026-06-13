@@ -302,22 +302,9 @@ export default function VenueCard({ place, onPreview, onNavigate, onSave, style 
         )}
 
         <div className="flex items-center gap-2 mt-4">
-          <button
-            className="flex-1 h-9 rounded-full text-[13px] font-bold transition-all duration-200 active:scale-[0.96] border-none"
-            style={{
-              background: cardIsDark ? "#ffffff" : "#111111",
-              color: cardIsDark ? "#000000" : "#ffffff",
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onPreview?.(place);
-            }}
-          >
-            View Details
-          </button>
           {place.followersCount !== undefined && (
             <div
-              className="flex items-center gap-1 px-3 h-9 rounded-full backdrop-blur-sm"
+              className="flex items-center gap-1 px-3 h-9 rounded-full backdrop-blur-sm ml-auto"
               style={{ background: surfaceLight }}
             >
               <Users size={12} style={{ color: textSecondary }} />

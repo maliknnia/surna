@@ -17,7 +17,6 @@ type SurnaIconComponent = ForwardRefExoticComponent<
   SurnaIconProps & RefAttributes<SVGSVGElement>
 >;
 import {
-  HomeIcon as SurnaHome,
   MapIcon as SurnaMap,
   CameraIcon as SurnaCamera,
   MessagesIcon as SurnaMessages,
@@ -58,7 +57,6 @@ import {
 
 /** Lucide export name → SURNA custom SVG component */
 const SURNA_ICON_MAP: Record<string, SurnaIconComponent> = {
-  Home: SurnaHome,
   Map: SurnaMap,
   MapPin: SurnaPlaces,
   Camera: SurnaCamera,

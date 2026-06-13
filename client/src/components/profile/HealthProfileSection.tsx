@@ -1,6 +1,12 @@
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, Flame, TrendingUp, Trophy } from "lucide-react";
 import { Link } from "wouter";
+import {
+  SurnaEmbeddedInnerSection,
+  SurnaEmbeddedSectionTitle,
+  SurnaEmbeddedSurface,
+} from "@/components/ui/SurnaEmbeddedCard";
 
 type HealthSummary = {
   weeklyTrainingLoad: { distanceKm: number; durationMinutes: number; sessions: number } | null;
@@ -49,93 +55,157 @@ export function HealthProfileSection({ userId, isOwnProfile }: { userId: string;
     data.personalBests?.length;
   if (!hasAny && !isOwnProfile) return null;
 
+  const sections: Array<{ key: string; node: ReactNode }> = [];
+
+  if (data.weeklyTrainingLoad) {
+    sections.push({
+      key: "week",
+      node: (
+        <>
+          <p className="text-[11px] uppercase mb-1" style={{ color: "var(--surna-text-secondary)" }}>
+            This week
+          </p>
+          <div className="flex gap-4">
+            <div>
+              <p className="text-lg font-bold" style={{ color: "var(--surna-text)" }}>
+                {data.weeklyTrainingLoad.sessions}
+              </p>
+              <p className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
+                sessions
+              </p>
+            </div>
+            <div>
+              <p className="text-lg font-bold" style={{ color: "var(--surna-text)" }}>
+                {data.weeklyTrainingLoad.distanceKm.toFixed(1)} km
+              </p>
+              <p className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
+                distance
+              </p>
+            </div>
+            <div>
+              <p className="text-lg font-bold" style={{ color: "var(--surna-text)" }}>
+                {data.weeklyTrainingLoad.durationMinutes}m
+              </p>
+              <p className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
+                time
+              </p>
+            </div>
+          </div>
+        </>
+      ),
+    });
+  }
+
+  if (data.monthlyTrend && data.monthlyTrend.length > 0) {
+    sections.push({
+      key: "trend",
+      node: (
+        <>
+          <p
+            className="text-[11px] uppercase mb-2 flex items-center gap-1"
+            style={{ color: "var(--surna-text-secondary)" }}
+          >
+            <TrendingUp size={12} /> Monthly trend
+          </p>
+          <div className="flex gap-2">
+            {data.monthlyTrend.slice(-4).map((w, i) => (
+              <div key={i} className="flex-1 text-center">
+                <div
+                  className="mx-auto rounded-sm"
+                  style={{
+                    height: `${Math.max(8, Math.min(40, w.sessions * 8))}px`,
+                    width: "100%",
+                    background: "var(--surna-bg-highlight)",
+                  }}
+                />
+                <p className="text-[10px] mt-1" style={{ color: "var(--surna-text-muted)" }}>
+                  {w.sessions}
+                </p>
+              </div>
+            ))}
+          </div>
+        </>
+      ),
+    });
+  }
+
+  if (data.currentStreak != null) {
+    sections.push({
+      key: "streak",
+      node: (
+        <div className="flex items-center gap-3">
+          <Flame size={20} style={{ color: "var(--surna-gold)" }} />
+          <div>
+            <p className="text-[15px] font-bold" style={{ color: "var(--surna-text)" }}>
+              {data.currentStreak} day streak
+            </p>
+            {data.longestStreak != null && (
+              <p className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
+                Best: {data.longestStreak} days
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+    });
+  }
+
+  if (data.personalBests && data.personalBests.length > 0) {
+    sections.push({
+      key: "bests",
+      node: (
+        <>
+          <p
+            className="text-[11px] uppercase mb-2 flex items-center gap-1"
+            style={{ color: "var(--surna-text-secondary)" }}
+          >
+            <Trophy size={12} /> Personal bests
+          </p>
+          <ul className="space-y-2">
+            {data.personalBests.map((pb) => (
+              <li key={pb.metric} className="flex justify-between text-sm">
+                <span style={{ color: "var(--surna-text-secondary)" }}>{metricLabel(String(pb.metric))}</span>
+                <span className="font-bold tabular-nums" style={{ color: "var(--surna-text)" }}>
+                  {formatMetric(String(pb.metric), pb.value)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ),
+    });
+  }
+
   return (
     <section className="mt-6 px-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[15px] font-bold text-white flex items-center gap-2">
-          <Activity size={16} className="text-[#1DB954]" />
-          Health & activity
-        </h2>
-        {isOwnProfile && (
-          <Link href="/activity/track" className="text-[12px] font-semibold text-[#1DB954]">
-            Track workout
-          </Link>
-        )}
-      </div>
+      <SurnaEmbeddedSectionTitle
+        icon={<Activity size={16} style={{ color: "var(--surna-text-secondary)" }} />}
+        title="Health & activity"
+        action={
+          isOwnProfile ? (
+            <Link
+              href="/activity/track"
+              className="text-[12px] font-semibold"
+              style={{ color: "var(--surna-text)" }}
+            >
+              Track workout
+            </Link>
+          ) : undefined
+        }
+      />
 
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#1a1a1a" }}>
-        {data.weeklyTrainingLoad && (
-          <div className="p-4 border-b border-white/6">
-            <p className="text-[11px] text-white/50 uppercase mb-1">This week</p>
-            <div className="flex gap-4">
-              <div>
-                <p className="text-lg font-bold">{data.weeklyTrainingLoad.sessions}</p>
-                <p className="text-[11px] text-white/50">sessions</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold">{data.weeklyTrainingLoad.distanceKm.toFixed(1)} km</p>
-                <p className="text-[11px] text-white/50">distance</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold">{data.weeklyTrainingLoad.durationMinutes}m</p>
-                <p className="text-[11px] text-white/50">time</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {data.monthlyTrend && data.monthlyTrend.length > 0 && (
-          <div className="p-4 border-b border-white/6">
-            <p className="text-[11px] text-white/50 uppercase mb-2 flex items-center gap-1">
-              <TrendingUp size={12} /> Monthly trend
-            </p>
-            <div className="flex gap-2">
-              {data.monthlyTrend.slice(-4).map((w, i) => (
-                <div key={i} className="flex-1 text-center">
-                  <div
-                    className="mx-auto rounded-sm bg-[#1DB954]/30"
-                    style={{ height: `${Math.max(8, Math.min(40, w.sessions * 8))}px`, width: "100%" }}
-                  />
-                  <p className="text-[10px] text-white/40 mt-1">{w.sessions}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {data.currentStreak != null && (
-          <div className="p-4 border-b border-white/6 flex items-center gap-3">
-            <Flame size={20} className="text-orange-400" />
-            <div>
-              <p className="text-[15px] font-bold">{data.currentStreak} day streak</p>
-              {data.longestStreak != null && (
-                <p className="text-[11px] text-white/50">Best: {data.longestStreak} days</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {data.personalBests && data.personalBests.length > 0 && (
-          <div className="p-4">
-            <p className="text-[11px] text-white/50 uppercase mb-2 flex items-center gap-1">
-              <Trophy size={12} /> Personal bests
-            </p>
-            <ul className="space-y-2">
-              {data.personalBests.map((pb) => (
-                <li key={pb.metric} className="flex justify-between text-sm">
-                  <span className="text-white/70">{metricLabel(String(pb.metric))}</span>
-                  <span className="font-bold tabular-nums">{formatMetric(String(pb.metric), pb.value)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+      <SurnaEmbeddedSurface>
+        {sections.map((section, index) => (
+          <SurnaEmbeddedInnerSection key={section.key} last={index === sections.length - 1}>
+            {section.node}
+          </SurnaEmbeddedInnerSection>
+        ))}
+      </SurnaEmbeddedSurface>
 
       {isOwnProfile && (
-        <p className="text-[11px] text-white/40 mt-2 px-1">
+        <p className="text-[11px] mt-2 px-1" style={{ color: "var(--surna-text-muted)" }}>
           Control visibility in{" "}
-          <Link href="/privacy-settings" className="text-[#1DB954] underline">
+          <Link href="/privacy-settings" className="underline" style={{ color: "var(--surna-text-secondary)" }}>
             Privacy settings
           </Link>
         </p>

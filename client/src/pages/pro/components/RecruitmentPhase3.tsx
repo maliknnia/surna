@@ -65,7 +65,7 @@ function PlayerCard({
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 11, color: "var(--pro-text-muted)", fontWeight: 600 }}>Market value</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#803FE1" }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--pro-text)" }}>
             {formatMarketValue(player.marketValueEur)}
           </div>
         </div>
@@ -95,9 +95,7 @@ function PlayerCard({
             Scout report
           </Button>
         )}
-        <Link href={`/profile/${player.username || player.id}`}>
-          <Button size="sm" variant="ghost">Profile</Button>
-        </Link>
+        <Button size="sm" variant="ghost" href={`/person/${player.id}`}>Profile</Button>
       </div>
     </div>
   );

@@ -84,9 +84,18 @@ export default function CreatePost({ variant = "default" }: CreatePostProps) {
         }, 500);
         return;
       }
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.includes("EMAIL_NOT_VERIFIED")) {
+        toast({
+          title: "Verify your email",
+          description: "Check your inbox to verify your email before posting.",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: "Error",
-        description: "Failed to create post. Please try again.",
+        description: msg.includes("400:") ? "Invalid post — add text or a photo." : "Failed to create post. Please try again.",
         variant: "destructive",
       });
     },

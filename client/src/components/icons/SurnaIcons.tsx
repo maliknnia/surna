@@ -45,8 +45,7 @@ function createSurnaIcon(
 
 export const HomeIcon = createSurnaIcon("HomeIcon", () => (
   <>
-    <path d="M12 3C12 3 4 9 4 14C4 17.3 6.7 20 10 20H14C17.3 20 20 17.3 20 14C20 9 12 3 12 3Z" />
-    <rect x="9.5" y="14" width="5" height="6" rx="2.5" />
+    <path d="M3 10.5L12 3l9 7.5V20a1.5 1.5 0 0 0-1.5 1.5H15v-7H9v7H4.5A1.5 1.5 0 0 1 3 20V10.5z" />
   </>
 ));
 

@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProRole, ROLE_LABELS, ROLE_DESCRIPTIONS, type ProRole, type ProAction } from "./components/useProRole";
 import { useApprovals, useProWorkflowStream } from "./components/proWorkflowApi";
 import ProTeamChip from "./components/ProTeamChip";
+import { useProTeam } from "./components/ProTeamContext";
 import { Check } from "lucide-react";
 
 type NavItem = {
@@ -80,7 +81,9 @@ function NavRow({ item, currentPath, collapsed }: { item: NavItem; currentPath: 
 }
 
 function Sidebar({ collapsed, onToggle, currentPath }: { collapsed: boolean; onToggle: () => void; currentPath: string }) {
-  const { data: approvals } = useApprovals();
+  const { teamId: rawTeamId } = useProTeam();
+  const teamId = rawTeamId ?? undefined;
+  const { data: approvals } = useApprovals(teamId);
   const pendingCount = (approvals ?? []).filter((a) => a.status === "pending").length;
   const decoratedNav = navItems.map((it) =>
     it.path === "/pro/approvals" && pendingCount > 0 ? { ...it, count: pendingCount } : it,
@@ -254,7 +257,7 @@ function Topbar({
             <span className="pro-icon-btn__dot" />
           </button>
           <button className="pro-icon-btn" aria-label="Keyboard shortcuts" onClick={onShowShortcuts} data-testid="button-pro-shortcuts"><Command size={17} /></button>
-          <Link href="/help"><button className="pro-icon-btn" aria-label="Help" data-testid="button-pro-help"><LifeBuoy size={17} /></button></Link>
+          <Link href="/help" className="pro-icon-btn" aria-label="Help" data-testid="button-pro-help"><LifeBuoy size={17} /></Link>
           <div className="pro-account" data-testid="button-pro-account">
             <span className="pro-account__avatar">{initial}</span>
             <span className="pro-account__name" style={{ marginRight: 4 }}>{user?.displayName || user?.firstName || user?.username || "Account"}</span>
@@ -370,7 +373,9 @@ export default function ProLayout({ children }: { children: ReactNode }) {
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [location, navigate] = useLocation();
   const searchRef = useRef<HTMLInputElement>(null);
-  useProWorkflowStream();
+  const { teamId: rawTeamId } = useProTeam();
+  const teamId = rawTeamId ?? undefined;
+  useProWorkflowStream(teamId);
 
   const handleAction = (a: "search" | "create" | "shortcuts" | "close") => {
     if (a === "search") { setTimeout(() => { searchRef.current?.focus(); searchRef.current?.select(); }, 0); }

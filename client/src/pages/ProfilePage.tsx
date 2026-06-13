@@ -291,10 +291,10 @@ export default function ProfilePage() {
           style={{ background: "var(--surna-elevated)" }}
         >
           {[
-            { value: userStats?.postsCount ?? 24, label: "Posts" },
-            { value: userStats?.followersCount ?? 1283, label: "Followers" },
-            { value: userStats?.followingCount ?? 412, label: "Following" },
-            { value: 87, label: "Games" },
+            { value: userStats?.postsCount ?? 0, label: "Posts" },
+            { value: userStats?.followersCount ?? 0, label: "Followers" },
+            { value: userStats?.followingCount ?? 0, label: "Following" },
+            { value: 0, label: "Games" },
           ].map((stat) => (
             <button
               key={stat.label}

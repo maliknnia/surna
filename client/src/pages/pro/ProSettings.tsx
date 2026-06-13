@@ -187,7 +187,7 @@ function BrandingSection() {
                 fontWeight: 800, fontSize: 30,
               }}>N</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <Button variant="secondary" size="sm" leadingIcon={<Upload size={12} />}>Upload logo</Button>
+                <Button variant="secondary" size="sm" leadingIcon={<Upload size={12} />} href="/profile/edit">Upload logo</Button>
                 <Button variant="ghost" size="sm">Remove</Button>
               </div>
             </div>
@@ -210,7 +210,7 @@ function BrandingSection() {
           <div className="pro-row" style={{ gap: 0, border: "1px solid var(--pro-border-strong)", borderRadius: 10, overflow: "hidden" }}>
             <span style={{ padding: "9px 12px", background: "var(--pro-surface-2)", color: "var(--pro-text-muted)", fontSize: "var(--pro-fs-sm)", fontWeight: 600, borderRight: "1px solid var(--pro-border-strong)" }}>surna.app/c/</span>
             <input style={{ ...inputStyle, border: 0, borderRadius: 0, flex: 1 }} defaultValue="northwood" />
-            <Button variant="ghost" size="sm" trailingIcon={<Globe size={12} />}>Visit</Button>
+            <Button variant="ghost" size="sm" trailingIcon={<Globe size={12} />} href="/profile/edit">Visit</Button>
           </div>
         </Field>
       </Card>
@@ -285,52 +285,45 @@ function BillingSection() {
         <div className="pro-row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
           <div>
             <h3 style={{ margin: 0 }}>Current plan</h3>
-            <p className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", marginTop: 2 }}>Renews on 15 May 2026</p>
+            <p className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", marginTop: 2 }}>
+              Manage billing in the main SURNA app
+            </p>
           </div>
-          <Tag tone="active">Pro · Team</Tag>
+          <Tag tone="active">Pro</Tag>
         </div>
         <div className="pro-grid pro-grid-3" style={{ gap: 12 }}>
-          <div style={{ padding: 14, borderRadius: 12, border: "1px solid var(--pro-border)" }}>
-            <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", fontWeight: 700 }}>MONTHLY COST</div>
-            <div style={{ fontSize: "var(--pro-fs-h2)", fontWeight: 800, marginTop: 4 }}>£24</div>
+          <div style={{ padding: 14, borderRadius: 12, border: "0.5px solid var(--pro-border)" }}>
+            <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", fontWeight: 700 }}>MONTHLY</div>
+            <div style={{ fontSize: "var(--pro-fs-h2)", fontWeight: 800, marginTop: 4 }}>€9.99</div>
           </div>
-          <div style={{ padding: 14, borderRadius: 12, border: "1px solid var(--pro-border)" }}>
-            <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", fontWeight: 700 }}>SEATS USED</div>
-            <div style={{ fontSize: "var(--pro-fs-h2)", fontWeight: 800, marginTop: 4 }}>8 / 10</div>
+          <div style={{ padding: 14, borderRadius: 12, border: "0.5px solid var(--pro-border)" }}>
+            <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", fontWeight: 700 }}>INCLUDES</div>
+            <div style={{ fontSize: "var(--pro-fs-sm)", fontWeight: 600, marginTop: 4 }}>Full Pro workspace</div>
           </div>
-          <div style={{ padding: 14, borderRadius: 12, border: "1px solid var(--pro-border)" }}>
-            <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", fontWeight: 700 }}>NEXT INVOICE</div>
-            <div style={{ fontSize: "var(--pro-fs-h2)", fontWeight: 800, marginTop: 4 }}>£24</div>
+          <div style={{ padding: 14, borderRadius: 12, border: "0.5px solid var(--pro-border)" }}>
+            <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", fontWeight: 700 }}>RECEIPTS</div>
+            <div style={{ fontSize: "var(--pro-fs-sm)", fontWeight: 600, marginTop: 4 }}>Billing history</div>
           </div>
         </div>
         <div className="pro-row" style={{ gap: 8, justifyContent: "flex-end", marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--pro-border-soft)" }}>
-          <Button variant="ghost">Cancel plan</Button>
-          <Button variant="secondary">Change plan</Button>
-          <Button variant="primary" leadingIcon={<CreditCard size={13} />}>Update payment method</Button>
+          <Button variant="ghost" href="/help">Cancel help</Button>
+          <Button variant="secondary" href="/subscribe">Change plan</Button>
+          <Button variant="primary" leadingIcon={<CreditCard size={13} />} href="/billing">Manage billing</Button>
         </div>
       </Card>
 
       <Card padded={false}>
         <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--pro-border)" }}>
-          <h3 style={{ margin: 0 }}>Recent invoices</h3>
+          <h3 style={{ margin: 0 }}>Invoices & payment</h3>
+          <p className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)", marginTop: 4 }}>
+            View receipts and update your card on the billing page.
+          </p>
         </div>
-        <table className="pro-table">
-          <thead><tr><th>Date</th><th>Amount</th><th>Status</th><th style={{ width: 100 }}>Receipt</th></tr></thead>
-          <tbody>
-            {[
-              { d: "Apr 15, 2026", a: "£24.00", s: "Paid" },
-              { d: "Mar 15, 2026", a: "£24.00", s: "Paid" },
-              { d: "Feb 15, 2026", a: "£24.00", s: "Paid" },
-            ].map((i) => (
-              <tr key={i.d}>
-                <td className="pro-text-muted">{i.d}</td>
-                <td style={{ fontWeight: 700 }}>{i.a}</td>
-                <td><Tag tone="success">{i.s}</Tag></td>
-                <td><Button variant="ghost" size="sm">Download</Button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={{ padding: "18px" }}>
+          <Button variant="primary" href="/billing" trailingIcon={<ChevronRight size={13} />}>
+            Open billing
+          </Button>
+        </div>
       </Card>
     </>
   );

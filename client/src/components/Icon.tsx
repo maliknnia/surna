@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { IconProps as SurnaIconProps } from "@/components/icons/SurnaIcons";
 import {
-  HomeIcon as SurnaHome,
   SearchIcon as SurnaSearch,
   TeamsIcon as SurnaTeams,
   ProfileIcon as SurnaProfile,
@@ -131,7 +130,6 @@ const weightClass: Record<IconWeight, string> = {
 
 /** Phosphor name → SURNA custom SVG (bottom nav & shell) */
 const SURNA_BY_NAME: Partial<Record<IconName, ComponentType<SurnaIconProps>>> = {
-  house: SurnaHome,
   "magnifying-glass": SurnaSearch,
   users: SurnaTeams,
   user: SurnaProfile,

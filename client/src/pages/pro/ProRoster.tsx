@@ -119,7 +119,7 @@ function TeamSwitcher({
           </select>
           <ChevronRight size={14} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%) rotate(90deg)", color: "var(--pro-text-subtle)", pointerEvents: "none" }} />
         </div>
-        <Button variant="secondary" leadingIcon={<Pencil size={14} />}>Edit</Button>
+        <Button variant="secondary" leadingIcon={<Pencil size={14} />} href="/pro/settings">Edit</Button>
       </div>
     </Card>
   );
@@ -348,8 +348,8 @@ function PendingRequests() {
             <div style={{ fontWeight: 700, fontSize: "var(--pro-fs-sm)" }}>{r.name}</div>
             <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)" }}>{r.role} · {r.note}</div>
           </div>
-          <Button variant="ghost" size="sm" disabled={!can("members.approve")} title={!can("members.approve") ? "Requires admin or manager role" : undefined}>Decline</Button>
-          <Button variant="primary" size="sm" leadingIcon={<CheckCheck size={12} />} disabled={!can("members.approve")} title={!can("members.approve") ? "Requires admin or manager role" : undefined}>Approve</Button>
+          <Button variant="ghost" size="sm" disabled={!can("members.approve")} href="/pro/approvals" title={!can("members.approve") ? "Requires admin or manager role" : undefined}>Decline</Button>
+          <Button variant="primary" size="sm" leadingIcon={<CheckCheck size={12} />} disabled={!can("members.approve")} href="/pro/approvals" title={!can("members.approve") ? "Requires admin or manager role" : undefined}>Approve</Button>
         </div>
       ))}
     </Card>
@@ -480,8 +480,8 @@ export default function ProRoster() {
       subtitle={`Switch teams, manage ${sportProfile.displaySport} rosters, availability, and linked schedule.`}
       actions={
         <>
-          {can("members.invite") && <Button variant="secondary" leadingIcon={<UserPlus size={14} />}>Invite</Button>}
-          {can("club.edit")      && <Button variant="primary"   leadingIcon={<Plus size={14} />}>New team</Button>}
+          {can("members.invite") && <Button variant="secondary" leadingIcon={<UserPlus size={14} />} href="/pro/comms">Invite</Button>}
+          {can("club.edit")      && <Button variant="primary"   leadingIcon={<Plus size={14} />} href="/teams">New team</Button>}
         </>
       }
       rightPanel={RightPanel}
@@ -489,8 +489,8 @@ export default function ProRoster() {
       <ContextBar
         context={<><Users size={13} /><span>Manage who&apos;s on this team and how they can participate.</span></>}
         actions={[
-          { key: "invite",   label: "Invite member",  icon: <UserPlus size={13} />,    hidden: !can("members.invite") },
-          { key: "approve",  label: "Review requests",icon: <CheckCheck size={13} />,  hidden: !can("members.approve") },
+          { key: "invite",   label: "Invite member",  icon: <UserPlus size={13} />,    hidden: !can("members.invite"), href: "/pro/comms" },
+          { key: "approve",  label: "Review requests",icon: <CheckCheck size={13} />,  hidden: !can("members.approve"), href: "/pro/approvals" },
           { key: "messages", label: "Message team",   icon: <MessageSquare size={13} />, href: "/pro/comms" },
           { key: "schedule", label: "Schedule training", icon: <Calendar size={13} />, href: "/pro/schedule", hidden: !can("training.create") },
         ]}
@@ -533,7 +533,7 @@ export default function ProRoster() {
             icon={<Calendar size={18} />}
             title="Team schedule"
             description={`View ${sportProfile.scheduleLabel} for ${team?.name ?? "this team"}.`}
-            action={<Link href="/pro/schedule"><Button variant="primary" leadingIcon={<Calendar size={13} />}>Open events</Button></Link>}
+            action={<Button href="/pro/schedule" variant="primary" leadingIcon={<Calendar size={13} />}>Open events</Button>}
           />
         </Card>
       )}
@@ -543,7 +543,7 @@ export default function ProRoster() {
             icon={<Calendar size={18} />}
             title={team?.events ? `${team.events} upcoming events` : "No events for this team"}
             description="Events are filtered to your team sport and captain account."
-            action={<Link href="/pro/schedule"><Button variant="primary" leadingIcon={<Plus size={13} />}>View schedule</Button></Link>}
+            action={<Button href="/pro/schedule" variant="primary" leadingIcon={<Plus size={13} />}>View schedule</Button>}
           />
         </Card>
       )}

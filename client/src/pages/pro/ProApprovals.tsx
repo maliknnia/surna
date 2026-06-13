@@ -7,6 +7,7 @@ import {
   PageShell, Card, Button, Tag, StatCard, EmptyState, ContextBar, FilterChips,
 } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
+import { useProTeam } from "./components/ProTeamContext";
 import {
   useApprovals, useDecideApproval, type Approval,
 } from "./components/proWorkflowApi";
@@ -50,12 +51,14 @@ function PriorityDot({ p }: { p: Approval["priority"] }) {
 }
 
 export default function ProApprovals() {
-  const { data, isLoading } = useApprovals();
+  const { teamId: rawTeamId } = useProTeam();
+  const teamId = rawTeamId ?? undefined;
+  const { data, isLoading } = useApprovals(teamId);
   const items: Approval[] = data ?? [];
   const { can, role } = useProRole();
   const [filter, setFilter] = useState<"all" | Kind>("all");
   const [showOnlyMine, setShowOnlyMine] = useState(true);
-  const decideMut = useDecideApproval();
+  const decideMut = useDecideApproval(teamId);
 
   const visible = useMemo(() => {
     return items.filter((i) => {
@@ -179,9 +182,13 @@ export default function ProApprovals() {
                     onClick={() => decide(i.id, "approved")}
                     data-testid={`approve-${i.id}`}
                   >Approve</Button>
-                  <button className="pro-icon-btn" aria-label="Open" style={{ width: 28, height: 28 }} title="Open detail">
-                    <ArrowRight size={13} />
-                  </button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    href="/pro/activity"
+                    leadingIcon={<ArrowRight size={12} />}
+                    aria-label="View activity"
+                  />
                 </div>
               </div>
             );

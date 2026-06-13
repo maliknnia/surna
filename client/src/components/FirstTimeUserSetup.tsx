@@ -3,7 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  SurnaEmbeddedBody,
+  SurnaEmbeddedHeader,
+  SurnaEmbeddedPanel,
+  SurnaEmbeddedSurface,
+  SurnaFullscreenOverlay,
+} from "@/components/ui/SurnaEmbeddedCard";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
@@ -174,44 +180,57 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
   // Get sports categories for selection
   const sportCategories = ["Popular", ...getSportCategories(), "All"];
 
+  const stepSubtitle =
+    currentStep === 1
+      ? "Let's set up your profile to help other athletes find and connect with you."
+      : currentStep === 2
+        ? "Choose your favorite sports to get personalized recommendations and connect with like-minded athletes."
+        : currentStep === 3
+          ? "Where do you usually play? We'll show nearby events and venues on your map."
+          : "What's your skill level? We'll match you with the right games and coaches.";
+
+  const primaryBtnClass = "rounded-full font-bold border-0";
+  const primaryBtnStyle = { background: "var(--surna-text)", color: "var(--surna-bg)" };
+
   return (
-    <div className="fixed inset-0 bg-background z-50 overflow-y-auto">
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <CardHeader className="text-center pb-4">
-            <div className="w-20 h-20 bg-transparent border border-border rounded-full flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-10 h-10 text-token-text" />
+    <SurnaFullscreenOverlay scrollable>
+      <SurnaEmbeddedPanel maxWidth="max-w-4xl" className="max-h-[90vh] overflow-y-auto">
+        <SurnaEmbeddedHeader
+          center
+          icon={
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center"
+              style={{ border: "0.5px solid var(--surna-border)", background: "var(--surna-surface)" }}
+            >
+              <Sparkles className="w-10 h-10" style={{ color: "var(--surna-text)" }} />
             </div>
-            <CardTitle className="text-2xl mb-2">Welcome to SURNA!</CardTitle>
-            <p className="text-token-text">
-              {currentStep === 1 ? "Let's set up your profile to help other athletes find and connect with you." :
-               currentStep === 2 ? "Choose your favorite sports to get personalized recommendations and connect with like-minded athletes." :
-               currentStep === 3 ? "Where do you usually play? We'll show nearby events and venues on your map." :
-               "What's your skill level? We'll match you with the right games and coaches."}
-            </p>
-            
-            {/* Progress Bar */}
-            <div className="mt-6">
-              <div className="flex justify-between text-xs text-token-text mb-2">
-                <span>Step {currentStep} of 4</span>
-                <span>{Math.round((currentStep / 4) * 100)}% Complete</span>
-              </div>
-              <Progress value={(currentStep / 4) * 100} className="h-2" />
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
+          }
+          title="Welcome to SURNA!"
+          subtitle={stepSubtitle}
+        />
+        <div className="px-6 pb-2">
+          <div className="flex justify-between text-xs mb-2" style={{ color: "var(--surna-text-secondary)" }}>
+            <span>Step {currentStep} of 4</span>
+            <span>{Math.round((currentStep / 4) * 100)}% Complete</span>
+          </div>
+          <Progress value={(currentStep / 4) * 100} className="h-2" />
+        </div>
+
+        <SurnaEmbeddedBody className="space-y-6 pt-4">
             {/* Step 1: Profile Setup */}
             {currentStep === 1 && (
               <>
                 {/* Current User Preview */}
                 <div className="text-center">
                   <Avatar className="w-16 h-16 mx-auto mb-3">
-                    <AvatarFallback className="text-lg bg-transparent border border-border text-token-text">
+                    <AvatarFallback
+                      className="text-lg"
+                      style={{ background: "var(--surna-surface)", border: "0.5px solid var(--surna-border)", color: "var(--surna-text)" }}
+                    >
                       {user.firstName?.[0]}{user.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
-                  <p className="text-sm text-token-text">Setting up profile for {user.email}</p>
+                  <p className="text-sm" style={{ color: "var(--surna-text-secondary)" }}>Setting up profile for {user.email}</p>
                 </div>
 
                 {/* Display Name */}
@@ -220,7 +239,7 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                     <UserIcon className="w-4 h-4" />
                     Your Display Name *
                   </Label>
-                  <p className="text-xs text-token-text mb-2">This is how other athletes will see your name</p>
+                  <p className="text-xs mb-2" style={{ color: "var(--surna-text-secondary)" }}>This is how other athletes will see your name</p>
                   <Input
                     id="displayName"
                     value={displayName}
@@ -237,7 +256,7 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                     <AtSign className="w-4 h-4" />
                     Choose a Username (Optional)
                   </Label>
-                  <p className="text-xs text-token-text mb-2">A unique handle others can use to find you quickly</p>
+                  <p className="text-xs mb-2" style={{ color: "var(--surna-text-secondary)" }}>A unique handle others can use to find you quickly</p>
                   <div className="relative">
                     <Input
                       id="username"
@@ -248,27 +267,27 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                       maxLength={30}
                     />
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      {checkingUsername && <Loader2 className="w-4 h-4 animate-spin text-token-text" />}
-                      {!checkingUsername && usernameAvailable === true && <Check className="w-4 h-4 text-token-text" />}
-                      {!checkingUsername && usernameAvailable === false && <AlertCircle className="w-4 h-4 text-token-text" />}
+                      {checkingUsername && <Loader2 className="w-4 h-4 animate-spin" style={{ color: "var(--surna-text-muted)" }} />}
+                      {!checkingUsername && usernameAvailable === true && <Check className="w-4 h-4" style={{ color: "var(--surna-text)" }} />}
+                      {!checkingUsername && usernameAvailable === false && <AlertCircle className="w-4 h-4" style={{ color: "var(--surna-text-muted)" }} />}
                     </div>
                   </div>
                   
                   {usernameError && (
-                    <p className="text-xs text-token-text mt-1 flex items-center gap-1">
+                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "var(--surna-text-muted)" }}>
                       <AlertCircle className="w-3 h-3" />
                       {usernameError}
                     </p>
                   )}
                   
                   {usernameAvailable === true && (
-                    <p className="text-xs text-token-text mt-1 flex items-center gap-1">
+                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "var(--surna-text-muted)" }}>
                       <Check className="w-3 h-3" />
                       Great! This username is available
                     </p>
                   )}
                   
-                  <p className="text-xs text-token-text mt-1">
+                  <p className="text-xs mt-1" style={{ color: "var(--surna-text-muted)" }}>
                     You can skip this for now and add it later in your profile settings
                   </p>
                 </div>
@@ -279,14 +298,15 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                     type="button"
                     variant="ghost"
                     onClick={onComplete}
-                    className="text-token-text"
+                    className="text-[var(--surna-text-secondary)]"
                   >
                     Skip for now
                   </Button>
                   <Button
                     onClick={() => setCurrentStep(2)}
                     disabled={!canCompleteStep1}
-                    className="bg-transparent border border-border text-token-text"
+                    className={primaryBtnClass}
+                    style={primaryBtnStyle}
                   >
                     Next: Choose Sports <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -298,9 +318,9 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
             {currentStep === 2 && (
               <>
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-semibold mb-2">What sports do you love?</h3>
-                  <p className="text-token-text">Optional — pick any you like, or skip and add them later from your profile</p>
-                  <p className="text-sm text-token-text mt-2">Selected: {selectedSports.length} sports</p>
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: "var(--surna-text)" }}>What sports do you love?</h3>
+                  <p style={{ color: "var(--surna-text-secondary)" }}>Optional — pick any you like, or skip and add them later from your profile</p>
+                  <p className="text-sm mt-2" style={{ color: "var(--surna-text-muted)" }}>Selected: {selectedSports.length} sports</p>
                 </div>
 
                 {/* Category Selector */}
@@ -311,11 +331,11 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                       <Badge
                         key={category}
                         variant={selectedCategory === category ? "default" : "outline"}
-                        className={`cursor-pointer transition-all hover:scale-105 ${
-                          selectedCategory === category 
-                            ? "bg-transparent border border-border text-token-text shadow-md" 
-                            : "hover:bg-transparent border border-border"
-                        }`}
+                        className="cursor-pointer transition-all hover:scale-105 border border-[var(--surna-border)]"
+                        style={{
+                          background: selectedCategory === category ? "var(--surna-bg-highlight)" : "var(--surna-surface)",
+                          color: "var(--surna-text)",
+                        }}
                         onClick={() => setSelectedCategory(category)}
                       >
                         {category}
@@ -329,38 +349,37 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                   {getSportsToShow().map((sport) => {
                     const isSelected = selectedSports.includes(sport.name);
                     return (
-                      <Card
+                      <SurnaEmbeddedSurface
                         key={sport.name}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-md ${
-                          isSelected 
-                            ? "ring-2 ring-surna-outline bg-transparent border border-border shadow-lg transform scale-105" 
-                            : "hover:bg-transparent border border-border"
+                        inset
+                        className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                          isSelected ? "ring-2 ring-[var(--surna-text-muted)] scale-105" : ""
                         }`}
                         onClick={() => toggleSport(sport.name)}
                       >
-                        <CardContent className="p-3 text-center">
+                        <div className="p-3 text-center">
                           <div className="text-2xl mb-2">{sport.icon}</div>
-                          <div className="text-xs font-medium text-token-text">{sport.name}</div>
+                          <div className="text-xs font-medium" style={{ color: "var(--surna-text)" }}>{sport.name}</div>
                           {isSelected && (
                             <div className="mt-2">
-                              <Badge className="bg-transparent border border-border text-token-text text-xs">
+                              <Badge className="text-xs border border-[var(--surna-border)] bg-[var(--surna-bg-highlight)] text-[var(--surna-text)]">
                                 <Heart className="w-3 h-3 mr-1" />
                                 Selected
                               </Badge>
                             </div>
                           )}
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </SurnaEmbeddedSurface>
                     );
                   })}
                 </div>
 
                 {/* Selected Sports Preview */}
                 {selectedSports.length > 0 && (
-                  <Card className="bg-transparent border border-border">
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-3 flex items-center gap-2">
-                        <Heart className="w-4 h-4 text-token-text" />
+                  <SurnaEmbeddedSurface inset>
+                    <div className="p-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2" style={{ color: "var(--surna-text)" }}>
+                        <Heart className="w-4 h-4" />
                         Your Selected Sports ({selectedSports.length})
                       </h4>
                       <div className="flex flex-wrap gap-2">
@@ -369,7 +388,7 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                           return (
                             <Badge
                               key={sportName}
-                              className="bg-background text-token-text hover:bg-transparent border border-border cursor-pointer"
+                              className="cursor-pointer border border-[var(--surna-border)] bg-[var(--surna-bg-highlight)] text-[var(--surna-text)]"
                               onClick={() => toggleSport(sportName)}
                             >
                               {sport?.icon} {sportName} ✕
@@ -377,8 +396,8 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                           );
                         })}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </SurnaEmbeddedSurface>
                 )}
 
                 {/* Navigation */}
@@ -394,7 +413,8 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                   <Button
                     onClick={() => setCurrentStep(3)}
                     disabled={!canCompleteStep2}
-                    className="bg-transparent border border-border text-token-text"
+                    className={primaryBtnClass}
+                    style={primaryBtnStyle}
                   >
                     Next: Location <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -405,8 +425,8 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
             {currentStep === 3 && (
               <>
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-semibold mb-2">Where do you play?</h3>
-                  <p className="text-token-text">City or area — used to personalise your map and nearby feed</p>
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: "var(--surna-text)" }}>Where do you play?</h3>
+                  <p style={{ color: "var(--surna-text-secondary)" }}>City or area — used to personalise your map and nearby feed</p>
                 </div>
                 <Input
                   value={location}
@@ -418,7 +438,7 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                   <Button onClick={() => setCurrentStep(2)} variant="outline">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back
                   </Button>
-                  <Button onClick={() => setCurrentStep(4)} className="bg-transparent border border-border text-token-text">
+                  <Button onClick={() => setCurrentStep(4)} className={primaryBtnClass} style={primaryBtnStyle}>
                     Next: Skill level <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
@@ -428,16 +448,21 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
             {currentStep === 4 && (
               <>
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-semibold mb-2">What's your skill level?</h3>
-                  <p className="text-token-text">We'll match events and coaches to your level</p>
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: "var(--surna-text)" }}>What's your skill level?</h3>
+                  <p style={{ color: "var(--surna-text-secondary)" }}>We'll match events and coaches to your level</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {(["beginner", "intermediate", "advanced", "elite"] as const).map((level) => (
                     <Button
                       key={level}
                       type="button"
-                      variant={skillLevel === level ? "default" : "outline"}
-                      className="capitalize"
+                      variant="outline"
+                      className="capitalize border-[var(--surna-border)]"
+                      style={
+                        skillLevel === level
+                          ? { background: "var(--surna-text)", color: "var(--surna-bg)" }
+                          : { background: "var(--surna-surface)", color: "var(--surna-text)" }
+                      }
                       onClick={() => setSkillLevel(level)}
                     >
                       {level}
@@ -451,7 +476,8 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                   <Button
                     onClick={() => setupProfileMutation.mutate()}
                     disabled={setupProfileMutation.isPending}
-                    className="bg-transparent border border-border text-token-text"
+                    className={primaryBtnClass}
+                    style={primaryBtnStyle}
                   >
                     {setupProfileMutation.isPending ? (
                       <>
@@ -466,12 +492,11 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
               </>
             )}
 
-            <p className="text-xs text-center text-token-text">
+            <p className="text-xs text-center" style={{ color: "var(--surna-text-muted)" }}>
               You can always change these settings later from your profile
             </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        </SurnaEmbeddedBody>
+      </SurnaEmbeddedPanel>
+    </SurnaFullscreenOverlay>
   );
 }

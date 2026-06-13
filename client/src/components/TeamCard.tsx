@@ -116,7 +116,7 @@ export default function TeamCard({ team, onViewDetails, onJoinTeam, showJoinButt
       <div
         className="card-spotify relative overflow-hidden cursor-pointer active:scale-[0.97] transition-transform duration-200"
         style={{ height: "140px", minWidth: "140px", padding: 0, background: cardBg }}
-        onClick={openPeople}
+        onClick={() => onViewDetails(team.id)}
       >
         {hasPhoto && (
           <>
@@ -165,7 +165,7 @@ export default function TeamCard({ team, onViewDetails, onJoinTeam, showJoinButt
     <div
       className="card-spotify relative overflow-hidden cursor-pointer group active:scale-[0.97] transition-transform duration-200"
       style={{ padding: "20px", background: cardBg }}
-      onClick={openPeople}
+      onClick={() => onViewDetails(team.id)}
     >
       {hasPhoto && (
         <>
@@ -224,13 +224,6 @@ export default function TeamCard({ team, onViewDetails, onJoinTeam, showJoinButt
               Join Team
             </button>
           )}
-          <button
-            className="h-9 px-4 rounded-full text-[13px] font-semibold transition-all duration-200 active:scale-[0.96] backdrop-blur-sm"
-            style={{ background: surfaceFaint, color: textSecondary, border: `1px solid ${viewBtnBorder}` }}
-            onClick={(e) => { e.stopPropagation(); onViewDetails(team.id); }}
-          >
-            View
-          </button>
         </div>
       </div>
     </div>

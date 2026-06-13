@@ -9,7 +9,7 @@ export type MobileShellPanel = {
 };
 
 export const MOBILE_SHELL_PANELS: MobileShellPanel[] = [
-  { id: "home", label: "Home", title: "SURNA", icon: "house" },
+  { id: "home", label: "Home", title: "For you", icon: "house" },
   { id: "teams", label: "Teams", title: "Teams", icon: "users" },
   { id: "map", label: "Map", title: "Map", icon: "map-pin" },
   { id: "venues", label: "Venues", title: "Venues", icon: "buildings" },

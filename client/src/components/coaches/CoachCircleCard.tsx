@@ -15,22 +15,23 @@ export default function CoachCircleCard({ coach, size = 88 }: Props) {
   const name = coach.user.firstName
     ? `${coach.user.firstName}${coach.user.lastName ? ` ${coach.user.lastName[0]}.` : ""}`
     : "Coach";
+  const sport = coach.specialties?.[0] || coach.user.sport || "Coach";
+  const hourly = coach.hourlyRate ? parseFloat(coach.hourlyRate) : 0;
 
   return (
     <button
       type="button"
       onClick={() => setLocation(ROUTES.coach(coach.id))}
-      className="flex flex-col items-center shrink-0 active:scale-95 transition-transform"
-      style={{ width: size }}
+      className="flex flex-col items-center shrink-0 active:scale-95 transition-transform w-full"
     >
       <div className="relative mb-2">
         <div
-          className="rounded-full overflow-hidden ring-2 ring-offset-2 ring-offset-transparent"
+          className="rounded-full overflow-hidden ring-2 ring-offset-2 ring-offset-transparent mx-auto"
           style={{
             width: size,
             height: size,
             background: "var(--surna-elevated)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
           }}
         >
           {photo ? (
@@ -38,7 +39,7 @@ export default function CoachCircleCard({ coach, size = 88 }: Props) {
           ) : (
             <div
               className="w-full h-full flex items-center justify-center text-[22px] font-bold"
-              style={{ background: "linear-gradient(135deg, #1DB954 0%, #121212 100%)", color: "#fff" }}
+              style={{ background: "linear-gradient(135deg, var(--surna-elevated) 0%, var(--surna-surface) 100%)", color: "var(--surna-text)" }}
             >
               {initials}
             </div>
@@ -53,6 +54,13 @@ export default function CoachCircleCard({ coach, size = 88 }: Props) {
         style={{ color: "var(--surna-text)" }}
       >
         {name}
+      </span>
+      <span
+        className="text-[10px] text-center line-clamp-1 w-full mt-0.5"
+        style={{ color: "var(--surna-text-secondary)" }}
+      >
+        {sport}
+        {hourly > 0 ? ` · €${hourly.toFixed(0)}/hr` : ""}
       </span>
     </button>
   );

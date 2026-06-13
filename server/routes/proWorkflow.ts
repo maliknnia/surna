@@ -16,8 +16,9 @@ export const proWorkflowRouter = Router();
 const DEMO_TEAM = "demo-team";
 
 function getTeamId(req: any): string {
-  const q = (req.query?.teamId as string | undefined) ?? undefined;
-  return q && q.trim() ? q.trim() : DEMO_TEAM;
+  const q = (req.query?.teamId as string | undefined)?.trim();
+  const body = (req.body?.teamId as string | undefined)?.trim();
+  return q || body || DEMO_TEAM;
 }
 
 function getActor(req: any): { name: string; role: ActivityRole } {

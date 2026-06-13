@@ -4,7 +4,7 @@ import { Users, RefreshCw, GraduationCap } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import FilterBottomSheet from "@/components/FilterBottomSheet";
-import CoachCard from "@/components/CoachCard";
+import CoachCircleCard from "@/components/coaches/CoachCircleCard";
 import { fetchCoaches } from "@/lib/coachesApi";
 import type { CoachWithProfile } from "@shared/schema";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
@@ -194,10 +194,12 @@ export default function Coaches({ embedded = false }: { embedded?: boolean }) {
                 {filteredCoaches.length} result{filteredCoaches.length === 1 ? "" : "s"}
               </p>
             )}
-            <div className="px-4 space-y-3">
-              {(filteredCoaches as CoachWithProfile[]).map((coach) => (
-                <CoachCard key={coach.id} coach={coach} embedded={embedded} />
-              ))}
+            <div className="px-4 pb-6">
+              <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4">
+                {(filteredCoaches as CoachWithProfile[]).map((coach) => (
+                  <CoachCircleCard key={coach.id} coach={coach} size={92} />
+                ))}
+              </div>
             </div>
 
             <div className="px-4 mt-4 mb-6 text-center">
@@ -219,9 +221,12 @@ export default function Coaches({ embedded = false }: { embedded?: boolean }) {
 
 function ListSkeleton({ chipBg }: { chipBg: string }) {
   return (
-    <div className="space-y-3 px-4">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="h-[200px] rounded-2xl animate-pulse" style={{ background: chipBg }} />
+    <div className="grid grid-cols-3 gap-6 px-4 sm:grid-cols-4">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="flex flex-col items-center gap-2">
+          <div className="w-[92px] h-[92px] rounded-full animate-pulse" style={{ background: chipBg }} />
+          <div className="h-3 w-16 rounded animate-pulse" style={{ background: chipBg }} />
+        </div>
       ))}
     </div>
   );

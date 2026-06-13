@@ -177,12 +177,14 @@ export function HomePortraitCard({
               />
             </div>
           )}
-          <span
-            className="absolute top-2 right-2 z-[2] px-2.5 py-1 rounded-full text-[10px] font-bold"
-            style={pillStyle}
-          >
-            {cta}
-          </span>
+          {cta ? (
+            <span
+              className="absolute top-2 right-2 z-[2] px-2.5 py-1 rounded-full text-[10px] font-bold"
+              style={pillStyle}
+            >
+              {cta}
+            </span>
+          ) : null}
           <div className="absolute bottom-0 left-0 right-0 p-2.5 z-[1]">
             <p
               className="text-[13px] font-bold text-white leading-snug line-clamp-2"
@@ -280,7 +282,7 @@ export function HomeFeaturedCard({
   cardKind,
   onClick,
   attendeeEntity,
-  cta = "View",
+  cta,
   captionBelow,
 }: {
   imageUrl?: string | null;
@@ -358,9 +360,11 @@ export function HomeFeaturedCard({
                 </p>
               )}
             </div>
-            <span className="shrink-0 px-4 py-2 rounded-full text-xs font-bold" style={pillStyle}>
-              {cta}
-            </span>
+            {cta ? (
+              <span className="shrink-0 px-4 py-2 rounded-full text-xs font-bold" style={pillStyle}>
+                {cta}
+              </span>
+            ) : null}
           </div>
         </div>
       </button>
@@ -500,7 +504,7 @@ export function HomeCompactRow({
   title: string;
   subtitle?: string;
   captionBelow?: string;
-  cta: string;
+  cta?: string;
   onClick: () => void;
   icon: ReactNode;
   imageUrl?: string | null;
@@ -583,9 +587,11 @@ export function HomeCompactRow({
             </p>
           )}
         </div>
-        <span className="relative text-[11px] font-bold px-3 py-1.5 rounded-full shrink-0" style={pillStyle}>
-          {cta}
-        </span>
+        {cta ? (
+          <span className="relative text-[11px] font-bold px-3 py-1.5 rounded-full shrink-0" style={pillStyle}>
+            {cta}
+          </span>
+        ) : null}
       </button>
       {captionBelow && <CardTextBelow subtitle={captionBelow} subtitleSize={12} width="100%" />}
     </div>

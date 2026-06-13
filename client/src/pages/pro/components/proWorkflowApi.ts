@@ -55,49 +55,63 @@ export interface ActivityEntry {
 }
 
 export const proWorkflowKeys = {
-  approvals: ["/api/pro-workflow/approvals"] as const,
-  activity: ["/api/pro-workflow/activity"] as const,
+  approvals: (teamId: string) => ["/api/pro-workflow/approvals", teamId] as const,
+  activity: (teamId: string) => ["/api/pro-workflow/activity", teamId] as const,
 };
 
-export function useApprovals() {
+async function fetchWorkflow<T>(path: string, teamId: string): Promise<T> {
+  const url = `${path}?teamId=${encodeURIComponent(teamId)}`;
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export function useApprovals(teamId?: string) {
   return useQuery<Approval[]>({
-    queryKey: proWorkflowKeys.approvals,
+    queryKey: teamId ? proWorkflowKeys.approvals(teamId) : ["pro-workflow-approvals-disabled"],
+    enabled: !!teamId,
+    queryFn: () => fetchWorkflow<Approval[]>("/api/pro-workflow/approvals", teamId!),
     staleTime: 30_000,
   });
 }
 
-export function useActivity() {
+export function useActivity(teamId?: string) {
   return useQuery<ActivityEntry[]>({
-    queryKey: proWorkflowKeys.activity,
+    queryKey: teamId ? proWorkflowKeys.activity(teamId) : ["pro-workflow-activity-disabled"],
+    enabled: !!teamId,
+    queryFn: () => fetchWorkflow<ActivityEntry[]>("/api/pro-workflow/activity", teamId!),
     staleTime: 30_000,
   });
 }
 
-export function useProWorkflowStream() {
+export function useProWorkflowStream(teamId?: string) {
   const qc = useQueryClient();
   useEffect(() => {
-    if (typeof window === "undefined" || typeof EventSource === "undefined") return;
-    const es = new EventSource("/api/pro-workflow/stream");
-    const refreshActivity = () =>
-      qc.invalidateQueries({ queryKey: proWorkflowKeys.activity });
+    if (!teamId || typeof window === "undefined" || typeof EventSource === "undefined") return;
+    const es = new EventSource(
+      `/api/pro-workflow/stream?teamId=${encodeURIComponent(teamId)}`,
+    );
+    const refreshActivity = () => {
+      qc.invalidateQueries({ queryKey: proWorkflowKeys.activity(teamId) });
+    };
     const refreshAll = () => {
-      qc.invalidateQueries({ queryKey: proWorkflowKeys.activity });
-      qc.invalidateQueries({ queryKey: proWorkflowKeys.approvals });
+      qc.invalidateQueries({ queryKey: proWorkflowKeys.activity(teamId) });
+      qc.invalidateQueries({ queryKey: proWorkflowKeys.approvals(teamId) });
     };
     es.addEventListener("activity", refreshActivity);
     es.addEventListener("decision", refreshAll);
     es.onerror = () => {
-      // Browser will auto-reconnect; just stay quiet.
+      /* Browser auto-reconnects */
     };
     return () => {
       es.removeEventListener("activity", refreshActivity);
       es.removeEventListener("decision", refreshAll);
       es.close();
     };
-  }, [qc]);
+  }, [qc, teamId]);
 }
 
-export function useAppendActivity() {
+export function useAppendActivity(teamId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (vars: {
@@ -107,43 +121,51 @@ export function useAppendActivity() {
       team?: string;
       severity?: "info" | "warn";
     }) => {
-      const res = await apiRequest("POST", "/api/pro-workflow/activity", vars);
+      const res = await apiRequest("POST", "/api/pro-workflow/activity", {
+        ...vars,
+        teamId,
+      });
       return (await res.json()) as ActivityEntry;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: proWorkflowKeys.activity });
+      if (teamId) qc.invalidateQueries({ queryKey: proWorkflowKeys.activity(teamId) });
     },
   });
 }
 
-export function useDecideApproval() {
+export function useDecideApproval(teamId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (vars: { id: string; status: "approved" | "rejected" }) => {
       const res = await apiRequest(
         "POST",
         `/api/pro-workflow/approvals/${vars.id}/decide`,
-        { status: vars.status }
+        { status: vars.status, teamId },
       );
       return (await res.json()) as { approval: Approval; activity: ActivityEntry };
     },
     onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey: proWorkflowKeys.approvals });
-      const prev = qc.getQueryData<Approval[]>(proWorkflowKeys.approvals);
+      if (!teamId) return;
+      const key = proWorkflowKeys.approvals(teamId);
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Approval[]>(key);
       if (prev) {
         qc.setQueryData<Approval[]>(
-          proWorkflowKeys.approvals,
-          prev.map((a) => (a.id === vars.id ? { ...a, status: vars.status } : a))
+          key,
+          prev.map((a) => (a.id === vars.id ? { ...a, status: vars.status } : a)),
         );
       }
       return { prev };
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(proWorkflowKeys.approvals, ctx.prev);
+      if (teamId && ctx?.prev) {
+        qc.setQueryData(proWorkflowKeys.approvals(teamId), ctx.prev);
+      }
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: proWorkflowKeys.approvals });
-      qc.invalidateQueries({ queryKey: proWorkflowKeys.activity });
+      if (!teamId) return;
+      qc.invalidateQueries({ queryKey: proWorkflowKeys.approvals(teamId) });
+      qc.invalidateQueries({ queryKey: proWorkflowKeys.activity(teamId) });
     },
   });
 }

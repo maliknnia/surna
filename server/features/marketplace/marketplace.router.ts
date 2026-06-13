@@ -2,11 +2,12 @@ import { Router } from "express";
 import { CreateProduct, UpdateProduct, ListQuery, CartItemInput } from "./marketplace.validation";
 import { Marketplace as MP } from "./marketplace.service";
 import { authMiddleware, requireAuth } from "../../middleware/auth";
+import { bridgeSessionUser } from "../../middleware/bridgeSessionUser";
 
 export const marketplaceRouter = Router();
 
-// Apply optional auth middleware to ALL routes (populates req.jwtUser if token present)
 marketplaceRouter.use(authMiddleware());
+marketplaceRouter.use(bridgeSessionUser);
 
 // ===== PUBLIC ROUTES (AUTH OPTIONAL - req.jwtUser populated if authenticated) =====
 

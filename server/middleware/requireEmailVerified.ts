@@ -25,12 +25,8 @@ export async function requireEmailVerified(
   }
 
   if (userRequiresEmailVerification(user)) {
-    // Local dev quick-login accounts must be able to post/join without SMTP setup.
-    if (
-      process.env.LOCAL_AUTH_BYPASS === "1" &&
-      process.env.NODE_ENV !== "production" &&
-      (userId === "local-dev-user" || user.email === (process.env.LOCAL_DEV_USER_EMAIL || "dev@surna.local"))
-    ) {
+    // Local dev — allow posting without SMTP / verified inbox.
+    if (process.env.LOCAL_AUTH_BYPASS === "1" && process.env.NODE_ENV !== "production") {
       return next();
     }
     console.log("[Fix 10] Email verification required — blocked", req.method, req.path, "user", userId);

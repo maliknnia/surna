@@ -191,17 +191,18 @@ export async function checkout(userId: string, cartId: string, taxBps: number) {
   // create order + items; decrement stock
   const totalDecimal = (total / 100).toFixed(2);
   const order = await db.execute(sql`
-    INSERT INTO orders (user_id, subtotal_cents, tax_cents, total_cents, currency, total_amount)
-    VALUES (${userId}, ${subtotal}, ${tax}, ${total}, ${items[0]?.currency ?? 'USD'}, ${totalDecimal})
+    INSERT INTO orders (user_id, subtotal_cents, tax_cents, total_cents, currency, total_amount, total, status)
+    VALUES (${userId}, ${subtotal}, ${tax}, ${total}, ${items[0]?.currency ?? 'USD'}, ${totalDecimal}, ${totalDecimal}, 'paid')
     RETURNING *;
   `);
   const orderId = order.rows[0].id as string;
 
   for (const i of items) {
     const priceDecimal = ((i.unit_price_cents as number) / 100).toFixed(2);
+    const lineTotal = ((i.unit_price_cents as number) * (i.qty as number) / 100).toFixed(2);
     await db.execute(sql`
-      INSERT INTO order_items (order_id, product_id, seller_id, title, qty, unit_price_cents, currency, quantity, price)
-      VALUES (${orderId}, ${i.product_id}, ${i.seller_id}, ${i.title}, ${i.qty as number}, ${i.unit_price_cents}, ${i.currency}, ${i.qty as number}, ${priceDecimal});
+      INSERT INTO order_items (order_id, product_id, seller_id, title, qty, unit_price_cents, currency, quantity, price, total)
+      VALUES (${orderId}, ${i.product_id}, ${i.seller_id}, ${i.title}, ${i.qty as number}, ${i.unit_price_cents}, ${i.currency}, ${i.qty as number}, ${priceDecimal}, ${lineTotal});
     `);
     await db.execute(sql`
       UPDATE products SET stock = GREATEST(stock - ${i.qty as number}, 0)

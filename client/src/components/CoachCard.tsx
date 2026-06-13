@@ -172,26 +172,11 @@ export default function CoachCard({ coach, compact = false, embedded = false }: 
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
-            className="flex-1 h-9 rounded-full text-[13px] font-bold transition-all duration-200 active:scale-[0.96] border-none"
+            className="w-full h-9 rounded-full text-[13px] font-bold transition-all duration-200 active:scale-[0.96] border-none"
             style={{ background: cardIsDark ? "#ffffff" : "#111111", color: cardIsDark ? "#000000" : "#ffffff" }}
             onClick={openBook}
           >
             Book session
-          </button>
-          <button
-            type="button"
-            className="h-9 px-4 rounded-full text-[13px] font-semibold transition-all duration-200 active:scale-[0.96] backdrop-blur-sm"
-            style={{
-              background: cardIsDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
-              color: textSecondary,
-              border: `1px solid ${viewBtnBorder}`,
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              openProfile();
-            }}
-          >
-            View
           </button>
         </div>
       </div>

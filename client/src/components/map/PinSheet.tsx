@@ -77,27 +77,6 @@ interface PinSheetProps {
   onViewStory?: (pin: MapPinSheetData) => void;
 }
 
-function getViewLabel(type: EntityType): string {
-  switch (type) {
-    case "event":
-      return "View event";
-    case "place":
-      return "View venue";
-    case "team":
-      return "View team";
-    case "coach":
-      return "View coach";
-    case "person":
-    case "player":
-      return "View profile";
-    case "challenge":
-      return "View challenge";
-    case "instant":
-      return "Join game";
-    default:
-      return "View details";
-  }
-}
 
 /** Prefer wide cover art; fall back to avatar/logo when it reads as a photo. */
 export function resolvePinCover(pin: MapPinSheetData): string | undefined {
@@ -678,50 +657,55 @@ export default function PinSheet({ pin, userLocation, onClose, onNavigate, onVie
             className={cn("px-5", hasCover ? "-mt-10 relative z-[1]" : "pt-2")}
             style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}
           >
-            {/* Title row */}
             <div className="flex gap-3.5 items-start mb-4">
-              {showEventAvatar && (
-              <div className="relative flex-shrink-0">
-                <div
-                  className={cn(
-                    "w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center ring-2",
-                    pin.hasStory && pin.storyState === "new"
-                      ? "ring-[var(--surna-accent)]"
-                      : "ring-[var(--surna-border)]",
-                  )}
-                  style={{ background: sheet.inset }}
-                >
-                  {avatarUrl ? (
-                    <LazyImage
-                      src={avatarUrl}
-                      alt=""
-                      sources={deriveModernSources(avatarUrl)}
-                      placeholder={deriveLqipPlaceholder(avatarUrl)}
-                      wrapperClassName="w-full h-full"
-                      className="w-full h-full object-cover"
+              <button
+                type="button"
+                onClick={handleViewPage}
+                className="flex flex-1 gap-3.5 items-start text-left active:opacity-90 transition-opacity min-w-0"
+              >
+                {showEventAvatar && (
+                <div className="relative flex-shrink-0">
+                  <div
+                    className={cn(
+                      "w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center ring-2",
+                      pin.hasStory && pin.storyState === "new"
+                        ? "ring-[var(--surna-accent)]"
+                        : "ring-[var(--surna-border)]",
+                    )}
+                    style={{ background: sheet.inset }}
+                  >
+                    {avatarUrl ? (
+                      <LazyImage
+                        src={avatarUrl}
+                        alt=""
+                        sources={deriveModernSources(avatarUrl)}
+                        placeholder={deriveLqipPlaceholder(avatarUrl)}
+                        wrapperClassName="w-full h-full"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl">{emoji}</span>
+                    )}
+                  </div>
+                  {isPerson && pin.presence === "active" && (
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2"
+                      style={{ background: "#30D158", borderColor: sheet.presenceRing }}
                     />
-                  ) : (
-                    <span className="text-2xl">{emoji}</span>
                   )}
                 </div>
-                {isPerson && pin.presence === "active" && (
-                  <span
-                    className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2"
-                    style={{ background: "#30D158", borderColor: sheet.presenceRing }}
-                  />
                 )}
-              </div>
-              )}
-              <div className={cn("flex-1 min-w-0", showEventAvatar ? "pt-1" : "")}>
-                <h2 className="text-xl font-bold text-[var(--surna-text)] leading-tight line-clamp-2">
-                  {pin.title}
-                </h2>
-                <p className="text-sm text-[var(--surna-text-secondary)] mt-1 line-clamp-2">
-                  {isEvent
-                    ? [pin.subtitle, distance].filter(Boolean).join(" · ") || typeLabel
-                    : `${pin.subtitle || typeLabel}${distance ? ` · ${distance}` : ""}`}
-                </p>
-              </div>
+                <div className={cn("flex-1 min-w-0", showEventAvatar ? "pt-1" : "")}>
+                  <h2 className="text-xl font-bold text-[var(--surna-text)] leading-tight line-clamp-2">
+                    {pin.title}
+                  </h2>
+                  <p className="text-sm text-[var(--surna-text-secondary)] mt-1 line-clamp-2">
+                    {isEvent
+                      ? [pin.subtitle, distance].filter(Boolean).join(" · ") || typeLabel
+                      : `${pin.subtitle || typeLabel}${distance ? ` · ${distance}` : ""}`}
+                  </p>
+                </div>
+              </button>
               {!hasCover && (
                 <button
                   type="button"
@@ -887,16 +871,6 @@ export default function PinSheet({ pin, userLocation, onClose, onNavigate, onVie
                 <Share2 size={16} />
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={handleViewPage}
-              className="w-full flex items-center justify-center gap-2 h-12 rounded-xl mt-3 text-sm font-semibold active:scale-[0.98] transition-transform border border-[var(--surna-border)]"
-              style={{ background: sheet.inset, color: "var(--surna-text)" }}
-            >
-              {getViewLabel(pin.type)}
-              <ChevronRight size={16} className="opacity-60" />
-            </button>
           </div>
         </div>
       </div>

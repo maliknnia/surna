@@ -1117,22 +1117,32 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (!req.user) {
         return res.status(401).json({ message: "User not authenticated" });
       }
-      if (process.env.LOCAL_AUTH_BYPASS === "1") {
-        return res.json({
-          id: req.user.id || req.user.claims?.sub || "local-dev-user",
-          email: req.user.email || req.user.claims?.email || process.env.LOCAL_DEV_USER_EMAIL || "dev@surna.local",
-          firstName: req.user.firstName || req.user.claims?.first_name || "Local",
-          lastName: req.user.lastName || req.user.claims?.last_name || "Developer",
-          profileImageUrl: req.user.profileImageUrl || req.user.claims?.profile_image_url || "/avatars/me.png",
-          emailVerified: true,
-        });
-      }
       const userId = sessionUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const email =
+        req.user.email ||
+        req.user.claims?.email ||
+        (process.env.LOCAL_AUTH_BYPASS === "1" ? process.env.LOCAL_DEV_USER_EMAIL || "dev@surna.local" : undefined);
+
+      let dbUser = await storage.getUser(userId).catch(() => undefined);
+      if (!dbUser && email) {
+        dbUser = await storage.getUserByEmail(email).catch(() => undefined);
+      }
+      if (dbUser) {
+        return res.json(dbUser);
+      }
+
+      // Last resort: session stub (dev / first paint before DB row exists)
+      res.json({
+        id: userId,
+        email: email ?? null,
+        firstName: req.user.firstName || req.user.claims?.first_name || null,
+        lastName: req.user.lastName || req.user.claims?.last_name || null,
+        profileImageUrl: req.user.profileImageUrl || req.user.claims?.profile_image_url || "/avatars/me.png",
+        emailVerified: req.user.emailVerified ?? true,
+      });
     } catch (error: unknown) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import {
   Building2, Users, Calendar, Trophy, Plus, ArrowRight, MapPin,
   Shield, GraduationCap, Megaphone, Settings, ChevronRight, Star,
@@ -76,6 +77,7 @@ function StatusTag({ s }: { s: ClubTeam["status"] | AcademyPlayer["status"] }) {
 }
 
 export default function ProClub() {
+  const [, setLocation] = useLocation();
   const [tab, setTab] = useState<ClubTab>("overview");
   const { can } = useProRole();
   const canEdit = can("club.edit");
@@ -98,10 +100,10 @@ export default function ProClub() {
       <Card>
         <h3 style={{ margin: 0, marginBottom: 10 }}>Quick actions</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <Button variant="secondary" size="sm" fullWidth leadingIcon={<Plus size={13} />}>Add team</Button>
-          <Button variant="ghost" size="sm" fullWidth leadingIcon={<GraduationCap size={13} />}>New trial intake</Button>
-          <Button variant="ghost" size="sm" fullWidth leadingIcon={<Megaphone size={13} />}>Post club update</Button>
-          <Button variant="ghost" size="sm" fullWidth leadingIcon={<Settings size={13} />}>Club settings</Button>
+          <Button variant="secondary" size="sm" fullWidth leadingIcon={<Plus size={13} />} href="/pro/roster">Add team</Button>
+          <Button variant="ghost" size="sm" fullWidth leadingIcon={<GraduationCap size={13} />} href="/pro/recruitment">New trial intake</Button>
+          <Button variant="ghost" size="sm" fullWidth leadingIcon={<Megaphone size={13} />} onClick={() => setTab("announcements")}>Post club update</Button>
+          <Button variant="ghost" size="sm" fullWidth leadingIcon={<Settings size={13} />} href="/pro/settings">Club settings</Button>
         </div>
       </Card>
     </>
@@ -113,8 +115,8 @@ export default function ProClub() {
       subtitle="Run multiple teams, develop academy talent, manage staff under one roof."
       actions={
         <>
-          {canAnnounce && <Button variant="secondary" leadingIcon={<Megaphone size={14} />}>Announcement</Button>}
-          {canEdit && <Button variant="primary" leadingIcon={<Plus size={14} />}>Add team</Button>}
+          {canAnnounce && <Button variant="secondary" leadingIcon={<Megaphone size={14} />} onClick={() => setTab("announcements")}>Announcement</Button>}
+          {canEdit && <Button variant="primary" leadingIcon={<Plus size={14} />} href="/pro/roster">Add team</Button>}
         </>
       }
       rightPanel={RightPanel}
@@ -124,7 +126,7 @@ export default function ProClub() {
           ? <>This is your club's command center. Add teams, develop academy talent, manage staff and post club-wide updates.</>
           : <>Public-facing view of {club.name}. Owners and admins can edit teams, academy, staff and club-wide settings.</>}
         actions={[
-          { key: "add-team",       label: "Add team",       icon: <Plus size={12} />,         variant: "primary", disabled: !canEdit, hidden: !canEdit },
+          { key: "add-team",       label: "Add team",       icon: <Plus size={12} />,         variant: "primary", disabled: !canEdit, hidden: !canEdit, href: "/pro/roster" },
           { key: "announce",       label: "Post update",    icon: <Megaphone size={12} />,    onClick: () => setTab("announcements"), disabled: !canAnnounce, hidden: !canAnnounce },
           { key: "academy",        label: "Academy",        icon: <GraduationCap size={12} />,onClick: () => setTab("academy") },
           { key: "settings",       label: "Club settings",  icon: <Settings size={12} />,     onClick: () => setTab("settings"), disabled: !canSettings, hidden: !canSettings },
@@ -150,7 +152,7 @@ export default function ProClub() {
               <span className="pro-row" style={{ gap: 4 }}><Users size={12} /> {club.members} members</span>
             </div>
           </div>
-          <Button variant="ghost" trailingIcon={<ArrowRight size={14} />}>Public page</Button>
+          <Button variant="ghost" trailingIcon={<ArrowRight size={14} />} href="/">Public page</Button>
         </div>
       </Card>
 
@@ -192,7 +194,15 @@ export default function ProClub() {
                   <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)" }}>{t.members} members · {t.events} events</div>
                 </div>
                 <StatusTag s={t.status} />
-                <button className="pro-icon-btn" aria-label="Open" style={{ width: 28, height: 28 }}><ChevronRight size={14} /></button>
+                <button
+                  type="button"
+                  className="pro-icon-btn"
+                  aria-label="Open roster"
+                  style={{ width: 28, height: 28 }}
+                  onClick={() => setLocation("/pro/roster")}
+                >
+                  <ChevronRight size={14} />
+                </button>
               </div>
             ))}
           </Card>
@@ -243,7 +253,7 @@ export default function ProClub() {
                     <td className="pro-text-muted">{t.events}</td>
                     <td><StatusTag s={t.status} /></td>
                     <td>
-                      <Button variant="ghost" size="sm" trailingIcon={<ArrowRight size={12} />}>Open</Button>
+                      <Button variant="ghost" size="sm" trailingIcon={<ArrowRight size={12} />} href="/pro/roster">Open</Button>
                     </td>
                   </tr>
                 ))}
@@ -298,7 +308,7 @@ export default function ProClub() {
                 <div style={{ fontWeight: 700, fontSize: "var(--pro-fs-sm)" }}>{m.name}</div>
                 <div className="pro-text-muted" style={{ fontSize: "var(--pro-fs-xs)" }}>{m.role} · since {m.since}</div>
               </div>
-              <Button variant="ghost" size="sm">Manage</Button>
+              <Button variant="ghost" size="sm" href="/pro/settings">Manage</Button>
             </div>
           ))}
         </Card>
@@ -323,7 +333,7 @@ export default function ProClub() {
       )}
 
       {tab === "settings" && (
-        <Card><EmptyState icon={<Settings size={18} />} title="Club settings" description="Branding, visibility, billing owner and admins live here." action={<Button variant="primary">Open settings</Button>} /></Card>
+        <Card><EmptyState icon={<Settings size={18} />} title="Club settings" description="Branding, visibility, billing owner and admins live here." action={<Button variant="primary" href="/pro/settings">Open settings</Button>} /></Card>
       )}
     </PageShell>
   );

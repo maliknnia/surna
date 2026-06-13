@@ -43,80 +43,6 @@ export interface CommentsSheetProps {
   initialComments?: Comment[];
 }
 
-/* ─── Demo data ────────────────────────────────────────────────────────────── */
-/** Feed demo posts use ids like fp1, fp2 — skip API for those */
-function isDemoFeedPostId(postId?: string) {
-  return !!postId && (postId.startsWith("fp") || postId.startsWith("dv") || postId.startsWith("fv"));
-}
-
-const DEMO_COMMENTS: Comment[] = [
-  {
-    id: "d1",
-    content: "Absolute banger session 🔥 Felt every rep through the screen",
-    authorId: "u1",
-    createdAt: new Date(Date.now() - 1000 * 60 * 29).toISOString(),
-    likesCount: 14,
-    likedByMe: false,
-    replyCount: 3,
-    author: { id: "u1", firstName: "Marcus", lastName: "Johnson", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=marcus" },
-  },
-  {
-    id: "d2",
-    content: "Coach @SarahChen just posted a similar drill last week, worth comparing 💪",
-    authorId: "u2",
-    createdAt: new Date(Date.now() - 1000 * 60 * 58).toISOString(),
-    likesCount: 6,
-    likedByMe: true,
-    replyCount: 1,
-    author: { id: "u2", firstName: "Alex", lastName: "Rivera", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=alex" },
-  },
-  {
-    id: "d3",
-    content: "That finishing move at 0:42 though 👀 How long did it take to nail?",
-    authorId: "u3",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    likesCount: 9,
-    likedByMe: false,
-    replyCount: 0,
-    author: { id: "u3", firstName: "Jordan", lastName: "Williams", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=jordan" },
-  },
-  {
-    id: "d4",
-    content: "Our team tried this exact formation last Saturday — worked perfectly in the second half",
-    authorId: "u4",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    likesCount: 21,
-    likedByMe: false,
-    replyCount: 7,
-    author: { id: "u4", firstName: "Taylor", lastName: "Smith", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=taylor" },
-  },
-  {
-    id: "d5",
-    content: "Respect the grind 🫡 Every day progress like this adds up",
-    authorId: "u5",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
-    likesCount: 5,
-    likedByMe: false,
-    replyCount: 0,
-    author: { id: "u5", firstName: "Sam", lastName: "Lee", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=sam" },
-  },
-];
-
-const DEMO_REPLIES: Record<string, Comment[]> = {
-  d1: [
-    { id: "r1a", content: "Agreed, the intensity was something else 🔥", authorId: "u3", createdAt: new Date(Date.now() - 1000 * 60 * 20).toISOString(), likesCount: 2, likedByMe: false, author: { id: "u3", firstName: "Jordan", lastName: "Williams" } },
-    { id: "r1b", content: "Same, gonna try this tomorrow morning", authorId: "u5", createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(), likesCount: 1, likedByMe: false, author: { id: "u5", firstName: "Sam", lastName: "Lee" } },
-    { id: "r1c", content: "Drop the playlist too 🙏", authorId: "u2", createdAt: new Date(Date.now() - 1000 * 60 * 8).toISOString(), likesCount: 0, likedByMe: false, author: { id: "u2", firstName: "Alex", lastName: "Rivera" } },
-  ],
-  d2: [
-    { id: "r2a", content: "@Alex good catch, that drill is elite for transition play", authorId: "u4", createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), likesCount: 3, likedByMe: false, author: { id: "u4", firstName: "Taylor", lastName: "Smith" } },
-  ],
-  d4: [
-    { id: "r4a", content: "Which position did you run it from?", authorId: "u1", createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), likesCount: 1, likedByMe: false, author: { id: "u1", firstName: "Marcus", lastName: "Johnson" } },
-    { id: "r4b", content: "We're going to copy this for Thursday's match 👌", authorId: "u3", createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), likesCount: 4, likedByMe: false, author: { id: "u3", firstName: "Jordan", lastName: "Williams" } },
-  ],
-};
-
 /* ─── Entity CTA config ─────────────────────────────────────────────────────── */
 const ENTITY_CTAS: Record<string, { label: string; color: string }[]> = {
   team:      [{ label: "View Team", color: "#000000" }, { label: "Join Team", color: "#000000" }],
@@ -222,15 +148,11 @@ function CommentRow({
   const { data: replies = [] } = useQuery<Comment[]>({
     queryKey: ["/api/comments", comment.id, "replies"],
     queryFn: async () => {
-      // try API first, fall back to demo
-      try {
-        const r = await fetch(`/api/comments/${comment.id}/replies`, { credentials: "include" });
-        if (r.ok) return r.json();
-      } catch {}
-      return DEMO_REPLIES[comment.id] || [];
+      const r = await fetch(`/api/comments/${comment.id}/replies`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
     },
     enabled: showReplies,
-    initialData: showReplies ? (DEMO_REPLIES[comment.id] || []) : undefined,
   });
 
   const handleLike = () => {
@@ -437,7 +359,7 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [inputText, setInputText]       = useState("");
   const [replyTo, setReplyTo]           = useState<Comment | null>(null);
-  const [localComments, setLocalComments] = useState<Comment[]>(initialComments || DEMO_COMMENTS);
+  const [localComments, setLocalComments] = useState<Comment[]>(initialComments || []);
   const [reactionToast, setReactionToast] = useState<string | null>(null);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
@@ -465,26 +387,22 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
 
   useEffect(() => {
     if (!isOpen) return;
-    if (isDemoFeedPostId(postId)) {
-      setLocalComments(DEMO_COMMENTS);
-      return;
-    }
     if (initialComments?.length) {
       setLocalComments(initialComments);
     }
-  }, [isOpen, postId, initialComments]);
+  }, [isOpen, initialComments]);
 
   // Fetch real comments
   const { data: fetchedComments } = useQuery<Comment[]>({
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
-      if (!postId || isDemoFeedPostId(postId)) return DEMO_COMMENTS;
+      if (!postId) return [];
       const r = await fetch(`/api/posts/${postId}/details`, { credentials: "include" });
-      if (!r.ok) return DEMO_COMMENTS;
+      if (!r.ok) return [];
       const data = await r.json();
-      return data.comments?.filter((c: Comment) => !c.parentId) || DEMO_COMMENTS;
+      return data.comments?.filter((c: Comment) => !c.parentId) || [];
     },
-    enabled: isOpen && !!postId && !isDemoFeedPostId(postId),
+    enabled: isOpen && !!postId,
   });
 
   useEffect(() => {
@@ -500,25 +418,7 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
   // Add comment mutation
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
-      if (!postId || isDemoFeedPostId(postId)) {
-        // demo mode
-        return {
-          id: `local-${Date.now()}`,
-          content,
-          authorId: user?.id || "me",
-          createdAt: new Date().toISOString(),
-          likesCount: 0,
-          likedByMe: false,
-          replyCount: 0,
-          author: {
-            id: user?.id || "me",
-            firstName: user?.firstName,
-            lastName: user?.lastName,
-            profileImageUrl: user?.profileImageUrl,
-            email: user?.email,
-          },
-        };
-      }
+      if (!postId) throw new Error("Missing post");
       const endpoint = replyTo
         ? `/api/comments/${replyTo.id}/reply`
         : `/api/posts/${postId}/comment`;
@@ -535,10 +435,6 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
 
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
-      if (!postId || isDemoFeedPostId(postId)) {
-        setLocalComments((p) => p.filter((c) => c.id !== commentId));
-        return;
-      }
       await apiRequest("DELETE", `/api/comments/${commentId}`);
     },
     onSuccess: (_, commentId) => {

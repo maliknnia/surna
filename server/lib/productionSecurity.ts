@@ -90,6 +90,10 @@ export function isDevCorsOriginAllowed(origin: string): boolean {
     if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
     if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
     if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+    // npm run phone — localtunnel (*.loca.lt)
+    if (host.endsWith(".loca.lt")) return true;
+    // npm run phone:cf — cloudflare quick tunnel (*.trycloudflare.com)
+    if (host.endsWith(".trycloudflare.com")) return true;
     return false;
   } catch {
     return false;

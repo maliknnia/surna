@@ -12,6 +12,8 @@ import analyticsRouter from "./analytics/analytics.routes";
 import myHubRouter from "./my-hub/my-hub.router";
 import { ensureMyHubEventLifecycleColumns } from "./my-hub/migrations";
 import { ensureEmailVerificationColumns } from "./auth/ensureEmailVerificationColumns";
+import { ensureMarketplaceSchema } from "./marketplace/ensureMarketplaceSchema";
+import { ensureNotificationsSchema } from "./notifications/ensureNotificationsSchema";
 
 export function registerFeatureRouters(api: Router, io?: any) {
   // In production we keep fail-fast behavior. In local development, DB may be
@@ -31,6 +33,12 @@ export function registerFeatureRouters(api: Router, io?: any) {
   });
   void ensureEmailVerificationColumns().catch((err) => {
     console.error("[boot] Email verification schema migration failed", err);
+  });
+  void ensureMarketplaceSchema().catch((err) => {
+    console.error("[boot] Marketplace schema migration failed", err);
+  });
+  void ensureNotificationsSchema().catch((err) => {
+    console.error("[boot] Notifications schema migration failed", err);
   });
   api.use("/my-hub", myHubRouter);
   api.use("/auth", authRouter);

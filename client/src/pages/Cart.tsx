@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,7 @@ interface CartData {
 
 export default function Cart() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { user, isAuthenticated } = useAuth();
 
   // Fetch cart items
@@ -81,6 +82,18 @@ export default function Cart() {
         variant: "destructive"
       });
     }
+  });
+
+  const devCheckoutMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/marketplace/checkout", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/marketplace/cart"] });
+      toast({ title: "Order placed", description: "Your test order was recorded." });
+      setLocation("/marketplace");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Checkout failed", description: err.message, variant: "destructive" });
+    },
   });
 
   if (!isAuthenticated) {
@@ -305,6 +318,18 @@ export default function Cart() {
                       Proceed to Checkout
                     </Button>
                   </Link>
+
+                  {import.meta.env.DEV && (
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      data-testid="dev-checkout-button"
+                      disabled={devCheckoutMutation.isPending}
+                      onClick={() => devCheckoutMutation.mutate()}
+                    >
+                      Complete order (dev — no Stripe)
+                    </Button>
+                  )}
 
                   <Link href="/marketplace">
                     <Button variant="outline" className="w-full" data-testid="continue-shopping">

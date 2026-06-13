@@ -1,6 +1,6 @@
 import { useState, useEffect, type MouseEvent } from "react";
 import { useRSVP } from "@/hooks/useEvents";
-import { Users, MapPin } from "lucide-react";
+import { Users, MapPin, Sparkles } from "lucide-react";
 import { eventDetailPath, isRouteSport, resolveEventRouteCoordinates, storeMapRouteFocus } from "@/lib/eventRoutes";
 import { mapPath } from "@/lib/mapNavigation";
 import { useLocation } from "wouter";
@@ -63,6 +63,11 @@ export default function EventCard({ ev }: { ev: any }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [interested, setInterested] = useState(false);
+
+  const isRecommended = Boolean(
+    ev.recommended || ev.isRecommended || ev.featured || ev.isFeatured || ev.is_featured,
+  );
 
   const sport = inferSport(ev);
   const sportConfig = getSportConfig(sport);
@@ -195,6 +200,15 @@ export default function EventCard({ ev }: { ev: any }) {
 
         <div className="relative z-[2]">
           <div className="flex items-center gap-2 mb-3 flex-wrap">
+            {isRecommended && (
+              <span
+                className="px-3 py-1 rounded-full text-[11px] font-semibold backdrop-blur-sm inline-flex items-center gap-1"
+                style={{ background: "rgba(255, 214, 10, 0.22)", color: cardIsDark ? "#FFE566" : "#8B6914" }}
+              >
+                <Sparkles size={11} />
+                Recommended
+              </span>
+            )}
             {sport && (
               <span
                 className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider backdrop-blur-sm"
@@ -291,21 +305,25 @@ export default function EventCard({ ev }: { ev: any }) {
               type="button"
               className="h-9 px-4 rounded-full text-[13px] font-semibold transition-all duration-200 active:scale-[0.96] backdrop-blur-sm"
               style={{
-                background: surfaceFaint,
-                color: textSecondary,
+                background: interested ? (cardIsDark ? "rgba(255,214,10,0.25)" : "rgba(255,214,10,0.35)") : surfaceFaint,
+                color: interested ? (cardIsDark ? "#FFE566" : "#8B6914") : textSecondary,
                 border: `1px solid ${viewBtnBorder}`,
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                openEvent();
+                rsvp.mutate(
+                  { status: "interested" },
+                  { onSuccess: () => setInterested(true) },
+                );
               }}
+              disabled={rsvp.isPending || interested}
             >
-              View
+              {interested ? "Interested ✓" : "Interested"}
             </button>
             {showViewRoute && (
               <button
                 type="button"
-                className="h-9 px-4 rounded-full text-[13px] font-semibold transition-all duration-200 active:scale-[0.96] backdrop-blur-sm"
+                className="h-9 px-3 rounded-full text-[13px] font-semibold transition-all duration-200 active:scale-[0.96] backdrop-blur-sm"
                 style={{
                   background: surfaceFaint,
                   color: textSecondary,
@@ -313,7 +331,7 @@ export default function EventCard({ ev }: { ev: any }) {
                 }}
                 onClick={openViewRoute}
               >
-                View Route
+                Route
               </button>
             )}
             {(ev.location || eventCoords) && (

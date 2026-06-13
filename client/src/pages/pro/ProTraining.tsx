@@ -136,12 +136,8 @@ export default function ProTraining() {
       <Card>
         <h3 style={{ margin: 0, marginBottom: 10 }}>Resources</h3>
         <div className="pro-col" style={{ gap: 6 }}>
-          <Link href="/pro/match-day">
-            <Button variant="ghost" size="sm" fullWidth>Match day prep</Button>
-          </Link>
-          <Link href="/pro/inventory">
-            <Button variant="ghost" size="sm" fullWidth>Kit inventory</Button>
-          </Link>
+          <Button href="/pro/match-day" variant="ghost" size="sm" fullWidth>Match day prep</Button>
+          <Button href="/pro/inventory" variant="ghost" size="sm" fullWidth>Kit inventory</Button>
         </div>
       </Card>
     </>

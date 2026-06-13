@@ -1,4 +1,5 @@
 import { Icon } from "@/components/Icon";
+import { NavHomeIcon } from "@/components/icons/NavHomeIcon";
 import { cn } from "@/lib/utils";
 import { MOBILE_SHELL_PANELS } from "@/features/home/constants/mobilePanels";
 
@@ -43,12 +44,16 @@ export function BottomNav({
             aria-current={isActive ? "page" : undefined}
             aria-label={tab.label}
           >
-            <Icon
-              name={tab.icon}
-              size="md"
-              weight={isActive ? "fill" : "regular"}
-              className="leading-none"
-            />
+            {tab.id === "home" ? (
+              <NavHomeIcon size={24} active={isActive} />
+            ) : (
+              <Icon
+                name={tab.icon}
+                size="md"
+                weight={isActive ? "fill" : "regular"}
+                className="leading-none"
+              />
+            )}
             <span className="nav-label">{tab.label}</span>
           </button>
         );

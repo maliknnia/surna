@@ -1000,7 +1000,32 @@ export type InsertUserInteraction = typeof userInteractions.$inferInsert;
 export type InsertRecommendationFeedback = typeof recommendationFeedback.$inferInsert;
 
 // Drizzle-zod schema exports for validation
-export const insertPostSchema = createInsertSchema(posts);
+// Client → POST /api/posts (authorId and counters are set server-side)
+export const insertPostSchema = createInsertSchema(posts)
+  .omit({
+    id: true,
+    authorId: true,
+    likesCount: true,
+    commentsCount: true,
+    sharesCount: true,
+    flagged: true,
+    removed: true,
+    removedReason: true,
+    removedAt: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    content: z.string().max(5000).optional().default(""),
+    imageUrl: z.string().nullable().optional(),
+    videoUrl: z.string().nullable().optional(),
+    sport: z.string().nullable().optional(),
+    location: z.string().max(256).optional(),
+  })
+  .refine(
+    (data) => Boolean(data.content?.trim()) || Boolean(data.imageUrl) || Boolean(data.videoUrl),
+    { message: "Post must include text or media", path: ["content"] },
+  );
 export const insertTeamSchema = createInsertSchema(teams);
 export const insertMessageSchema = createInsertSchema(messages);
 export const insertEventSchema = createInsertSchema(events);

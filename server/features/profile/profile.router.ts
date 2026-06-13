@@ -1,4 +1,5 @@
 ﻿import { Router } from "express";
+import { z } from "zod";
 import { GetProfileParamsSchema, UpdateMeSchema } from "./profile.validation";
 import { getPublicProfile, patchMe } from "./profile.service";
 import {
@@ -10,8 +11,36 @@ import {
 } from "./profile.resources";
 import { isAuthenticated } from "../../replitAuth";
 import { resolveRequestUserId } from "../../lib/authUser";
+import { getActiveNudges, dismissNudge } from "../../services/phase8ProfileService";
 
 export const profileRouter = Router();
+
+/** Reserved slugs — must register before /:username or Phase 8 routes 404. */
+profileRouter.get("/nudges", async (req, res) => {
+  const userId = resolveRequestUserId(req as Parameters<typeof resolveRequestUserId>[0]);
+  if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+  try {
+    const nudges = await getActiveNudges(userId);
+    res.json({ nudges });
+  } catch (err: unknown) {
+    res.status(500).json({ message: err instanceof Error ? err.message : "Failed to load nudges" });
+  }
+});
+
+profileRouter.post("/nudges/:milestone/dismiss", async (req, res) => {
+  const userId = resolveRequestUserId(req as Parameters<typeof resolveRequestUserId>[0]);
+  if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+  try {
+    const milestone = z
+      .enum(["first_team_join", "first_challenge_win", "ten_activities", "three_profile_views"])
+      .parse(req.params.milestone);
+    const result = await dismissNudge(userId, milestone);
+    res.json(result);
+  } catch (err: unknown) {
+    if (err instanceof z.ZodError) return res.status(400).json({ message: "Invalid milestone" });
+    res.status(500).json({ message: err instanceof Error ? err.message : "Failed to dismiss nudge" });
+  }
+});
 
 profileRouter.patch("/me", async (req: any, res, next) => {
   try {

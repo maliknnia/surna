@@ -1,4 +1,5 @@
 import { ReactNode, HTMLAttributes, ButtonHTMLAttributes, forwardRef } from "react";
+import { Link } from "wouter";
 
 function cx(...parts: Array<string | false | null | undefined | 0 | "">) {
   return parts.filter(Boolean).join(" ");
@@ -50,20 +51,32 @@ export interface ProButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> 
   leadingIcon?: ReactNode;
   trailingIcon?: ReactNode;
   fullWidth?: boolean;
+  href?: string;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ProButtonProps>(
-  ({ variant = "secondary", size = "md", leadingIcon, trailingIcon, fullWidth, className, children, ...rest }, ref) => (
-    <button
-      ref={ref}
-      className={cx("pro-btn", `pro-btn--${variant}`, `pro-btn--${size}`, fullWidth && "pro-btn--block", className)}
-      {...rest}
-    >
-      {leadingIcon && <span className="pro-btn__icon">{leadingIcon}</span>}
-      {children && <span>{children}</span>}
-      {trailingIcon && <span className="pro-btn__icon">{trailingIcon}</span>}
-    </button>
-  )
+  ({ variant = "secondary", size = "md", leadingIcon, trailingIcon, fullWidth, className, children, href, ...rest }, ref) => {
+    const classes = cx("pro-btn", `pro-btn--${variant}`, `pro-btn--${size}`, fullWidth && "pro-btn--block", className);
+    const content = (
+      <>
+        {leadingIcon && <span className="pro-btn__icon">{leadingIcon}</span>}
+        {children && <span>{children}</span>}
+        {trailingIcon && <span className="pro-btn__icon">{trailingIcon}</span>}
+      </>
+    );
+    if (href) {
+      return (
+        <Link href={href} className={classes}>
+          {content}
+        </Link>
+      );
+    }
+    return (
+      <button ref={ref} className={classes} {...rest}>
+        {content}
+      </button>
+    );
+  }
 );
 Button.displayName = "Button";
 
@@ -245,24 +258,33 @@ export function ContextBar({
       {context && <div className="pro-context-bar__context">{context}</div>}
       <div className="pro-context-bar__actions">
         {visible.map((a) => {
+          const classes = cx("pro-btn", `pro-btn--${a.variant ?? "secondary"}`, "pro-btn--sm");
           const inner = (
+            <>
+              {a.icon && <span className="pro-btn__icon">{a.icon}</span>}
+              <span>{a.label}</span>
+            </>
+          );
+          if (a.href && !a.disabled) {
+            return (
+              <Link key={a.key} href={a.href} className={classes} data-testid={`ctx-${a.key}`}>
+                {inner}
+              </Link>
+            );
+          }
+          return (
             <button
               key={a.key}
               type="button"
               onClick={a.onClick}
               disabled={a.disabled}
-              className={cx("pro-btn", `pro-btn--${a.variant ?? "secondary"}`, "pro-btn--sm")}
+              className={classes}
               data-testid={`ctx-${a.key}`}
               title={a.disabled ? "Not available for your role" : undefined}
             >
-              {a.icon && <span className="pro-btn__icon">{a.icon}</span>}
-              <span>{a.label}</span>
+              {inner}
             </button>
           );
-          if (a.href && !a.disabled) {
-            return <a key={a.key} href={a.href} style={{ textDecoration: "none" }}>{inner}</a>;
-          }
-          return inner;
         })}
       </div>
     </div>

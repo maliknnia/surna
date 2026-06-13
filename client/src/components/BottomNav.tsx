@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { Icon, type IconName } from "@/components/Icon";
+import { NavHomeIcon } from "@/components/icons/NavHomeIcon";
 import { cn } from "@/lib/utils";
 import { shouldShowAppShell, isTabActive } from "@/lib/appShell";
 
@@ -59,7 +60,11 @@ export default function BottomNav() {
                 isActive ? "text-surna-red" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon name={tab.icon} size="md" weight={isActive ? "fill" : "regular"} />
+              {tab.path === "/" ? (
+                <NavHomeIcon size={24} active={isActive} />
+              ) : (
+                <Icon name={tab.icon} size="md" weight={isActive ? "fill" : "regular"} />
+              )}
               {tab.label ? (
                 <span className="text-[10px] font-medium leading-none">{tab.label}</span>
               ) : null}

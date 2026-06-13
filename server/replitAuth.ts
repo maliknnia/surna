@@ -50,9 +50,10 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      // 'auto' = Secure on HTTPS (phone tunnels), plain HTTP on LAN — required for mobile dev.
+      secure: isProduction() ? true : "auto",
       maxAge: sessionTtl,
-      sameSite: 'lax'
+      sameSite: "lax",
     },
   });
 }
