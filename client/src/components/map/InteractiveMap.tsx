@@ -23,6 +23,11 @@ import {
   writeMapTileStyle,
   type MapTileStyle,
 } from "@/lib/mapTileStyle";
+import {
+  OPENFREE_MAP_STYLES,
+  resolveWorkingMapStyle,
+  type ResolvedMapStyle,
+} from "@/lib/mapTileConfig";
 
 const DEFAULT_MAP_ZOOM = 15;
 const CLUSTER_MAX_ZOOM = 14;
@@ -30,14 +35,6 @@ const LONG_PRESS_MS = 500;
 /** Snap-style default — steep angle; user can still pitch flat with two-finger drag. */
 const DEFAULT_MAP_PITCH = 52;
 const MAX_MAP_PITCH = 60;
-
-const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY?.trim() || "";
-
-const MAPTILER_STYLES = {
-  dark: `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`,
-  light: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,
-  satellite: `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`,
-} as const;
 
 const MAP_TILE_STYLE_OPTIONS: {
   mode: MapTileStyle;
@@ -48,24 +45,6 @@ const MAP_TILE_STYLE_OPTIONS: {
   { mode: "light", label: "Light", Icon: Sun },
   { mode: "satellite", label: "Satellite", Icon: Globe },
 ];
-
-const OPENFREE_MAP_STYLES = {
-  dark: "https://tiles.openfreemap.org/styles/dark",
-  light: "https://tiles.openfreemap.org/styles/positron",
-} as const;
-
-function mapStyleUrl(dark: boolean): string {
-  if (MAPTILER_KEY) {
-    return dark ? MAPTILER_STYLES.dark : MAPTILER_STYLES.light;
-  }
-  return dark ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
-}
-
-function resolveMapTileStyleUrl(mode: MapTileStyle): string {
-  if (MAPTILER_KEY) return MAPTILER_STYLES[mode];
-  if (mode === "satellite") return OPENFREE_MAP_STYLES.dark;
-  return mode === "dark" ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
-}
 
 const MAPTILER_POI_LAYERS_HIDE = [
   "Public",
@@ -486,8 +465,13 @@ function applySnapchatBuildings(
   }
 }
 
-function applyMapTilerStyleLoad(map: maplibregl.Map, dark: boolean, satellite = false) {
-  if (!MAPTILER_KEY) return;
+function applyMapTilerStyleLoad(
+  map: maplibregl.Map,
+  dark: boolean,
+  satellite: boolean,
+  styleUrl: string,
+) {
+  if (!styleUrl.includes("maptiler.com")) return;
 
   try {
     if (map.getLayer("sky")) {
@@ -806,6 +790,7 @@ export default function InteractiveMap({
     if (stored) return stored;
     return useDarkTiles ? "dark" : "light";
   });
+  const [resolvedMapStyle, setResolvedMapStyle] = useState<ResolvedMapStyle | null>(null);
   const [styleMenuOpen, setStyleMenuOpen] = useState(false);
   const styleMenuRef = useRef<HTMLDivElement>(null);
 
@@ -813,11 +798,22 @@ export default function InteractiveMap({
   const tileStyleModeRef = useRef<MapTileStyle>(tileStyleMode);
   const isMapDarkTheme = tileStyleMode !== "light";
   const mapTheme = tileStyleMode === "satellite" ? "satellite" : tileStyleMode;
-  const tileStyle = resolveMapTileStyleUrl(tileStyleMode);
-  const useMapTiler3D = Boolean(MAPTILER_KEY);
+  const tileStyle = resolvedMapStyle?.url ?? "";
+  const mapTilerAvailable = Boolean(resolvedMapStyle?.mapTilerKey);
+  const useMapTiler3D = resolvedMapStyle?.provider === "maptiler";
 
   const useDarkTilesRef = useRef(isMapDarkTheme);
   const tileStyleRef = useRef(tileStyle);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveWorkingMapStyle(tileStyleMode).then((resolved) => {
+      if (!cancelled) setResolvedMapStyle(resolved);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tileStyleMode]);
 
   useEffect(() => {
     tileStyleModeRef.current = tileStyleMode;
@@ -884,8 +880,9 @@ export default function InteractiveMap({
       map,
       extrusionDarkRef.current,
       tileStyleModeRef.current === "satellite",
+      styleRef.current,
     );
-    if (MAPTILER_KEY && !initialPitchSetRef.current) {
+    if (useMapTiler3D && !initialPitchSetRef.current) {
       map.setPitch(DEFAULT_MAP_PITCH);
       initialPitchSetRef.current = true;
     }
@@ -984,7 +981,7 @@ export default function InteractiveMap({
   }, [pins]);
 
   useEffect(() => {
-    if (!mounted || !mapActive || !mapContainerRef.current) return;
+    if (!mounted || !mapActive || !mapContainerRef.current || !tileStyle) return;
 
     console.log("[InteractiveMap] loading map style:", mapTheme, tileStyle);
 
@@ -1011,7 +1008,6 @@ export default function InteractiveMap({
       const message = event.error?.message ?? "";
       const authFailure = /403|401|Invalid key|Forbidden|Unauthorized/i.test(message);
       if (mapTilerFallbackRef.current) return;
-      if (!MAPTILER_KEY) return;
       if (!styleRef.current.includes("maptiler.com") && !authFailure) return;
       if (!authFailure && /layer|fill-extrusion|paint|sprite|style/i.test(message)) {
         console.warn("[InteractiveMap] layer/style error (keeping MapTiler):", message);
@@ -1048,11 +1044,11 @@ export default function InteractiveMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [mounted, mapActive]);
+  }, [mounted, mapActive, tileStyle]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || styleRef.current === tileStyle) return;
+    if (!map || !tileStyle || styleRef.current === tileStyle) return;
 
     styleRef.current = tileStyle;
     tileStyleRef.current = tileStyle;
@@ -1180,7 +1176,7 @@ export default function InteractiveMap({
     };
   }, [onLongPress]);
 
-  if (!mounted || !mapActive) {
+  if (!mounted || !mapActive || !tileStyle) {
     return (
       <div
         className={`surna-map-root relative ${isMapDarkTheme ? "surna-map-dark" : "surna-map-light"} ${className}`}
@@ -1259,7 +1255,7 @@ export default function InteractiveMap({
             }}
           >
             {MAP_TILE_STYLE_OPTIONS.filter(
-              (opt) => MAPTILER_KEY || opt.mode !== "satellite",
+              (opt) => mapTilerAvailable || opt.mode !== "satellite",
             ).map(({ mode, label, Icon }) => {
               const active = tileStyleMode === mode;
               return (

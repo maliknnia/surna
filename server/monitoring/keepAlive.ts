@@ -18,6 +18,13 @@ export function registerPingRoute(app: Express): void {
       res.status(503).json({ ok: false });
     }
   });
+
+  /** Runtime client config — avoids rebuilding when map keys change on Railway. */
+  app.get("/api/public-config", (_req: Request, res: Response) => {
+    res.json({
+      mapTilerKey: (process.env.MAPTILER_KEY || process.env.VITE_MAPTILER_KEY || "").trim(),
+    });
+  });
 }
 
 function resolvePingUrl(port: number): string {

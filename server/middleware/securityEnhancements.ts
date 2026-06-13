@@ -25,7 +25,9 @@ export function productionSecurityMiddleware() {
           "'self'",
           "https://fonts.gstatic.com",
           "https://unpkg.com",
-          "data:"
+          "https://tiles.openfreemap.org",
+          "https://api.maptiler.com",
+          "data:",
         ],
         imgSrc: [
           "'self'",
