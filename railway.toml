@@ -14,3 +14,4 @@ restartPolicyMaxRetries = 5
 
 [env]
 NODE_ENV = "production"
+VITE_STRIPE_PUBLIC_KEY = "pk_test_placeholder"

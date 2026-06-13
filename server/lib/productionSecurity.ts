@@ -1,7 +1,58 @@
 /** Production-only security gates and shared secret helpers. */
 
+import { createHash } from "node:crypto";
+
 export const DEV_JWT_FALLBACK =
   "temporary_jwt_secret_for_testing_auth_module_must_be_at_least_16_chars";
+
+export function isRailwayHost(): boolean {
+  return Boolean(
+    process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_PUBLIC_DOMAIN ||
+      process.env.RAILWAY_SERVICE_NAME,
+  );
+}
+
+/**
+ * First deploy on Railway: fill missing auth secrets from DATABASE_URL so you
+ * don't need to paste five secrets before the app boots. Set real secrets in
+ * Variables when you have time.
+ */
+export function bootstrapRailwaySecrets(): void {
+  if (!isProduction() || !isRailwayHost()) return;
+
+  const seed = process.env.DATABASE_URL?.trim() || "surna-railway-bootstrap";
+  const derive = (label: string) =>
+    createHash("sha256").update(`${seed}:${label}:surna-v1`).digest("hex");
+
+  const auto: Array<[string, string]> = [];
+  if (!process.env.SESSION_SECRET?.trim()) {
+    process.env.SESSION_SECRET = derive("session");
+    auto.push(["SESSION_SECRET", "SESSION_SECRET"]);
+  }
+  if (!process.env.JWT_SECRET?.trim()) {
+    process.env.JWT_SECRET = derive("jwt");
+    auto.push(["JWT_SECRET", "JWT_SECRET"]);
+  }
+  if (!process.env.JWT_ACCESS_SECRET?.trim()) {
+    process.env.JWT_ACCESS_SECRET = process.env.JWT_SECRET;
+    auto.push(["JWT_ACCESS_SECRET", "JWT_ACCESS_SECRET"]);
+  }
+  if (!process.env.JWT_REFRESH_SECRET?.trim()) {
+    process.env.JWT_REFRESH_SECRET = derive("refresh");
+    auto.push(["JWT_REFRESH_SECRET", "JWT_REFRESH_SECRET"]);
+  }
+  if (!process.env.FRONTEND_ORIGIN?.trim() && process.env.RAILWAY_PUBLIC_DOMAIN?.trim()) {
+    process.env.FRONTEND_ORIGIN = `https://${process.env.RAILWAY_PUBLIC_DOMAIN.trim()}`;
+    auto.push(["FRONTEND_ORIGIN", "FRONTEND_ORIGIN"]);
+  }
+
+  if (auto.length) {
+    console.warn(
+      `[bootstrap] Auto-set ${auto.map(([n]) => n).join(", ")} for Railway — replace with your own random secrets in Variables when ready.`,
+    );
+  }
+}
 
 export function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
@@ -41,6 +92,8 @@ export function requireEnv(name: string, minLength = 1): string {
 /** Fail fast when production is misconfigured. */
 export function validateProductionSecurity(): void {
   if (!isProduction()) return;
+
+  bootstrapRailwaySecrets();
 
   if (process.env.LOCAL_AUTH_BYPASS === "1") {
     throw new Error("LOCAL_AUTH_BYPASS must not be enabled in production");
