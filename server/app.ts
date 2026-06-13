@@ -207,7 +207,9 @@ try {
   });
 
   const serveBuiltClient = process.env.SERVE_BUILT_CLIENT === "1";
-  if (app.get("env") === "development" && !serveBuiltClient) {
+  // Only explicit NODE_ENV=development uses Vite — unset NODE_ENV must not load viteDev (Railway).
+  const useViteDev = process.env.NODE_ENV === "development" && !serveBuiltClient;
+  if (useViteDev) {
     const { setupVite } = await import("./viteDev");
     await setupVite(app, httpServer);
   } else {

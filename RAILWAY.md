@@ -21,7 +21,7 @@ Set these on the **Surna app service** (not Postgres):
 
 | Variable | Value |
 |----------|--------|
-| `NODE_ENV` | `production` |
+| `NODE_ENV` | `production` (**required** — without it the app tries to load Vite dev middleware and crashes) |
 | `DATABASE_URL` | Reference from Postgres plugin |
 | `SESSION_SECRET` | Random string, **32+ characters** |
 | `JWT_SECRET` | Random string, **32+ characters** |
@@ -94,6 +94,7 @@ Rebuild the APK in Android Studio and install.
 | Issue | Fix |
 |-------|-----|
 | Build fails | Check **Deploy logs**; set `VITE_*` vars before rebuild if Stripe/map errors appear at build time |
+| Crashes importing `viteDev` | Set `NODE_ENV=production` in **Variables** (also in `railway.toml` `[env]`) |
 | 503 on `/api/ping` | Postgres not linked — fix `DATABASE_URL` |
 | CORS / login loops | Regenerate domain; ensure `LOCAL_AUTH_BYPASS=0` |
 | App sleeps on free tier | Upgrade plan or rely on built-in keep-alive ping |
