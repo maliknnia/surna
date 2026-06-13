@@ -34,8 +34,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          // Heavy async-only deps — keep off the home-route preload graph.
-          if (id.includes("recharts") || id.includes("d3-") || id.includes("victory")) return "charts";
+          // Do NOT split recharts/d3 into "charts" — it creates a circular import with the
+          // react "vendor" chunk and crashes production with "Cannot access before initialization".
           if (id.includes("leaflet") || id.includes("@googlemaps")) return "maps";
           if (id.includes("@tanstack/react-query")) return "query";
           if (id.includes("framer-motion")) return "motion";

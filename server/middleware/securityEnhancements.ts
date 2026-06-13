@@ -24,6 +24,7 @@ export function productionSecurityMiddleware() {
         fontSrc: [
           "'self'",
           "https://fonts.gstatic.com",
+          "https://unpkg.com",
           "data:"
         ],
         imgSrc: [

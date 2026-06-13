@@ -15,9 +15,10 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   app.use("*", (req, res) => {
+    const urlPath = (req.originalUrl || req.url || req.path || "").split("?")[0];
     // Never SPA-fallback asset paths — stale hashed JS URLs must 404, not return HTML
     // (browser/SW would try to execute HTML as JS → stuck on "Loading…").
-    if (/\.(js|mjs|css|map|png|jpe?g|gif|svg|ico|webp|woff2?|ttf|eot|json)$/i.test(req.path)) {
+    if (/\.(js|mjs|css|map|png|jpe?g|gif|svg|ico|webp|woff2?|ttf|eot|json)$/i.test(urlPath)) {
       res.status(404).type("text/plain").send("Not found");
       return;
     }
