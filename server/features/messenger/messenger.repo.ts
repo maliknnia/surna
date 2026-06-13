@@ -55,6 +55,52 @@ export interface MessengerSettings {
 
 export class MessengerRepository {
   private schemaEnsured = false;
+  private groupSchemaEnsured = false;
+
+  private async ensureGroupSchema() {
+    if (this.groupSchemaEnsured) return;
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS group_conversations (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        owner_id varchar NOT NULL,
+        name varchar NOT NULL,
+        description text DEFAULT '',
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS group_members (
+        group_id varchar NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+        user_id varchar NOT NULL,
+        role text NOT NULL DEFAULT 'member',
+        joined_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (group_id, user_id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS group_messages (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        group_id varchar NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+        sender_id varchar NOT NULL,
+        kind text NOT NULL DEFAULT 'text',
+        body text NOT NULL DEFAULT '',
+        media_id varchar,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS group_reads (
+        group_id varchar NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+        user_id varchar NOT NULL,
+        last_read_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (group_id, user_id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_group_msg_group_time ON group_messages (group_id, created_at DESC);
+    `);
+    this.groupSchemaEnsured = true;
+  }
 
   private async ensureDMSchema() {
     if (this.schemaEnsured) return;
@@ -346,6 +392,7 @@ export class MessengerRepository {
     name: string;
     description?: string;
   }): Promise<GroupConversation> {
+    await this.ensureGroupSchema();
     const created = await db.execute(sql`
       INSERT INTO group_conversations (owner_id, name, description)
       VALUES (${data.owner_id}, ${data.name}, ${data.description || ""})
@@ -365,6 +412,7 @@ export class MessengerRepository {
     name?: string;
     description?: string;
   }): Promise<GroupConversation> {
+    await this.ensureGroupSchema();
     if (!data.name && data.description === undefined) {
       throw new Error("No updates provided");
     }
@@ -436,7 +484,7 @@ export class MessengerRepository {
   }): Promise<GroupMessage> {
     const created = await db.execute(sql`
       INSERT INTO group_messages (group_id, sender_id, kind, body, media_id)
-      VALUES (${data.group_id}, ${data.sender_id}, ${data.kind}, ${data.body || ""}, ${data.media_id})
+      VALUES (${data.group_id}, ${data.sender_id}, ${data.kind}, ${data.body || ""}, ${data.media_id ?? null})
       RETURNING *
     `);
 
@@ -454,6 +502,7 @@ export class MessengerRepository {
 
   // Group Membership
   async addGroupMember(groupId: string, userId: string, role: "member" | "admin" = "member"): Promise<void> {
+    await this.ensureGroupSchema();
     await db.execute(sql`
       INSERT INTO group_members (group_id, user_id, role)
       VALUES (${groupId}, ${userId}, ${role})
@@ -473,6 +522,7 @@ export class MessengerRepository {
   }
 
   async getGroupMember(groupId: string, userId: string): Promise<GroupMember | null> {
+    await this.ensureGroupSchema();
     const result = await db.execute(sql`
       SELECT * FROM group_members 
       WHERE group_id = ${groupId} AND user_id = ${userId}
@@ -490,6 +540,7 @@ export class MessengerRepository {
   }
 
   async getGroupById(groupId: string, userId: string): Promise<(GroupConversation & { role: string; member_count?: number }) | null> {
+    await this.ensureGroupSchema();
     const result = await db.execute(sql`
       SELECT g.*, gm.role,
         (SELECT COUNT(*)::int FROM group_members gm2 WHERE gm2.group_id = g.id) AS member_count

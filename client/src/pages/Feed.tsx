@@ -24,11 +24,8 @@ import { eventDetailPath } from "@/lib/eventRoutes";
 import { apiRequest } from "@/lib/queryClient";
 import {
   FeedVideoViewer,
-  DEMO_REELS,
-  DEMO_FEED_VIDEOS,
   filterVideosByMode,
   inferVideoFormat,
-  demoPoolForMode,
 } from "@/components/video/FeedVideoViewer";
 import type { VideoPost, FeedViewerMode } from "@/components/video/FeedVideoViewer";
 import { flags } from "@/config/flags";
@@ -45,16 +42,8 @@ import { entityPath, mapPath, resolveContentLinks } from "@/lib/mapNavigation";
 import { ROUTES } from "@/navigation";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
-import {
-  createFeedSeed,
-  interleaveFeedItems,
-  pickDemoFeedPosts,
-  templateToFeedDemoPost,
-} from "@/lib/personalizedDemoFeed";
 import { PostCardMediaBackdrop } from "@/components/feed/PostCardMediaBackdrop";
-import { FeedDemoPostCard } from "@/components/feed/FeedDemoPostCard";
 import { postCardTintGradient } from "@/lib/postCardBackground";
-import type { FeedDemoPost } from "@/lib/personalizedDemoFeed";
 
 /** Neutral media placeholder for non-tinted surfaces (e.g. video rail) */
 const FEED_MEDIA_BG = "var(--surna-elevated)";
@@ -439,95 +428,6 @@ const OptimizedPostCard = ({ post, onLike, onComment, onShare, onVideoClick }: {
   );
 };
 
-// ─── Feed Demo Data ───────────────────────────────────────────────────────────
-
-const DEMO_FEED_POSTS: FeedDemoPost[] = [
-  {
-    id: "fp1", type: "event",
-    author: { name: "Cork FC United", username: "cork_fc_united", avatar: "CF", avatarColor: "var(--surna-text-secondary)", role: "organizer", sport: "Soccer", sportEmoji: "⚽", location: "Cork", distance: "0.8 km" },
-    content: "Looking for 2 more players tonight! 5-a-side at Pairc Ui Chaoimh. Kick off at 7pm ⚽🔥 Reply to join or hit Join below 👇",
-    imageGradient: postCardTintGradient({ sport: "Soccer", contentKind: "event", authorRole: "organizer" }),
-    sport: "Soccer", sportEmoji: "⚽", eventName: "5-a-side · Tonight 7pm", locationTag: "Pairc Ui Chaoimh",
-    likesCount: 47, commentsCount: 12, comments: "hype", timestamp: "12 min ago",
-    contextNotif: "2 players joined this event near you",
-    entityKind: "event",
-    entityId: "demo-ev-5v5-soccer",
-    actionRoute: entityPath("event", "demo-ev-5v5-soccer"),
-    mapRoute: mapPath({ type: "event", id: "demo-ev-5v5-soccer" }),
-  },
-  {
-    id: "fp2", type: "regular",
-    author: { name: "Alex Jordan", username: "alex_hoops", avatar: "AJ", avatarColor: "var(--surna-text-muted)", sport: "Basketball", sportEmoji: "🏀", location: "Cork", distance: "1.2 km" },
-    content: "Morning grind never misses 💪 3pm sessions in the sun hitting different lately. Who else is training this week? Drop a 🔥",
-    imageGradient: FEED_MEDIA_BG,
-    sport: "Basketball", sportEmoji: "🏀",
-    likesCount: 134, commentsCount: 23, comments: "casual", timestamp: "1 hr ago",
-  },
-  {
-    id: "fp3", type: "team",
-    author: { name: "Coach Rivera", username: "coach_riv", avatar: "CR", avatarColor: "var(--surna-text-secondary)", role: "coach", sport: "Basketball", sportEmoji: "🏀", location: "Dublin", distance: "8 km" },
-    content: "🏀 SURNA U21 Basketball Cork is forming! We train Tue/Thu 6pm at UCC Sports. All skill levels welcome. Join our team below 👇",
-    imageGradient: postCardTintGradient({ sport: "Basketball", contentKind: "team", authorRole: "coach" }),
-    sport: "Basketball", sportEmoji: "🏀", locationTag: "UCC Sports Complex",
-    likesCount: 89, commentsCount: 31, comments: "hype", timestamp: "3 hr ago",
-    entityKind: "team",
-    entityId: "dt0",
-    actionRoute: entityPath("team", "dt0"),
-    mapRoute: mapPath({ type: "team", id: "dt0" }),
-  },
-  {
-    id: "fp4", type: "sponsored",
-    author: { name: "SURNA Pro Gym", username: "surna_pro_gym", avatar: "SP", avatarColor: "var(--surna-text-secondary)", role: "verified", sport: "Fitness", sportEmoji: "🏋️", location: "Cork City Centre" },
-    content: "Grand Opening this Saturday 🎉 First month FREE for SURNA members. State-of-the-art facility, professional coaches, 24/7 access.",
-    imageGradient: postCardTintGradient({ sport: "Fitness", contentKind: "place", authorRole: "verified" }),
-    sport: "Fitness", sportEmoji: "🏋️", eventName: "Grand Opening · Saturday", locationTag: "Cork City Centre",
-    likesCount: 203, commentsCount: 44, comments: "event", timestamp: "5 hr ago",
-    isSponsored: true, sponsorCTA: "View venue",
-    entityKind: "place",
-    entityId: "dp0",
-    actionRoute: entityPath("place", "dp0"),
-    mapRoute: mapPath({ type: "place", id: "dp0" }),
-  },
-  {
-    id: "fp5", type: "video",
-    author: { name: "Leila Musa", username: "leila_yoga", avatar: "LM", avatarColor: "var(--surna-text-muted)", role: "coach", sport: "Yoga", sportEmoji: "🧘", location: "Cork", distance: "1.4 km" },
-    content: "Morning flow to start your week right 🌅 Full 30-min session. Like if you want more! #yoga #morningflow",
-    imageGradient: FEED_MEDIA_BG,
-    sport: "Yoga", sportEmoji: "🧘",
-    likesCount: 291, commentsCount: 56, comments: "casual", timestamp: "8 hr ago",
-  },
-  {
-    id: "fp6", type: "regular",
-    author: { name: "Zara King", username: "zara_gym", avatar: "ZK", avatarColor: "var(--surna-text-muted)", sport: "CrossFit", sportEmoji: "🏋️", location: "Cork", distance: "0.8 km" },
-    content: "PR day 💥 Hit 120kg on deadlift for the first time! 2 years of consistent work paying off. Consistency > everything else. Who's lifting today? 💪",
-    imageGradient: FEED_MEDIA_BG,
-    sport: "CrossFit", sportEmoji: "🏋️",
-    likesCount: 512, commentsCount: 78, comments: "hype", timestamp: "Yesterday",
-  },
-  {
-    id: "fp7", type: "event",
-    author: { name: "Dylan Healy", username: "dylan_trail", avatar: "DH", avatarColor: "var(--surna-text-secondary)", sport: "Running", sportEmoji: "🏃", location: "Cork", distance: "4 km" },
-    content: "🏃 Sunday trail run! Starting 8am from Fitzgerald's Park. All paces welcome, bring water and good vibes. 12km route. Sign up below!",
-    imageGradient: postCardTintGradient({ sport: "Running", contentKind: "event" }),
-    sport: "Running", sportEmoji: "🏃", eventName: "Trail Run · Sunday 8am", locationTag: "Fitzgerald's Park",
-    likesCount: 73, commentsCount: 19, comments: "event", timestamp: "Yesterday",
-    contextNotif: "Ali joined this event near you",
-    entityKind: "event",
-    entityId: "demo-ev-trail-run",
-    actionRoute: entityPath("event", "demo-ev-trail-run"),
-    mapRoute: mapPath({ type: "event", id: "demo-ev-trail-run" }),
-  },
-];
-
-/** Demo suggested friends — always merged into sidebar when API has few/no matches */
-const DEMO_SUGGESTED_FRIENDS: User[] = [
-  { id: "demo-sarah", firstName: "Sarah", lastName: "Chen", username: "sarah_chen", displayName: "Sarah Chen", profileImageUrl: "", email: "sarah@surna.com" } as User,
-  { id: "demo-marcus", firstName: "Marcus", lastName: "Johnson", username: "marcus_j", displayName: "Marcus Johnson", profileImageUrl: "", email: "marcus@surna.com" } as User,
-  { id: "demo-coach", firstName: "Coach", lastName: "Rodriguez", username: "coach_rod", displayName: "Coach Rodriguez", profileImageUrl: "", email: "coach@surna.com" } as User,
-  { id: "demo-alex", firstName: "Alex", lastName: "Rivera", username: "alex_rivera", displayName: "Alex Rivera", profileImageUrl: "", email: "alex@surna.com" } as User,
-  { id: "demo-jenny", firstName: "Jenny", lastName: "Lee", username: "jenny_crossfit", displayName: "Jenny Lee", profileImageUrl: "", email: "jenny@surna.com" } as User,
-];
-
 const FEED_TABS = ["For You", "Following", "Events", "Nearby"] as const;
 type FeedTabType = (typeof FEED_TABS)[number];
 
@@ -665,7 +565,6 @@ export default function Feed() {
   } | null>(null);
   const [feedTab, setFeedTab] = useState<FeedTabType>("For You");
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
-  const feedSeed = useMemo(() => createFeedSeed(feedRefreshKey), [feedRefreshKey]);
   const unreadNotificationCount = useUnreadNotificationCount(isAuthenticated);
   const { isDark } = useTheme();
   const queryClient = useQueryClient();
@@ -835,10 +734,7 @@ export default function Feed() {
         };
         return { ...item, format: inferVideoFormat(item) };
       });
-    const chain = filterVideosByMode(
-      feedVideos.length > 0 ? feedVideos : [videoPost, ...demoPoolForMode(mode)],
-      mode,
-    );
+    const chain = filterVideosByMode(feedVideos, mode);
     const startIndex = chain.findIndex((v) => v.id === post.id);
     setVideoViewer({
       videos: chain,
@@ -894,11 +790,7 @@ export default function Feed() {
     queryKey: ["/api/users/suggested"],
     enabled: isAuthenticated,
   });
-  const suggestedUsers = useMemo(() => {
-    const ids = new Set(apiSuggestedUsers.map((u) => u.id));
-    const extras = DEMO_SUGGESTED_FRIENDS.filter((d) => !ids.has(d.id));
-    return [...apiSuggestedUsers, ...extras];
-  }, [apiSuggestedUsers]);
+  const suggestedUsers = apiSuggestedUsers;
 
   // Fetch trending hashtags
   const { data: trendingHashtags = [] } = useQuery<Hashtag[]>({
@@ -937,11 +829,43 @@ export default function Feed() {
     [filteredPosts],
   );
 
+  const videoPostsFromFeed = useMemo(() => {
+    return posts
+      .filter((p: any) => p.videoUrl)
+      .map((p: any) => {
+        const a = p.author ?? {};
+        const item: VideoPost = {
+          id: p.id,
+          videoUrl: p.videoUrl ?? undefined,
+          content: p.content ?? undefined,
+          sport: p.sport ?? undefined,
+          format: p.videoFormat,
+          durationSec: p.durationSec,
+          likesCount: p.likesCount ?? 0,
+          commentsCount: p.commentsCount ?? 0,
+          author: {
+            id: a.id,
+            firstName: a.firstName,
+            lastName: a.lastName,
+            profileImageUrl: a.profileImageUrl,
+            email: a.email,
+          },
+        };
+        return { ...item, format: inferVideoFormat(item) };
+      });
+  }, [posts]);
+
+  const reelVideos = useMemo(
+    () => filterVideosByMode(videoPostsFromFeed, "reels"),
+    [videoPostsFromFeed],
+  );
+
+  const fullVideos = useMemo(
+    () => filterVideosByMode(videoPostsFromFeed, "videos"),
+    [videoPostsFromFeed],
+  );
+
   const handleFollowUser = useCallback(async (userId: string) => {
-    if (userId.startsWith("demo-")) {
-      toast({ title: "Following!", description: "You'll see more from them in your feed." });
-      return;
-    }
     try {
       await apiRequest("POST", `/api/users/${userId}/follow`);
       queryClient.invalidateQueries({ queryKey: ["/api/users/suggested"] });
@@ -955,56 +879,6 @@ export default function Feed() {
       });
     }
   }, [queryClient, toast]);
-
-  const openDemoVideo = useCallback((post: FeedDemoPost, mode: FeedViewerMode = "reels") => {
-    const entityType =
-      post.entityKind === "event"
-        ? "event"
-        : post.entityKind === "team"
-          ? "team"
-          : post.author.role === "coach"
-            ? "coach"
-            : undefined;
-    const videoPost: VideoPost = {
-      id: post.id,
-      content: post.content,
-      sport: post.sport,
-      format: mode === "videos" ? "video" : "reel",
-      likesCount: post.likesCount,
-      commentsCount: post.commentsCount,
-      entityType,
-      entityId: post.entityId,
-      eventName: post.eventName,
-      location: post.author.location,
-      distance: post.author.distance,
-      role:
-        post.author.role === "coach"
-          ? "coach"
-          : post.author.role === "organizer"
-            ? "organizer"
-            : post.entityKind === "team"
-              ? "team"
-              : "player",
-      author: {
-        id: post.id,
-        firstName: post.author.name.split(" ")[0] || post.author.name,
-        lastName: post.author.name.split(" ").slice(1).join(" ") || "",
-        profileImageUrl: undefined,
-        email: `${post.author.username}@demo.local`,
-      },
-    };
-    const demoVideos = filterVideosByMode(
-      [videoPost, ...demoPoolForMode(mode).filter((v) => v.id !== post.id)],
-      mode,
-    );
-    const startIndex = demoVideos.findIndex((v) => v.id === post.id);
-    setVideoViewer({
-      videos: demoVideos,
-      startIndex: startIndex >= 0 ? startIndex : 0,
-      label: mode === "videos" ? "Videos" : "Reels",
-      mode,
-    });
-  }, []);
 
   const navigateFromFeed = useCallback(
     (path: string) => {
@@ -1335,12 +1209,14 @@ export default function Feed() {
                       Reels
                     </p>
                     <div className="grid grid-cols-2 gap-1.5 px-2 mb-4">
-                      {DEMO_REELS.map((video, idx) => (
+                      {reelVideos.length === 0 ? (
+                        <p className="col-span-2 px-2 py-6 text-center text-sm text-token-text-muted">No reels yet — share a video from the feed.</p>
+                      ) : reelVideos.map((video, idx) => (
                         <div
                           key={`reel-${video.id}`}
                           className="relative rounded-xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
                           style={{ aspectRatio: "9/16", background: FEED_MEDIA_BG, maxHeight: 280 }}
-                          onClick={() => setVideoViewer({ videos: DEMO_REELS, startIndex: idx, label: "Reels", mode: "reels" })}
+                          onClick={() => setVideoViewer({ videos: reelVideos, startIndex: idx, label: "Reels", mode: "reels" })}
                           data-testid={`reel-grid-card-${video.id}`}
                         >
                           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 55%)" }} />
@@ -1361,12 +1237,14 @@ export default function Feed() {
                       Full videos
                     </p>
                     <div className="grid grid-cols-1 gap-2 px-2">
-                      {DEMO_FEED_VIDEOS.map((video, idx) => (
+                      {fullVideos.length === 0 ? (
+                        <p className="px-2 py-6 text-center text-sm text-token-text-muted">No full videos yet.</p>
+                      ) : fullVideos.map((video, idx) => (
                         <div
                           key={`video-${video.id}`}
                           className="relative rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform flex"
                           style={{ aspectRatio: "16/9", background: FEED_MEDIA_BG, minHeight: 120 }}
-                          onClick={() => setVideoViewer({ videos: DEMO_FEED_VIDEOS, startIndex: idx, label: video.sport || "Videos", mode: "videos" })}
+                          onClick={() => setVideoViewer({ videos: fullVideos, startIndex: idx, label: video.sport || "Videos", mode: "videos" })}
                           data-testid={`video-grid-card-${video.id}`}
                         >
                           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 100%)" }} />

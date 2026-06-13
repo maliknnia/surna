@@ -90,11 +90,12 @@ export async function fetchFollowingFeedPage(q: {
 
   const rows = await db.execute(sql`
     SELECT ${POST_COLS}
-    FROM user_follows f
-    JOIN posts p ON p.author_id = f.followed_id
+    FROM follows f
+    JOIN posts p ON p.author_id = f.following_id
     JOIN users u ON u.id = p.author_id
     ${MEDIA_JOIN}
     WHERE f.follower_id = ${q.userId}
+      AND f.following_type = 'user'
     ${boundary}
     ORDER BY p.created_at DESC, p.id DESC
     LIMIT ${q.limit};

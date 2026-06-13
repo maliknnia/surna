@@ -12,6 +12,7 @@ import {
 } from '@shared/schema';
 import { teamManagementService } from '../../services/teamManagementService';
 import { toPublicUser } from '../../lib/publicData';
+import { authUserId } from '../../lib/authUser';
 import { isAuthenticated } from '../../replitAuth';
 
 const teamsRouter = Router();
@@ -21,7 +22,7 @@ interface AuthedRequest extends Request {
 }
 
 function getUserId(req: AuthedRequest): string | null {
-  return req.user?.claims?.sub ?? req.user?.id ?? null;
+  return authUserId(req) ?? req.user?.claims?.sub ?? req.user?.id ?? null;
 }
 
 // =============================================================================
@@ -100,6 +101,32 @@ teamsRouter.get('/me/managed', isAuthenticated, async (req: AuthedRequest, res: 
     });
   } catch (err) {
     console.error('[teams] me/managed error', err);
+    res.status(500).json({ message: 'Failed to load your teams' });
+  }
+});
+
+/**
+ * GET /api/teams/my-teams
+ * Teams the current user belongs to (any active membership).
+ */
+teamsRouter.get('/my-teams', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const rows = await db
+      .select({
+        team: teams,
+        role: teamMembers.role,
+      })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+      .where(eq(teamMembers.userId, userId))
+      .orderBy(desc(teams.createdAt));
+
+    res.json(rows.map(({ team, role }) => ({ ...team, myRole: role })));
+  } catch (err) {
+    console.error('[teams] my-teams error', err);
     res.status(500).json({ message: 'Failed to load your teams' });
   }
 });

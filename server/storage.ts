@@ -944,21 +944,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFollowersCount(userId: string): Promise<number> {
-    const [result] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(userFollows)
-      .where(eq(userFollows.followedId, userId));
-    
-    return result?.count || 0;
+    const { ensurePhase3SocialTables } = await import("./infrastructure/phase3Social");
+    await ensurePhase3SocialTables();
+    const q = await db.execute(sql`
+      SELECT COUNT(*)::int AS count
+      FROM follows
+      WHERE following_id = ${userId} AND following_type = 'user'
+    `);
+    return Number((q.rows[0] as { count?: number })?.count ?? 0);
   }
 
   async getFollowingCount(userId: string): Promise<number> {
-    const [result] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(userFollows)
-      .where(eq(userFollows.followerId, userId));
-    
-    return result?.count || 0;
+    const { ensurePhase3SocialTables } = await import("./infrastructure/phase3Social");
+    await ensurePhase3SocialTables();
+    const q = await db.execute(sql`
+      SELECT COUNT(*)::int AS count
+      FROM follows
+      WHERE follower_id = ${userId} AND following_type = 'user'
+    `);
+    return Number((q.rows[0] as { count?: number })?.count ?? 0);
   }
 
   async getPostsCount(userId: string): Promise<number> {

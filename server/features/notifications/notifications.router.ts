@@ -2,11 +2,13 @@
 import { ListQuery, MarkOneParams } from "./notifications.validation";
 import { getNotificationFeed, markNotificationRead, markNotificationsAllRead, getUnreadCount } from "./notifications.service";
 import { authMiddleware } from "../../middleware/auth";
+import { bridgeSessionUser } from "../../middleware/bridgeSessionUser";
 
 export const notificationsRouter = Router();
 
-// Apply JWT auth middleware to all notifications routes
+// Apply JWT auth middleware to all notifications routes (JWT bearer and/or cookie session)
 notificationsRouter.use(authMiddleware());
+notificationsRouter.use(bridgeSessionUser);
 
 // GET /api/notifications?cursorCreatedAt&cursorId&limit
 notificationsRouter.get("/", async (req: any, res, next) => {
