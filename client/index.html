@@ -56,6 +56,18 @@
     <script>
       (function(){try{var s=localStorage.getItem("theme");var d=true;if(s==="light")d=false;else if(s==="dark")d=true;else if(s==="system")d=window.matchMedia("(prefers-color-scheme: dark)").matches;var c=d?"#121212":"#ffffff";var r=document.documentElement;if(d)r.classList.add("dark");else r.classList.remove("dark");r.style.colorScheme=d?"dark":"light";r.style.setProperty("--surna-nav-bar-bg",c);r.setAttribute("data-theme",d?"dark":"light");var m=document.getElementById("surna-theme-color");if(m)m.setAttribute("content",c);var a=document.getElementById("surna-apple-status-bar");if(a)a.setAttribute("content",d?"black":"default");}catch(e){}})();
     </script>
+    <script>
+      (function(){
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
+        if ("caches" in window) {
+          caches.keys().then(function(keys) { keys.forEach(function(k) { caches.delete(k); }); });
+        }
+      })();
+    </script>
   </head>
   <body style="background-color:#121212;color:#ffffff">
     <div id="root">

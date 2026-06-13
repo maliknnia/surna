@@ -369,30 +369,9 @@ function App() {
   useEffect(() => {
     if (import.meta.env.DEV) {
       registerSW();
-      return;
     }
 
-    // Register service worker for PWA functionality (production only)
-    void (async () => {
-      // Drop stale v3 caches that could serve old JS bundles (black screen after deploy).
-      if ("caches" in window) {
-        const keys = await caches.keys();
-        await Promise.all(
-          keys
-            .filter((k) => k.includes("surna-v3") || k.includes("surna-v2") || k.includes("surna-v1"))
-            .map((k) => caches.delete(k)),
-        );
-      }
-      registerSW({
-      onSuccess: (registration) => {
-        console.log('SW: Service worker registered successfully');
-      },
-      onUpdate: (registration) => {
-        console.log('SW: New content available, please refresh');
-        // Optionally show update notification to user
-      }
-    });
-    })();
+    // Service worker disabled in production until cache strategy is stable (was causing stuck "Loading…").
 
     // Initialize PWA install prompt
     initializePWAInstall();
