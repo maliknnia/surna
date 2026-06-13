@@ -20,10 +20,21 @@ export function registerPingRoute(app: Express): void {
   });
 
   /** Runtime client config — avoids rebuilding when map keys change on Railway. */
-  app.get("/api/public-config", (_req: Request, res: Response) => {
-    res.json({
-      mapTilerKey: (process.env.MAPTILER_KEY || process.env.VITE_MAPTILER_KEY || "").trim(),
-    });
+  app.get("/api/public-config", async (_req: Request, res: Response) => {
+    const mapTilerKey = (process.env.MAPTILER_KEY || process.env.VITE_MAPTILER_KEY || "").trim();
+    let mapTilerValid = false;
+    if (mapTilerKey) {
+      try {
+        const check = await fetch(
+          `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${encodeURIComponent(mapTilerKey)}`,
+          { signal: AbortSignal.timeout(8000) },
+        );
+        mapTilerValid = check.ok;
+      } catch {
+        mapTilerValid = false;
+      }
+    }
+    res.json({ mapTilerKey, mapTilerValid });
   });
 }
 

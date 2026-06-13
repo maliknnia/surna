@@ -27,42 +27,38 @@ function openFreeStyleUrl(mode: MapTileStyle): string {
   return mode === "dark" ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
 }
 
-async function mapTilerStyleWorks(key: string, mode: MapTileStyle): Promise<boolean> {
-  if (!key.trim()) return false;
-  try {
-    const res = await fetch(mapTilerStyleUrl(key, mode), { credentials: "omit" });
-    if (!res.ok) return false;
-    const json = (await res.json()) as { version?: number; sources?: unknown };
-    return json.version === 8 && Boolean(json.sources);
-  } catch {
-    return false;
-  }
-}
+type PublicConfig = {
+  mapTilerKey?: string;
+  mapTilerValid?: boolean;
+};
 
-let runtimeKeyPromise: Promise<string> | null = null;
+let configPromise: Promise<PublicConfig> | null = null;
 
-/** MapTiler key from server env (works without Vite rebuild) with build-time fallback. */
-export async function loadMapTilerKey(): Promise<string> {
-  if (runtimeKeyPromise) return runtimeKeyPromise;
-  runtimeKeyPromise = (async () => {
+async function loadPublicConfig(): Promise<PublicConfig> {
+  if (configPromise) return configPromise;
+  configPromise = (async () => {
     try {
       const res = await fetch("/api/public-config", { credentials: "include" });
-      if (res.ok) {
-        const data = (await res.json()) as { mapTilerKey?: string };
-        const fromServer = data.mapTilerKey?.trim();
-        if (fromServer) return fromServer;
-      }
+      if (res.ok) return (await res.json()) as PublicConfig;
     } catch {
-      /* use build fallback */
+      /* fall through */
     }
-    return import.meta.env.VITE_MAPTILER_KEY?.trim() || "";
+    const viteKey = import.meta.env.VITE_MAPTILER_KEY?.trim() || "";
+    return { mapTilerKey: viteKey, mapTilerValid: Boolean(viteKey) };
   })();
-  return runtimeKeyPromise;
+  return configPromise;
 }
 
+export async function loadMapTilerKey(): Promise<string> {
+  const cfg = await loadPublicConfig();
+  return cfg.mapTilerKey?.trim() || "";
+}
+
+/** Prefer MapTiler when the server confirms the key — keeps the Snapchat-style design. */
 export async function resolveWorkingMapStyle(mode: MapTileStyle): Promise<ResolvedMapStyle> {
-  const mapTilerKey = await loadMapTilerKey();
-  if (mapTilerKey && (await mapTilerStyleWorks(mapTilerKey, mode))) {
+  const cfg = await loadPublicConfig();
+  const mapTilerKey = cfg.mapTilerKey?.trim() || "";
+  if (mapTilerKey && cfg.mapTilerValid) {
     return {
       url: mapTilerStyleUrl(mapTilerKey, mode),
       provider: "maptiler",

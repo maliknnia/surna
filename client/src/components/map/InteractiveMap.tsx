@@ -359,65 +359,18 @@ function snapWindowSlabPaint(
   };
 }
 
-function resolveBuildingVectorSource(
-  map: maplibregl.Map,
-): { source: string; sourceLayer: string } | null {
-  if (map.getSource("maptiler_planet")) {
-    return { source: "maptiler_planet", sourceLayer: "building" };
-  }
-  if (map.getSource("openmaptiles")) {
-    return { source: "openmaptiles", sourceLayer: "building" };
-  }
-  return null;
-}
-
-function scheduleSnap3DEnhancements(
-  map: maplibregl.Map,
-  dark: boolean,
-  satellite: boolean,
-) {
-  const labelLayerId = map.getStyle().layers.find(
-    (layer) => layer.type === "symbol" && layer.layout?.["text-field"],
-  )?.id;
-
-  const apply3DEnhancements = () => {
-    applySnapchatBuildings(map, dark, labelLayerId, satellite);
-    applySurnaMapTrees(map);
-  };
-
-  if (map.isStyleLoaded() && map.areTilesLoaded()) {
-    apply3DEnhancements();
-  } else {
-    map.once("idle", apply3DEnhancements);
-  }
-}
-
-function applyOpenFreeMapStyleLoad(map: maplibregl.Map) {
-  try {
-    if (map.getLayer("building")) {
-      map.setLayoutProperty("building", "visibility", "none");
-    }
-  } catch (error) {
-    console.warn("[InteractiveMap] OpenFreeMap style tweaks failed:", error);
-  }
-}
-
 function applySnapchatBuildings(
   map: maplibregl.Map,
   dark: boolean,
   insertBefore?: string,
   satellite = false,
 ) {
-  const vector = resolveBuildingVectorSource(map);
-  if (!vector) {
-    console.warn("[InteractiveMap] no building vector source — 3D buildings skipped");
+  if (!map.getSource("maptiler_planet")) {
+    console.warn("[InteractiveMap] maptiler_planet missing — 3D buildings skipped");
     return;
   }
-  const { source, sourceLayer } = vector;
 
-  const beforeId =
-    (map.getLayer("Road labels") ? "Road labels" : undefined) ??
-    insertBefore;
+  const beforeId = map.getLayer("Road labels") ? "Road labels" : insertBefore;
   const buildingHeight = [
     "coalesce",
     ["to-number", ["get", "render_height"]],
@@ -434,8 +387,8 @@ function applySnapchatBuildings(
       map.addLayer(
         {
           id: "surna-3d-buildings",
-          source,
-          "source-layer": sourceLayer,
+          source: "maptiler_planet",
+          "source-layer": "building",
           type: "fill-extrusion",
           minzoom: 14,
           paint: {
@@ -459,8 +412,8 @@ function applySnapchatBuildings(
       map.addLayer(
         {
           id: "surna-3d-buildings",
-          source,
-          "source-layer": sourceLayer,
+          source: "maptiler_planet",
+          "source-layer": "building",
           type: "fill-extrusion",
           minzoom: 14,
           paint: {
@@ -490,8 +443,8 @@ function applySnapchatBuildings(
 
     map.addLayer({
       id: "surna-building-window-lower",
-      source,
-      "source-layer": sourceLayer,
+      source: "maptiler_planet",
+      "source-layer": "building",
       type: "fill-extrusion",
       minzoom: 15,
       filter: tallBuildingFilter,
@@ -500,8 +453,8 @@ function applySnapchatBuildings(
 
     map.addLayer({
       id: "surna-building-window-upper",
-      source,
-      "source-layer": sourceLayer,
+      source: "maptiler_planet",
+      "source-layer": "building",
       type: "fill-extrusion",
       minzoom: 15,
       filter: tallBuildingFilter,
@@ -580,7 +533,14 @@ function applyMapTilerStyleLoad(
     console.error("[InteractiveMap] style tweaks failed:", error);
   }
 
-  scheduleSnap3DEnhancements(map, dark, satellite);
+  const labelLayerId = map.getStyle().layers.find(
+    (layer) => layer.type === "symbol" && layer.layout?.["text-field"],
+  )?.id;
+
+  map.once("idle", () => {
+    applySnapchatBuildings(map, dark, labelLayerId, satellite);
+    applySurnaMapTrees(map);
+  });
 }
 
 export type { MapRoute } from "./surnaMapRoutes";
@@ -838,6 +798,7 @@ export default function InteractiveMap({
   const mapTheme = tileStyleMode === "satellite" ? "satellite" : tileStyleMode;
   const tileStyle = resolvedMapStyle?.url ?? "";
   const mapTilerAvailable = Boolean(resolvedMapStyle?.mapTilerKey);
+  const useSnap3D = resolvedMapStyle?.provider === "maptiler";
 
   const useDarkTilesRef = useRef(isMapDarkTheme);
   const tileStyleRef = useRef(tileStyle);
@@ -913,17 +874,19 @@ export default function InteractiveMap({
   const finishStyleLoad = (map: maplibregl.Map) => {
     const styleUrl = tileStyleRef.current;
     console.log(`[InteractiveMap] style.load — ${tileStyleModeRef.current}:`, styleUrl);
-    const dark = extrusionDarkRef.current;
-    const satellite = tileStyleModeRef.current === "satellite";
     if (styleUrl.includes("maptiler.com")) {
-      applyMapTilerStyleLoad(map, dark, satellite, styleUrl);
-    } else {
-      applyOpenFreeMapStyleLoad(map);
-      scheduleSnap3DEnhancements(map, dark, satellite);
+      applyMapTilerStyleLoad(
+        map,
+        extrusionDarkRef.current,
+        tileStyleModeRef.current === "satellite",
+        styleUrl,
+      );
     }
-    if (!initialPitchSetRef.current) {
+    if (useSnap3D && !initialPitchSetRef.current) {
       map.setPitch(DEFAULT_MAP_PITCH);
       initialPitchSetRef.current = true;
+    } else if (!useSnap3D && map.getPitch() > 0) {
+      map.setPitch(0);
     }
     map.resize();
     syncPinMarkers();
@@ -1029,9 +992,9 @@ export default function InteractiveMap({
       style: tileStyle,
       center: [mapCenter.lng, mapCenter.lat],
       zoom: DEFAULT_MAP_ZOOM,
-      pitch: DEFAULT_MAP_PITCH,
+      pitch: useSnap3D ? DEFAULT_MAP_PITCH : 0,
       maxPitch: MAX_MAP_PITCH,
-      touchPitch: true,
+      touchPitch: useSnap3D,
       attributionControl: false,
     });
 
@@ -1046,19 +1009,15 @@ export default function InteractiveMap({
     const onMapError = (event: maplibregl.ErrorEvent) => {
       const message = event.error?.message ?? "";
       const authFailure = /403|401|Invalid key|Forbidden|Unauthorized/i.test(message);
-      if (mapTilerFallbackRef.current) return;
-      if (!styleRef.current.includes("maptiler.com") && !authFailure) return;
-      if (!authFailure && /layer|fill-extrusion|paint|sprite|style/i.test(message)) {
-        console.warn("[InteractiveMap] layer/style error (keeping MapTiler):", message);
-        return;
-      }
+      if (mapTilerFallbackRef.current || !authFailure) return;
+      if (!styleRef.current.includes("maptiler.com")) return;
       mapTilerFallbackRef.current = true;
       const fallback = useDarkTilesRef.current ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
       styleRef.current = fallback;
       tileStyleRef.current = fallback;
-      console.log("[InteractiveMap] loading map style:", useDarkTilesRef.current ? "dark" : "light", fallback);
+      console.warn("[InteractiveMap] MapTiler auth failed — flat fallback map.", message);
+      map.setPitch(0);
       map.setStyle(fallback);
-      console.warn("MapTiler unavailable, using OpenFreeMap fallback.", event.error?.message);
     };
 
     map.on("style.load", onStyleReady);
