@@ -58,11 +58,21 @@ function loginRedirect(req: Request): string {
   return next;
 }
 
-export function establishSession(req: Request, payload: Omit<SessionUserPayload, "expires_at">) {
-  (req as any).session.localUser = {
-    ...payload,
-    expires_at: Math.floor(Date.now() / 1000) + SESSION_TTL_SEC,
-  };
+export function establishSession(
+  req: Request,
+  payload: Omit<SessionUserPayload, "expires_at">,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    (req as any).session.localUser = {
+      ...payload,
+      expires_at: Math.floor(Date.now() / 1000) + SESSION_TTL_SEC,
+    };
+    req.session.save((err) => (err ? reject(err) : resolve()));
+  });
+}
+
+function phoneSignInAvailable(): boolean {
+  return !isProduction() || Boolean(process.env.TWILIO_ACCOUNT_SID?.trim());
 }
 
 function nameFromEmail(email: string) {
@@ -176,6 +186,7 @@ export function registerSessionLoginRoutes(app: Express) {
           !process.env.REPLIT_DOMAINS ||
           process.env.REPLIT_DOMAINS === "localhost"),
       phoneDevOtp: !isProduction(),
+      phoneAvailable: phoneSignInAvailable(),
     });
   });
 
@@ -204,7 +215,7 @@ export function registerSessionLoginRoutes(app: Express) {
       const dbUser = await createUser(username, email, passwordHash, { firstName, lastName });
       const verification = await issueEmailVerificationCode(dbUser.id);
 
-      establishSession(req, {
+      await establishSession(req, {
         dbUser: {
           id: dbUser.id,
           email: dbUser.email || email,
@@ -259,7 +270,7 @@ export function registerSessionLoginRoutes(app: Express) {
         return res.status(503).json({ message: "Sign-in temporarily unavailable" });
       }
 
-      establishSession(req, {
+      await establishSession(req, {
         dbUser: {
           id: dbUser.id,
           email: dbUser.email || email,
@@ -285,6 +296,11 @@ export function registerSessionLoginRoutes(app: Express) {
 
   app.post("/api/auth/sign-in/phone/request", authRouteRateLimit, (req, res) => {
     try {
+      if (!phoneSignInAvailable()) {
+        return res.status(503).json({
+          message: "Phone sign-in is not set up yet. Please use email to create an account.",
+        });
+      }
       const phone = normalizePhone(String(req.body?.phone || ""));
       if (!checkOtpRateLimit(`req:${phone}`)) {
         return res.status(429).json({ message: "Too many code requests. Try again later." });
@@ -331,7 +347,7 @@ export function registerSessionLoginRoutes(app: Express) {
         };
       }
 
-      establishSession(req, {
+      await establishSession(req, {
         dbUser: {
           id: dbUser.id,
           email: dbUser.email,
@@ -386,7 +402,7 @@ export function registerSessionLoginRoutes(app: Express) {
           profileImageUrl: String(claims?.picture || "/avatars/me.png"),
         }));
 
-        establishSession(req, {
+        await establishSession(req, {
           dbUser: {
             id: dbUser.id,
             email: dbUser.email || email,
@@ -452,7 +468,7 @@ export function devQuickLogin(req: Request, res: Response) {
     }
 
     const sessionId = dbUser?.id ?? claims.sub;
-    establishSession(req, {
+    await establishSession(req, {
       dbUser: {
         id: sessionId,
         email: dbUser?.email ?? claims.email,
@@ -466,9 +482,6 @@ export function devQuickLogin(req: Request, res: Response) {
         sub: sessionId,
       },
     });
-    req.session.save((err) => {
-      if (err) console.error("[devQuickLogin] session save failed:", err);
-      res.redirect(loginRedirect(req));
-    });
+    res.redirect(loginRedirect(req));
   })();
 }

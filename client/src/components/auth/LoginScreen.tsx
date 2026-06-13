@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import SurnaLogo from "@/components/SurnaLogo";
 import SignupPathChooser from "@/components/SignupPathChooser";
 import { apiOrigin, devQuickLoginUrl, googleLoginUrl } from "@/lib/loginUrls";
+import { getCsrfToken } from "@/lib/csrf";
 
 type Mode = "google" | "email" | "phone";
 type AuthFlow = "signin" | "signup" | "path";
@@ -28,7 +29,7 @@ export default function LoginScreen({
   className,
   defaultAuthFlow = "signin",
 }: LoginScreenProps) {
-  const [mode, setMode] = useState<Mode>("google");
+  const [mode, setMode] = useState<Mode>("email");
   const [authFlow, setAuthFlow] = useState<AuthFlow>(defaultAuthFlow);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -40,7 +41,8 @@ export default function LoginScreen({
   const [devCodeHint, setDevCodeHint] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [googleAvailable, setGoogleAvailable] = useState(true);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
+  const [phoneAvailable, setPhoneAvailable] = useState(false);
   const [devQuickLogin, setDevQuickLogin] = useState(false);
 
   useEffect(() => {
@@ -49,12 +51,17 @@ export default function LoginScreen({
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (cancelled || !data) return;
-        const google = data.google !== false;
+        const google = data.google === true;
         const dev = data.devQuickLogin === true;
+        const phone = data.phoneAvailable === true;
         setGoogleAvailable(google);
+        setPhoneAvailable(phone);
         setDevQuickLogin(dev);
         if (!google && mode === "google") {
-          setMode(dev ? "phone" : "email");
+          setMode("email");
+        }
+        if (!phone && mode === "phone") {
+          setMode("email");
         }
       })
       .catch(() => {});
@@ -64,12 +71,13 @@ export default function LoginScreen({
   }, []);
 
   const tabs = useMemo(
-    () => [
-      { id: "google" as const, label: "Google", icon: FcGoogle },
-      { id: "email" as const, label: "Email", icon: Mail },
-      { id: "phone" as const, label: "Phone", icon: Phone },
-    ],
-    [],
+    () =>
+      [
+        googleAvailable ? { id: "google" as const, label: "Google", icon: FcGoogle } : null,
+        { id: "email" as const, label: "Email", icon: Mail },
+        phoneAvailable ? { id: "phone" as const, label: "Phone", icon: Phone } : null,
+      ].filter(Boolean) as Array<{ id: Mode; label: string; icon: typeof FcGoogle }>,
+    [googleAvailable, phoneAvailable],
   );
 
   const finishLogin = () => {
@@ -101,9 +109,10 @@ export default function LoginScreen({
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setError(data.message || "Could not create account");
+          setError(data.message || (res.status === 429 ? "Too many tries — wait 15 minutes and use Email sign-in." : "Could not create account"));
           return;
         }
+        await getCsrfToken().catch(() => {});
         setAuthFlow("path");
         return;
       }
@@ -116,7 +125,7 @@ export default function LoginScreen({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.message || "Could not sign in");
+        setError(data.message || (res.status === 429 ? "Too many tries — wait 15 minutes and try again." : "Could not sign in"));
         return;
       }
       const redirect = typeof data.redirect === "string" ? data.redirect : nextPath;
@@ -217,7 +226,8 @@ export default function LoginScreen({
         </div>
 
         <div className="px-4 pb-2">
-          <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted/50">
+          {tabs.length > 1 ? (
+          <div className="grid gap-1 p-1 rounded-xl bg-muted/50" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const active = mode === tab.id;
@@ -240,6 +250,7 @@ export default function LoginScreen({
               );
             })}
           </div>
+          ) : null}
         </div>
 
         <div className="px-6 pb-6 pt-4 space-y-4">

@@ -3,9 +3,9 @@ import type { Request, Response } from "express";
 
 type RateLimitedRequest = Request & { rateLimit?: { resetTime?: Date } };
 
-/** 5 attempts per IP per 15 minutes — login, register, password reset. */
+/** 5 attempts per IP per 15 minutes in dev; relaxed on production deploys (shared IPs, retries). */
 export const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
-export const AUTH_RATE_LIMIT_MAX = 5;
+export const AUTH_RATE_LIMIT_MAX = process.env.NODE_ENV === "production" ? 30 : 5;
 
 console.log("[Fix 9] Auth rate limiting active: max", AUTH_RATE_LIMIT_MAX, "attempts per", AUTH_RATE_LIMIT_WINDOW_MS / 60000, "minutes per IP");
 
@@ -19,7 +19,7 @@ export function authRateLimitHandler(req: Request, res: Response): void {
 
   res.status(429).json({
     error: "Too many attempts",
-    message: "Maximum 5 authentication attempts per 15 minutes. Please try again later.",
+    message: `Maximum ${AUTH_RATE_LIMIT_MAX} authentication attempts per 15 minutes. Please try again later.`,
     retryAfter: retryAfterSec,
   });
 }
