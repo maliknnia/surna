@@ -1,9 +1,7 @@
 /** Rich demo coach personas — full profiles for cards + coach detail pages */
 
 import type { CoachAchievement, CoachMediaItem, CoachPricingPlan, CoachSocialLink } from "../shared/coachProfile";
-
-const IMG = (id: string, w: number, h: number) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
+import { actionPhotoUrl } from "./seedImages";
 
 export type FakeCoachPersona = {
   userIndex: number;
@@ -443,7 +441,7 @@ export function buildCoachSeedRow(persona: FakeCoachPersona, _userId: string, im
     media: persona.media,
     socialLinks: persona.socialLinks,
     bookingMode: "hourly_slots",
-    coverImageUrl: persona.coverImageUrl,
+    coverImageUrl: actionPhotoUrl(`coach-cover-${persona.username}`, 900, 600),
     rating: persona.rating,
     reviewCount: persona.reviewCount,
     maxStudents: persona.maxStudents,

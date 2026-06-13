@@ -1008,10 +1008,12 @@ export default function InteractiveMap({
     const onStyleReady = () => finishStyleLoad(map);
 
     const onMapError = (event: maplibregl.ErrorEvent) => {
-      if (mapTilerFallbackRef.current || !MAPTILER_KEY) return;
-      if (!styleRef.current.includes("maptiler.com")) return;
       const message = event.error?.message ?? "";
-      if (/layer|fill-extrusion|paint|sprite|style/i.test(message)) {
+      const authFailure = /403|401|Invalid key|Forbidden|Unauthorized/i.test(message);
+      if (mapTilerFallbackRef.current) return;
+      if (!MAPTILER_KEY) return;
+      if (!styleRef.current.includes("maptiler.com") && !authFailure) return;
+      if (!authFailure && /layer|fill-extrusion|paint|sprite|style/i.test(message)) {
         console.warn("[InteractiveMap] layer/style error (keeping MapTiler):", message);
         return;
       }

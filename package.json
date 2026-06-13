@@ -12,6 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed-data.ts",
+    "db:seed:demo": "tsx scripts/seed-demo-tonight.ts",
+    "db:fix:images": "tsx scripts/fix-demo-images.ts",
     "db:seed:marketplace": "tsx scripts/seed-marketplace.ts",
     "test:marketplace-flow": "tsx scripts/test-marketplace-flow.ts",
     "db:seed:coaches": "tsx scripts/seed-coaches-only.ts",

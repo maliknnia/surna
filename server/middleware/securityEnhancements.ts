@@ -45,6 +45,16 @@ export function productionSecurityMiddleware() {
           "https:", // API calls
           process.env.S3_ENDPOINT || "https://nyc3.digitaloceanspaces.com",
           "https://api.stripe.com", // Stripe payments
+          "https://api.maptiler.com",
+          "https://tiles.openfreemap.org",
+        ],
+        workerSrc: [
+          "'self'",
+          "blob:", // MapLibre GL workers
+        ],
+        childSrc: [
+          "'self'",
+          "blob:",
         ],
         frameSrc: [
           "'none'"
@@ -91,9 +101,9 @@ export function additionalSecurityHeaders() {
     // Referrer policy
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     
-    // Permissions policy (restrict browser features)
+    // Permissions policy (restrict browser features; allow geolocation on map)
     res.setHeader('Permissions-Policy', 
-      'camera=(), microphone=(), geolocation=(), payment=()'
+      'camera=(), microphone=(), geolocation=(self), payment=()'
     );
     
     // Expect-CT header for certificate transparency

@@ -3,8 +3,42 @@ import { db } from '../server/db';
 import { users } from '../shared/schema';
 import { sql } from 'drizzle-orm';
 import crypto from 'crypto';
+import { avatarUrl, actionPhotoUrl } from './seedImages';
 
 function uuid() { return crypto.randomUUID(); }
+
+/** Remove any rows still pointing at @surna.app users (handles tables added after seed was written). */
+async function purgeRemainingSeedUserReferences() {
+  for (let pass = 0; pass < 30; pass++) {
+    const { rows } = await db.execute<{ table_name: string; column_name: string }>(sql`
+      SELECT tc.table_name, kcu.column_name
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+      JOIN information_schema.constraint_column_usage ccu
+        ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND ccu.table_name = 'users' AND ccu.column_name = 'id'
+        AND tc.table_name <> 'users'
+    `);
+    let changed = 0;
+    for (const { table_name, column_name } of rows) {
+      const del = await db.execute(sql.raw(
+        `DELETE FROM "${table_name}" WHERE "${column_name}" IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`,
+      ));
+      changed += del.rowCount ?? 0;
+      try {
+        const upd = await db.execute(sql.raw(
+          `UPDATE "${table_name}" SET "${column_name}" = NULL WHERE "${column_name}" IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`,
+        ));
+        changed += upd.rowCount ?? 0;
+      } catch {
+        /* column not nullable */
+      }
+    }
+    if (changed === 0) break;
+  }
+}
 
 const sports = ['Basketball', 'Soccer', 'Tennis', 'Boxing', 'MMA', 'Running', 'Swimming', 'CrossFit', 'Volleyball', 'Baseball'];
 const cities = ['Los Angeles', 'New York', 'Chicago', 'Miami', 'Houston', 'Phoenix', 'Atlanta', 'Denver', 'Seattle', 'Portland'];
@@ -299,7 +333,7 @@ const placeData = [
   { name: 'Tempe Diablo Training Fields', category: 'field', sports: ['Baseball', 'Softball'], bio: 'Professional-grade baseball diamonds. Spring training quality facilities.', address: '2200 W Alameda Dr', city: 'Phoenix', state: 'AZ', latitude: '33.3884', longitude: '-111.9660', amenities: ['lights', 'dugouts', 'batting-cages'] },
 ];
 
-async function seed() {
+async function runSeed() {
   console.log('Starting seed...');
 
   console.log('Ensuring DB columns for events/coaches...');
@@ -319,6 +353,9 @@ async function seed() {
   await db.execute(sql`DELETE FROM competitive_matches WHERE creator_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
   await db.execute(sql`DELETE FROM events WHERE creator_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
   await db.execute(sql`DELETE FROM posts WHERE author_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`DELETE FROM payments WHERE order_id IN (SELECT id FROM orders WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app'))`);
+  await db.execute(sql`DELETE FROM order_items WHERE product_id IN (SELECT id FROM products WHERE seller_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app'))`);
+  await db.execute(sql`DELETE FROM orders WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
   await db.execute(sql`DELETE FROM products WHERE seller_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
   await db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE captain_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app'))`);
   await db.execute(sql`DELETE FROM team_stats WHERE team_id IN (SELECT id FROM teams WHERE captain_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app'))`);
@@ -336,6 +373,15 @@ async function seed() {
   await db.execute(sql`DELETE FROM point_transactions WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
   await db.execute(sql`DELETE FROM user_follows WHERE follower_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app') OR followed_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
   await db.execute(sql`DELETE FROM user_levels WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`DELETE FROM post_shares WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`DELETE FROM event_rsvps WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`DELETE FROM team_join_requests WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app') OR reviewed_by IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`DELETE FROM user_blocks WHERE blocker_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app') OR blocked_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`DELETE FROM user_referrals WHERE referrer_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app') OR referred_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`UPDATE team_stats SET top_player_id = NULL WHERE top_player_id IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`DELETE FROM community_routes WHERE discovered_by IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await db.execute(sql`DELETE FROM free_play_spots WHERE discovered_by IN (SELECT id FROM users WHERE email LIKE '%@surna.app')`);
+  await purgeRemainingSeedUserReferences();
   await db.execute(sql`DELETE FROM users WHERE email LIKE '%@surna.app'`);
   console.log('Cleaned!');
 
@@ -351,13 +397,23 @@ async function seed() {
       lastName: u.lastName,
       username: u.username,
       displayName: `${u.firstName} ${u.lastName}`,
-      profileImageUrl: profileImages[i % profileImages.length],
+      profileImageUrl: avatarUrl(u.username),
       bio: u.bio,
       sport: u.sport,
       primarySport: u.sport,
       location: u.location,
       skillLevel: ['beginner', 'intermediate', 'advanced', 'elite'][i % 4],
       verified: i < 10,
+      emailVerified: true,
+      profileType: 'normal',
+      profileJson: {
+        profilePathChosenAt: new Date().toISOString(),
+        profileSetupCompletedAt: new Date().toISOString(),
+        onboardingSkipped: true,
+      },
+      position: ['Point Guard', 'Striker', 'Midfielder', 'Setter', 'Pitcher', 'Forward', 'Libero', 'Center'][i % 8],
+      availability: ['Weekends', 'Evenings', 'Mornings', 'Flexible'][i % 4],
+      lookingFor: ['competitive', 'training', 'fun', 'coaching'][i % 4],
     }).returning();
     createdUsers.push(user);
   }
@@ -459,7 +515,7 @@ async function seed() {
     const hasImage = Math.random() > 0.12;
     const isVideo = !hasImage && Math.random() > 0.7;
     const pid = uuid();
-    const imgUrl = hasImage ? postImages[i % postImages.length] : null;
+    const imgUrl = hasImage ? actionPhotoUrl(`post-${i}-${author.username}`, 800, 533) : null;
     const vidUrl = isVideo ? SAMPLE_VIDEOS[i % SAMPLE_VIDEOS.length] : null;
     const mType = isVideo ? 'video' : hasImage ? 'image' : 'text';
     const pType = isVideo ? 'video' : hasImage ? 'image' : 'text';
@@ -479,7 +535,7 @@ async function seed() {
     const p = postContent[i];
     const author = createdUsers[(i + 7) % createdUsers.length];
     const pid = uuid();
-    const imgUrl = postImages[(i + 3) % postImages.length];
+    const imgUrl = actionPhotoUrl(`bonus-post-${i}-${author.username}`, 800, 533);
     const likes = Math.floor(Math.random() * 200) + 20;
     const comments = Math.floor(Math.random() * 40) + 3;
     const shares = Math.floor(Math.random() * 25) + 2;
@@ -589,11 +645,19 @@ async function seed() {
   console.log('Creating stories...');
   let storyCount = 0;
   const expiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString();
-  for (let i = 0; i < 24; i++) {
+  const storyCaptions = [
+    'Game day vibes 🔥', 'Morning session done ✅', 'Match highlights from yesterday',
+    'Training camp day 3 💪', 'County final week!', 'New boots, new goals ⚽',
+    'Recovery + ice bath 🧊', 'Team huddle before throw-in', 'PR day at the gym',
+    'Sunset sprints on the pitch', 'Skills session 🎯', 'Captain\'s speech hit different',
+    'Under the lights tonight', 'Post-match chipper 🍻', 'Road to the final',
+  ];
+  for (let i = 0; i < 40; i++) {
     const author = createdUsers[i % createdUsers.length];
     const sid = uuid();
-    const isVideo = i % 5 === 0;
-    await db.execute(sql`INSERT INTO stories (id, user_id, owner_type, owner_id, media_url, media_type, thumbnail_url, caption, visibility, view_count, expires_at) VALUES (${sid}, ${author.id}, 'person', ${author.id}, ${isVideo ? SAMPLE_VIDEOS[i % SAMPLE_VIDEOS.length] : postImages[i % postImages.length]}, ${isVideo ? 'video' : 'image'}, ${isVideo ? postImages[i % postImages.length] : null}, ${'Game day vibes 🔥'}, 'public', ${Math.floor(Math.random() * 80) + 5}, ${expiresAt})`);
+    const isVideo = i % 6 === 0;
+    const caption = storyCaptions[i % storyCaptions.length];
+    await db.execute(sql`INSERT INTO stories (id, user_id, owner_type, owner_id, media_url, media_type, thumbnail_url, caption, visibility, view_count, expires_at) VALUES (${sid}, ${author.id}, 'person', ${author.id}, ${isVideo ? SAMPLE_VIDEOS[i % SAMPLE_VIDEOS.length] : postImages[i % postImages.length]}, ${isVideo ? 'video' : 'image'}, ${isVideo ? postImages[i % postImages.length] : null}, ${caption}, 'public', ${Math.floor(Math.random() * 120) + 8}, ${expiresAt})`);
     storyCount++;
     const viewers = Math.floor(Math.random() * 6) + 2;
     const seen = new Set<number>();
@@ -719,9 +783,14 @@ async function seed() {
   console.log(`  Local dev (${LOCAL_DEV_ID}) linked with follows + notifications`);
 }
 
-seed()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('Seed failed:', err);
-    process.exit(1);
-  });
+export { runSeed };
+
+const isDirectRun = process.argv[1]?.replace(/\\/g, '/').endsWith('scripts/seed-data.ts');
+if (isDirectRun) {
+  runSeed()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('Seed failed:', err);
+      process.exit(1);
+    });
+}
