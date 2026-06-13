@@ -47,6 +47,11 @@ const app = express();
 // Required for HTTPS tunnels (Cloudflare, ngrok) and correct secure cookies behind a proxy.
 app.set("trust proxy", 1);
 
+// Health check for Railway / load balancers — no auth, registered before middleware.
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 app.use(responseTime((req: Request, res, time) => {
   if (time > 300) console.warn(`[SLOW ${Math.round(time)}ms] ${req.method} ${req.originalUrl}`);
 }));
@@ -209,7 +214,7 @@ try {
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = Number(process.env.PORT ?? 5000);
 
   httpServer.on("error", async (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
