@@ -13,7 +13,8 @@ import http from "http";
 const { apiCsrfMiddleware } = await import("./middleware/csrfMiddleware");
 
 const { registerRoutes } = await import("./routes");
-const { setupVite, serveStatic, log } = await import("./vite");
+const { log } = await import("./log");
+const { serveStatic } = await import("./serveStatic");
 const { getDevLanUrls } = await import("./devLanUrls");
 const { apiLimiter } = await import("./middleware/rateLimiter");
 const { isAuthenticated } = await import("./replitAuth");
@@ -202,6 +203,7 @@ try {
 
   const serveBuiltClient = process.env.SERVE_BUILT_CLIENT === "1";
   if (app.get("env") === "development" && !serveBuiltClient) {
+    const { setupVite } = await import("./viteDev");
     await setupVite(app, httpServer);
   } else {
     serveStatic(app);

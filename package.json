@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "dev:restart": "node scripts/restart-dev.mjs",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --external:./server/viteDev.ts --external:./server/viteDev.js --external:vite --external:@vitejs/plugin-react",
     "start": "node dist/index.js",
     "check": "tsc && tsc --noEmit -p tsconfig.server.json",
     "db:migrate": "drizzle-kit migrate",
