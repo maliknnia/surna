@@ -7,6 +7,29 @@ export function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+/** Public HTTPS URL — Railway sets RAILWAY_PUBLIC_DOMAIN automatically. */
+export function resolvePublicAppUrl(): string | undefined {
+  if (process.env.PUBLIC_APP_URL?.trim()) {
+    return process.env.PUBLIC_APP_URL.trim().replace(/\/$/, "");
+  }
+  if (process.env.RAILWAY_PUBLIC_DOMAIN?.trim()) {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN.trim()}`;
+  }
+  if (process.env.RENDER_EXTERNAL_URL?.trim()) {
+    return process.env.RENDER_EXTERNAL_URL.trim().replace(/\/$/, "");
+  }
+  return undefined;
+}
+
+/** CORS / cookie origin list — falls back to Railway public domain in production. */
+export function resolveFrontendOriginList(): string {
+  const explicit = process.env.FRONTEND_ORIGIN?.trim();
+  if (explicit) return explicit;
+  const publicUrl = resolvePublicAppUrl();
+  if (publicUrl) return publicUrl;
+  return "";
+}
+
 export function requireEnv(name: string, minLength = 1): string {
   const value = process.env[name]?.trim();
   if (!value || value.length < minLength) {
@@ -25,7 +48,12 @@ export function validateProductionSecurity(): void {
 
   requireEnv("SESSION_SECRET", 32);
   requireEnv("JWT_SECRET", 32);
-  requireEnv("FRONTEND_ORIGIN", 8);
+  const origins = resolveFrontendOriginList();
+  if (!origins || origins.length < 8) {
+    throw new Error(
+      "FRONTEND_ORIGIN is required in production (or enable a Railway public domain)",
+    );
+  }
 
   const jwt = process.env.JWT_SECRET || "";
   if (jwt === DEV_JWT_FALLBACK) {
@@ -57,7 +85,7 @@ export function resolveSessionSecret(): string {
 }
 
 export function corsAllowedOrigins(): string[] | true {
-  const raw = process.env.FRONTEND_ORIGIN?.trim();
+  const raw = resolveFrontendOriginList();
   if (isProduction()) {
     if (!raw) throw new Error("FRONTEND_ORIGIN is required in production");
     const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
