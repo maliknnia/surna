@@ -7,11 +7,15 @@ type RateLimitedRequest = Request & { rateLimit?: { resetTime?: Date } };
 export const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 export const AUTH_RATE_LIMIT_MAX = 5;
 
+console.log("[Fix 9] Auth rate limiting active: max", AUTH_RATE_LIMIT_MAX, "attempts per", AUTH_RATE_LIMIT_WINDOW_MS / 60000, "minutes per IP");
+
 export function authRateLimitHandler(req: Request, res: Response): void {
   const resetTime = (req as RateLimitedRequest).rateLimit?.resetTime;
   const retryAfterSec = resetTime
     ? Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / 1000))
     : Math.ceil(AUTH_RATE_LIMIT_WINDOW_MS / 1000);
+
+  console.log("[Fix 9] Auth rate limit exceeded for IP", req.ip, "path", req.path);
 
   res.status(429).json({
     error: "Too many attempts",

@@ -143,10 +143,13 @@ export class MessengerService {
   // Group Services
   async createGroup(
     userId: string,
-    data: { name: string; description?: string; memberIds?: string[]; instantTeamId?: string },
+    data: { name: string; description?: string; memberIds?: string[]; instantTeamId?: string; eventId?: string },
   ): Promise<GroupConversation> {
     if (data.instantTeamId) {
       return this.createOrJoinInstantTeamGroup(userId, data as typeof data & { instantTeamId: string });
+    }
+    if (data.eventId) {
+      return this.createOrJoinEventGroup(userId, data as typeof data & { eventId: string });
     }
 
     const group = await messengerRepo.createGroup({
@@ -158,6 +161,59 @@ export class MessengerService {
     for (const memberId of extraMembers) {
       await messengerRepo.addGroupMember(group.id, memberId, "member");
     }
+    return group;
+  }
+
+  private async createOrJoinEventGroup(
+    userId: string,
+    data: { name: string; description?: string; memberIds?: string[]; eventId: string },
+  ): Promise<GroupConversation> {
+    const { setEventChatGroupId, getEvent } = await import("../events/events.repo");
+
+    const event = await getEvent(data.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    const eventRow = event as { chat_group_id?: string; creator_id?: string };
+    let groupId = eventRow.chat_group_id ?? null;
+
+    if (groupId) {
+      console.log("[Fix 2] Event group chat already exists for event", data.eventId, "→ reusing", groupId);
+      const existing = await messengerRepo.getGroupMember(groupId, userId);
+      if (!existing) {
+        await messengerRepo.addGroupMember(groupId, userId, "member");
+      }
+      const group = await messengerRepo.getGroupById(groupId, userId);
+      if (group) return group;
+      throw new Error("Group not found");
+    }
+
+    const ownerId = eventRow.creator_id ?? userId;
+    const group = await messengerRepo.createGroup({
+      owner_id: ownerId,
+      name: data.name,
+      description: data.description ?? `Event chat · ${data.eventId}`,
+    });
+
+    groupId = group.id;
+    await setEventChatGroupId(data.eventId, groupId);
+    console.log("[Fix 2] Event group chat created for event", data.eventId, "→ group", groupId);
+
+    if (userId !== ownerId) {
+      const member = await messengerRepo.getGroupMember(group.id, userId);
+      if (!member) {
+        await messengerRepo.addGroupMember(group.id, userId, "member");
+      }
+    }
+
+    for (const memberId of (data.memberIds ?? []).filter((id) => id !== ownerId && id !== userId)) {
+      const member = await messengerRepo.getGroupMember(group.id, memberId);
+      if (!member) {
+        await messengerRepo.addGroupMember(group.id, memberId, "member");
+      }
+    }
+
     return group;
   }
 
@@ -179,6 +235,7 @@ export class MessengerService {
       (await storage.getInstantTeamMessengerGroupId(data.instantTeamId));
 
     if (groupId) {
+      console.log("[Fix 3] Instant Join reusing existing group chat", groupId, "for team", data.instantTeamId);
       const existing = await messengerRepo.getGroupMember(groupId, userId);
       if (!existing) {
         await messengerRepo.addGroupMember(groupId, userId, "member");
@@ -196,6 +253,7 @@ export class MessengerService {
     });
 
     groupId = await storage.setInstantTeamMessengerGroupId(data.instantTeamId, group.id);
+    console.log("[Fix 3] Instant Join created new group chat", groupId, "for team", data.instantTeamId);
 
     if (groupId !== group.id) {
       const existing = await messengerRepo.getGroupMember(groupId, userId);

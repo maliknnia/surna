@@ -22,6 +22,7 @@ const ProClub = lazy(() => import("./ProClub"));
 const ProSettings = lazy(() => import("./ProSettings"));
 const ProApprovals = lazy(() => import("./ProApprovals"));
 const ProActivity = lazy(() => import("./ProActivity"));
+const ProSquadHealth = lazy(() => import("./ProSquadHealth"));
 const ProTournament = lazy(() => import("./ProTournament"));
 
 function ProLoading({ embedded }: { embedded?: boolean }) {
@@ -77,8 +78,8 @@ function ProEntitlementShell({ children }: { children: React.ReactNode }) {
 
 export default function ProApp() {
   return (
-    <ProRoleProvider>
-      <ProTeamProvider>
+    <ProTeamProvider>
+      <ProRoleProvider>
         <ProEntitlementShell>
           <ProLayout>
             <Suspense fallback={<ProLoading embedded />}>
@@ -86,6 +87,7 @@ export default function ProApp() {
                 <Route path="/pro" component={ProDashboard} />
                 <Route path="/pro/roster" component={ProRoster} />
                 <Route path="/pro/training" component={ProTraining} />
+                <Route path="/pro/squad-health" component={ProSquadHealth} />
                 <Route path="/pro/match-day" component={ProMatchDay} />
                 <Route path="/pro/tournament/:id" component={ProTournament} />
                 <Route path="/pro/tournament" component={ProTournament} />
@@ -108,7 +110,7 @@ export default function ProApp() {
             </Suspense>
           </ProLayout>
         </ProEntitlementShell>
-      </ProTeamProvider>
-    </ProRoleProvider>
+      </ProRoleProvider>
+    </ProTeamProvider>
   );
 }

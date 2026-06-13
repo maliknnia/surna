@@ -5,6 +5,7 @@ import { apiRequest, queryClient, getQueryFn } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { capturePhoto } from '@/lib/capacitor/camera';
 
 interface TeamPhoto {
   id: string;
@@ -54,9 +55,7 @@ export default function TeamPhotos({ teamId }: TeamPhotosProps) {
     onError: () => toast({ title: 'Not authorized', variant: 'destructive' }),
   });
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processPhotoFile = async (file: File) => {
     setUploading(true);
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -69,6 +68,12 @@ export default function TeamPhotos({ teamId }: TeamPhotosProps) {
       img.src = dataUrl;
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processPhotoFile(file);
   };
 
   if (isLoading) {
@@ -94,7 +99,7 @@ export default function TeamPhotos({ teamId }: TeamPhotosProps) {
             data-testid="input-team-photo-upload"
           />
           <Button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => void capturePhoto({ source: "gallery" }).then((f) => f && processPhotoFile(f))}
             disabled={uploading}
             className="gap-2"
             data-testid="button-add-team-photo"

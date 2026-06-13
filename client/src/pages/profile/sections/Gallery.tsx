@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { deriveModernSources, deriveLqipPlaceholder } from '@/lib/imageSources';
+import { capturePhoto } from '@/lib/capacitor/camera';
 
 interface UserPhoto {
   id: string;
@@ -52,9 +53,7 @@ export default function Gallery({ userId, isOwnProfile = false }: GalleryProps) 
     },
   });
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processPhotoFile = async (file: File) => {
     setUploading(true);
     try {
       const reader = new FileReader();
@@ -72,6 +71,18 @@ export default function Gallery({ userId, isOwnProfile = false }: GalleryProps) 
       setUploading(false);
       toast({ title: 'Upload failed', variant: 'destructive' });
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processPhotoFile(file);
+  };
+
+  const handleAddPhoto = async () => {
+    const file = await capturePhoto({ source: 'gallery' });
+    if (file) await processPhotoFile(file);
+    else fileInputRef.current?.click();
   };
 
   if (isLoading) {
@@ -97,7 +108,7 @@ export default function Gallery({ userId, isOwnProfile = false }: GalleryProps) 
             data-testid="input-photo-upload"
           />
           <Button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => void handleAddPhoto()}
             disabled={uploading}
             className="gap-2"
             data-testid="button-add-photo"

@@ -4,6 +4,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useEvent, useRSVP } from "@/hooks/useEvents";
 import { useSmartBack } from "@/lib/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { isRouteSport } from "@/lib/eventRoutes";
+import { ROUTES } from "@/navigation";
 import {
   ArrowLeft,
   Bookmark,
@@ -189,6 +191,13 @@ export default function EventDetailsPage() {
   const [extractedColor, setExtractedColor] = useState<string | null>(
     coverUrl ? getCachedColor(coverUrl) : null,
   );
+
+  useEffect(() => {
+    if (!ev?.sport || !id) return;
+    if (isRouteSport(String(ev.sport))) {
+      setLocation(ROUTES.eventRoute(id), { replace: true });
+    }
+  }, [ev?.sport, id, setLocation]);
 
   useEffect(() => {
     if (!coverUrl) return;

@@ -312,6 +312,17 @@ tournamentPublicRouter.post("/tournaments/:id/register", async (req, res) => {
       contactEmail: body.contactEmail,
     });
 
+    if (t.entryFeeEur > 0 && body.paymentIntentId) {
+      const { recordTournamentEntry } = await import("../services/phase5MoneyService");
+      await recordTournamentEntry({
+        tournamentId: t.id,
+        teamId: body.teamId,
+        userId,
+        entryFeeCents: Math.round(t.entryFeeEur * 100),
+        paymentIntentId: body.paymentIntentId,
+      });
+    }
+
     const approved = await getApprovedRegistrations(req.params.id);
     const pending = (await getAllRegistrations(req.params.id)).filter((r) => r.status === "pending");
 

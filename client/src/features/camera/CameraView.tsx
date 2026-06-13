@@ -23,6 +23,7 @@ import { useSurnaCamera } from "./SurnaCameraContext";
 import { useCameraEmbed } from "./SurnaCameraContent";
 
 import FilterPickerSheet from "./FilterPickerSheet";
+import { pickMediaFromGallery } from "@/lib/capacitor/camera";
 
 
 
@@ -97,8 +98,6 @@ export default function CameraView({ initialMode = "photo", onCaptured }: Props)
   const [recordMs, setRecordMs] = useState(0);
 
   const [cameraError, setCameraError] = useState<string | null>(null);
-
-  const fileRef = useRef<HTMLInputElement>(null);
 
 
 
@@ -310,26 +309,16 @@ export default function CameraView({ initialMode = "photo", onCaptured }: Props)
 
 
 
-  const pickGallery = (e: React.ChangeEvent<HTMLInputElement>) => {
-
-    const file = Array.from(e.target.files ?? [])[0];
-
+  const openGalleryPicker = async () => {
+    const file = await pickMediaFromGallery("image/*,video/*");
     if (!file) return;
-
     onCaptured({
-
       blob: file,
-
       previewUrl: URL.createObjectURL(file),
-
       type: file.type.startsWith("video") ? "video" : "image",
-
       filterId,
-
       arId,
-
     });
-
   };
 
 
@@ -562,13 +551,11 @@ export default function CameraView({ initialMode = "photo", onCaptured }: Props)
 
         <div style={shutterRow}>
 
-          <button type="button" onClick={() => fileRef.current?.click()} style={sideBtn} aria-label="Gallery">
+          <button type="button" onClick={() => void openGalleryPicker()} style={sideBtn} aria-label="Gallery">
 
             <ImageIcon size={26} color={CAMERA_TEXT} strokeWidth={1.5} />
 
           </button>
-
-          <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={pickGallery} />
 
 
 

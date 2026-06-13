@@ -5,6 +5,7 @@ import {
   Pencil,
   Trash2,
   ChevronLeft,
+  Ban,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -95,11 +96,11 @@ export function PostManageSheet({ post, open, onOpenChange, currentUserId }: Pro
   const reportMutation = useMutation({
     mutationFn: async () => {
       if (!post) throw new Error("No post");
-      await apiRequest("POST", "/api/content/report", {
+      await apiRequest("POST", "/api/reports", {
         contentType: "post",
         contentId: post.id,
         reason: "other",
-        reportedUserId: post.authorId,
+        description: `Reported post by ${post.authorId}`,
       });
     },
     onSuccess: () => {
@@ -111,6 +112,22 @@ export function PostManageSheet({ post, open, onOpenChange, currentUserId }: Pro
         title: "Couldn't submit report",
         variant: "destructive",
       });
+    },
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: async () => {
+      if (!post?.authorId) throw new Error("No author");
+      await apiRequest("POST", `/api/users/${post.authorId}/block`);
+    },
+    onSuccess: () => {
+      if (post) removePostFromFeedCache(queryClient, post.id);
+      invalidateFeedQueries(queryClient);
+      toast({ title: "User blocked", description: "Their posts won't appear in your feed." });
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast({ title: "Couldn't block user", variant: "destructive" });
     },
   });
 
@@ -199,16 +216,28 @@ export function PostManageSheet({ post, open, onOpenChange, currentUserId }: Pro
             </button>
 
             {!isOwn && (
-              <button
-                type="button"
-                className={menuBtn}
-                style={{ background: "var(--surna-surface)", color: "var(--surna-text)" }}
-                disabled={reportMutation.isPending}
-                onClick={() => reportMutation.mutate()}
-              >
-                <Flag className="h-4 w-4" />
-                Report post
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={menuBtn}
+                  style={{ background: "var(--surna-surface)", color: "var(--surna-text)" }}
+                  disabled={reportMutation.isPending}
+                  onClick={() => reportMutation.mutate()}
+                >
+                  <Flag className="h-4 w-4" />
+                  Report post
+                </button>
+                <button
+                  type="button"
+                  className={menuBtn}
+                  style={{ background: "var(--surna-surface)", color: "var(--surna-text)" }}
+                  disabled={blockMutation.isPending}
+                  onClick={() => blockMutation.mutate()}
+                >
+                  <Ban className="h-4 w-4" />
+                  Block author
+                </button>
+              </>
             )}
 
             {isOwn && !confirmDelete && (

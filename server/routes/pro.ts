@@ -320,6 +320,48 @@ proRouter.get("/team/:teamId/permissions", async (req, res) => {
   }
 });
 
+const PRO_ROLE_SLUGS = ["owner", "admin", "coach", "manager", "member"] as const;
+type ProRoleSlug = (typeof PRO_ROLE_SLUGS)[number];
+
+function normalizeProRoleSlug(name: string | null | undefined, isCaptain: boolean): ProRoleSlug {
+  const n = (name || "").trim().toLowerCase();
+  if ((PRO_ROLE_SLUGS as readonly string[]).includes(n)) return n as ProRoleSlug;
+  if (n.includes("owner") || isCaptain) return "owner";
+  if (n.includes("admin")) return "admin";
+  if (n.includes("coach")) return "coach";
+  if (n.includes("manager")) return "manager";
+  return "member";
+}
+
+proRouter.get("/team/:teamId/my-role", async (req, res) => {
+  const user = getUser(req);
+  if (!user) return unauthorized(res);
+  try {
+    const [teamRow] = await db
+      .select({ captainId: teams.captainId })
+      .from(teams)
+      .where(eq(teams.id, req.params.teamId))
+      .limit(1);
+    if (!teamRow) return res.status(404).json({ error: "Team not found" });
+
+    const membership = await storage.getUserProRole(req.params.teamId, user.id);
+    let role: ProRoleSlug = "member";
+
+    if (membership) {
+      const roles = await storage.getProTeamRoles(req.params.teamId);
+      const userRole = roles.find((r) => r.id === membership.roleId);
+      role = normalizeProRoleSlug(userRole?.name, false);
+    } else if (teamRow.captainId === user.id) {
+      role = "owner";
+    }
+
+    console.log("[Fix 7] Pro role verified from database:", role, "user", user.id, "team", req.params.teamId);
+    res.json({ role });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 proRouter.get("/team/:teamId/audit", async (req, res) => {
   const user = getUser(req);
   if (!user) return unauthorized(res);

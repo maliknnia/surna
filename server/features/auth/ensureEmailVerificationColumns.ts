@@ -1,8 +1,11 @@
 import { db } from "../../db";
 import { sql } from "drizzle-orm";
 
-/** Idempotent boot migration for email verification fields. */
+/** Idempotent boot migration for email verification and password auth fields. */
 export async function ensureEmailVerificationColumns(): Promise<void> {
+  await db.execute(sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR
+  `);
   await db.execute(sql`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false
   `);

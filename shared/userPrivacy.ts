@@ -33,6 +33,12 @@ export interface UserPrivacySettings {
   showTeamJoinActivity: boolean;
   showEventAttendance: boolean;
 
+  // Health profile
+  healthWeeklyLoadVisibility: PrivacyAudience;
+  healthMonthlyTrendVisibility: PrivacyAudience;
+  healthStreakVisibility: PrivacyAudience;
+  healthPersonalBestsVisibility: PrivacyAudience;
+
   // Messenger
   readReceipts: boolean;
   showOnlineStatus: boolean;
@@ -69,6 +75,11 @@ export const DEFAULT_USER_PRIVACY: UserPrivacySettings = {
   showActivityInFeed: true,
   showTeamJoinActivity: true,
   showEventAttendance: true,
+
+  healthWeeklyLoadVisibility: "friends",
+  healthMonthlyTrendVisibility: "friends",
+  healthStreakVisibility: "friends",
+  healthPersonalBestsVisibility: "friends",
 
   readReceipts: true,
   showOnlineStatus: true,

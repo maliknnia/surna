@@ -24,7 +24,35 @@ export async function initializeInfrastructure() {
     ensureFeatureFlagTables().catch(e => logger.warn("Feature flag tables setup deferred", { error: e.message })),
     ensureMessagingTables().catch(e => logger.warn("Messaging tables setup deferred", { error: e.message })),
     ensureProEntitlementTables().catch(e => logger.warn("Pro entitlement tables setup deferred", { error: e.message })),
+    import("./phase3Social").then(m => m.ensurePhase3SocialTables()).catch(e => logger.warn("Phase3 social tables deferred", { error: e.message })),
+    import("./phase4Competitive").then(m => m.ensurePhase4CompetitiveTables()).catch(e => logger.warn("Phase4 competitive tables deferred", { error: e.message })),
+    import("./phase5Money").then(m => m.ensurePhase5MoneyTables()).catch(e => logger.warn("Phase5 money tables deferred", { error: e.message })),
+    import("./phase6Sport").then(m => m.ensurePhase6SportTables()).catch(e => logger.warn("Phase6 sport tables deferred", { error: e.message })),
+    import("./phase7Health").then(m => m.ensurePhase7HealthTables()).catch(e => logger.warn("Phase7 health tables deferred", { error: e.message })),
+    import("./phase8Profile").then(m => m.ensurePhase8ProfileTables()).catch(e => logger.warn("Phase8 profile tables deferred", { error: e.message })),
+    import("./phase9Mobile").then(m => m.ensurePhase9MobileTables()).catch(e => logger.warn("Phase9 mobile tables deferred", { error: e.message })),
   ]);
+
+  try {
+    const { startEventReminderJob } = await import("../services/eventReminderJob");
+    startEventReminderJob();
+  } catch (e: any) {
+    logger.warn("Event reminder job deferred", { error: e?.message });
+  }
+
+  try {
+    const { startWeeklyChallengeJob } = await import("../services/competitiveEngine");
+    startWeeklyChallengeJob();
+  } catch (e: any) {
+    logger.warn("Weekly challenge job deferred", { error: e?.message });
+  }
+
+  try {
+    const { startReadinessReportJob } = await import("../services/readinessReportJob");
+    startReadinessReportJob();
+  } catch (e: any) {
+    logger.warn("Readiness report job deferred", { error: e?.message });
+  }
 
   initializeWorkers();
 

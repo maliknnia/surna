@@ -23,6 +23,7 @@ import type { CoachWithProfile } from "@shared/schema";
 import { formatPlanPrice, parseCoachProfile, type CoachPricingPlan } from "@shared/coachProfile";
 import CoachBookingModal from "@/components/coaches/CoachBookingModal";
 import { fetchCoach, startCoachChat } from "@/lib/coachesApi";
+import { apiRequest } from "@/lib/queryClient";
 import { getSportConfig } from "@/components/TeamCard";
 import { ROUTES } from "@/navigation";
 import { useSmartBack } from "@/lib/navigation";
@@ -65,6 +66,49 @@ export default function CoachProfile() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const [isFollowingCoach, setIsFollowingCoach] = useState(false);
+
+  const followCoachMutation = useMutation({
+    mutationFn: async () => {
+      if (!coach?.userId) throw new Error("No coach");
+      if (isFollowingCoach) {
+        await apiRequest("DELETE", `/api/users/${coach.userId}/unfollow?type=coach`);
+        return false;
+      }
+      await apiRequest("POST", `/api/users/${coach.userId}/follow`, { followingType: "coach" });
+      return true;
+    },
+    onSuccess: (following) => {
+      setIsFollowingCoach(!!following);
+      toast({ title: following ? "Following coach" : "Unfollowed coach" });
+    },
+    onError: () => toast({ title: "Couldn't update follow", variant: "destructive" }),
+  });
+
+  const blockCoach = async () => {
+    if (!coach?.userId) return;
+    try {
+      await apiRequest("POST", `/api/users/${coach.userId}/block`);
+      toast({ title: "Coach blocked" });
+    } catch {
+      toast({ title: "Couldn't block user", variant: "destructive" });
+    }
+  };
+
+  const reportCoach = async () => {
+    if (!coach?.userId) return;
+    try {
+      await apiRequest("POST", "/api/reports", {
+        contentType: "user",
+        contentId: coach.userId,
+        reason: "other",
+        description: `Reported coach profile ${coachId}`,
+      });
+      toast({ title: "Report submitted" });
+    } catch {
+      toast({ title: "Couldn't submit report", variant: "destructive" });
+    }
+  };
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -288,7 +332,20 @@ export default function CoachProfile() {
             onBook={() => (canBookSlots ? openBooking() : startChatMutation.mutate())}
             onEdit={() => setLocation("/coach/profile")}
             onReviews={() => selectTab("reviews")}
+            onFollow={isOwnCoach ? undefined : () => followCoachMutation.mutate()}
+            isFollowing={isFollowingCoach}
+            followPending={followCoachMutation.isPending}
           />
+          {!isOwnCoach && (
+            <div className="flex justify-center gap-4 mt-2 px-4">
+              <button type="button" onClick={blockCoach} className="text-[12px] text-muted-foreground underline">
+                Block
+              </button>
+              <button type="button" onClick={reportCoach} className="text-[12px] text-muted-foreground underline">
+                Report
+              </button>
+            </div>
+          )}
         </div>
 
         <nav className="spotify-tab-bar">

@@ -404,8 +404,8 @@ function buildActionsForType(type: string, route?: string): NotifAction[] | unde
 
 export function mergeNotificationFeed(apiRows: ApiNotificationRow[]): SurnaNotification[] {
   const apiItems = apiRows.map(apiRowToNotification);
-  if (apiItems.length > 0) return apiItems;
-  return DEMO_NOTIFICATIONS;
+  console.log("[Fix 8] Notifications loaded from API:", apiItems.length);
+  return apiItems;
 }
 
 export function filterNotifications(

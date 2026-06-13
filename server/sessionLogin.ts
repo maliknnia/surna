@@ -17,6 +17,7 @@ type SessionUserPayload = {
     firstName?: string | null;
     lastName?: string | null;
     profileImageUrl?: string | null;
+    emailVerified?: boolean;
   };
   claims: {
     sub: string;
@@ -198,7 +199,9 @@ export function registerSessionLoginRoutes(app: Express) {
       const baseUsername = email.split("@")[0].replace(/\W/g, "").slice(0, 20) || "athlete";
       const username = `${baseUsername}${Date.now().toString(36).slice(-4)}`;
       const passwordHash = await bcrypt.hash(password, 12);
-      const dbUser = await createUser(username, email, passwordHash);
+      const firstName = String(req.body?.firstName || "").trim() || undefined;
+      const lastName = String(req.body?.lastName || "").trim() || undefined;
+      const dbUser = await createUser(username, email, passwordHash, { firstName, lastName });
       const verification = await issueEmailVerificationCode(dbUser.id);
 
       establishSession(req, {
@@ -419,22 +422,36 @@ export function registerSessionLoginRoutes(app: Express) {
 }
 
 export function devQuickLogin(req: Request, res: Response) {
-  const claims = {
-    sub: "local-dev-user",
-    email: process.env.LOCAL_DEV_USER_EMAIL || "dev@surna.local",
-    first_name: "Local",
-    last_name: "Developer",
-    profile_image_url: "/avatars/me.png",
-  };
-  establishSession(req, {
-    dbUser: {
-      id: claims.sub,
-      email: claims.email,
-      firstName: claims.first_name,
-      lastName: claims.last_name,
-      profileImageUrl: claims.profile_image_url,
-    },
-    claims,
-  });
-  res.redirect(loginRedirect(req));
+  void (async () => {
+    const claims = {
+      sub: "local-dev-user",
+      email: process.env.LOCAL_DEV_USER_EMAIL || "dev@surna.local",
+      first_name: "Local",
+      last_name: "Developer",
+      profile_image_url: "/avatars/me.png",
+    };
+    try {
+      await storage.createUserWithClaims(claims.sub, {
+        email: claims.email,
+        firstName: claims.first_name,
+        lastName: claims.last_name,
+        profileImageUrl: claims.profile_image_url,
+        emailVerified: true,
+      });
+    } catch (err) {
+      console.warn("[devQuickLogin] Could not upsert dev user:", err);
+    }
+    establishSession(req, {
+      dbUser: {
+        id: claims.sub,
+        email: claims.email,
+        firstName: claims.first_name,
+        lastName: claims.last_name,
+        profileImageUrl: claims.profile_image_url,
+        emailVerified: true,
+      },
+      claims,
+    });
+    res.redirect(loginRedirect(req));
+  })();
 }

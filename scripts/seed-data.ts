@@ -673,8 +673,9 @@ async function seed() {
     primarySport: 'Basketball',
     bio: 'Local development account',
     verified: true,
+    emailVerified: true,
   }).onConflictDoNothing();
-  await db.execute(sql`UPDATE users SET profile_image_url = ${profileImages[0]} WHERE id = ${LOCAL_DEV_ID}`);
+  await db.execute(sql`UPDATE users SET profile_image_url = ${profileImages[0]}, email_verified = true WHERE id = ${LOCAL_DEV_ID}`);
 
   for (let i = 0; i < Math.min(20, createdUsers.length); i++) {
     await db.execute(sql`INSERT INTO user_follows (id, follower_id, followed_id) VALUES (${uuid()}, ${LOCAL_DEV_ID}, ${createdUsers[i].id})`);

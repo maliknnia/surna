@@ -91,6 +91,38 @@ function applyBlur(lat: number, lng: number, blurM: number): { lat: number; lng:
   return { lat: lat + latOffset, lng: lng + lngOffset };
 }
 
+function parseRouteCoordinates(raw: unknown): { lat: number; lng: number }[] {
+  if (!Array.isArray(raw) || raw.length < 2) return [];
+  const coords: { lat: number; lng: number }[] = [];
+  for (const point of raw) {
+    if (Array.isArray(point) && point.length >= 2) {
+      const lat = Number(point[0]);
+      const lng = Number(point[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) coords.push({ lat, lng });
+      continue;
+    }
+    if (point && typeof point === "object") {
+      const p = point as { lat?: unknown; lng?: unknown };
+      const lat = Number(p.lat);
+      const lng = Number(p.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) coords.push({ lat, lng });
+    }
+  }
+  return coords;
+}
+
+function routeInBbox(
+  coords: { lat: number; lng: number }[],
+  minLat: number,
+  minLng: number,
+  maxLat: number,
+  maxLng: number,
+): boolean {
+  return coords.some(
+    (c) => c.lat >= minLat && c.lat <= maxLat && c.lng >= minLng && c.lng <= maxLng,
+  );
+}
+
 mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
   try {
     const { bbox, zoom = "13", layers = "people,teams,places,events", mode = "mixed" } = req.query;
@@ -118,8 +150,9 @@ mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
       mode as string
     );
 
-    const { items, entityPairs } = await cacheAside(viewportKey, TTL.MAP_MARKERS, async () => {
+    const { items, entityPairs, routes } = await cacheAside(viewportKey, TTL.MAP_MARKERS, async () => {
       const items: any[] = [];
+      const routes: any[] = [];
       const entityPairs: { ownerType: string; ownerId: string }[] = [];
 
       if (enabledLayers.includes('people')) {
@@ -186,6 +219,15 @@ mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
           if (!coords) continue;
           if (coords.lat < minLat || coords.lat > maxLat || coords.lng < minLng || coords.lng > maxLng) continue;
           const isLive = e.startDate && new Date(e.startDate).getTime() <= Date.now() && new Date(e.startDate).getTime() > Date.now() - 3 * 3600 * 1000;
+          const routeCoords = parseRouteCoordinates(e.route_coordinates ?? e.routeCoordinates);
+          if (routeCoords.length >= 2 && routeInBbox(routeCoords, minLat, minLng, maxLat, maxLng)) {
+            routes.push({
+              id: e.id,
+              title: e.title || "Event",
+              sportType: e.sport || "cycling",
+              coordinates: routeCoords,
+            });
+          }
           entityPairs.push({ ownerType: 'event', ownerId: e.id });
           items.push({
             type: 'event',
@@ -275,7 +317,7 @@ mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
       } catch (e) { console.error('Places query error:', e); }
     }
 
-      return { items, entityPairs };
+      return { items, entityPairs, routes };
     });
 
     // Strip the viewer's own person marker AND shallow-clone every item so
@@ -293,6 +335,16 @@ mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
       viewerId ?? null,
       viewerFilteredItems,
     );
+
+    if (viewerId) {
+      const { getBlockedUserIds } = await import("../infrastructure/phase3Social");
+      const blockedIds = await getBlockedUserIds(viewerId);
+      if (blockedIds.size > 0) {
+        viewerFilteredItems = viewerFilteredItems.filter(
+          (it) => !(it.type === "person" && blockedIds.has(it.id)),
+        );
+      }
+    }
 
     if (viewerId) {
       const storyStates = await getStoryStateForEntities(entityPairs, viewerId);
@@ -320,12 +372,13 @@ mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
     res.json({
       serverTime: new Date().toISOString(),
       items: viewerFilteredItems,
+      routes,
       stats,
       clusters: []
     });
   } catch (error) {
     console.error("Error in map viewport:", error);
-    res.json({ serverTime: new Date().toISOString(), items: [], stats: {}, clusters: [] });
+    res.json({ serverTime: new Date().toISOString(), items: [], routes: [], stats: {}, clusters: [] });
   }
 });
 

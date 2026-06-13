@@ -1,23 +1,56 @@
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, ArrowLeft, Loader2, Crown } from "lucide-react";
+import { CheckCircle, ArrowLeft, Loader2, Crown, Package } from "lucide-react";
 import { Link } from "wouter";
 import { activateProSubscription, invalidateProEntitlement } from "@/hooks/useProEntitlement";
 
-type Status = "idle" | "activating" | "pro_active" | "payment_only" | "error";
+type Status = "idle" | "activating" | "pro_active" | "payment_only" | "marketplace" | "error";
+
+type OrderConfirmation = {
+  id: string;
+  total_amount: string | number;
+  currency?: string;
+  status?: string;
+  items?: Array<{ title?: string; qty?: number; price?: string }>;
+};
 
 export default function PaymentSuccess() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paymentIntent, setPaymentIntent] = useState<string | null>(null);
+  const [order, setOrder] = useState<OrderConfirmation | null>(null);
+
+  const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const piFromUrl = params?.get("payment_intent");
+
+  const { data: orderData, isLoading: orderLoading } = useQuery({
+    queryKey: ["/api/marketplace/orders/confirmation", piFromUrl],
+    enabled: !!piFromUrl && status === "payment_only",
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/marketplace/orders/confirmation?payment_intent=${encodeURIComponent(piFromUrl!)}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.order as OrderConfirmation | null;
+    },
+  });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("session_id");
-    const pi = params.get("payment_intent");
+    if (orderData) {
+      setOrder(orderData);
+      setStatus("marketplace");
+    }
+  }, [orderData]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const sessionId = searchParams.get("session_id");
+    const pi = searchParams.get("payment_intent");
     if (pi) setPaymentIntent(pi);
 
     if (sessionId) {
@@ -51,7 +84,8 @@ export default function PaymentSuccess() {
   }, [queryClient]);
 
   const isPro = status === "pro_active";
-  const loading = status === "idle" || status === "activating";
+  const isMarketplace = status === "marketplace";
+  const loading = status === "idle" || status === "activating" || (status === "payment_only" && orderLoading && !!piFromUrl);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -62,34 +96,59 @@ export default function PaymentSuccess() {
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             ) : isPro ? (
               <Crown className="w-8 h-8 text-primary" />
+            ) : isMarketplace ? (
+              <Package className="w-8 h-8 text-primary" />
             ) : (
               <CheckCircle className="w-8 h-8 text-token-text" />
             )}
           </div>
           <CardTitle className="text-token-text">
             {loading
-              ? "Confirming your subscription…"
+              ? "Confirming your order…"
               : isPro
                 ? "Welcome to SURNA Pro"
-                : "Payment successful"}
+                : isMarketplace
+                  ? "Order confirmed"
+                  : "Payment successful"}
           </CardTitle>
           <CardDescription>
             {loading
-              ? "Unlocking Pro tools across the app."
+              ? "Finalizing your purchase."
               : isPro
                 ? "Your Pro tools are live in the main app and the Pro dashboard."
-                : "Your payment has been processed."}
+                : isMarketplace
+                  ? "Your marketplace order has been fulfilled. The seller has been notified."
+                  : "Your payment has been processed."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {errorMessage && (
-            <p className="text-sm text-destructive">{errorMessage}</p>
+          {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+
+          {isMarketplace && order && (
+            <div className="text-left rounded-lg border border-border p-4 space-y-2">
+              <p className="text-sm font-semibold">Order #{String(order.id).slice(0, 8)}</p>
+              <p className="text-sm text-muted-foreground capitalize">Status: {order.status ?? "fulfilled"}</p>
+              <p className="text-lg font-bold">
+                Total: {order.currency === "USD" ? "$" : "€"}
+                {Number(order.total_amount).toFixed(2)}
+              </p>
+              {Array.isArray(order.items) && order.items.length > 0 && (
+                <ul className="text-sm space-y-1 pt-2 border-t border-border">
+                  {order.items.map((item, i) => (
+                    <li key={i} className="flex justify-between gap-2">
+                      <span className="truncate">{item.title ?? "Item"} × {item.qty ?? 1}</span>
+                      <span className="shrink-0">{item.price != null ? `€${item.price}` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
-          {paymentIntent && (
+
+          {paymentIntent && !isMarketplace && (
             <div className="bg-transparent border border-border p-4 rounded-lg">
               <p className="text-sm text-token-text-secondary">
-                Payment ID:{" "}
-                <span className="font-mono text-xs">{paymentIntent}</span>
+                Payment ID: <span className="font-mono text-xs">{paymentIntent}</span>
               </p>
             </div>
           )}
@@ -102,10 +161,10 @@ export default function PaymentSuccess() {
                 </Button>
               </Link>
             )}
-            {isPro && (
-              <Link href="/my-hub">
-                <Button variant="outline" className="w-full" data-testid="button-my-hub">
-                  Go to My Hub
+            {isMarketplace && (
+              <Link href="/payment-history">
+                <Button variant="outline" className="w-full">
+                  View payment history
                 </Button>
               </Link>
             )}

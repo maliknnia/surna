@@ -7,6 +7,7 @@ export const createMatchSchema = z.object({
   sport: z.string().min(1),
   opponentType: z.enum(['user', 'team']).optional(),
   opponentId: z.string().optional(),
+  hostTeamId: z.string().optional(),
   rules: z.string().optional(),
   visibility: z.enum(['public', 'private', 'invite']).default('public'),
   location: z.object({

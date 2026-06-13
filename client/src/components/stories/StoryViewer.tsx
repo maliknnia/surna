@@ -34,7 +34,6 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { StoryWithUser } from "@shared/schema";
 import {
   isDemoStoryId,
-  mergeApiStoriesWithDemo,
 } from "@/lib/demoStories";
 
 interface StoryViewerProps {
@@ -267,7 +266,7 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
     enabled: !!user,
   });
 
-  const allStories = mergeApiStoriesWithDemo(apiStories);
+  const allStories = apiStories;
 
   const storiesByUser = useMemo(
     () =>

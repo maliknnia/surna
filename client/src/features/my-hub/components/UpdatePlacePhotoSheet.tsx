@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ImagePlus, Loader2 } from "lucide-react";
 import type { MyHubPlace } from "./MyHubPlaceCard";
+import { capturePhoto } from "@/lib/capacitor/camera";
 
 interface Props {
   place: MyHubPlace | null;
@@ -145,7 +146,7 @@ export function UpdatePlacePhotoSheet({ place, open, onOpenChange }: Props) {
           {!previewUrl ? (
             <button
               type="button"
-              onClick={() => inputRef.current?.click()}
+              onClick={() => void capturePhoto({ source: "gallery" }).then((f) => handlePick(f))}
               className="w-full rounded-2xl flex flex-col items-center justify-center gap-2 py-10"
               style={{
                 background: "var(--surna-bg-highlight)",
@@ -176,7 +177,7 @@ export function UpdatePlacePhotoSheet({ place, open, onOpenChange }: Props) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => inputRef.current?.click()}
+                onClick={() => void capturePhoto({ source: "gallery" }).then((f) => handlePick(f))}
                 disabled={mutation.isPending}
                 data-testid="place-photo-replace"
               >

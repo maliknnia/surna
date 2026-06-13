@@ -139,6 +139,9 @@ export function useCreateEvent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(eventData),
+      }).then((result) => {
+        console.log("[Fix 6] Event created via POST /api/events");
+        return result;
       });
     },
     onSuccess: () => {

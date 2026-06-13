@@ -5,6 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { getMessengerTheme } from './messengerTheme';
 import FormationMessageCard from '@/pages/pro/components/FormationMessageCard';
 import { parseFormationMessage } from '@/pages/pro/lib/tacticalFormations';
+import { BillPaymentCard, parseBillCardBody } from './BillPaymentCard';
 import { useAuth } from '@/hooks/useAuth';
 
 interface MessageBubbleProps {
@@ -257,10 +258,12 @@ export default function MessageBubble({
   const audioActive = isFromMe ? 'rgba(255,255,255,0.9)' : (isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.55)');
   const audioIdle = isFromMe ? 'rgba(255,255,255,0.4)' : (isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.25)');
   const formationPayload = message.body ? parseFormationMessage(message.body.split('\n__SURNA_PLAYER_NOTE__')[0]) : null;
+  const billPayload = message.body ? parseBillCardBody(message.body) : null;
   const isPlainText =
     message.kind === "text" &&
     message.body &&
     !formationPayload &&
+    !billPayload &&
     !String(message.body).startsWith("__FORWARDED__\n");
   const bubbleRadius = isFromMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px";
   const playerOnlyNote = message.body?.includes('__SURNA_PLAYER_NOTE__')
@@ -417,7 +420,11 @@ export default function MessageBubble({
                 </div>
               )}
 
-              {message.kind === 'text' && message.body && !formationPayload && (
+              {message.kind === 'text' && billPayload && (
+                <BillPaymentCard payload={billPayload} isFromMe={isFromMe} isDark={isDark} />
+              )}
+
+              {message.kind === 'text' && message.body && !formationPayload && !billPayload && (
                 <>
                   {String(message.body || "").startsWith("__FORWARDED__\n") && (
                     <p style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, marginBottom: 4, color: isFromMe ? sentText : recvText }}>

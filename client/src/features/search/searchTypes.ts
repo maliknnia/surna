@@ -32,6 +32,14 @@ export interface SearchTeam extends Team {
   isInstant?: boolean;
 }
 
+export interface SearchRoute {
+  id: string;
+  title: string;
+  sport?: string | null;
+  location?: string | null;
+  startsAt?: string | null;
+}
+
 export interface UnifiedSearchResults {
   users: User[];
   teams: SearchTeam[];
@@ -39,6 +47,10 @@ export interface UnifiedSearchResults {
   coaches: SearchCoach[];
   places: SearchPlace[];
   products: SearchProduct[];
+  /** Grouped aliases from GET /api/search */
+  players?: User[];
+  venues?: SearchPlace[];
+  routes?: SearchRoute[];
 }
 
 export interface SearchAd {

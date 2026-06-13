@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 import {
   MAP_AUDIENCE_LABELS,
   MAP_LOCATION_AUDIENCES,
@@ -8,7 +9,15 @@ import {
   type MapSettings,
   type SavedMapPlace,
 } from "@shared/mapSettings";
-import { X, Trash2, Star } from "lucide-react";
+import { X, Trash2, Star, Moon, Sun, Globe } from "lucide-react";
+import {
+  readMapTileStyle,
+  writeMapTileStyle,
+  MAP_TILE_STYLE_CHANGE_EVENT,
+  type MapTileStyle,
+} from "@/lib/mapTileStyle";
+
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY?.trim() || "";
 
 const LAYER_LABELS: Record<MapLayerKey, string> = {
   events: "Events",
@@ -96,6 +105,22 @@ export function MapSettingsSheet({
   onReset,
   isDark = true,
 }: MapSettingsSheetProps) {
+  const [tileStyle, setTileStyle] = useState<MapTileStyle>("dark");
+
+  useEffect(() => {
+    if (!open) return;
+    setTileStyle(readMapTileStyle() ?? (isDark ? "dark" : "light"));
+  }, [open, isDark]);
+
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const detail = (event as CustomEvent<MapTileStyle>).detail;
+      if (detail) setTileStyle(detail);
+    };
+    window.addEventListener(MAP_TILE_STYLE_CHANGE_EVENT, sync);
+    return () => window.removeEventListener(MAP_TILE_STYLE_CHANGE_EVENT, sync);
+  }, []);
+
   if (!open) return null;
 
   const textPrimary = isDark ? "#ffffff" : "#111111";
@@ -335,26 +360,43 @@ export function MapSettingsSheet({
           )}
 
           <SectionTitle color={sheetLabel}>Map style</SectionTitle>
-          <div className="grid grid-cols-2 gap-2">
-            {(["dark", "standard"] as const).map((style) => {
-              const active = settings.mapStyle === style;
-              return (
-                <button
-                  key={style}
-                  type="button"
-                  onClick={() => onChange({ mapStyle: style })}
-                  className="py-3 rounded-xl text-[13px] font-semibold capitalize transition-all active:scale-95"
-                  style={{
-                    background: active ? tileActiveBg : tileBg,
-                    border: active ? tileActiveBorder : tileBorder,
-                    color: active ? textPrimary : textMuted,
-                  }}
-                >
-                  {style === "dark" ? "Dark map" : "Standard map"}
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-3 gap-2">
+            {(
+              [
+                { mode: "dark" as const, label: "Dark", Icon: Moon },
+                { mode: "light" as const, label: "Light", Icon: Sun },
+                { mode: "satellite" as const, label: "Satellite", Icon: Globe },
+              ] as const
+            )
+              .filter((opt) => MAPTILER_KEY || opt.mode !== "satellite")
+              .map(({ mode, label, Icon }) => {
+                const active = tileStyle === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => {
+                      writeMapTileStyle(mode);
+                      setTileStyle(mode);
+                    }}
+                    className="py-3 rounded-xl text-[12px] font-semibold transition-all active:scale-95 flex flex-col items-center gap-1.5"
+                    style={{
+                      background: active ? tileActiveBg : tileBg,
+                      border: active ? tileActiveBorder : tileBorder,
+                      color: active ? textPrimary : textMuted,
+                    }}
+                  >
+                    <Icon size={16} strokeWidth={2} />
+                    {label}
+                  </button>
+                );
+              })}
           </div>
+          {!MAPTILER_KEY && (
+            <p className="text-[11px] mt-2" style={{ color: textMuted }}>
+              Satellite view needs a MapTiler key in your environment.
+            </p>
+          )}
 
           <button
             type="button"

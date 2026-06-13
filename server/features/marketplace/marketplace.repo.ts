@@ -636,5 +636,6 @@ export async function fulfillMarketplacePayment(
     });
   }
 
+  console.log("[Fix 4] Marketplace order fulfilled:", orderId, "sellers notified:", sellerIds.length);
   return { orderId, alreadyFulfilled: false };
 }

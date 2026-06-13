@@ -18,6 +18,7 @@ export function ensureEventsCompatTables(): Promise<void> {
       ALTER TABLE events ADD COLUMN IF NOT EXISTS lat numeric(10, 7);
       ALTER TABLE events ADD COLUMN IF NOT EXISTS lng numeric(10, 7);
       ALTER TABLE events ADD COLUMN IF NOT EXISTS location_detail jsonb;
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS route_coordinates jsonb;
       ALTER TABLE events ADD COLUMN IF NOT EXISTS chat_group_id text;
 
       CREATE TABLE IF NOT EXISTS event_rsvps (
@@ -45,11 +46,20 @@ async function bustEventListCaches() {
 
 export async function insertEvent(creatorId: string, e: any) {
   const locationDetail = e.locationDetail ? JSON.stringify(e.locationDetail) : null;
+  const routeCoordinates = e.routeCoordinates ? JSON.stringify(e.routeCoordinates) : null;
+  const eventType = e.eventType ?? e.category ?? "training";
   const q = await db.execute(sql`
-    INSERT INTO events (creator_id, title, description, starts_at, ends_at, location, visibility, capacity, cover_media_id, lat, lng, location_detail)
-    VALUES (${creatorId}, ${e.title}, ${e.description ?? ''}, ${e.startsAt}, ${e.endsAt},
-            ${e.location ?? ''}, ${e.visibility ?? 'public'}, ${e.capacity ?? null}, ${e.coverMediaId ?? null},
-            ${e.lat ?? null}, ${e.lng ?? null}, ${locationDetail}::jsonb)
+    INSERT INTO events (
+      creator_id, organizer_id, title, description, event_type, sport,
+      starts_at, ends_at, start_date, end_date,
+      location, visibility, capacity, cover_media_id, lat, lng, location_detail, route_coordinates
+    )
+    VALUES (
+      ${creatorId}, ${creatorId}, ${e.title}, ${e.description ?? ''}, ${eventType}, ${e.sport ?? null},
+      ${e.startsAt}, ${e.endsAt}, ${e.startsAt}, ${e.endsAt},
+      ${e.location ?? ''}, ${e.visibility ?? 'public'}, ${e.capacity ?? null}, ${e.coverMediaId ?? null},
+      ${e.lat ?? null}, ${e.lng ?? null}, ${locationDetail}::jsonb, ${routeCoordinates}::jsonb
+    )
     RETURNING *;
   `);
   await bustEventListCaches();
@@ -85,6 +95,7 @@ export async function updateEvent(creatorId: string, id: string, e: any) {
       lat = COALESCE(${e.lat ?? null}, lat),
       lng = COALESCE(${e.lng ?? null}, lng),
       location_detail = COALESCE(${e.locationDetail ? JSON.stringify(e.locationDetail) : null}::jsonb, location_detail),
+      route_coordinates = COALESCE(${e.routeCoordinates ? JSON.stringify(e.routeCoordinates) : null}::jsonb, route_coordinates),
       visibility = COALESCE(${e.visibility}, visibility),
       capacity = COALESCE(${e.capacity}, capacity),
       cover_media_id = COALESCE(${e.coverMediaId}, cover_media_id),
@@ -95,12 +106,6 @@ export async function updateEvent(creatorId: string, id: string, e: any) {
   `);
   await bustEventListCaches();
   return q.rows[0] ?? null;
-}
-
-export async function deleteEvent(creatorId: string, id: string) {
-  const r = await db.execute(sql`DELETE FROM events WHERE id=${id} AND creator_id=${creatorId} RETURNING id;`);
-  await bustEventListCaches();
-  return r.rows[0]?.id ?? null;
 }
 
 export async function getEvent(id: string) {
@@ -128,9 +133,43 @@ export async function getEvent(id: string) {
   return q.rows[0] ?? null;
 }
 
-export async function countGoing(eventId: string) {
+export async function deleteEvent(creatorId: string, id: string) {
+  const r = await db.execute(sql`DELETE FROM events WHERE id=${id} AND creator_id=${creatorId} RETURNING id;`);
+  await bustEventListCaches();
+  return r.rows[0]?.id ?? null;
+}
+
+export async function getEventRoute(eventId: string) {
+  await ensureEventsCompatTables();
+  const q = await dbRead.execute(sql`
+    SELECT id, sport, visibility, route_coordinates
+    FROM events
+    WHERE id = ${eventId}
+    LIMIT 1
+  `);
+  return q.rows[0] ?? null;
+}
+
+export async function saveEventRoute(
+  creatorId: string,
+  eventId: string,
+  routeCoordinates: [number, number][],
+) {
+  await ensureEventsCompatTables();
+  const json = JSON.stringify(routeCoordinates);
+  const q = await db.execute(sql`
+    UPDATE events
+    SET route_coordinates = ${json}::jsonb, updated_at = NOW()
+    WHERE id = ${eventId} AND creator_id = ${creatorId}
+    RETURNING id, sport, route_coordinates
+  `);
+  await bustEventListCaches();
+  return q.rows[0] ?? null;
+}
+
+export async function countGoing(eventId: string): Promise<number> {
   const q = await dbRead.execute(sql`SELECT COUNT(*)::int AS c FROM event_rsvps WHERE event_id=${eventId} AND status='going';`);
-  return q.rows[0]?.c ?? 0;
+  return Number((q.rows[0] as { c?: number } | undefined)?.c ?? 0);
 }
 
 export async function listPublic(qs: {from?: string,to?: string,q?: string,category?: string,lat?: number,lng?: number,cursorStartsAt?:string,cursorId?:string,limit:number}) {
@@ -239,10 +278,54 @@ export async function upsertRSVP(eventId: string, userId: string, status: string
   const q = await db.execute(sql`
     INSERT INTO event_rsvps (event_id, user_id, status)
     VALUES (${eventId}, ${userId}, ${status})
-    ON CONFLICT (event_id, user_id) DO UPDATE SET status=EXCLUDED.status
+    ON CONFLICT (event_id, user_id) DO UPDATE SET status=EXCLUDED.status, updated_at=now()
     RETURNING *;
   `);
   return q.rows[0];
+}
+
+export async function getUserRSVP(eventId: string, userId: string) {
+  const q = await db.execute(sql`
+    SELECT * FROM event_rsvps WHERE event_id = ${eventId} AND user_id = ${userId} LIMIT 1
+  `);
+  return (q.rows[0] as { status?: string } | undefined) ?? null;
+}
+
+export async function assignWaitlistPosition(eventId: string, userId: string) {
+  const q = await db.execute(sql`
+    SELECT COALESCE(MAX(waitlist_position), 0) + 1 AS next_pos
+    FROM event_rsvps WHERE event_id = ${eventId} AND status = 'waitlist'
+  `);
+  const pos = (q.rows[0] as { next_pos: number })?.next_pos ?? 1;
+  await db.execute(sql`
+    UPDATE event_rsvps SET waitlist_position = ${pos}
+    WHERE event_id = ${eventId} AND user_id = ${userId}
+  `);
+  return pos;
+}
+
+export async function promoteNextWaitlisted(eventId: string): Promise<string | null> {
+  const q = await db.execute(sql`
+    SELECT user_id FROM event_rsvps
+    WHERE event_id = ${eventId} AND status = 'waitlist'
+    ORDER BY waitlist_position ASC NULLS LAST, created_at ASC
+    LIMIT 1
+  `);
+  const nextUserId = (q.rows[0] as { user_id?: string } | undefined)?.user_id;
+  if (!nextUserId) return null;
+  await db.execute(sql`
+    UPDATE event_rsvps
+    SET status = 'going', waitlist_position = NULL, updated_at = now()
+    WHERE event_id = ${eventId} AND user_id = ${nextUserId}
+  `);
+  const { insertNotification } = await import("../notifications/notifications.repo");
+  await insertNotification({
+    userId: nextUserId,
+    type: "event_rsvp",
+    message: "A spot opened up — you're now going to the event!",
+    metadata: { eventId, promotedFromWaitlist: true },
+  });
+  return nextUserId;
 }
 
 export async function issueTicket(eventId: string, userId: string) {

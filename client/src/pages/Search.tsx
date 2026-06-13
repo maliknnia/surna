@@ -60,7 +60,21 @@ const EMPTY_RESULTS: UnifiedSearchResults = {
   coaches: [],
   places: [],
   products: [],
+  routes: [],
 };
+
+async function fetchSearch(params: URLSearchParams): Promise<UnifiedSearchResults> {
+  const res = await fetch(`/api/search?${params}`, { credentials: "include" });
+  if (!res.ok) return EMPTY_RESULTS;
+  const data = await res.json();
+  return {
+    ...EMPTY_RESULTS,
+    ...data,
+    users: data.players ?? data.users ?? [],
+    places: data.venues ?? data.places ?? [],
+    routes: data.routes ?? [],
+  };
+}
 
 function displayName(user: {
   displayName?: string | null;
@@ -88,12 +102,6 @@ function formatPrice(value?: string | number | null) {
   const n = typeof value === "string" ? parseFloat(value) : value;
   if (Number.isNaN(n)) return String(value);
   return `€${n.toFixed(2)}`;
-}
-
-async function fetchSearch(params: URLSearchParams): Promise<UnifiedSearchResults> {
-  const res = await fetch(`/api/search?${params}`, { credentials: "include" });
-  if (!res.ok) return EMPTY_RESULTS;
-  return res.json();
 }
 
 function categoryToChip(id: SearchCategoryId) {
@@ -303,7 +311,8 @@ export default function Search() {
       results.events.length +
       results.coaches.length +
       results.places.length +
-      results.products.length,
+      results.products.length +
+      (results.routes?.length ?? 0),
     [results],
   );
 
@@ -738,10 +747,49 @@ export default function Search() {
               </section>
             )}
 
+            {!loading && (results.routes?.length ?? 0) > 0 && (
+              <section className="mb-6">
+                <SectionHeader
+                  title="Routes"
+                  showSeeAll={(results.routes?.length ?? 0) > 3}
+                  onSeeAll={() => setExpandedSection(expandedSection === "routes" ? null : "routes")}
+                  textPrimary={t.textPrimary}
+                  textSecondary={t.textSecondary}
+                />
+                <div className="space-y-2">
+                  {results.routes!.slice(0, renderLimit("routes", results.routes!.length)).map((route) => (
+                    <ResultRow
+                      key={route.id}
+                      cardBg={t.inputBg}
+                      border={t.border}
+                      onClick={() => navigateTo(ROUTES.event(route.id))}
+                    >
+                      <div
+                        className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center"
+                        style={{ background: iconTileBg }}
+                      >
+                        <MapPin size={20} style={{ color: t.textSecondary }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-bold truncate" style={{ color: t.textPrimary }}>
+                          {route.title}
+                        </p>
+                        <p className="text-[12px] truncate" style={{ color: t.textSecondary }}>
+                          {[route.sport, route.location, formatEventTime(route.startsAt)]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                    </ResultRow>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {!loading && results.places.length > 0 && (
               <section className="mb-6">
                 <SectionHeader
-                  title="Places"
+                  title="Venues"
                   showSeeAll={results.places.length > 3}
                   onSeeAll={() => setExpandedSection(expandedSection === "places" ? null : "places")}
                   textPrimary={t.textPrimary}

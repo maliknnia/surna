@@ -1,4 +1,4 @@
-import { MapPin, Star, Heart, MessageCircle, DollarSign, Trophy, UserPlus, CheckCircle2 } from 'lucide-react';
+import { MapPin, Star, Heart, MessageCircle, DollarSign, Trophy, UserPlus, CheckCircle2, Ban, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +16,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
   const { toast } = useToast();
   const [isFollowing, setIsFollowing] = useState(profile.isFollowing || false);
   const [followersCount, setFollowersCount] = useState(profile.followersCount ?? profile.followers?.length ?? 0);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const handleFollow = async () => {
     // Flip the button + count immediately so the action feels instant,
@@ -28,8 +29,12 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     setFollowersCount(nextCount);
 
     try {
-      const res = await apiRequest('POST', `/api/users/${profile.id}/follow`);
-      const data = await res.json().catch(() => ({}));
+      if (nextFollowing) {
+        await apiRequest('POST', `/api/users/${profile.id}/follow`, { followingType: 'user' });
+      } else {
+        await apiRequest('DELETE', `/api/users/${profile.id}/unfollow`);
+      }
+      const data = { following: nextFollowing };
       if (typeof data.following === 'boolean') {
         setIsFollowing(data.following);
       }
@@ -59,6 +64,36 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
   const handleChallenge = () => {
     window.location.href = `/challenges/create?opponentId=${encodeURIComponent(profile.id)}&opponentType=user`;
+  };
+
+  const handleBlock = async () => {
+    try {
+      if (isBlocked) {
+        await apiRequest('DELETE', `/api/users/${profile.id}/block`);
+        setIsBlocked(false);
+        toast({ title: "User unblocked" });
+      } else {
+        await apiRequest('POST', `/api/users/${profile.id}/block`);
+        setIsBlocked(true);
+        toast({ title: "User blocked", description: "They won't appear in your feed, map, or search." });
+      }
+    } catch {
+      toast({ title: "Couldn't update block", variant: "destructive" });
+    }
+  };
+
+  const handleReport = async () => {
+    try {
+      await apiRequest('POST', '/api/reports', {
+        contentType: 'user',
+        contentId: profile.id,
+        reason: 'other',
+        description: `Reported profile ${profile.username || profile.id}`,
+      });
+      toast({ title: "Report submitted" });
+    } catch {
+      toast({ title: "Couldn't submit report", variant: "destructive" });
+    }
   };
 
   const completionChecks = [
@@ -185,6 +220,22 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
               >
                 <Trophy size={18} />
                 Challenge
+              </Button>
+              <Button
+                onClick={handleBlock}
+                variant="outline"
+                data-testid="button-block"
+              >
+                <Ban size={18} />
+                {isBlocked ? 'Unblock' : 'Block'}
+              </Button>
+              <Button
+                onClick={handleReport}
+                variant="outline"
+                data-testid="button-report"
+              >
+                <Flag size={18} />
+                Report
               </Button>
             </div>
           )}

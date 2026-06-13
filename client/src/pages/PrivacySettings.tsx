@@ -16,6 +16,7 @@ import {
   Monitor,
   LogOut,
   Flag,
+  Wallet,
 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -229,6 +230,30 @@ export default function PrivacySettingsPage() {
           options={AUDIENCE_OPTS}
           onChange={(v) => void patch({ teamsVisibility: v as PrivacyAudience })}
         />
+        <p className="px-4 pt-2 pb-1 text-[12px]" style={{ color: MUTED }}>Weekly training load</p>
+        <AudiencePicker
+          value={settings.healthWeeklyLoadVisibility}
+          options={AUDIENCE_OPTS}
+          onChange={(v) => void patch({ healthWeeklyLoadVisibility: v as PrivacyAudience })}
+        />
+        <p className="px-4 pt-2 pb-1 text-[12px]" style={{ color: MUTED }}>Monthly activity trend</p>
+        <AudiencePicker
+          value={settings.healthMonthlyTrendVisibility}
+          options={AUDIENCE_OPTS}
+          onChange={(v) => void patch({ healthMonthlyTrendVisibility: v as PrivacyAudience })}
+        />
+        <p className="px-4 pt-2 pb-1 text-[12px]" style={{ color: MUTED }}>Activity streak</p>
+        <AudiencePicker
+          value={settings.healthStreakVisibility}
+          options={AUDIENCE_OPTS}
+          onChange={(v) => void patch({ healthStreakVisibility: v as PrivacyAudience })}
+        />
+        <p className="px-4 pt-2 pb-1 text-[12px]" style={{ color: MUTED }}>Personal bests</p>
+        <AudiencePicker
+          value={settings.healthPersonalBestsVisibility}
+          options={AUDIENCE_OPTS}
+          onChange={(v) => void patch({ healthPersonalBestsVisibility: v as PrivacyAudience })}
+        />
         <PrivacyRow
           icon={User}
           title="Show me in search results"
@@ -345,6 +370,16 @@ export default function PrivacySettingsPage() {
             { id: "friends", label: "Friends Only" },
           ]}
           onChange={(v) => void patch({ marketplaceVisibility: v as UserPrivacySettings["marketplaceVisibility"] })}
+        />
+      </div>
+
+      <SectionHeader>Payments</SectionHeader>
+      <div style={{ background: "#1a1a1a" }}>
+        <PrivacyRow
+          icon={Wallet}
+          title="Payment history"
+          subtitle="Marketplace, bills, bookings, tournaments"
+          onClick={() => navigate("/payment-history")}
         />
       </div>
 

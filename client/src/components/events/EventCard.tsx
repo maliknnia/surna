@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type MouseEvent } from "react";
 import { useRSVP } from "@/hooks/useEvents";
 import { Users, MapPin } from "lucide-react";
+import { eventDetailPath, isRouteSport, resolveEventRouteCoordinates, storeMapRouteFocus } from "@/lib/eventRoutes";
 import { mapPath } from "@/lib/mapNavigation";
 import { useLocation } from "wouter";
 import { markNavReturn, mobilePanelReturnPath } from "@/lib/navigation";
@@ -131,12 +132,26 @@ export default function EventCard({ ev }: { ev: any }) {
   const openEvent = () => {
     const onHome = window.location.pathname === "/" || window.location.pathname === "/mobile";
     markNavReturn(onHome ? mobilePanelReturnPath("events") : "/events");
-    setLocation(`/events/${encodeURIComponent(String(ev.id))}`);
+    setLocation(eventDetailPath(String(ev.id), ev.sport));
   };
 
   const openOnMap = () => {
     setLocation(mapPath({ type: "event", id: String(ev.id) }));
   };
+
+  const openViewRoute = async (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const coordinates = await resolveEventRouteCoordinates(ev);
+    storeMapRouteFocus({
+      id: String(ev.id),
+      title: String(ev.title ?? "Event"),
+      sportType: String(sport ?? ev.sport ?? "Running"),
+      coordinates,
+    });
+    setLocation(mapPath({ type: "event", id: String(ev.id) }));
+  };
+
+  const showViewRoute = isRouteSport(sport ?? ev.sport);
 
   const primaryLabel = (() => {
     if (rsvp.isPending) return "...";
@@ -287,6 +302,20 @@ export default function EventCard({ ev }: { ev: any }) {
             >
               View
             </button>
+            {showViewRoute && (
+              <button
+                type="button"
+                className="h-9 px-4 rounded-full text-[13px] font-semibold transition-all duration-200 active:scale-[0.96] backdrop-blur-sm"
+                style={{
+                  background: surfaceFaint,
+                  color: textSecondary,
+                  border: `1px solid ${viewBtnBorder}`,
+                }}
+                onClick={openViewRoute}
+              >
+                View Route
+              </button>
+            )}
             {(ev.location || eventCoords) && (
               <button
                 type="button"

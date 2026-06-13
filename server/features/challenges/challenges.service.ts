@@ -26,12 +26,32 @@ export class ChallengesService {
 
   // Create a new competitive match
   async createMatch(userId: string, data: any): Promise<CompetitiveMatch> {
+    const { ensurePhase6SportTables } = await import("../../infrastructure/phase6Sport");
+    await ensurePhase6SportTables();
+
+    const {
+      validateChallengeCreation,
+    } = await import("../../services/sportChallengeRules");
+
+    const creatorType = data.hostTeamId ? "team" : "user";
+    const creatorId = data.hostTeamId ?? userId;
+
+    const { challengeType } = await validateChallengeCreation({
+      sport: data.sport,
+      type: data.type,
+      creatorId,
+      creatorType,
+      opponentId: data.opponentId,
+      opponentType: data.opponentType,
+    });
+
     const match = await challengesRepo.createMatch({
       ...data,
-      creatorType: 'user',
-      creatorId: userId,
+      challengeType,
+      creatorType: data.hostTeamId ? "team" : "user",
+      creatorId: data.hostTeamId ?? userId,
       status: data.visibility === 'invite' && data.opponentId ? 'invited' : 'pending',
-    });
+    } as any);
 
     // Add creator as participant
     await challengesRepo.addParticipant({
@@ -79,7 +99,15 @@ export class ChallengesService {
       throw new Error('Match not found');
     }
 
-    // Update participant status
+    const challengeType =
+      (match as { challengeType?: string }).challengeType ??
+      (await import("../../services/sportChallengeRules")).resolveChallengeType(match.sport);
+
+    if (challengeType === "contact") {
+      const { validateContactMatchUsers } = await import("../../services/sportChallengeRules");
+      await validateContactMatchUsers(match.creatorId, userId);
+    }
+
     await challengesRepo.updateParticipantStatus(matchId, userId, 'accepted');
 
     // Update match status
@@ -245,6 +273,14 @@ export class ChallengesService {
       throw new Error('Only the creator can start the match');
     }
 
+    const challengeType =
+      (match as { challengeType?: string }).challengeType ??
+      (await import("../../services/sportChallengeRules")).resolveChallengeType(match.sport);
+    if (challengeType === "contact") {
+      const { validateContactManagerConsent } = await import("../../services/sportChallengeRules");
+      await validateContactManagerConsent(matchId);
+    }
+
     const updatedMatch = await challengesRepo.updateMatch(matchId, {
       status: 'live',
     });
@@ -333,7 +369,70 @@ export class ChallengesService {
     await this.awardChallengeWinnerBadge(confirmedResult.matchId, confirmedResult.outcome)
       .catch(err => console.error('[Challenges] Winner badge award failed:', err));
 
+    await this.applyCompetitiveOutcome(confirmedResult.matchId, confirmedResult.outcome)
+      .catch(err => console.error('[Phase4] Competitive outcome failed:', err));
+
     return confirmedResult;
+  }
+
+  private async applyCompetitiveOutcome(matchId: string, outcome: string): Promise<void> {
+    if (outcome === 'draw') return;
+
+    const winnerUserIds = await this.resolveWinnerUserIds(matchId, outcome);
+    const loserUserIds = await this.resolveLoserUserIds(matchId, outcome);
+    const winnerTeamIds = await this.resolveWinnerTeamIds(matchId, outcome);
+    const loserTeamIds = await this.resolveLoserTeamIds(matchId, outcome);
+
+    const { handleChallengeOutcome } = await import('../../services/competitiveEngine');
+    await handleChallengeOutcome(matchId, winnerUserIds, loserUserIds, winnerTeamIds, loserTeamIds);
+  }
+
+  private async resolveLoserUserIds(matchId: string, outcome: string): Promise<string[]> {
+    if (outcome === 'draw') return [];
+    const participants = await challengesRepo.getParticipants(matchId);
+    const host = participants.find(p => p.role === 'host');
+    const guest = participants.find(p => p.role === 'guest');
+    if (!host || !guest) return [];
+
+    const loser =
+      outcome === 'hostWin'
+        ? guest
+        : outcome === 'guestWin' || outcome === 'forfeit'
+          ? host
+          : null;
+    if (!loser) return [];
+
+    if (loser.participantType === 'user') return [loser.participantId];
+    if (loser.participantType === 'team') {
+      const { db } = await import("../../db");
+      const { teams } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const [team] = await db.select({ captainId: teams.captainId }).from(teams).where(eq(teams.id, loser.participantId)).limit(1);
+      return team?.captainId ? [team.captainId] : [];
+    }
+    return [];
+  }
+
+  private async resolveWinnerTeamIds(matchId: string, outcome: string): Promise<string[]> {
+    const participants = await challengesRepo.getParticipants(matchId);
+    const host = participants.find(p => p.role === 'host');
+    const guest = participants.find(p => p.role === 'guest');
+    if (!host || !guest || outcome === 'draw') return [];
+    const winner =
+      outcome === 'hostWin' ? host : outcome === 'guestWin' || outcome === 'forfeit' ? guest : null;
+    if (winner?.participantType === 'team') return [winner.participantId];
+    return [];
+  }
+
+  private async resolveLoserTeamIds(matchId: string, outcome: string): Promise<string[]> {
+    const participants = await challengesRepo.getParticipants(matchId);
+    const host = participants.find(p => p.role === 'host');
+    const guest = participants.find(p => p.role === 'guest');
+    if (!host || !guest || outcome === 'draw') return [];
+    const loser =
+      outcome === 'hostWin' ? guest : outcome === 'guestWin' || outcome === 'forfeit' ? host : null;
+    if (loser?.participantType === 'team') return [loser.participantId];
+    return [];
   }
 
   private async resolveWinnerUserIds(matchId: string, outcome: string): Promise<string[]> {
@@ -435,6 +534,9 @@ export class ChallengesService {
 
       try {
         await gamificationService.awardBadge(userId, badgeId);
+        console.log("[Fix 5] Challenge winner badge awarded to user", userId, "match", matchId);
+        const { triggerNudgeIfNeeded } = await import("../../services/phase8ProfileService");
+        await triggerNudgeIfNeeded(userId, "first_challenge_win");
       } catch (err) {
         console.warn("[Challenges] badge award failed for", userId, err);
         continue;

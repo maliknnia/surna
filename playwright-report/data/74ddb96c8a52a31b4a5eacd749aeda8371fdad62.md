@@ -1,0 +1,50 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - img [ref=e8]
+        - heading "SURNA" [level=1] [ref=e11]
+      - heading "Choose Your Theme" [level=2] [ref=e12]
+      - paragraph [ref=e13]: You can change this anytime in settings
+    - generic [ref=e14]:
+      - button "Dark" [ref=e15] [cursor=pointer]:
+        - generic [ref=e16] [cursor=pointer]:
+          - generic [ref=e17] [cursor=pointer]: 
+          - heading "Dark" [level=3] [ref=e18] [cursor=pointer]
+      - button "Light" [ref=e27] [cursor=pointer]:
+        - generic [ref=e28] [cursor=pointer]:
+          - generic [ref=e29] [cursor=pointer]: 
+          - heading "Light" [level=3] [ref=e30] [cursor=pointer]
+  - generic [ref=e41]:
+    - generic [ref=e42]:
+      - heading "Sign in to continue" [level=1] [ref=e43]
+      - paragraph [ref=e44]: Use Google, your email, or phone number.
+    - generic [ref=e46]:
+      - button "Google" [ref=e47] [cursor=pointer]:
+        - img [ref=e48] [cursor=pointer]
+        - text: Google
+      - button "Email" [ref=e53] [cursor=pointer]:
+        - generic [ref=e54] [cursor=pointer]: 
+        - text: Email
+      - button "Phone" [ref=e55] [cursor=pointer]:
+        - img [ref=e56] [cursor=pointer]
+        - text: Phone
+    - generic [ref=e58]:
+      - textbox "Phone number" [ref=e59]
+      - button "Send verification code" [disabled]
+      - paragraph [ref=e60]:
+        - text: "Local dev: after sending, use code"
+        - strong [ref=e61]: "123456"
+        - text: unless shown otherwise.
+      - button "Quick dev sign-in" [ref=e62] [cursor=pointer]
+  - generic [ref=e63]:
+    - paragraph [ref=e64]: We use cookies to improve your SURNA experience, keep you signed in, and understand app usage.
+    - generic [ref=e65]:
+      - button "Decline" [ref=e66] [cursor=pointer]
+      - button "Accept" [ref=e67] [cursor=pointer]
+  - region "Notifications (F8)":
+    - list
+```

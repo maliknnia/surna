@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useEffect, ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useProTeam } from "./ProTeamContext";
 
 export type ProRole = "owner" | "admin" | "coach" | "manager" | "member";
 
@@ -77,21 +79,36 @@ type Ctx = {
 };
 
 const ProRoleContext = createContext<Ctx | null>(null);
-const STORAGE_KEY = "surna.pro.role";
+
+function isProRole(value: unknown): value is ProRole {
+  return typeof value === "string" && value in PERMISSIONS;
+}
 
 export function ProRoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<ProRole>("owner");
+  const { teamId } = useProTeam();
+
+  const { data: serverRole } = useQuery({
+    queryKey: ["/api/pro/team", teamId, "my-role"],
+    enabled: !!teamId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const r = await fetch(`/api/pro/team/${teamId}/my-role`, { credentials: "include" });
+      if (!r.ok) throw new Error(await r.text());
+      return (await r.json()) as { role: ProRole };
+    },
+  });
+
+  const role: ProRole = isProRole(serverRole?.role) ? serverRole.role : "member";
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY) as ProRole | null;
-      if (saved && saved in PERMISSIONS) setRoleState(saved);
-    } catch { /* ignore */ }
-  }, []);
+    if (teamId && serverRole?.role) {
+      console.log("[Fix 7] Pro role verified from database:", serverRole.role, "team", teamId);
+    }
+  }, [teamId, serverRole?.role]);
 
-  const setRole = (r: ProRole) => {
-    setRoleState(r);
-    try { localStorage.setItem(STORAGE_KEY, r); } catch { /* ignore */ }
+  const setRole = (_r: ProRole) => {
+    /* Role is server-managed; local changes are ignored. */
   };
 
   const can = (action: ProAction) => PERMISSIONS[role].includes(action);

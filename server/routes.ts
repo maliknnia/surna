@@ -285,6 +285,65 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     console.error('Failed to load JWT auth routes:', error);
   }
 
+  // Phase 3: follows, blocks, reports (register before legacy duplicate handlers)
+  try {
+    const { socialRouter } = await import("./routes/socialPhase3");
+    app.use("/api", socialRouter);
+    console.log("✅ Phase 3 social routes mounted at /api");
+  } catch (error) {
+    console.error("Failed to load Phase 3 social routes:", error);
+  }
+
+  // Phase 4: points, badges, leaderboards, streaks, weekly challenges
+  try {
+    const { competitiveRouter } = await import("./routes/competitivePhase4");
+    app.use("/api", competitiveRouter);
+    console.log("✅ Phase 4 competitive routes mounted at /api");
+  } catch (error) {
+    console.error("Failed to load Phase 4 competitive routes:", error);
+  }
+
+  // Phase 5: team bills, payments history, marketplace fulfillment, coach/tournament money
+  try {
+    const { moneyPhase5Router } = await import("./routes/phase5Money");
+    app.use("/api", moneyPhase5Router);
+    console.log("✅ Phase 5 money routes mounted at /api");
+  } catch (error) {
+    console.error("Failed to load Phase 5 money routes:", error);
+  }
+
+  try {
+    const { sportPhase6Router } = await import("./routes/phase6Sport");
+    app.use("/api", sportPhase6Router);
+    console.log("✅ Phase 6 sport routes mounted at /api");
+  } catch (error) {
+    console.error("Failed to load Phase 6 sport routes:", error);
+  }
+
+  try {
+    const { healthPhase7Router } = await import("./routes/phase7Health");
+    app.use("/api", healthPhase7Router);
+    console.log("✅ Phase 7 health routes mounted at /api");
+  } catch (error) {
+    console.error("Failed to load Phase 7 health routes:", error);
+  }
+
+  try {
+    const { profilePhase8Router } = await import("./routes/phase8Profile");
+    app.use("/api", profilePhase8Router);
+    console.log("✅ Phase 8 profile routes mounted at /api");
+  } catch (error) {
+    console.error("Failed to load Phase 8 profile routes:", error);
+  }
+
+  try {
+    const { mobilePhase9Router } = await import("./routes/phase9Mobile");
+    app.use("/api", mobilePhase9Router);
+    console.log("✅ Phase 9 mobile routes mounted at /api");
+  } catch (error) {
+    console.error("Failed to load Phase 9 mobile routes:", error);
+  }
+
   // Package #13: Admin Control System routes
   try {
     app.use("/api/admin", adminRouter);
@@ -1065,6 +1124,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
           firstName: req.user.firstName || req.user.claims?.first_name || "Local",
           lastName: req.user.lastName || req.user.claims?.last_name || "Developer",
           profileImageUrl: req.user.profileImageUrl || req.user.claims?.profile_image_url || "/avatars/me.png",
+          emailVerified: true,
         });
       }
       const userId = sessionUserId(req);
@@ -1353,18 +1413,24 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       const updateData: any = {};
       if (username !== undefined) updateData.username = username;
       if (displayName !== undefined) updateData.displayName = displayName;
+      if (req.body.location !== undefined) updateData.location = req.body.location;
+      if (req.body.skillLevel !== undefined) updateData.skillLevel = req.body.skillLevel;
 
       await ensureUserProfileColumn();
-      if (sportsPreferences !== undefined && Array.isArray(sportsPreferences) && sportsPreferences.length > 0) {
-        const [existing] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-        const currentProfile = parseUserProfile(existing?.profileJson, existing);
-        const nextProfile = mergeUserProfile(currentProfile, {
-          sports: sportsPreferences,
-        });
-        updateData.profileJson = nextProfile;
+      const [existing] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const currentProfile = parseUserProfile(existing?.profileJson, existing);
+      const nextProfile = mergeUserProfile(currentProfile, {
+        ...(sportsPreferences !== undefined && Array.isArray(sportsPreferences) && sportsPreferences.length > 0
+          ? { sports: sportsPreferences }
+          : {}),
+        profileSetupCompletedAt: new Date().toISOString(),
+      });
+      updateData.profileJson = nextProfile;
+      if (sportsPreferences?.length) {
         updateData.primarySport = sportsPreferences[0];
         updateData.sport = sportsPreferences[0];
       }
+      console.log("[Phase3-2] Onboarding preferences saved for user", userId);
       
       const [updatedUser] = await db
         .update(users)
@@ -1903,10 +1969,24 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
-      const teamData = insertTeamSchema.parse(req.body);
+      const teamData = insertTeamSchema.omit({ captainId: true }).parse(req.body);
       
-      const team = await storage.createTeam(userId, teamData);
-      res.json(team);
+      const team = await storage.createTeam(userId, teamData as Parameters<typeof storage.createTeam>[1]);
+
+      let recommendations: Awaited<ReturnType<typeof import("./services/phase6SportService").getTeamCreationRecommendations>> | null = null;
+      try {
+        const { getTeamCreationRecommendations } = await import("./services/phase6SportService");
+        recommendations = await getTeamCreationRecommendations({
+          sport: team.sport,
+          city: team.city ?? undefined,
+          lat: req.body?.lat != null ? Number(req.body.lat) : undefined,
+          lng: req.body?.lng != null ? Number(req.body.lng) : undefined,
+        });
+      } catch (recErr) {
+        console.warn("[Phase6-6] Team recommendations skipped:", recErr);
+      }
+
+      res.json({ ...team, recommendations });
     } catch (error: unknown) {
       console.error("Error creating team:", error);
       res.status(500).json({ message: "Failed to create team" });
@@ -1922,6 +2002,23 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       const { teamId } = req.params;
       
       await storage.joinTeam(teamId, userId);
+
+      try {
+        const { triggerNudgeIfNeeded } = await import("./services/phase8ProfileService");
+        const { db } = await import("./db");
+        const { teamMembers } = await import("@shared/schema");
+        const { eq, sql } = await import("drizzle-orm");
+        const count = await db
+          .select({ c: sql<number>`count(*)::int` })
+          .from(teamMembers)
+          .where(eq(teamMembers.userId, userId));
+        if (Number(count[0]?.c ?? 0) === 1) {
+          await triggerNudgeIfNeeded(userId, "first_team_join");
+        }
+      } catch (nudgeErr) {
+        console.warn("[Phase8-3] Team join nudge skipped:", nudgeErr);
+      }
+
       res.json({ success: true });
     } catch (error: unknown) {
       console.error("Error joining team:", error);
@@ -2012,10 +2109,27 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         assignerId
       );
       
+      console.log("[Phase3-7] Team role updated:", req.params.memberId, "→", role);
       res.json({ message: "Role assigned successfully" });
     } catch (error: unknown) {
       console.error("Error assigning role:", error);
       res.status(403).json({ message: errMsg(error) });
+    }
+  });
+
+  // Captain/co-captain marks member attendance
+  app.post("/api/teams/:id/members/:memberId/attendance", isAuthenticated, async (req: any, res) => {
+    try {
+      const assignerId = sessionUserId(req);
+      if (!assignerId) return res.status(401).json({ message: "User not authenticated" });
+      const canManage = await teamManagementService.hasPermission(req.params.id, assignerId, "canManageMembers");
+      if (!canManage) return res.status(403).json({ message: "Only captains can manage attendance" });
+      await teamManagementService.updateMemberActivity(req.params.id, req.params.memberId, "attendance");
+      console.log("[Phase3-7] Attendance marked for", req.params.memberId, "on team", req.params.id);
+      res.json({ ok: true });
+    } catch (error: unknown) {
+      console.error("Error marking attendance:", error);
+      res.status(500).json({ message: errMsg(error) });
     }
   });
 
@@ -2148,28 +2262,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  app.post('/api/users/:userId/follow', isAuthenticated, async (req: any, res) => {
-    try {
-      const followerId = sessionUserId(req);
-      if (!followerId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      const { userId: followingId } = req.params;
-      
-      const isFollowing = await storage.isFollowing(followerId, followingId);
-      
-      if (isFollowing) {
-        await storage.unfollowUser(followerId, followingId);
-        res.json({ following: false });
-      } else {
-        await storage.followUser(followerId, followingId);
-        res.json({ following: true });
-      }
-    } catch (error: unknown) {
-      console.error("Error toggling follow:", error);
-      res.status(500).json({ message: "Failed to toggle follow" });
-    }
-  });
+  // Legacy toggle follow — superseded by POST /api/users/:id/follow + DELETE /api/users/:id/unfollow
+  // (Phase 3 social router registered first)
 
   // NOTE: Events endpoints moved to events feature module
   // app.get('/api/events', async (req, res) => {
@@ -2610,7 +2704,41 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         }
       }
 
-      res.json(results);
+      let routes: unknown[] = [];
+      if (query.length >= 2) {
+        const like = `%${query.toLowerCase()}%`;
+        const routesQ = await db.execute(sql`
+          SELECT id, title, sport, location, starts_at AS "startsAt"
+          FROM events
+          WHERE route_coordinates IS NOT NULL
+            AND jsonb_array_length(route_coordinates) > 1
+            AND (LOWER(title) LIKE ${like} OR LOWER(COALESCE(sport, '')) LIKE ${like})
+          LIMIT ${limit}
+        `);
+        routes = routesQ.rows;
+      }
+
+      const { getBlockedUserIds } = await import("./infrastructure/phase3Social");
+      const blockedIds = userId ? await getBlockedUserIds(userId) : new Set<string>();
+      if (blockedIds.size > 0) {
+        results.users = (results.users ?? []).filter((u: { id: string }) => !blockedIds.has(u.id));
+        results.coaches = (results.coaches ?? []).filter(
+          (c: { userId?: string; id: string }) => !blockedIds.has(c.userId || c.id),
+        );
+      }
+
+      console.log("[Phase3-4] Universal search:", query || category, {
+        players: results.users?.length ?? 0,
+        teams: results.teams?.length ?? 0,
+        routes: routes.length,
+      });
+
+      res.json({
+        ...results,
+        players: results.users,
+        venues: results.places,
+        routes,
+      });
     } catch (error: unknown) {
       console.error("Error searching:", error);
       res.status(500).json({ message: "Search failed" });
@@ -2684,6 +2812,15 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       } as any);
       userWithStats.profileCompletion = profileCompletionPercent(user, userWithStats.profile);
 
+      if (currentUserId !== userId) {
+        try {
+          const { recordProfileView } = await import("./services/phase8ProfileService");
+          await recordProfileView(userId, currentUserId);
+        } catch (viewErr) {
+          console.warn("[Phase8-3] Profile view tracking skipped:", viewErr);
+        }
+      }
+
       res.json(userWithStats);
     } catch (error: unknown) {
       console.error("Error fetching user profile:", error);
@@ -2735,6 +2872,16 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       .optional(),
     markSetupComplete: z.boolean().optional(),
     onboardingSkipped: z.boolean().optional(),
+    weightClass: z.string().max(40).optional(),
+    fightRecordWins: z.number().int().min(0).optional(),
+    fightRecordLosses: z.number().int().min(0).optional(),
+    fightRecordDraws: z.number().int().min(0).optional(),
+    fightRecordKos: z.number().int().min(0).optional(),
+    stance: z.string().max(40).optional(),
+    amateurOrPro: z.enum(["amateur", "pro"]).optional(),
+    iabaNumber: z.string().max(40).optional(),
+    medicalClearanceExpiry: z.string().datetime().optional().or(z.string().max(40)),
+    gymAffiliation: z.string().max(200).optional(),
   });
 
   app.get("/api/users/me/profile", isAuthenticated, async (req: any, res) => {
@@ -2858,6 +3005,18 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (patch.skillLevel !== undefined) userUpdates.skillLevel = patch.skillLevel;
       if (patch.availability !== undefined) userUpdates.availability = patch.availability;
       if (patch.lookingFor !== undefined) userUpdates.lookingFor = patch.lookingFor;
+      if (patch.weightClass !== undefined) userUpdates.weightClass = patch.weightClass;
+      if (patch.fightRecordWins !== undefined) userUpdates.fightRecordWins = patch.fightRecordWins;
+      if (patch.fightRecordLosses !== undefined) userUpdates.fightRecordLosses = patch.fightRecordLosses;
+      if (patch.fightRecordDraws !== undefined) userUpdates.fightRecordDraws = patch.fightRecordDraws;
+      if (patch.fightRecordKos !== undefined) userUpdates.fightRecordKos = patch.fightRecordKos;
+      if (patch.stance !== undefined) userUpdates.stance = patch.stance;
+      if (patch.amateurOrPro !== undefined) userUpdates.amateurOrPro = patch.amateurOrPro;
+      if (patch.iabaNumber !== undefined) userUpdates.iabaNumber = patch.iabaNumber;
+      if (patch.medicalClearanceExpiry !== undefined) {
+        userUpdates.medicalClearanceExpiry = new Date(patch.medicalClearanceExpiry);
+      }
+      if (patch.gymAffiliation !== undefined) userUpdates.gymAffiliation = patch.gymAffiliation;
 
       const [updated] = await db.update(users).set(userUpdates).where(eq(users.id, userId)).returning();
       const enriched = enrichUserRow(updated as any);
@@ -2873,28 +3032,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   });
 
   // Get user followers
-  app.get('/api/users/:id/followers', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.params.id;
-      const followers = await storage.getFollowers(userId);
-      res.json(followers);
-    } catch (error: unknown) {
-      console.error("Error fetching followers:", error);
-      res.status(500).json({ message: "Failed to fetch followers" });
-    }
-  });
-
-  // Get users followed by user
-  app.get('/api/users/:id/following', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.params.id;
-      const following = await storage.getFollowing(userId);
-      res.json(following);
-    } catch (error: unknown) {
-      console.error("Error fetching following:", error);
-      res.status(500).json({ message: "Failed to fetch following" });
-    }
-  });
+  // Followers/following — handled by Phase 3 social router
   
   // Individual post details
   app.get('/api/posts/:id', isAuthenticated, async (req: any, res) => {
@@ -3648,19 +3786,19 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
 
   app.post("/api/orders/create-from-payment", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub || req.user?.id;
+      const userId = sessionUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
       const { paymentIntentId } = req.body || {};
-      const [created] = await db
-        .insert(orders)
-        .values({
-          userId,
-          total: "0.00",
-          status: "pending",
-          paymentMethod: "stripe",
-          shippingAddress: paymentIntentId ? { paymentIntentId } : null,
-        })
-        .returning();
-      res.status(201).json(created);
+      if (!paymentIntentId) return res.status(400).json({ message: "paymentIntentId required" });
+
+      const { fulfillMarketplaceOrderFulfilled, getMarketplaceOrderConfirmation } = await import(
+        "./services/phase5MoneyService"
+      );
+      const result = await fulfillMarketplaceOrderFulfilled(paymentIntentId, userId);
+      if (!result) return res.status(404).json({ message: "Could not fulfill order" });
+
+      const order = await getMarketplaceOrderConfirmation(userId, paymentIntentId);
+      res.status(201).json({ orderId: result.orderId, order, fulfilled: true });
     } catch (error) {
       console.error("Error creating order from payment:", error);
       res.status(500).json({ message: "Failed to create order" });
@@ -4118,6 +4256,26 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         .update(coaches)
         .set({ weeklyAvailability: merged, updatedAt: new Date() })
         .where(eq(coaches.id, row.id));
+
+      try {
+        const dayMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+        const hourly = row.hourlyRate ? Number(row.hourlyRate) : undefined;
+        const slots: Array<{ dayOfWeek: number; startTime: string; endTime: string; hourlyRate?: number }> = [];
+        for (const [day, cfg] of Object.entries(merged)) {
+          const c = cfg as { enabled?: boolean; ranges?: { start: string; end: string }[] };
+          if (!c?.enabled || !c.ranges?.length) continue;
+          const dow = dayMap[day];
+          if (dow === undefined) continue;
+          for (const r of c.ranges) {
+            slots.push({ dayOfWeek: dow, startTime: r.start, endTime: r.end, hourlyRate: hourly });
+          }
+        }
+        const { setCoachAvailability } = await import("./services/phase5MoneyService");
+        await setCoachAvailability(row.id, slots);
+      } catch (syncErr) {
+        console.warn("[Phase5-4] coach_availability sync skipped:", syncErr);
+      }
+
       res.json({ ok: true, weeklyAvailability: merged });
     } catch (error: unknown) {
       console.error("Error updating coach availability:", error);
@@ -4247,6 +4405,10 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
           .update(coachBookings)
           .set({ status: "confirmed", updatedAt: new Date() })
           .where(eq(coachBookings.id, booking.id));
+
+        const gross = parseFloat(String(booking.amount));
+        const { recordCoachBookingCommission } = await import("./services/phase5MoneyService");
+        await recordCoachBookingCommission(booking.id, gross);
 
         const coachFull = await storage.getCoachById(booking.coachId);
         const student = await storage.getUser(userId);

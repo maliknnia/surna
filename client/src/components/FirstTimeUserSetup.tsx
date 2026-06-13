@@ -23,6 +23,8 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
   const [displayName, setDisplayName] = useState(`${user.firstName || ''} ${user.lastName || ''}`.trim());
   const [username, setUsername] = useState("");
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
+  const [location, setLocation] = useState("");
+  const [skillLevel, setSkillLevel] = useState("intermediate");
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameError, setUsernameError] = useState("");
@@ -96,6 +98,8 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
           username: username || undefined,
           displayName: displayName.trim() || undefined,
           sportsPreferences: selectedSports.length > 0 ? selectedSports : undefined,
+          location: location.trim() || undefined,
+          skillLevel,
         }),
         credentials: "include",
       });
@@ -108,6 +112,7 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
       return response.json();
     },
     onSuccess: () => {
+      console.log("[Phase3-2] Onboarding complete");
       toast({
         title: "Welcome to SURNA! 🎉",
         description: "Your profile has been set up successfully.",
@@ -179,17 +184,19 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
             </div>
             <CardTitle className="text-2xl mb-2">Welcome to SURNA!</CardTitle>
             <p className="text-token-text">
-              {currentStep === 1 ? "Let's set up your profile to help other athletes find and connect with you." : 
-               "Choose your favorite sports to get personalized recommendations and connect with like-minded athletes."}
+              {currentStep === 1 ? "Let's set up your profile to help other athletes find and connect with you." :
+               currentStep === 2 ? "Choose your favorite sports to get personalized recommendations and connect with like-minded athletes." :
+               currentStep === 3 ? "Where do you usually play? We'll show nearby events and venues on your map." :
+               "What's your skill level? We'll match you with the right games and coaches."}
             </p>
             
             {/* Progress Bar */}
             <div className="mt-6">
               <div className="flex justify-between text-xs text-token-text mb-2">
-                <span>Step {currentStep} of 2</span>
-                <span>{Math.round((currentStep / 2) * 100)}% Complete</span>
+                <span>Step {currentStep} of 4</span>
+                <span>{Math.round((currentStep / 4) * 100)}% Complete</span>
               </div>
-              <Progress value={(currentStep / 2) * 100} className="h-2" />
+              <Progress value={(currentStep / 4) * 100} className="h-2" />
             </div>
           </CardHeader>
           
@@ -385,8 +392,65 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                     Back
                   </Button>
                   <Button
+                    onClick={() => setCurrentStep(3)}
+                    disabled={!canCompleteStep2}
+                    className="bg-transparent border border-border text-token-text"
+                  >
+                    Next: Location <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {currentStep === 3 && (
+              <>
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-semibold mb-2">Where do you play?</h3>
+                  <p className="text-token-text">City or area — used to personalise your map and nearby feed</p>
+                </div>
+                <Input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Dublin, Cork, London"
+                  className="w-full"
+                />
+                <div className="flex justify-between pt-4">
+                  <Button onClick={() => setCurrentStep(2)} variant="outline">
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                  </Button>
+                  <Button onClick={() => setCurrentStep(4)} className="bg-transparent border border-border text-token-text">
+                    Next: Skill level <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {currentStep === 4 && (
+              <>
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-semibold mb-2">What's your skill level?</h3>
+                  <p className="text-token-text">We'll match events and coaches to your level</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["beginner", "intermediate", "advanced", "elite"] as const).map((level) => (
+                    <Button
+                      key={level}
+                      type="button"
+                      variant={skillLevel === level ? "default" : "outline"}
+                      className="capitalize"
+                      onClick={() => setSkillLevel(level)}
+                    >
+                      {level}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex justify-between pt-4">
+                  <Button onClick={() => setCurrentStep(3)} variant="outline">
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                  </Button>
+                  <Button
                     onClick={() => setupProfileMutation.mutate()}
-                    disabled={!canComplete || setupProfileMutation.isPending}
+                    disabled={setupProfileMutation.isPending}
                     className="bg-transparent border border-border text-token-text"
                   >
                     {setupProfileMutation.isPending ? (
@@ -395,10 +459,7 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
                         Setting up...
                       </>
                     ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        {selectedSports.length > 0 ? "Complete Setup" : "Continue without sports"}
-                      </>
+                      <>Complete setup</>
                     )}
                   </Button>
                 </div>

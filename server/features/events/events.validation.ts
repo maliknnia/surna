@@ -45,6 +45,18 @@ export const ListQuery = z.object({
 });
 
 export const RSVPBody = z.object({
-  status: z.enum(["going","interested","not_going"]).default("going"),
+  status: z.enum(["going","interested","not_going","waitlist"]).default("going"),
   issueTicket: z.boolean().default(true),
+});
+
+const routePointSchema = z.union([
+  z.tuple([z.number().min(-90).max(90), z.number().min(-180).max(180)]),
+  z.object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+  }),
+]);
+
+export const SaveEventRoute = z.object({
+  routeCoordinates: z.array(routePointSchema).min(2).max(5000),
 });

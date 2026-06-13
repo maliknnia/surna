@@ -9,14 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, MapPin, Users, Globe, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function CreateEventForm({ onCancel }: { onCancel?: () => void }) {
   const { toast } = useToast();
-  const { user } = useAuth();
   const createEvent = useCreateEvent();
-  const [, setCreatedGroupId] = useState<string | null>(null);
   
   const [form, setForm] = useState({
     title: "",
@@ -63,21 +59,8 @@ export default function CreateEventForm({ onCancel }: { onCancel?: () => void })
         capacity: form.capacity ? Number(form.capacity) : undefined,
       };
 
-      const createdEvent = await createEvent.mutateAsync(eventData);
+      await createEvent.mutateAsync(eventData);
 
-      try {
-        const creatorId = (user as any)?.id;
-        const groupResponse = await apiRequest("POST", "/api/messenger/groups", {
-          name: form.title,
-          memberIds: creatorId ? [creatorId] : [],
-          eventId: (createdEvent as any)?.id,
-        });
-        const groupData = await groupResponse.json();
-        setCreatedGroupId(groupData?.id || null);
-      } catch {
-        // Non-blocking: event creation succeeds even if chat bootstrap fails.
-      }
-      
       toast({
         title: "Event created! 🎉",
         description: `"${form.title}" has been successfully created.`,

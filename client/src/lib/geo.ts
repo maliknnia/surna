@@ -1,4 +1,5 @@
-// Geolocation utilities with manual fallback
+// Geolocation utilities with Capacitor + manual fallback
+import { getCurrentPosition as capGetCurrentPosition } from "@/lib/capacitor/geolocation";
 
 export interface Coordinates {
   lat: number;
@@ -16,64 +17,19 @@ export interface LocationResult {
  * Request user's current location with permission handling
  */
 export async function getCurrentLocation(): Promise<LocationResult> {
-  if (!navigator.geolocation) {
+  const result = await capGetCurrentPosition();
+  if (result.error) {
     return {
       coords: { lat: 0, lng: 0 },
       source: 'error',
-      error: 'Geolocation not supported by browser'
+      error: result.error,
     };
   }
-
-  return new Promise((resolve) => {
-    const timeoutId = setTimeout(() => {
-      resolve({
-        coords: { lat: 0, lng: 0 },
-        source: 'error',
-        error: 'Location request timed out'
-      });
-    }, 10000); // 10 second timeout
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        clearTimeout(timeoutId);
-        resolve({
-          coords: {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          },
-          accuracy: position.coords.accuracy,
-          source: 'gps'
-        });
-      },
-      (error) => {
-        clearTimeout(timeoutId);
-        let errorMessage = 'Unknown location error';
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied by user';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information unavailable';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Location request timed out';
-            break;
-        }
-
-        resolve({
-          coords: { lat: 0, lng: 0 },
-          source: 'error',
-          error: errorMessage
-        });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 300000 // 5 minutes
-      }
-    );
-  });
+  return {
+    coords: { lat: result.coords.lat, lng: result.coords.lng },
+    accuracy: result.coords.accuracy,
+    source: 'gps',
+  };
 }
 
 /**

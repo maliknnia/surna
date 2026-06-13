@@ -1,8 +1,7 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { pickStoryUsers } from "@/lib/personalizedDemoFeed";
 import type { StoryWithUser } from "@shared/schema";
 
 interface StoryGroup {
@@ -15,8 +14,6 @@ interface StoryGroup {
 interface StoriesBarProps {
   onStoryClick: (userId: string, storyIndex: number) => void;
   onAddStory: () => void;
-  /** Changes which demo story avatars appear and their order */
-  refreshSeed?: number;
 }
 
 /** Border for story avatars — same red ring in dark + light (not --surna-accent, which is black in light). */
@@ -103,7 +100,7 @@ function LiveBadge() {
   );
 }
 
-export function StoriesBar({ onStoryClick, onAddStory, refreshSeed = 0 }: StoriesBarProps) {
+export function StoriesBar({ onStoryClick, onAddStory }: StoriesBarProps) {
   const { user } = useAuth();
   const [pressedId, setPressedId] = useState<string | null>(null);
 
@@ -111,6 +108,12 @@ export function StoriesBar({ onStoryClick, onAddStory, refreshSeed = 0 }: Storie
     queryKey: ["/api/stories"],
     enabled: !!user,
   });
+
+  useEffect(() => {
+    if (stories.length > 0) {
+      console.log("[Fix 8] Stories loaded from API:", stories.length);
+    }
+  }, [stories.length]);
 
   const storiesByUser = stories.reduce((acc, story) => {
     const uid = story.userId;
@@ -137,12 +140,6 @@ export function StoriesBar({ onStoryClick, onAddStory, refreshSeed = 0 }: Storie
   const release = () => setPressedId(null);
   const scale = (id: string) => (pressedId === id ? "scale(0.97)" : "scale(1)");
   const transition = "transform 140ms ease-out";
-
-  const otherGroupIds = new Set(otherGroups.map((g) => g.user.id));
-  const mockStoryUsers = useMemo(
-    () => pickStoryUsers(refreshSeed, 11).filter((m) => !otherGroupIds.has(m.id)),
-    [refreshSeed, otherGroups],
-  );
 
   if (isLoading) {
     return (
@@ -296,59 +293,6 @@ export function StoriesBar({ onStoryClick, onAddStory, refreshSeed = 0 }: Storie
                 }}
               >
                 {name}
-              </span>
-            </button>
-          );
-        })}
-
-        {mockStoryUsers.map((mock) => {
-          const isSeen = !mock.hasUnviewed && !mock.isLive;
-          const displayName = mock.firstName;
-
-          return (
-            <button
-              key={mock.id}
-              onPointerDown={() => press(mock.id)}
-              onPointerUp={release}
-              onPointerLeave={release}
-              onClick={() => onStoryClick(mock.id, 0)}
-              className="flex-shrink-0 flex flex-col items-center"
-              style={{
-                gap: 6,
-                transform: scale(mock.id),
-                transition,
-                opacity: isSeen ? 0.74 : 1,
-              }}
-            >
-              <div className="relative">
-                <StoryAvatar
-                  hasUnviewed={mock.hasUnviewed}
-                  isLive={mock.isLive}
-                  hasStories={true}
-                >
-                  <img
-                    src={mock.profileImageUrl}
-                    alt={displayName}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    loading="lazy"
-                  />
-                </StoryAvatar>
-                {mock.isLive && <LiveBadge />}
-              </div>
-
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: isSeen ? "var(--surna-story-label-seen)" : "var(--surna-story-label)",
-                  maxWidth: 72,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  lineHeight: "1.2",
-                }}
-              >
-                {displayName}
               </span>
             </button>
           );

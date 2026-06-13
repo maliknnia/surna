@@ -16,6 +16,9 @@ import { registerSW, initializePWAInstall, initializeOfflineStorage } from "@/li
 import FirstTimeThemeSelector from "@/components/FirstTimeThemeSelector";
 import CookieConsent from "@/components/CookieConsent";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
+import { OnboardingGate } from "@/components/OnboardingGate";
+import ProfessionalProfileNudge from "@/components/ProfessionalProfileNudge";
+import PushNotificationInit from "@/components/PushNotificationInit";
 import { SurnaCameraProvider, SurnaCamera } from "@/features/camera";
 
 // Previously pre-loaded — now lazy so they don't block first paint of MobileHome.
@@ -40,6 +43,7 @@ const AnalyticsHub = lazy(() => import("@/pages/AnalyticsHub"));
 
 // Event pages
 const EventDetailsPage = lazy(() => import("@/pages/events/EventDetailsPage"));
+const EventRoutePage = lazy(() => import("@/pages/events/EventRoutePage"));
 
 // Sports Hub pages - Consolidated into DiscoveryHub
 // (All sports functionality now available in /discover)
@@ -234,6 +238,7 @@ function Router() {
         <Route path="/teams/manage" component={() => <ProtectedRoute component={TeamManagement} />} />
         <Route path="/events" component={() => <ProtectedRoute component={EventsPage} />} />
         <Route path="/events/create" component={() => <ProtectedRoute component={CreateEventWizardPage} />} />
+        <Route path="/events/:id/route" component={() => <ProtectedRoute component={EventRoutePage} />} />
         <Route path="/events/:id" component={() => <ProtectedRoute component={EventDetailsPage} />} />
         <Route path="/event/:id" component={() => <ProtectedRoute component={EventDetailsPage} />} />
         
@@ -280,6 +285,7 @@ function Router() {
         <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
         <Route path="/security" component={() => <ProtectedRoute component={SecuritySettings} />} />
         <Route path="/privacy-settings" component={() => <ProtectedRoute component={PrivacySettingsPage} />} />
+        <Route path="/payment-history" component={() => <ProtectedRoute component={lazy(() => import("@/pages/PaymentHistory"))} />} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
         <Route path="/help" component={Help} />
@@ -329,6 +335,7 @@ function Router() {
         <Route path="/recommendations" component={() => <ProtectedRoute component={Recommendations} />} />
         <Route path="/performance" component={PerformanceHub} />
         <Route path="/performance-hub" component={PerformanceHub} />
+        <Route path="/activity/track" component={() => <ProtectedRoute component={lazy(() => import("@/pages/ActivityTrackPage"))} />} />
         <Route path="/referrals" component={() => <ProtectedRoute component={ReferralPage} />} />
         <Route path="/growth" component={() => <ProtectedRoute component={GrowthPage} />} />
         
@@ -402,7 +409,11 @@ function App() {
               <EmailVerificationBanner />
               {/* First-time theme selector modal */}
               <FirstTimeThemeSelector />
-              <Router />
+              <OnboardingGate>
+                <ProfessionalProfileNudge />
+                <PushNotificationInit />
+                <Router />
+              </OnboardingGate>
               
               {/* PWA Install Prompt */}
               <InstallPrompt />

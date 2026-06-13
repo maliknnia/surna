@@ -36,6 +36,7 @@ export type UserProfileExtras = {
   media?: UserMediaItem[];
   profileSetupCompletedAt?: string;
   onboardingSkipped?: boolean;
+  profilePathChosenAt?: string;
 };
 
 export const DEFAULT_USER_PROFILE: UserProfileExtras = {

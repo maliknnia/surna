@@ -56,6 +56,7 @@ export const ROUTES = {
   events: '/events',
   createEvent: '/events/create',
   event: (id: string) => `/events/${id}`,
+  eventRoute: (id: string) => `/events/${id}/route`,
   
   // Challenges
   challenges: '/challenges',

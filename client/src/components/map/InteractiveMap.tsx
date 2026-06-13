@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Globe, Layers, Moon, Sun } from "lucide-react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Supercluster from "supercluster";
@@ -9,6 +10,19 @@ import {
   createSurnaUserMarker,
 } from "./surnaMapMarkers";
 import { applySurnaMapTrees } from "./surnaMapTreeLayer";
+import {
+  bindMapRouteClicks,
+  ensureMapRouteLayers,
+  syncMapRouteData,
+  type MapRoute,
+} from "./surnaMapRoutes";
+import {
+  MAP_TILE_STYLE_CHANGE_EVENT,
+  MAP_TILE_STYLE_MENU_EVENT,
+  readMapTileStyle,
+  writeMapTileStyle,
+  type MapTileStyle,
+} from "@/lib/mapTileStyle";
 
 const DEFAULT_MAP_ZOOM = 15;
 const CLUSTER_MAX_ZOOM = 14;
@@ -19,6 +33,22 @@ const MAX_MAP_PITCH = 60;
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY?.trim() || "";
 
+const MAPTILER_STYLES = {
+  dark: `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`,
+  light: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,
+  satellite: `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`,
+} as const;
+
+const MAP_TILE_STYLE_OPTIONS: {
+  mode: MapTileStyle;
+  label: string;
+  Icon: typeof Moon;
+}[] = [
+  { mode: "dark", label: "Dark", Icon: Moon },
+  { mode: "light", label: "Light", Icon: Sun },
+  { mode: "satellite", label: "Satellite", Icon: Globe },
+];
+
 const OPENFREE_MAP_STYLES = {
   dark: "https://tiles.openfreemap.org/styles/dark",
   light: "https://tiles.openfreemap.org/styles/positron",
@@ -26,10 +56,15 @@ const OPENFREE_MAP_STYLES = {
 
 function mapStyleUrl(dark: boolean): string {
   if (MAPTILER_KEY) {
-    const style = dark ? "streets-v2-dark" : "streets-v2";
-    return `https://api.maptiler.com/maps/${style}/style.json?key=${MAPTILER_KEY}`;
+    return dark ? MAPTILER_STYLES.dark : MAPTILER_STYLES.light;
   }
   return dark ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
+}
+
+function resolveMapTileStyleUrl(mode: MapTileStyle): string {
+  if (MAPTILER_KEY) return MAPTILER_STYLES[mode];
+  if (mode === "satellite") return OPENFREE_MAP_STYLES.dark;
+  return mode === "dark" ? OPENFREE_MAP_STYLES.dark : OPENFREE_MAP_STYLES.light;
 }
 
 const MAPTILER_POI_LAYERS_HIDE = [
@@ -298,7 +333,59 @@ function applyLightGreenery(map: maplibregl.Map) {
   });
 }
 
-function applySnapchatBuildings(map: maplibregl.Map, dark: boolean, insertBefore?: string) {
+/** Earth-tone colours for satellite only (OSM building:colour when tagged). */
+const SATELLITE_BUILDING_COLOUR: maplibregl.ExpressionSpecification = [
+  "case",
+  ["all", ["has", "colour"], ["!=", ["get", "colour"], ""]],
+  ["get", "colour"],
+  [
+    "interpolate",
+    ["linear"],
+    [
+      "coalesce",
+      ["to-number", ["get", "render_height"]],
+      ["to-number", ["get", "height"]],
+      10,
+    ],
+    6,
+    "#b5aa9c",
+    14,
+    "#a89d8f",
+    28,
+    "#968b7e",
+    50,
+    "#847a6e",
+    85,
+    "#736961",
+  ],
+];
+
+/** Two thin lit slabs per building — Snap-style window boxes, not full-height glow bands. */
+function snapWindowSlabPaint(
+  buildingHeight: maplibregl.ExpressionSpecification,
+  windowLit: string,
+  verticalStart: number,
+  opacity: number,
+) {
+  const slabBase: maplibregl.ExpressionSpecification = ["*", buildingHeight, verticalStart];
+  return {
+    "fill-extrusion-color": windowLit,
+    "fill-extrusion-base": slabBase,
+    "fill-extrusion-height": [
+      "+",
+      slabBase,
+      ["max", 1.8, ["*", buildingHeight, 0.06]],
+    ] as maplibregl.ExpressionSpecification,
+    "fill-extrusion-opacity": opacity,
+  };
+}
+
+function applySnapchatBuildings(
+  map: maplibregl.Map,
+  dark: boolean,
+  insertBefore?: string,
+  satellite = false,
+) {
   if (!map.getSource("maptiler_planet")) {
     console.warn("[InteractiveMap] maptiler_planet missing — 3D buildings skipped");
     return;
@@ -312,75 +399,94 @@ function applySnapchatBuildings(map: maplibregl.Map, dark: boolean, insertBefore
     10,
   ] as maplibregl.ExpressionSpecification;
 
-  const windowLit = dark ? "#d8ecff" : "#fff0c8";
-
   try {
-    ["surna-building-glow", "surna-building-windows", "surna-building-windows-high", "surna-3d-buildings"].forEach((id) => {
+    ["surna-building-glow", "surna-building-windows", "surna-building-windows-high", "surna-building-window-lower", "surna-building-window-upper", "surna-3d-buildings"].forEach((id) => {
       if (map.getLayer(id)) map.removeLayer(id);
     });
 
-    const buildingColor = dark ? "#0c0e22" : "#c8c4bb";
-
-    map.addLayer(
-      {
-        id: "surna-3d-buildings",
-        source: "maptiler_planet",
-        "source-layer": "building",
-        type: "fill-extrusion",
-        minzoom: 14,
-        paint: {
-          "fill-extrusion-color": buildingColor,
-          "fill-extrusion-height": buildingHeight,
-          "fill-extrusion-base": [
-            "coalesce",
-            ["to-number", ["get", "render_min_height"]],
-            ["to-number", ["get", "min_height"]],
-            0,
-          ],
-          "fill-extrusion-opacity": 1,
-          "fill-extrusion-vertical-gradient": dark,
+    if (satellite) {
+      map.addLayer(
+        {
+          id: "surna-3d-buildings",
+          source: "maptiler_planet",
+          "source-layer": "building",
+          type: "fill-extrusion",
+          minzoom: 14,
+          paint: {
+            "fill-extrusion-color": SATELLITE_BUILDING_COLOUR,
+            "fill-extrusion-height": buildingHeight,
+            "fill-extrusion-base": [
+              "coalesce",
+              ["to-number", ["get", "render_min_height"]],
+              ["to-number", ["get", "min_height"]],
+              0,
+            ],
+            "fill-extrusion-opacity": 0.93,
+            "fill-extrusion-vertical-gradient": true,
+          },
         },
-      },
-      beforeId,
-    );
+        beforeId,
+      );
+    } else {
+      const buildingColor = dark ? "#0c0e22" : "#c8c4bb";
 
-    // One large lit block per apartment — Snap-style, not a repeating grid
+      map.addLayer(
+        {
+          id: "surna-3d-buildings",
+          source: "maptiler_planet",
+          "source-layer": "building",
+          type: "fill-extrusion",
+          minzoom: 14,
+          paint: {
+            "fill-extrusion-color": buildingColor,
+            "fill-extrusion-height": buildingHeight,
+            "fill-extrusion-base": [
+              "coalesce",
+              ["to-number", ["get", "render_min_height"]],
+              ["to-number", ["get", "min_height"]],
+              0,
+            ],
+            "fill-extrusion-opacity": 1,
+            "fill-extrusion-vertical-gradient": dark,
+          },
+        },
+        beforeId,
+      );
+    }
+
+    const windowLit = satellite
+      ? "#fff8eb"
+      : dark
+        ? "#c8e4ff"
+        : "#ffe9a8";
+    const windowOpacity = satellite ? 0.38 : dark ? 0.78 : 0.52;
+    const tallBuildingFilter = [">=", buildingHeight, 8] as maplibregl.FilterSpecification;
+
     map.addLayer({
-      id: "surna-building-windows",
+      id: "surna-building-window-lower",
       source: "maptiler_planet",
       "source-layer": "building",
       type: "fill-extrusion",
       minzoom: 15,
-      filter: [">=", buildingHeight, 6],
-      paint: {
-        "fill-extrusion-color": windowLit,
-        "fill-extrusion-base": ["*", buildingHeight, 0.38],
-        "fill-extrusion-height": ["*", buildingHeight, 0.62],
-        "fill-extrusion-opacity": dark ? 0.78 : 0.62,
-      },
+      filter: tallBuildingFilter,
+      paint: snapWindowSlabPaint(buildingHeight, windowLit, 0.26, windowOpacity),
     });
 
-    // Second window row only on taller blocks
     map.addLayer({
-      id: "surna-building-windows-high",
+      id: "surna-building-window-upper",
       source: "maptiler_planet",
       "source-layer": "building",
       type: "fill-extrusion",
       minzoom: 15,
-      filter: [">=", buildingHeight, 14],
-      paint: {
-        "fill-extrusion-color": windowLit,
-        "fill-extrusion-base": ["*", buildingHeight, 0.68],
-        "fill-extrusion-height": ["*", buildingHeight, 0.86],
-        "fill-extrusion-opacity": dark ? 0.7 : 0.55,
-      },
+      filter: tallBuildingFilter,
+      paint: snapWindowSlabPaint(buildingHeight, windowLit, 0.5, windowOpacity),
     });
   } catch (error) {
     console.error("[InteractiveMap] 3D buildings failed:", error);
   }
 }
 
-function applyMapTilerStyleLoad(map: maplibregl.Map, dark: boolean) {
+function applyMapTilerStyleLoad(map: maplibregl.Map, dark: boolean, satellite = false) {
   if (!MAPTILER_KEY) return;
 
   try {
@@ -406,21 +512,23 @@ function applyMapTilerStyleLoad(map: maplibregl.Map, dark: boolean) {
       }
     });
 
-    if (dark) {
-      applyDarkSnapchatStreets(map);
-      applyDarkGreenery(map);
-      applyDarkWater(map);
-    } else {
-      applyLightSnapchatStreets(map);
-      applyLightGreenery(map);
-      applyLightWater(map);
+    if (!satellite) {
+      if (dark) {
+        applyDarkSnapchatStreets(map);
+        applyDarkGreenery(map);
+        applyDarkWater(map);
+      } else {
+        applyLightSnapchatStreets(map);
+        applyLightGreenery(map);
+        applyLightWater(map);
+      }
     }
 
     applySurnaPoiTraffic(map, dark);
 
     map.setTerrain(null);
     const mapWithFog = map as maplibregl.Map & { setFog?: (fog: object | null) => void };
-    if (dark) {
+    if (satellite || dark) {
       mapWithFog.setFog?.(null);
     } else {
       mapWithFog.setFog?.({
@@ -446,12 +554,14 @@ function applyMapTilerStyleLoad(map: maplibregl.Map, dark: boolean) {
   )?.id;
 
   const apply3DEnhancements = () => {
-    applySnapchatBuildings(map, dark, labelLayerId);
+    applySnapchatBuildings(map, dark, labelLayerId, satellite);
     applySurnaMapTrees(map);
   };
 
   map.once("idle", apply3DEnhancements);
 }
+
+export type { MapRoute } from "./surnaMapRoutes";
 
 export interface MapPin {
   id: string;
@@ -497,6 +607,15 @@ interface InteractiveMapProps {
   /** Display position for "you" pin (may be blurred) */
   userDisplayCoords?: Coordinates;
   onLongPress?: (coords: Coordinates) => void;
+  /** Full map page uses the top-right toolbar Layers button instead of the on-map control */
+  externalStyleControl?: boolean;
+  /** Vertical offset for the style menu when `externalStyleControl` is true */
+  externalStyleControlOffsetTop?: number;
+  /** Event routes (cycling / running / hiking) drawn as glowing lines */
+  routes?: MapRoute[];
+  onRouteClick?: (route: MapRoute) => void;
+  /** Fit map to this route and show start (green) / finish (red) pins */
+  routeFocus?: MapRoute | null;
 }
 
 type DivIconLike = {
@@ -558,6 +677,17 @@ function attachMarker(
     .addTo(map);
 }
 
+function createRouteEndpointMarker(label: string, pinColor: string): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.style.cssText =
+    "display:flex;flex-direction:column;align-items:center;pointer-events:none;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4));";
+  wrap.innerHTML = `
+    <div style="width:20px;height:20px;border-radius:50%;background:${pinColor};border:3px solid #fff;box-shadow:0 0 0 2px ${pinColor}66;"></div>
+    <span style="margin-top:4px;padding:2px 10px;border-radius:999px;background:#fff;color:#111;font-size:11px;font-weight:800;text-transform:uppercase;white-space:nowrap;font-family:system-ui,sans-serif;border:2px solid ${pinColor};">${label}</span>
+  `;
+  return wrap;
+}
+
 export default function InteractiveMap({
   center,
   pins,
@@ -572,6 +702,11 @@ export default function InteractiveMap({
   userMarker,
   userDisplayCoords,
   onLongPress,
+  externalStyleControl = false,
+  externalStyleControlOffsetTop = 68,
+  routes = [],
+  onRouteClick,
+  routeFocus = null,
 }: InteractiveMapProps) {
   const [mounted, setMounted] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -581,6 +716,11 @@ export default function InteractiveMap({
   const clusterIndexRef = useRef<Supercluster<PinFeatureProps, ClusterProps> | null>(null);
   const prevCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   const onPinClickRef = useRef(onPinClick);
+  const onRouteClickRef = useRef(onRouteClick);
+  const routesRef = useRef(routes);
+  const routeFocusRef = useRef(routeFocus);
+  const routeEndpointMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const routeClickCleanupRef = useRef<(() => void) | null>(null);
   const styleRef = useRef<string>("");
   const mapTilerFallbackRef = useRef(false);
   const initialPitchSetRef = useRef(false);
@@ -589,27 +729,148 @@ export default function InteractiveMap({
   useEffect(() => {
     onPinClickRef.current = onPinClick;
   }, [onPinClick]);
+  useEffect(() => {
+    onRouteClickRef.current = onRouteClick;
+  }, [onRouteClick]);
+  useEffect(() => {
+    routesRef.current = routes;
+  }, [routes]);
+  useEffect(() => {
+    routeFocusRef.current = routeFocus;
+  }, [routeFocus]);
+
+  const syncRouteFocusOnMap = () => {
+    const map = mapRef.current;
+    const focus = routeFocusRef.current;
+
+    routeEndpointMarkersRef.current.forEach((m) => m.remove());
+    routeEndpointMarkersRef.current = [];
+
+    if (!map || !focus || focus.coordinates.length < 2) return;
+
+    const start = focus.coordinates[0]!;
+    const end = focus.coordinates[focus.coordinates.length - 1]!;
+
+    routeEndpointMarkersRef.current.push(
+      new maplibregl.Marker({
+        element: createRouteEndpointMarker("Start", "#22c55e"),
+        anchor: "bottom",
+      })
+        .setLngLat([start.lng, start.lat])
+        .addTo(map),
+      new maplibregl.Marker({
+        element: createRouteEndpointMarker("Finish", "#ef4444"),
+        anchor: "bottom",
+      })
+        .setLngLat([end.lng, end.lat])
+        .addTo(map),
+    );
+
+    const bounds = new maplibregl.LngLatBounds();
+    focus.coordinates.forEach((c) => bounds.extend([c.lng, c.lat]));
+    map.fitBounds(bounds, {
+      padding: { top: 72, bottom: 96, left: 48, right: 48 },
+      maxZoom: 15,
+      duration: 800,
+    });
+  };
+
+  const syncRoutesOnMap = () => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const beforeId = map.getLayer("Road labels") ? "Road labels" : undefined;
+    ensureMapRouteLayers(map, beforeId);
+    syncMapRouteData(map, routesRef.current);
+
+    if (onRouteClickRef.current) {
+      routeClickCleanupRef.current?.();
+      routeClickCleanupRef.current = bindMapRouteClicks(
+        map,
+        (route) => onRouteClickRef.current?.(route),
+        routesRef,
+      );
+    }
+
+    syncRouteFocusOnMap();
+  };
 
   const useDarkTiles = mapStyle !== undefined ? mapStyle === "dark" : isDark;
   const mapCenter = isValidCoord(center.lat, center.lng)
     ? center
     : { lat: 51.8985, lng: -8.4756 };
   const youCoords = userDisplayCoords ?? mapCenter;
-  const mapTheme = useDarkTiles ? "dark" : "light";
-  const tileStyle = MAPTILER_KEY
-    ? useDarkTiles
-      ? `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`
-      : `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`
-    : mapStyleUrl(useDarkTiles);
+
+  const [tileStyleMode, setTileStyleMode] = useState<MapTileStyle>(() => {
+    const stored = readMapTileStyle();
+    if (stored) return stored;
+    return useDarkTiles ? "dark" : "light";
+  });
+  const [styleMenuOpen, setStyleMenuOpen] = useState(false);
+  const styleMenuRef = useRef<HTMLDivElement>(null);
+
+  const extrusionDarkRef = useRef(tileStyleMode === "light" ? false : true);
+  const tileStyleModeRef = useRef<MapTileStyle>(tileStyleMode);
+  const isMapDarkTheme = tileStyleMode !== "light";
+  const mapTheme = tileStyleMode === "satellite" ? "satellite" : tileStyleMode;
+  const tileStyle = resolveMapTileStyleUrl(tileStyleMode);
   const useMapTiler3D = Boolean(MAPTILER_KEY);
 
-  const useDarkTilesRef = useRef(useDarkTiles);
+  const useDarkTilesRef = useRef(isMapDarkTheme);
   const tileStyleRef = useRef(tileStyle);
 
   useEffect(() => {
-    useDarkTilesRef.current = useDarkTiles;
+    tileStyleModeRef.current = tileStyleMode;
+    useDarkTilesRef.current = isMapDarkTheme;
     tileStyleRef.current = tileStyle;
-  }, [useDarkTiles, tileStyle]);
+  }, [tileStyleMode, isMapDarkTheme, tileStyle]);
+
+  const selectMapTileStyle = (mode: MapTileStyle) => {
+    if (mode === "dark") extrusionDarkRef.current = true;
+    if (mode === "light") extrusionDarkRef.current = false;
+    setTileStyleMode(mode);
+    setStyleMenuOpen(false);
+    writeMapTileStyle(mode);
+  };
+
+  useEffect(() => {
+    const onTileStyleChange = (event: Event) => {
+      const detail = (event as CustomEvent<MapTileStyle>).detail;
+      const next = detail ?? readMapTileStyle();
+      if (!next || next === tileStyleModeRef.current) return;
+      if (next === "dark") extrusionDarkRef.current = true;
+      if (next === "light") extrusionDarkRef.current = false;
+      setTileStyleMode(next);
+    };
+
+    const onMenuToggle = () => setStyleMenuOpen((open) => !open);
+
+    window.addEventListener(MAP_TILE_STYLE_CHANGE_EVENT, onTileStyleChange);
+    window.addEventListener(MAP_TILE_STYLE_MENU_EVENT, onMenuToggle);
+    return () => {
+      window.removeEventListener(MAP_TILE_STYLE_CHANGE_EVENT, onTileStyleChange);
+      window.removeEventListener(MAP_TILE_STYLE_MENU_EVENT, onMenuToggle);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!styleMenuOpen) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (target instanceof Element && target.closest("[data-map-style-trigger]")) return;
+      if (styleMenuRef.current && target && !styleMenuRef.current.contains(target)) {
+        setStyleMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [styleMenuOpen]);
 
   const clearPinMarkers = () => {
     pinMarkersRef.current.forEach((marker) => marker.remove());
@@ -617,16 +878,20 @@ export default function InteractiveMap({
   };
 
   const finishStyleLoad = (map: maplibregl.Map) => {
-    const theme = useDarkTilesRef.current ? "dark" : "light";
     const styleUrl = tileStyleRef.current;
-    console.log(`[InteractiveMap] style.load — ${theme}:`, styleUrl);
-    applyMapTilerStyleLoad(map, useDarkTilesRef.current);
+    console.log(`[InteractiveMap] style.load — ${tileStyleModeRef.current}:`, styleUrl);
+    applyMapTilerStyleLoad(
+      map,
+      extrusionDarkRef.current,
+      tileStyleModeRef.current === "satellite",
+    );
     if (MAPTILER_KEY && !initialPitchSetRef.current) {
       map.setPitch(DEFAULT_MAP_PITCH);
       initialPitchSetRef.current = true;
     }
     map.resize();
     syncPinMarkers();
+    syncRoutesOnMap();
   };
 
   const syncPinMarkers = () => {
@@ -774,6 +1039,8 @@ export default function InteractiveMap({
       map.off("zoomend", syncPinMarkers);
       map.off("moveend", syncPinMarkers);
       clearPinMarkers();
+      routeClickCleanupRef.current?.();
+      routeClickCleanupRef.current = null;
       userMarkerRef.current?.remove();
       userMarkerRef.current = null;
       map.remove();
@@ -817,6 +1084,10 @@ export default function InteractiveMap({
       duration: 550,
     });
   }, [flyTo?.lat, flyTo?.lng, flyToZoom]);
+
+  useEffect(() => {
+    syncRoutesOnMap();
+  }, [routes, routeFocus]);
 
   useEffect(() => {
     syncPinMarkers();
@@ -910,7 +1181,7 @@ export default function InteractiveMap({
   if (!mounted || !mapActive) {
     return (
       <div
-        className={`surna-map-root relative ${useDarkTiles ? "surna-map-dark" : "surna-map-light"} ${className}`}
+        className={`surna-map-root relative ${isMapDarkTheme ? "surna-map-dark" : "surna-map-light"} ${className}`}
         style={{ minHeight: "400px" }}
         aria-busy="true"
         aria-label="Loading map"
@@ -918,15 +1189,145 @@ export default function InteractiveMap({
     );
   }
 
+  const styleButtonPreview: Record<MapTileStyle, CSSProperties> = {
+    dark: { background: "hsl(228, 52%, 9%)" },
+    light: { background: "hsl(42, 22%, 91%)" },
+    satellite: {
+      background: "linear-gradient(145deg, #1e4620 0%, #2a5a8c 45%, #5c4033 100%)",
+    },
+  };
+
+  const mapControlBtn: CSSProperties = {
+    width: 44,
+    height: 44,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: isMapDarkTheme ? "rgba(18, 18, 18, 0.88)" : "rgba(255, 255, 255, 0.92)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+    border: isMapDarkTheme ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,0,0,0.08)",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+    cursor: "pointer",
+    color: isMapDarkTheme ? "#ffffff" : "#111111",
+    padding: 0,
+  };
+
   return (
     <div
-      className={`surna-map-root relative ${useDarkTiles ? "surna-map-dark" : "surna-map-light"} ${className}`}
+      className={`surna-map-root relative ${isMapDarkTheme ? "surna-map-dark" : "surna-map-light"} ${className}`}
     >
       <div
         ref={mapContainerRef}
         className="h-full w-full z-0 surna-leaflet"
         style={{ minHeight: "400px" }}
       />
+
+      <div
+        ref={styleMenuRef}
+        className="surna-map-style-switcher"
+        style={{
+          position: "absolute",
+          ...(externalStyleControl
+            ? { top: externalStyleControlOffsetTop, right: 12 }
+            : { bottom: "max(16px, env(safe-area-inset-bottom, 0px))", right: 12 }),
+          zIndex: 1000,
+          pointerEvents: styleMenuOpen || !externalStyleControl ? "auto" : "none",
+        }}
+      >
+        {styleMenuOpen && (
+          <div
+            role="menu"
+            aria-label="Map style options"
+            className="surna-map-style-menu"
+            style={{
+              position: "absolute",
+              ...(externalStyleControl
+                ? { top: "100%", right: 0, marginTop: 8 }
+                : { bottom: "100%", right: 0, marginBottom: 8 }),
+              minWidth: 168,
+              padding: 6,
+              borderRadius: 14,
+              background: isMapDarkTheme ? "rgba(18, 18, 18, 0.94)" : "rgba(255, 255, 255, 0.96)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: isMapDarkTheme ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,0,0,0.08)",
+              boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
+            }}
+          >
+            {MAP_TILE_STYLE_OPTIONS.filter(
+              (opt) => MAPTILER_KEY || opt.mode !== "satellite",
+            ).map(({ mode, label, Icon }) => {
+              const active = tileStyleMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  onClick={() => selectMapTileStyle(mode)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 10px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: active
+                      ? isMapDarkTheme
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(0,0,0,0.06)"
+                      : "transparent",
+                    color: isMapDarkTheme ? "#ffffff" : "#111111",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      flexShrink: 0,
+                      border: active
+                        ? "2px solid #ffffff"
+                        : isMapDarkTheme
+                          ? "2px solid rgba(255,255,255,0.2)"
+                          : "2px solid rgba(0,0,0,0.12)",
+                      ...styleButtonPreview[mode],
+                    }}
+                  />
+                  <Icon size={16} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.85 }} />
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {!externalStyleControl && (
+        <button
+          type="button"
+          aria-label="Map style"
+          aria-haspopup="menu"
+          aria-expanded={styleMenuOpen}
+          title="Map style — dark, light, satellite"
+          onClick={() => setStyleMenuOpen((open) => !open)}
+          style={mapControlBtn}
+          data-testid="button-map-style"
+          data-map-style-trigger
+        >
+          {tileStyleMode === "satellite" ? (
+            <Globe size={18} strokeWidth={2} />
+          ) : (
+            <Layers size={18} strokeWidth={2} />
+          )}
+        </button>
+        )}
+      </div>
 
       <div className="surna-map-vignette" aria-hidden />
       <div className="surna-map-grain" aria-hidden />

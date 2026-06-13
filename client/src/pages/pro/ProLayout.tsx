@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
   { path: "/pro/schedule",    label: "Events",      icon: Calendar,                     section: "Operations" },
   { path: "/pro/comms",       label: "Messages",    icon: MessageSquare,                section: "Operations" },
   { path: "/pro/training",    label: "Training",    icon: Dumbbell,                     section: "Operations" },
+  { path: "/pro/squad-health", label: "Squad health", icon: Activity,                    section: "Operations" },
   { path: "/pro/match-day",   label: "Match Day",   icon: Swords,                       section: "Operations" },
   { path: "/pro/tournament",  label: "Tournaments", icon: Trophy,                       section: "Operations" },
   { path: "/pro/inventory",   label: "Inventory",   icon: Package,                      section: "Operations" },

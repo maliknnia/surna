@@ -16,7 +16,8 @@ import {
   MoreHorizontal,
   FileText,
   Camera,
-  Plus
+  Plus,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +43,7 @@ interface TeamWithDetails extends Team {
 interface TeamMember {
   id: string;
   user: User;
-  role: 'owner' | 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'captain' | 'co-captain';
   joinedAt: string;
   lastActive: string;
   permissions: string[];
@@ -165,7 +166,11 @@ export default function TeamManagement() {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'owner': return <Crown className="w-4 h-4 text-token-text" />;
+      case 'owner':
+      case 'captain':
+        return <Crown className="w-4 h-4 text-token-text" />;
+      case 'co-captain':
+        return <Star className="w-4 h-4 text-token-text" />;
       case 'admin': return <Shield className="w-4 h-4 text-token-text" />;
       default: return <Users className="w-4 h-4 text-token-text" />;
     }
@@ -173,11 +178,27 @@ export default function TeamManagement() {
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'owner': return "default";
+      case 'owner':
+      case 'captain':
+        return "default";
+      case 'co-captain':
       case 'admin': return "secondary";
       default: return "outline";
     }
   };
+
+  const markAttendance = useMutation({
+    mutationFn: async (memberUserId: string) => {
+      return apiRequest("POST", `/api/teams/${selectedTeam}/members/${memberUserId}/attendance`);
+    },
+    onSuccess: () => {
+      toast({ title: "Attendance recorded" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", selectedTeam, "members"] });
+    },
+    onError: () => {
+      toast({ title: "Couldn't record attendance", variant: "destructive" });
+    },
+  });
 
   if (teamsLoading) {
     return (
@@ -509,8 +530,16 @@ export default function TeamManagement() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                  {member.role !== 'owner' && (
+                                  {member.role !== 'owner' && member.role !== 'captain' && (
                                     <>
+                                      <DropdownMenuItem onClick={() => changeMemberRole.mutate({ memberId: member.id, role: 'captain' })}>
+                                        <Crown className="w-4 h-4 mr-2" />
+                                        Make Captain
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => changeMemberRole.mutate({ memberId: member.id, role: 'co-captain' })}>
+                                        <Star className="w-4 h-4 mr-2" />
+                                        Make Co-Captain
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => changeMemberRole.mutate({ memberId: member.id, role: 'admin' })}>
                                         <Shield className="w-4 h-4 mr-2" />
                                         Make Admin
@@ -518,6 +547,10 @@ export default function TeamManagement() {
                                       <DropdownMenuItem onClick={() => changeMemberRole.mutate({ memberId: member.id, role: 'member' })}>
                                         <Users className="w-4 h-4 mr-2" />
                                         Make Member
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => markAttendance.mutate(member.user.id)}>
+                                        <Calendar className="w-4 h-4 mr-2" />
+                                        Mark attendance
                                       </DropdownMenuItem>
                                       <DropdownMenuItem 
                                         onClick={() => removeMember.mutate(member.id)}

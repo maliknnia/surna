@@ -1,4 +1,5 @@
 import { ROUTES } from "@/navigation";
+import { eventDetailPath } from "@/lib/eventRoutes";
 import { getDemoEvent } from "@/lib/demoEvents";
 import { findDemoMapPin } from "@/lib/demoMapPins";
 import type { Coordinates } from "@/lib/geo";
@@ -30,10 +31,10 @@ export function mapPath(opts?: {
 }
 
 /** Detail page for a specific entity (preferred for Join / View event / venue profile). */
-export function entityPath(kind: MapEntityKind | string, id: string): string {
+export function entityPath(kind: MapEntityKind | string, id: string, meta?: { sport?: string }): string {
   switch (kind) {
     case "event":
-      return ROUTES.event(id);
+      return eventDetailPath(id, meta?.sport);
     case "place":
       return ROUTES.place(id);
     case "team":

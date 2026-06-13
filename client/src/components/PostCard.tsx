@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { eventDetailPath } from "@/lib/eventRoutes";
 import { CommentsSheet } from "@/components/comments/CommentsSheet";
 
 interface PostCardProps {
@@ -209,8 +210,12 @@ export default function PostCard({ post, onShare }: PostCardProps) {
   const { user } = useAuth();
 
   const likeMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/posts/${post.id}/like`, {});
+    mutationFn: async (currentlyLiked: boolean) => {
+      const endpoint = currentlyLiked
+        ? `/api/posts/${post.id}/unlike`
+        : `/api/posts/${post.id}/like`;
+      console.log("[Fix 6] Post like API:", endpoint);
+      const response = await apiRequest("POST", endpoint, {});
       return response.json();
     },
     onMutate: async () => {
@@ -315,7 +320,7 @@ export default function PostCard({ post, onShare }: PostCardProps) {
 
   const handleLike = () => {
     if (navigator.vibrate) navigator.vibrate(10);
-    likeMutation.mutate();
+    likeMutation.mutate(!!(post as PostWithAuthorEnhanced & { likedByMe?: boolean }).likedByMe);
   };
   const handleProfileClick = (userId?: string) => { setLocation(`/profile/${userId || post.author.id}`); };
 
@@ -440,8 +445,9 @@ export default function PostCard({ post, onShare }: PostCardProps) {
               variant="surna"
               className="w-full mt-3 text-sm"
               onClick={() => {
-                const eventId = (post.eventData as { id?: string })?.id;
-                if (eventId) setLocation(`/events/${eventId}`);
+                const eventData = post.eventData as { id?: string; sport?: string } | undefined;
+                const eventId = eventData?.id;
+                if (eventId) setLocation(eventDetailPath(eventId, eventData?.sport ?? post.sport ?? undefined));
                 else toast({
                   title: "Event unavailable",
                   description: "This event link is missing an ID.",

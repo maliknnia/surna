@@ -20,6 +20,7 @@ import { FeedShareMoment, useSurnaCamera } from "@/features/camera";
 import { FeedMenuSheet } from "@/components/feed/FeedMenuSheet";
 import { PostManageSheet } from "@/components/feed/PostManageSheet";
 import { FeedProfilePanel } from "@/components/feed/FeedProfilePanel";
+import { eventDetailPath } from "@/lib/eventRoutes";
 import { apiRequest } from "@/lib/queryClient";
 import {
   FeedVideoViewer,
@@ -305,9 +306,9 @@ const OptimizedPostCard = ({ post, onLike, onComment, onShare, onVideoClick }: {
                 variant="default"
                 className="w-full mt-3 text-sm"
                 onClick={() => {
-                  const eventId = (post as { eventData?: { id?: string }; eventId?: string }).eventData?.id
-                    ?? (post as { eventId?: string }).eventId;
-                  if (eventId) setLocation(`/events/${eventId}`);
+                  const eventData = (post as { eventData?: { id?: string; sport?: string }; eventId?: string }).eventData;
+                  const eventId = eventData?.id ?? (post as { eventId?: string }).eventId;
+                  if (eventId) setLocation(eventDetailPath(eventId, eventData?.sport ?? (post as { sport?: string }).sport));
                 }}
               >
                 Join Event
@@ -698,6 +699,7 @@ export default function Feed() {
       
       const response = await apiRequest('GET', url);
       const data = await response.json();
+      console.log('[Fix 1] Home feed loaded from API:', url, `${(data as FeedResponse).items?.length ?? 0} posts`);
       return data as FeedResponse;
     },
     initialPageParam: null as string | null,
@@ -930,17 +932,10 @@ export default function Feed() {
     return posts;
   }, [feedTab, followingIds, posts]);
 
-  const rotatingDemoPosts = useMemo(
-    () => pickDemoFeedPosts(feedSeed, feedTab, 8).map(templateToFeedDemoPost),
-    [feedSeed, feedTab],
+  const feedEntries = useMemo(
+    () => filteredPosts.map((item) => ({ kind: "api" as const, item })),
+    [filteredPosts],
   );
-
-  const feedEntries = useMemo(() => {
-    if (feedTab === "Following") {
-      return filteredPosts.map((item) => ({ kind: "api" as const, item }));
-    }
-    return interleaveFeedItems(rotatingDemoPosts, filteredPosts, feedSeed);
-  }, [feedSeed, feedTab, filteredPosts, rotatingDemoPosts]);
 
   const handleFollowUser = useCallback(async (userId: string) => {
     if (userId.startsWith("demo-")) {
@@ -1198,7 +1193,6 @@ export default function Feed() {
                 {feedBottomTab === "home" && (
                 <div className="animate-in fade-in duration-200">
                     <StoriesBar
-                      refreshSeed={feedSeed}
                       onStoryClick={(userId, storyIndex) => {
                         setSelectedStory({ userId, storyIndex });
                         setShowStoryViewer(true);
@@ -1240,7 +1234,6 @@ export default function Feed() {
                       </div>
                     )}
 
-                    {/* ── Mixed demo + API posts (order shuffles on refresh / Home tap) ── */}
                     <div ref={containerRef} className="space-y-0" style={{ minHeight: "50vh" }}>
                       {isLoading && feedEntries.length === 0 ? (
                         <div data-testid="posts-loading">
@@ -1248,21 +1241,6 @@ export default function Feed() {
                         </div>
                       ) : (
                         feedEntries.map((entry) => {
-                          if (entry.kind === "demo") {
-                            return (
-                              <FeedDemoPostCard
-                                key={`demo-${entry.item.id}-${feedSeed}`}
-                                post={entry.item}
-                                isDark={isDark}
-                                onOpenComments={() => setCommentsPostId(entry.item.id)}
-                                onVideoClick={
-                                  entry.item.type === "video"
-                                    ? () => openDemoVideo(entry.item, "reels")
-                                    : undefined
-                                }
-                              />
-                            );
-                          }
                           const post = entry.item as any;
                           if (post.postType === "place" && post.place) {
                             return <PlacePostCard key={post.id} post={post} onShare={handleShare} />;
@@ -1279,7 +1257,7 @@ export default function Feed() {
                           );
                         })
                       )}
-                      {!isLoading && feedEntries.some((e) => e.kind === "api") && (
+                      {!isLoading && feedEntries.length > 0 && (
                         <div ref={loadMoreRef} className="py-4 flex justify-center" data-testid="load-more-trigger">
                           {isFetchingNextPage
                             ? <Loader2 className="h-6 w-6 animate-spin text-token-text" />

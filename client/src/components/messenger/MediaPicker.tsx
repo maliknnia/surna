@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
+import { capturePhoto, pickMediaFromGallery } from '@/lib/capacitor/camera';
 
 interface MediaPickerProps {
   onMediaSelected: (mediaId: string, mediaType: string) => void;
@@ -24,7 +25,16 @@ export default function MediaPicker({ onMediaSelected, onClose }: MediaPickerPro
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const openCamera = async () => {
+    const file = await capturePhoto({ source: 'camera' });
+    if (file) handleFileSelect(file);
+  };
+
+  const openGallery = async (accept: string) => {
+    const file = await pickMediaFromGallery(accept);
+    if (file) handleFileSelect(file);
+  };
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -227,7 +237,9 @@ export default function MediaPicker({ onMediaSelected, onClose }: MediaPickerPro
                     key={type.id}
                     onClick={() => {
                       if (type.id === 'camera') {
-                        cameraInputRef.current?.click();
+                        void openCamera();
+                      } else if (type.id === 'photo') {
+                        void openGallery('image/*');
                       } else {
                         fileInputRef.current?.click();
                       }
@@ -252,7 +264,9 @@ export default function MediaPicker({ onMediaSelected, onClose }: MediaPickerPro
                     variant="ghost"
                     onClick={() => {
                       if (type.id === 'camera') {
-                        cameraInputRef.current?.click();
+                        void openCamera();
+                      } else if (type.id === 'photo') {
+                        void openGallery('image/*');
                       } else {
                         fileInputRef.current?.click();
                       }
@@ -295,14 +309,6 @@ export default function MediaPicker({ onMediaSelected, onClose }: MediaPickerPro
           ref={fileInputRef}
           type="file"
           accept="image/*,video/*,audio/*"
-          onChange={handleFileInput}
-          className="hidden"
-        />
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
           onChange={handleFileInput}
           className="hidden"
         />

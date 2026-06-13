@@ -10,6 +10,7 @@ import {
   leaderboardQuerySchema,
 } from "./challenges.validation";
 import { authMiddleware } from "../../middleware/auth";
+import { bridgeSessionUser } from "../../middleware/bridgeSessionUser";
 import { MessengerService } from "../messenger/messenger.service";
 import type { InsertCompetitiveMatch } from "@shared/schema";
 
@@ -18,8 +19,9 @@ export function createChallengesRouter(io: any): Router {
   const messengerService = new MessengerService(io);
   const challengesService = new ChallengesService(io, messengerService);
 
-  // All routes require authentication
+  // All routes require authentication (JWT bearer and/or cookie session)
   router.use(authMiddleware());
+  router.use(bridgeSessionUser);
 
   // ========== MATCH CRUD ==========
 

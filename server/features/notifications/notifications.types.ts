@@ -1,4 +1,4 @@
-﻿export type NotifType = "like" | "comment" | "follow" | "system";
+﻿export type NotifType = "like" | "comment" | "follow" | "system" | "event_reminder" | "event_rsvp";
 
 export interface NotificationRow {
   id: string;

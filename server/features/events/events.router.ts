@@ -1,7 +1,7 @@
 ﻿import { Router } from "express";
 import { z } from "zod";
-import { CreateEvent, UpdateEvent, ListQuery, RSVPBody } from "./events.validation";
-import { createEvent, editEvent, rsvp } from "./events.service";
+import { CreateEvent, UpdateEvent, ListQuery, RSVPBody, SaveEventRoute } from "./events.validation";
+import { createEvent, editEvent, rsvp, getEventRoute, saveEventRoute } from "./events.service";
 import * as repo from "./events.repo";
 import { authMiddleware } from "../../middleware/auth";
 import { bridgeSessionUser } from "../../middleware/bridgeSessionUser";
@@ -19,6 +19,17 @@ eventsRouter.get("/", async (req, res, next) => {
     res.set('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=300');
     const nextCursor = rows.length ? { cursorStartsAt: rows[rows.length-1].starts_at, cursorId: rows[rows.length-1].id } : null;
     res.json({ items: rows, nextCursor });
+  } catch (e) { next(e); }
+});
+
+// PUBLIC: GPS route for an event (public/unlisted if you know id)
+eventsRouter.get("/:id/route", async (req, res, next) => {
+  try {
+    const id = z.string().uuid().parse(req.params.id);
+    const route = await getEventRoute(id);
+    if (!route) return res.status(404).json({ error: "NOT_FOUND" });
+    if ("forbidden" in route) return res.status(403).json({ error: "FORBIDDEN" });
+    res.json(route);
   } catch (e) { next(e); }
 });
 
@@ -78,6 +89,19 @@ eventsRouter.delete("/:id", async (req: any, res, next) => {
     const ok = await repo.deleteEvent(userId, id);
     if (!ok) return res.status(404).json({ error: "NOT_FOUND" });
     res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+// AUTH: save GPS route (creator only)
+eventsRouter.post("/:id/route", async (req: any, res, next) => {
+  try {
+    const userId = req.jwtUser?.id;
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const id = z.string().uuid().parse(req.params.id);
+    const body = SaveEventRoute.parse(req.body);
+    const route = await saveEventRoute(userId, id, body);
+    if (!route) return res.status(404).json({ error: "NOT_FOUND" });
+    res.json(route);
   } catch (e) { next(e); }
 });
 

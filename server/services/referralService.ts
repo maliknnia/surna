@@ -95,15 +95,14 @@ export class ReferralService {
     const rewards = this.DEFAULT_REWARDS;
 
     try {
-      // Award points to inviter
-      await db.insert(pointTransactions).values({
-        userId: inviterId,
-        points: rewards.inviterReward,
-        action: 'referral_bonus',
-        description: 'Referral bonus for inviting a friend'
+      const { awardCompetitivePoints } = await import("./competitiveEngine");
+      await awardCompetitivePoints(inviterId, "referral_signup", {
+        relatedEntityId: inviteeId,
+        relatedEntityType: "referral",
+        description: "Referral bonus — friend signed up",
       });
 
-      // Award points to invitee
+      // Welcome bonus for invitee (legacy amount)
       await db.insert(pointTransactions).values({
         userId: inviteeId,
         points: rewards.inviteeReward,
@@ -111,7 +110,7 @@ export class ReferralService {
         description: 'Welcome bonus for joining via referral'
       });
 
-      console.log(`Awarded referral rewards: ${rewards.inviterReward} to ${inviterId}, ${rewards.inviteeReward} to ${inviteeId}`);
+      console.log(`[Phase4-1] Referral rewards: ${rewards.inviterReward}+300 to ${inviterId}, ${rewards.inviteeReward} to ${inviteeId}`);
     } catch (error) {
       console.error('Failed to award referral rewards:', error);
     }

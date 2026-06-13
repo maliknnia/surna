@@ -1,10 +1,40 @@
 import { MessengerService } from "../messenger/messenger.service";
 import * as repo from "./events.repo";
+import type { z } from "zod";
+import type { SaveEventRoute } from "./events.validation";
+
+type RoutePoint = z.infer<typeof SaveEventRoute>["routeCoordinates"][number];
+
+function normalizeRoutePoints(coords: RoutePoint[]): [number, number][] {
+  return coords.map((p) => (Array.isArray(p) ? [p[0], p[1]] : [p.lat, p.lng]));
+}
 
 export async function createEvent(creatorId: string, e: any) {
   if (new Date(e.endsAt) <= new Date(e.startsAt)) throw new Error("END_BEFORE_START");
   await repo.ensureEventsCompatTables();
   const ev = await repo.insertEvent(creatorId, e);
+
+  let recommendations: Record<string, unknown> | null = null;
+  try {
+    const { getEventCreationRecommendations, suggestNearbyReferees } = await import(
+      "../../services/phase6SportService"
+    );
+    const baseRecs = await getEventCreationRecommendations({
+      sport: e.sport ?? e.category,
+      lat: e.lat ?? e.latitude,
+      lng: e.lng ?? e.longitude,
+    });
+    const refereeSuggestions = await suggestNearbyReferees({
+      sport: e.sport ?? e.category,
+      lat: e.lat ?? e.latitude,
+      lng: e.lng ?? e.longitude,
+      limit: 3,
+    });
+    recommendations = { ...baseRecs, refereeSuggestions };
+    console.log("[Phase6-3] Event referee suggestions attached:", refereeSuggestions.length);
+  } catch (recErr) {
+    console.warn("[Phase6-6] Event recommendations skipped:", recErr);
+  }
 
   try {
     const messengerService = new MessengerService(null);
@@ -13,12 +43,12 @@ export async function createEvent(creatorId: string, e: any) {
     const group = await messengerService.createGroup(creatorId, {
       name: eventTitle,
       description: `Event chat · ${eventId}`,
+      eventId,
     });
-    const updated = await repo.setEventChatGroupId(eventId, group.id);
-    return updated ?? { ...ev, chat_group_id: group.id, chatGroupId: group.id };
+    return { ...ev, chat_group_id: group.id, chatGroupId: group.id, recommendations };
   } catch (err) {
     console.error("[Events] Failed to create event group chat:", err);
-    return ev;
+    return { ...ev, recommendations };
   }
 }
 
@@ -27,19 +57,80 @@ export async function editEvent(creatorId: string, id: string, e: any) {
   return await repo.updateEvent(creatorId, id, e);
 }
 
-export async function rsvp(eventId: string, userId: string, status: "going"|"interested"|"not_going", issueTicket: boolean) {
-  // Block RSVPs on cancelled events so the lifecycle is honored end-to-end.
+export async function rsvp(
+  eventId: string,
+  userId: string,
+  status: "going" | "interested" | "not_going" | "waitlist",
+  issueTicket: boolean,
+) {
   const ev = await repo.getEvent(eventId);
   if (!ev) throw new Error("EVENT_NOT_FOUND");
-  if ((ev as any).status && (ev as any).status !== "active") {
+  if ((ev as { status?: string }).status && (ev as { status?: string }).status !== "active") {
     throw new Error("EVENT_NOT_ACTIVE");
   }
+
+  const capacity = (ev as { capacity?: number }).capacity;
+  const currentGoing = await repo.countGoing(eventId);
+
   if (status === "going") {
-    const current = await repo.countGoing(eventId);
-    if (ev.capacity && current >= ev.capacity) throw new Error("EVENT_FULL");
+    if (capacity && currentGoing >= capacity) {
+      throw new Error("EVENT_FULL");
+    }
   }
+
+  if (status === "waitlist") {
+    if (!capacity) throw new Error("NO_WAITLIST");
+    if (currentGoing < capacity) {
+      status = "going";
+    }
+  }
+
+  const previous = await repo.getUserRSVP(eventId, userId);
+  const wasGoing = previous?.status === "going";
+
   const row = await repo.upsertRSVP(eventId, userId, status);
+
+  if (status === "waitlist") {
+    await repo.assignWaitlistPosition(eventId, userId);
+    console.log("[Phase3-6] User added to waitlist:", userId, eventId);
+  }
+
   let ticket: Awaited<ReturnType<typeof repo.issueTicket>> | null = null;
   if (status === "going" && issueTicket) ticket = await repo.issueTicket(eventId, userId);
-  return { rsvp: row, ticket };
+
+  if (wasGoing && status !== "going") {
+    const promoted = await repo.promoteNextWaitlisted(eventId);
+    if (promoted) {
+      console.log("[Phase3-6] Waitlist promoted to going:", promoted, eventId);
+    }
+  }
+
+  return { rsvp: row, ticket, waitlisted: status === "waitlist" };
+}
+
+export async function getEventRoute(eventId: string) {
+  const row = await repo.getEventRoute(eventId);
+  if (!row) return null;
+  if (row.visibility === "private") return { forbidden: true as const };
+  const coords = Array.isArray(row.route_coordinates) ? row.route_coordinates : [];
+  return {
+    eventId: row.id,
+    sport: row.sport ?? null,
+    routeCoordinates: coords,
+  };
+}
+
+export async function saveEventRoute(
+  creatorId: string,
+  eventId: string,
+  body: z.infer<typeof SaveEventRoute>,
+) {
+  const routeCoordinates = normalizeRoutePoints(body.routeCoordinates);
+  const row = await repo.saveEventRoute(creatorId, eventId, routeCoordinates);
+  if (!row) return null;
+  return {
+    eventId: row.id,
+    sport: row.sport ?? null,
+    routeCoordinates: row.route_coordinates ?? routeCoordinates,
+  };
 }

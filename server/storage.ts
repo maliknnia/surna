@@ -523,7 +523,22 @@ export class DatabaseStorage implements IStorage {
 
   async getFeedPostsKeyset(userId: string, limit = 20, cursor?: Date): Promise<{ items: any[]; nextCursor: string | null }> {
     const { mergeImageVariants } = await import("./features/media/variants");
-    // Fetch regular posts
+    const { getFollowingUserIds, getBlockedUserIds } = await import("./infrastructure/phase3Social");
+    const { parseUserProfile } = await import("@shared/userProfile");
+    const followingIds = await getFollowingUserIds(userId);
+    const blockedIds = await getBlockedUserIds(userId);
+
+    const [viewer] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const viewerProfile = parseUserProfile(viewer?.profileJson, viewer);
+    const prefSports = new Set<string>(
+      [
+        viewer?.sport,
+        viewer?.primarySport,
+        ...(viewerProfile.sports ?? []),
+      ].filter(Boolean).map((s) => String(s).toLowerCase()),
+    );
+    const prefLocation = (viewer?.location || "").toLowerCase();
+
     const basePostQuery = db
       .select({
         post: posts,
@@ -532,11 +547,13 @@ export class DatabaseStorage implements IStorage {
       .from(posts)
       .innerJoin(users, eq(posts.authorId, users.id))
       .orderBy(desc(posts.createdAt))
-      .limit(limit * 2); // Fetch more to ensure we have enough after merging
+      .limit(limit * 3);
 
-    const feedPosts = cursor
+    const feedPostsRaw = cursor
       ? await basePostQuery.where(and(eq(posts.removed, false), lt(posts.createdAt, cursor)))
       : await basePostQuery.where(eq(posts.removed, false));
+
+    const feedPosts = feedPostsRaw.filter(({ author }) => !blockedIds.has(author.id));
 
     // Fetch place posts
     const basePlacePostQuery = db
@@ -567,6 +584,7 @@ export class DatabaseStorage implements IStorage {
           ...variants,
           author,
           isLiked,
+          likedByMe: isLiked,
           postType: 'user',
         };
       })
@@ -587,13 +605,22 @@ export class DatabaseStorage implements IStorage {
       likedByMe: false, // TODO: Implement place post likes tracking
     }));
 
-    // Merge and sort by createdAt
+    // Merge — followed authors weighted 3x; onboarding sports/location boost 2x
+    const scoreItem = (item: Record<string, unknown>) => {
+      const date = new Date(String(item.createdAt ?? 0)).getTime();
+      const author = item.author as { id?: string; sport?: string | null } | undefined;
+      const authorId = author?.id;
+      let weight = 1;
+      if (authorId && followingIds.has(authorId)) weight *= 3;
+      const postSport = String(item.sport || author?.sport || "").toLowerCase();
+      if (postSport && prefSports.has(postSport)) weight *= 2;
+      const postLoc = String(item.location || "").toLowerCase();
+      if (prefLocation && postLoc && postLoc.includes(prefLocation.split(",")[0])) weight *= 2;
+      return weight * date;
+    };
+
     const allItems = [...postsWithLikeStatus, ...formattedPlacePosts]
-      .sort((a, b) => {
-        const dateA = new Date(a.createdAt as Date);
-        const dateB = new Date(b.createdAt as Date);
-        return dateB.getTime() - dateA.getTime();
-      })
+      .sort((a, b) => scoreItem(b) - scoreItem(a))
       .slice(0, limit);
 
     const nextCursor = allItems.length ? new Date(allItems[allItems.length - 1].createdAt as Date).toISOString() : null;
@@ -851,17 +878,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Social operations
-  async followUser(followerId: string, followingId: string): Promise<void> {
-    await db.insert(userFollows).values({ followerId, followedId: followingId });
+  async followUser(followerId: string, followingId: string, followingType = "user"): Promise<void> {
+    const { ensurePhase3SocialTables } = await import("./infrastructure/phase3Social");
+    await ensurePhase3SocialTables();
+    await db.execute(sql`
+      INSERT INTO follows (follower_id, following_id, following_type)
+      VALUES (${followerId}, ${followingId}, ${followingType})
+      ON CONFLICT (follower_id, following_id, following_type) DO NOTHING
+    `);
+    try {
+      await db.insert(userFollows).values({ followerId, followedId: followingId });
+    } catch { /* legacy mirror */ }
   }
 
-  async unfollowUser(followerId: string, followingId: string): Promise<void> {
+  async unfollowUser(followerId: string, followingId: string, followingType = "user"): Promise<void> {
+    const { ensurePhase3SocialTables } = await import("./infrastructure/phase3Social");
+    await ensurePhase3SocialTables();
+    await db.execute(sql`
+      DELETE FROM follows
+      WHERE follower_id = ${followerId} AND following_id = ${followingId} AND following_type = ${followingType}
+    `);
     await db
       .delete(userFollows)
       .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followedId, followingId)));
   }
 
-  async isFollowing(followerId: string, followingId: string): Promise<boolean> {
+  async isFollowing(followerId: string, followingId: string, followingType = "user"): Promise<boolean> {
+    const { ensurePhase3SocialTables } = await import("./infrastructure/phase3Social");
+    await ensurePhase3SocialTables();
+    const q = await db.execute(sql`
+      SELECT 1 FROM follows
+      WHERE follower_id = ${followerId} AND following_id = ${followingId} AND following_type = ${followingType}
+      LIMIT 1
+    `);
+    if (q.rows.length > 0) return true;
     const [follow] = await db
       .select()
       .from(userFollows)

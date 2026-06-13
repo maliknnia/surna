@@ -32,6 +32,7 @@ import { Link } from "wouter";
 import { OWNER_PROFILE_AVATAR } from "@/lib/ownerAvatar";
 import { ROUTES } from "@/navigation";
 import type { UserWithProfile } from "@/lib/userProfileApi";
+import { HealthProfileSection } from "@/components/profile/HealthProfileSection";
 
 const DEMO_ACTIVITY = [
   { text: "Joined Lakers Pickup", time: "2h ago" },
@@ -438,6 +439,10 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+
+        {viewingUserId && (
+          <HealthProfileSection userId={viewingUserId} isOwnProfile={isOwnProfile} />
+        )}
 
         {/* Highlights */}
         <div className="animate-fade-in stagger-4">

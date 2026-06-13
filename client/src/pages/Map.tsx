@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getMapOverlayTheme } from "@/lib/panelTheme";
-import { ArrowLeft, Navigation, Search, X, SlidersHorizontal, UserPlus, Settings } from "lucide-react";
+import { ArrowLeft, Navigation, Search, X, SlidersHorizontal, UserPlus, Settings, Layers } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import InteractiveMap from "@/components/map/InteractiveMap";
-import type { MapPin } from "@/components/map/InteractiveMap";
+import type { MapPin, MapRoute } from "@/components/map/InteractiveMap";
 import PinSheet from "@/components/map/PinSheet";
 import { MapSettingsSheet } from "@/components/map/MapSettingsSheet";
 import type { Coordinates } from "@/lib/geo";
@@ -17,6 +17,7 @@ import {
   parseMapFocusFromSearch,
 } from "@/lib/mapNavigation";
 import { enrichMapPinPhotos, generateDemoPins } from "@/lib/demoMapPins";
+import { generateDemoRoutes } from "@/lib/demoMapRoutes";
 import { useLocationSharing } from "@/hooks/useLocationSharing";
 import { useMapSettings } from "@/hooks/useMapSettings";
 import {
@@ -25,7 +26,8 @@ import {
   pinMatchesLayer,
   pinMatchesSport,
 } from "@/lib/mapSettings";
-import { ROUTES } from "@/navigation";
+import { toggleMapTileStyleMenu } from "@/lib/mapTileStyle";
+import { eventDetailPath, isRouteSport, consumeMapRouteFocus } from "@/lib/eventRoutes";
 import "leaflet/dist/leaflet.css";
 
 type FilterType = 'all' | 'events' | 'places' | 'teams' | 'coaches' | 'players' | 'challenges';
@@ -49,6 +51,7 @@ interface ViewportItem {
 interface ViewportResponse {
   serverTime: string;
   items: ViewportItem[];
+  routes?: MapRoute[];
   stats: Record<string, number>;
   clusters: any[];
 }
@@ -132,6 +135,16 @@ export default function MapPage({
       );
     }
   }, []);
+
+  useEffect(() => {
+    if (!user || sportFilter !== 'all') return;
+    const prefSport = (user.sport || user.primarySport || '').toLowerCase();
+    if (!prefSport) return;
+    const match = sportOptions.find(
+      (o) => o.value !== 'all' && prefSport.includes(o.value) || o.value.includes(prefSport),
+    );
+    if (match) setSportFilter(match.value);
+  }, [user?.id, user?.sport, user?.primarySport]);
 
   const effectiveLocation = userLocation || { lat: 51.8985, lng: -8.4756 };
 
@@ -403,6 +416,20 @@ export default function MapPage({
     return [...pins, focusExtraPin];
   }, [pins, focusExtraPin]);
 
+  const [routeFocus] = useState<MapRoute | null>(() => consumeMapRouteFocus());
+
+  const demoRoutes = useMemo(
+    () => generateDemoRoutes(effectiveLocation),
+    [effectiveLocation.lat, effectiveLocation.lng],
+  );
+
+  const mapRoutes = useMemo(() => {
+    if (routeFocus) return [routeFocus];
+    const fromApi = viewportData?.routes ?? [];
+    if (fromApi.length > 0) return fromApi;
+    return demoRoutes;
+  }, [routeFocus, viewportData?.routes, demoRoutes]);
+
   useEffect(() => {
     const applyFocus = () => {
       const focus = parseMapFocusFromSearch(
@@ -470,15 +497,32 @@ export default function MapPage({
     onPinSheetToggle?.(mapChromeHidden);
   }, [mapChromeHidden, onPinSheetToggle]);
 
-  const handlePinClick = useCallback((pin: MapPin) => {
-    const focus = parseMapFocusFromSearch(
-      typeof window !== "undefined" ? window.location.search : "",
-    );
-    focusDismissedRef.current = focus ? `${focus.type}:${focus.id}` : pin.id;
-    setFocusedPinId(null);
-    setFocusHintTitle(null);
-    setSelectedPin(pin);
-  }, []);
+  const handlePinClick = useCallback(
+    (pin: MapPin) => {
+      if (pin.type === "event") {
+        const sport = String(pin.data?.sport ?? pin.subtitle ?? "");
+        if (isRouteSport(sport)) {
+          navigate(eventDetailPath(pin.id, sport));
+          return;
+        }
+      }
+
+      const focus = parseMapFocusFromSearch(
+        typeof window !== "undefined" ? window.location.search : "",
+      );
+      focusDismissedRef.current = focus ? `${focus.type}:${focus.id}` : pin.id;
+      setFocusedPinId(null);
+      setFocusHintTitle(null);
+      setSelectedPin(pin);
+    },
+    [navigate],
+  );
+  const handleRouteClick = useCallback(
+    (route: MapRoute) => {
+      navigate(eventDetailPath(route.id, route.sportType));
+    },
+    [navigate],
+  );
   const handleCloseSheet = useCallback(() => {
     setSelectedPin(null);
   }, []);
@@ -549,11 +593,16 @@ export default function MapPage({
             <InteractiveMap
               center={effectiveLocation}
               pins={displayPins}
+              routes={mapRoutes}
+              routeFocus={routeFocus}
               onPinClick={handlePinClick}
+              onRouteClick={handleRouteClick}
               className="h-full"
               isDark={isDark}
               mapStyle={effectiveMapStyle}
               mapActive={mapActive}
+              externalStyleControl
+              externalStyleControlOffsetTop={embedded ? 120 : 68}
               flyTo={mapFlyTo}
               flyToZoom={focusedPinId ? 16 : 15}
               highlightedPinId={focusedPinId}
@@ -658,6 +707,18 @@ export default function MapPage({
 
             {!mapChromeHidden && (
             <div className={`absolute z-[999] flex flex-col gap-2 ${embedded ? "top-16 right-3" : "top-3 right-3"}`}>
+              <button
+                onClick={() => toggleMapTileStyleMenu()}
+                className="w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{ background: surfaceBg, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
+                data-testid="button-map-style-toolbar"
+                data-map-style-trigger
+                aria-label="Map style — dark, light, or satellite"
+                title="Map style"
+              >
+                <Layers size={18} style={{ color: iconColor }} />
+              </button>
+
               <button
                 onClick={() => setShowSettingsSheet(true)}
                 className="w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-transform"

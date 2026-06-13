@@ -245,7 +245,7 @@ export class MessengerRepository {
     await this.ensureDMSchema();
     const created = await db.execute(sql`
       INSERT INTO dm_messages (conversation_id, sender_id, kind, body, media_id)
-      VALUES (${data.conversation_id}, ${data.sender_id}, ${data.kind}, ${data.body || ""}, ${data.media_id})
+      VALUES (${data.conversation_id}, ${data.sender_id}, ${data.kind}, ${data.body ?? ""}, ${data.media_id ?? null})
       RETURNING *
     `);
 

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Camera } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Video } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useSurnaCamera } from "@/features/camera";
 import { createTextPost, invalidateFeedQueries } from "@/lib/postActions";
 import { PostComposeFields } from "./PostComposeFields";
+import { pickMediaFromGallery } from "@/lib/capacitor/camera";
+import { uploadVideoPost } from "@/lib/videoUpload";
 
 type Props = {
   open: boolean;
@@ -21,6 +23,8 @@ export function PostComposerSheet({ open, onOpenChange }: Props) {
   const [content, setContent] = useState("");
   const [sport, setSport] = useState("");
   const [location, setLocation] = useState("");
+  const [videoUploading, setVideoUploading] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -61,6 +65,38 @@ export function PostComposerSheet({ open, onOpenChange }: Props) {
     });
   };
 
+  const handleVideoUpload = async (file: File) => {
+    if (!content.trim()) {
+      toast({ title: "Add a caption before uploading video", variant: "destructive" });
+      return;
+    }
+    setVideoUploading(true);
+    try {
+      await uploadVideoPost({
+        file,
+        content: content.trim(),
+        sport: sport || undefined,
+        location: location || undefined,
+      });
+      toast({ title: "Video posted" });
+      invalidateFeedQueries(queryClient);
+      onOpenChange(false);
+    } catch (e) {
+      toast({
+        title: "Video upload failed",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  const openVideoPicker = async () => {
+    const file = await pickMediaFromGallery("video/*");
+    if (file) await handleVideoUpload(file);
+  };
+
   const canPost = content.trim().length > 0;
 
   return (
@@ -92,8 +128,30 @@ export function PostComposerSheet({ open, onOpenChange }: Props) {
             onClick={openMediaCamera}
           >
             <Camera className="h-4 w-4" />
-            Add photo or video
+            Add photo
           </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-2xl gap-2"
+            disabled={videoUploading}
+            onClick={() => void openVideoPicker()}
+          >
+            <Video className="h-4 w-4" />
+            {videoUploading ? "Uploading video…" : "Add video"}
+          </Button>
+
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleVideoUpload(file);
+            }}
+          />
 
           <Button
             type="button"

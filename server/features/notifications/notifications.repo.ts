@@ -14,7 +14,24 @@ export async function insertNotification(row: {
     RETURNING id, user_id AS "userId", actor_id AS "actorId", type, post_id AS "postId",
               comment_id AS "commentId", message, metadata, read_at AS "readAt", created_at AS "createdAt";
   `);
-  return q.rows[0];
+  const rec = q.rows[0];
+
+  // Phase 9: dispatch mobile push when a notification row is created
+  try {
+    const { sendPushToUser } = await import("../../services/phase9MobileService");
+    await sendPushToUser(row.userId, {
+      title: "SURNA",
+      body: row.message ?? `New ${row.type} notification`,
+      data: {
+        type: row.type,
+        ...(row.postId ? { postId: row.postId } : {}),
+      },
+    });
+  } catch {
+    // push optional in dev
+  }
+
+  return rec;
 }
 
 export async function listNotifications(userId: string, cursorCreatedAt?: string, cursorId?: string, limit = 20) {

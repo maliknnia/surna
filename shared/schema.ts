@@ -50,7 +50,29 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false),
   emailVerificationCode: varchar("email_verification_code", { length: 6 }),
   emailVerificationExpiresAt: timestamp("email_verification_expires_at"),
+  passwordHash: varchar("password_hash"),
+  points: integer("points").default(0),
+  currentWinStreak: integer("current_win_streak").default(0),
+  longestWinStreak: integer("longest_win_streak").default(0),
+  activityStreak: integer("activity_streak").default(0),
+  longestActivityStreak: integer("longest_activity_streak").default(0),
+  lastActivityDate: timestamp("last_activity_date"),
   profileJson: jsonb("profile_json"),
+  profileType: varchar("profile_type").default("normal"),
+  sportIdentity: jsonb("sport_identity").default(sql`'{}'::jsonb`),
+  heightCm: integer("height_cm"),
+  preferredFoot: varchar("preferred_foot"),
+  clubHistory: text("club_history"),
+  weightClass: varchar("weight_class"),
+  fightRecordWins: integer("fight_record_wins").default(0),
+  fightRecordLosses: integer("fight_record_losses").default(0),
+  fightRecordDraws: integer("fight_record_draws").default(0),
+  fightRecordKos: integer("fight_record_kos").default(0),
+  stance: varchar("stance"),
+  amateurOrPro: varchar("amateur_or_pro"),
+  iabaNumber: varchar("iaba_number"),
+  medicalClearanceExpiry: timestamp("medical_clearance_expiry"),
+  gymAffiliation: varchar("gym_affiliation"),
   pushSubscription: text("push_subscription"), // Web Push subscription JSON
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -144,6 +166,8 @@ export const teams = pgTable("teams", {
   isPublic: boolean("is_public").default(true),
   maxMembers: integer("max_members").default(20),
   currentMembers: integer("current_members").default(1),
+  currentWinStreak: integer("current_win_streak").default(0),
+  longestWinStreak: integer("longest_win_streak").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -192,11 +216,37 @@ export const teamStats = pgTable("team_stats", {
   lastUpdated: timestamp("last_updated").defaultNow(),
 });
 
-// User follows (social connections)
+// User follows (social connections) — legacy; Phase 3 uses `follows` table
 export const userFollows = pgTable("user_follows", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   followerId: varchar("follower_id").notNull().references(() => users.id),
   followedId: varchar("followed_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const follows = pgTable("follows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  followerId: varchar("follower_id").notNull().references(() => users.id),
+  followingId: varchar("following_id").notNull(),
+  followingType: varchar("following_type").notNull().default("user"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userBlocks = pgTable("user_blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blockerId: varchar("blocker_id").notNull().references(() => users.id),
+  blockedId: varchar("blocked_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const contentReports = pgTable("content_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reporterId: varchar("reporter_id").notNull().references(() => users.id),
+  contentType: varchar("content_type").notNull(),
+  contentId: varchar("content_id").notNull(),
+  reason: varchar("reason").notNull(),
+  description: text("description"),
+  status: varchar("status").default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -285,6 +335,34 @@ export const leaderboards = pgTable("leaderboards", {
 
 export type Leaderboard = typeof leaderboards.$inferSelect;
 export type InsertLeaderboard = typeof leaderboards.$inferInsert;
+
+/** Phase 4 competitive badges (user_id, badge_type, awarded_at). */
+export const competitiveBadges = pgTable("badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  badgeType: varchar("badge_type").notNull(),
+  awardedAt: timestamp("awarded_at").defaultNow(),
+});
+
+export const weeklyChallenges = pgTable("weekly_challenges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  sport: varchar("sport"),
+  requirement: jsonb("requirement").default({}),
+  bonusPoints: integer("bonus_points").default(75),
+  weekStart: timestamp("week_start").notNull(),
+  weekEnd: timestamp("week_end").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const weeklyChallengeCompletions = pgTable("weekly_challenge_completions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  weeklyChallengeId: varchar("weekly_challenge_id").notNull().references(() => weeklyChallenges.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  completedAt: timestamp("completed_at").defaultNow(),
+  pointsAwarded: integer("points_awarded").default(0),
+});
 
 // Notifications
 export const notifications = pgTable("notifications", {
@@ -400,6 +478,7 @@ export const challenges = pgTable("challenges", {
   title: varchar("title").notNull(),
   description: text("description").notNull(),
   type: varchar("type").notNull(), // 'daily', 'weekly', 'monthly', 'seasonal'
+  challengeType: varchar("challenge_type").default("open"), // 'open', 'structured', 'contact'
   category: varchar("category"), // 'social', 'fitness', 'engagement', 'learning'
   requirements: jsonb("requirements").notNull(), // Dynamic requirements object
   rewards: jsonb("rewards").notNull(), // Points, badges, etc.
@@ -425,6 +504,7 @@ export const competitiveMatches = pgTable("competitive_matches", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: varchar("title").notNull(),
   type: varchar("type").notNull(), // 'solo', 'player1v1', 'teamVsTeam', 'open'
+  challengeType: varchar("challenge_type").default("open"), // 'open', 'structured', 'contact'
   sport: varchar("sport").notNull(),
   creatorType: varchar("creator_type").notNull(), // 'user', 'team'
   creatorId: varchar("creator_id").notNull(),
@@ -452,6 +532,7 @@ export const matchParticipants = pgTable("match_participants", {
   participantType: varchar("participant_type").notNull(), // 'user', 'team'
   participantId: varchar("participant_id").notNull(),
   role: varchar("role"), // 'host', 'guest', null for open
+  managerConsent: boolean("manager_consent").default(false),
   status: varchar("status").default("pending"), // 'pending', 'accepted', 'declined', 'checkedIn'
   checkedInAt: timestamp("checked_in_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -709,6 +790,8 @@ export const events = pgTable("events", {
   lat: decimal("lat", { precision: 10, scale: 7 }),
   lng: decimal("lng", { precision: 10, scale: 7 }),
   locationDetail: jsonb("location_detail"),
+  /** GPS track for cycling/running/hiking events — [[lat, lng], ...] */
+  routeCoordinates: jsonb("route_coordinates"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -1659,6 +1742,10 @@ export const coachBookings = pgTable("coach_bookings", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: varchar("status").default("pending"), // 'pending', 'confirmed', 'completed', 'cancelled'
   paymentId: varchar("payment_id").references(() => payments.id),
+  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }),
+  coachPayout: decimal("coach_payout", { precision: 10, scale: 2 }),
+  reviewRating: integer("review_rating"),
+  reviewText: text("review_text"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

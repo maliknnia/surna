@@ -124,7 +124,6 @@ function HomePanel({
       <div className="px-4 pt-2 pb-28 space-y-6" style={{ background: "var(--surna-base)" }}>
         <div className="-mx-4">
           <StoriesBar
-            refreshSeed={contentSeed}
             onStoryClick={onStoryOpen}
             onAddStory={openStoryCamera}
           />

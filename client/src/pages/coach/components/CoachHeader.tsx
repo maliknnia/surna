@@ -1,4 +1,4 @@
-import { MapPin, Star, MessageCircle, Calendar, Settings, Clock } from "lucide-react";
+import { MapPin, Star, MessageCircle, Calendar, Settings, Clock, UserPlus, CheckCircle2 } from "lucide-react";
 import { getSportConfig } from "@/components/TeamCard";
 import CoachVerificationBadge from "@/components/coaches/CoachVerificationBadge";
 import type { CoachWithProfile } from "@shared/schema";
@@ -25,6 +25,9 @@ type CoachHeaderProps = {
   onBook: () => void;
   onEdit: () => void;
   onReviews: () => void;
+  onFollow?: () => void;
+  isFollowing?: boolean;
+  followPending?: boolean;
 };
 
 export default function CoachHeader({
@@ -42,6 +45,9 @@ export default function CoachHeader({
   onBook,
   onEdit,
   onReviews,
+  onFollow,
+  isFollowing = false,
+  followPending = false,
 }: CoachHeaderProps) {
   const sport = coach.specialties?.[0] || coach.user.sport || "Coach";
   const photo = profile.coverImageUrl || coach.user.profileImageUrl;
@@ -126,30 +132,43 @@ export default function CoachHeader({
       </div>
 
       {!isOwnCoach ? (
-        <div className="flex items-center gap-2.5 w-full max-w-sm mt-5">
-          <button
-            type="button"
-            onClick={onBook}
-            className="flex-1 h-12 rounded-full text-[14px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
-            style={{
-              background: accentColor,
-              color: "#fff",
-              textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-              boxShadow: `0 8px 24px ${accentColor}44`,
-            }}
-          >
-            <Calendar size={16} />
-            {canBookSlots ? "Book session" : "Enquire"}
-          </button>
-          <button
-            type="button"
-            onClick={onMessage}
-            disabled={chatPending}
-            className="h-12 px-5 rounded-full text-[13px] font-semibold flex items-center gap-2 transition-all active:scale-[0.96] bg-muted/60 hover:bg-muted text-foreground border border-border backdrop-blur-sm disabled:opacity-60"
-          >
-            <MessageCircle size={15} />
-            Message
-          </button>
+        <div className="flex flex-col gap-2.5 w-full max-w-sm mt-5">
+          <div className="flex items-center gap-2.5 w-full">
+            <button
+              type="button"
+              onClick={onBook}
+              className="flex-1 h-12 rounded-full text-[14px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
+              style={{
+                background: accentColor,
+                color: "#fff",
+                textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                boxShadow: `0 8px 24px ${accentColor}44`,
+              }}
+            >
+              <Calendar size={16} />
+              {canBookSlots ? "Book session" : "Enquire"}
+            </button>
+            <button
+              type="button"
+              onClick={onMessage}
+              disabled={chatPending}
+              className="h-12 px-5 rounded-full text-[13px] font-semibold flex items-center gap-2 transition-all active:scale-[0.96] bg-muted/60 hover:bg-muted text-foreground border border-border backdrop-blur-sm disabled:opacity-60"
+            >
+              <MessageCircle size={15} />
+              Message
+            </button>
+          </div>
+          {onFollow ? (
+            <button
+              type="button"
+              onClick={onFollow}
+              disabled={followPending}
+              className="w-full h-11 rounded-full text-[13px] font-semibold flex items-center justify-center gap-2 border border-border bg-muted/40 disabled:opacity-60"
+            >
+              {isFollowing ? <CheckCircle2 size={15} /> : <UserPlus size={15} />}
+              {isFollowing ? "Following" : "Follow coach"}
+            </button>
+          ) : null}
         </div>
       ) : (
         <button

@@ -12,6 +12,7 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'pu
 ALTER TABLE events ADD COLUMN IF NOT EXISTS capacity integer;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS cancelled_at timestamptz;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS route_coordinates jsonb;
 
 CREATE TABLE IF NOT EXISTS event_rsvps (
   event_id varchar NOT NULL,

@@ -1,9 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MessageCircle, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
-import { DEMO_DM_CONVERSATIONS, DEMO_GROUP_CONVERSATIONS, shouldShowMessengerDemos } from './demoData';
 import { getMessengerTheme } from './messengerTheme';
 
 interface ConversationListProps {
@@ -50,13 +49,13 @@ export default function ConversationList({ type, searchQuery, onSelect }: Conver
     },
   });
 
-  const allConversations = useMemo(() => {
-    const real = conversations || [];
-    if (!shouldShowMessengerDemos(real.length)) return real;
-    const demos = isDm ? DEMO_DM_CONVERSATIONS : DEMO_GROUP_CONVERSATIONS;
-    const realIds = new Set(real.map((c: { id: string }) => c.id));
-    return [...real, ...demos.filter((d) => !realIds.has(d.id))];
-  }, [conversations, isDm]);
+  const allConversations = useMemo(() => conversations || [], [conversations]);
+
+  useEffect(() => {
+    if (conversations) {
+      console.log("[Fix 8] Messenger conversations loaded from API:", conversations.length);
+    }
+  }, [conversations]);
 
   const filtered = allConversations?.filter((conv: any) => {
     if (!searchQuery.trim()) return true;

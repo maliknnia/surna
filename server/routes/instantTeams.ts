@@ -104,6 +104,7 @@ instantTeamsRouter.post("/:id/join", requireEmailVerified, async (req, res) => {
         instantTeamId: teamId,
       });
       chatGroupId = group.id;
+      console.log("[Fix 3] Instant Join group chat ensured:", chatGroupId, "for team", teamId);
     } catch (err) {
       console.error("[InstantTeams] Failed to ensure group chat:", err);
     }

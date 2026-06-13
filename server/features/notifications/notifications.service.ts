@@ -12,10 +12,10 @@ export async function notifyUser(row: {
   try {
     const io = getIO();
     io.to(`user:${row.userId}`).emit("notification:new", rec);
-    console.log(`ðŸ“¬ [notifications] Sent to user:${row.userId} - ${row.type}`);
+    console.log(`📬 [notifications] Sent to user:${row.userId} - ${row.type}`);
   } catch {
-    // IO not initialized (e.g., during tests) â€” ignore
-    console.log(`ðŸ“¬ [notifications] Created notification (no socket) - ${row.type}`);
+    // IO not initialized (e.g., during tests) — ignore
+    console.log(`📬 [notifications] Created notification (no socket) - ${row.type}`);
   }
   return rec;
 }

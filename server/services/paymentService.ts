@@ -269,16 +269,53 @@ export class PaymentService {
     const metadata = paymentIntent.metadata ?? {};
     if (metadata.source === "marketplace" && metadata.userId) {
       try {
-        const { fulfillMarketplacePayment } = await import("../features/marketplace/marketplace.repo");
-        const result = await fulfillMarketplacePayment(paymentIntent.id, metadata.userId);
+        const { fulfillMarketplaceOrderFulfilled } = await import("./phase5MoneyService");
+        const result = await fulfillMarketplaceOrderFulfilled(paymentIntent.id, metadata.userId);
         if (result?.alreadyFulfilled) {
           console.log(`Marketplace order already fulfilled for ${paymentIntent.id}`);
         } else if (result) {
-          console.log(`Marketplace order fulfilled: ${result.orderId}`);
+          console.log(`[Phase5-3] Marketplace order fulfilled: ${result.orderId}`);
         }
       } catch (err) {
         console.error("[Marketplace] Fulfillment failed for payment intent:", paymentIntent.id, err);
         throw err;
+      }
+    }
+
+    if (metadata.paymentType === "team_bill" && metadata.billId && metadata.userId) {
+      try {
+        const { confirmBillPayment } = await import("./phase5MoneyService");
+        await confirmBillPayment(metadata.billId, metadata.userId, paymentIntent.id);
+        console.log("[Phase5-1] Team bill paid via webhook:", metadata.billId);
+      } catch (err) {
+        console.error("[Phase5-1] Bill payment webhook failed:", err);
+      }
+    }
+
+    if (metadata.paymentType === "coach_session" && metadata.coachBookingId) {
+      try {
+        const { recordCoachBookingCommission } = await import("./phase5MoneyService");
+        const gross = (paymentIntent.amount ?? 0) / 100;
+        await recordCoachBookingCommission(metadata.coachBookingId, gross);
+        console.log("[Phase5-4] Coach booking commission via webhook:", metadata.coachBookingId);
+      } catch (err) {
+        console.error("[Phase5-4] Coach commission webhook failed:", err);
+      }
+    }
+
+    if (metadata.paymentType === "tournament_entry" && metadata.tournamentId && metadata.userId && metadata.teamId) {
+      try {
+        const { recordTournamentEntry } = await import("./phase5MoneyService");
+        await recordTournamentEntry({
+          tournamentId: metadata.tournamentId,
+          teamId: metadata.teamId,
+          userId: metadata.userId,
+          entryFeeCents: paymentIntent.amount ?? 0,
+          paymentIntentId: paymentIntent.id,
+        });
+        console.log("[Phase5-5] Tournament entry via webhook:", metadata.tournamentId);
+      } catch (err) {
+        console.error("[Phase5-5] Tournament entry webhook failed:", err);
       }
     }
   }

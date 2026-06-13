@@ -38,8 +38,12 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
     setFollowersCount(nextCount);
 
     try {
-      const res = await apiRequest('POST', `/api/teams/${team.id}/follow`);
-      const data = await res.json().catch(() => ({}));
+      if (nextFollowing) {
+        await apiRequest('POST', `/api/teams/${team.id}/follow`, {});
+      } else {
+        await apiRequest('DELETE', `/api/teams/${team.id}/unfollow`);
+      }
+      const data: { following?: boolean; followersCount?: number } = { following: nextFollowing };
       if (typeof data.followersCount === 'number') setFollowersCount(data.followersCount);
       if (typeof data.following === 'boolean') setIsFollowing(data.following);
       queryClient.invalidateQueries({ queryKey: ['/api/teams', team.id] });

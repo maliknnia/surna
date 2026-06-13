@@ -327,9 +327,43 @@ teamsRouter.post('/:id/join-request', isAuthenticated, async (req: AuthedRequest
   }
 });
 
-teamsRouter.post('/:id/follow', isAuthenticated, async (_req: AuthedRequest, res: Response) => {
-  // Team follow is not persisted yet — avoid fake counts misleading the UI.
-  res.status(501).json({ message: 'Team follow is not available yet' });
+teamsRouter.post('/:id/follow', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+  try {
+    const { ensurePhase3SocialTables } = await import('../../infrastructure/phase3Social');
+    const { db } = await import('../../db');
+    const { sql } = await import('drizzle-orm');
+    await ensurePhase3SocialTables();
+    await db.execute(sql`
+      INSERT INTO follows (follower_id, following_id, following_type)
+      VALUES (${userId}, ${req.params.id}, 'team')
+      ON CONFLICT (follower_id, following_id, following_type) DO NOTHING
+    `);
+    console.log('[Phase3-1] Team follow:', userId, '→', req.params.id);
+    res.json({ following: true });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to follow team';
+    res.status(500).json({ message: msg });
+  }
+});
+
+teamsRouter.delete('/:id/unfollow', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+  try {
+    const { ensurePhase3SocialTables } = await import('../../infrastructure/phase3Social');
+    const { db } = await import('../../db');
+    const { sql } = await import('drizzle-orm');
+    await ensurePhase3SocialTables();
+    await db.execute(sql`
+      DELETE FROM follows WHERE follower_id = ${userId} AND following_id = ${req.params.id} AND following_type = 'team'
+    `);
+    res.json({ following: false });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to unfollow team';
+    res.status(500).json({ message: msg });
+  }
 });
 
 export default teamsRouter;

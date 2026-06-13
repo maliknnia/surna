@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import SurnaLogo from "@/components/SurnaLogo";
+import SignupPathChooser from "@/components/SignupPathChooser";
 import { apiOrigin, devQuickLoginUrl, googleLoginUrl } from "@/lib/loginUrls";
 
 type Mode = "google" | "email" | "phone";
+type AuthFlow = "signin" | "signup" | "path";
 
 type LoginScreenProps = {
   compact?: boolean;
@@ -15,6 +17,7 @@ type LoginScreenProps = {
   title?: string;
   subtitle?: string;
   className?: string;
+  defaultAuthFlow?: AuthFlow;
 };
 
 export default function LoginScreen({
@@ -23,8 +26,12 @@ export default function LoginScreen({
   title = "Welcome to SURNA",
   subtitle = "Sign in to connect with athletes, teams, and events near you.",
   className,
+  defaultAuthFlow = "signin",
 }: LoginScreenProps) {
   const [mode, setMode] = useState<Mode>("google");
+  const [authFlow, setAuthFlow] = useState<AuthFlow>(defaultAuthFlow);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
@@ -85,6 +92,22 @@ export default function LoginScreen({
     setError(null);
     setLoading(true);
     try {
+      if (authFlow === "signup") {
+        const res = await fetch(`${apiOrigin()}/api/auth/sign-up/email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email, password, firstName, lastName, next: nextPath }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(data.message || "Could not create account");
+          return;
+        }
+        setAuthFlow("path");
+        return;
+      }
+
       const res = await fetch(`${apiOrigin()}/api/auth/sign-in/email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -152,6 +175,20 @@ export default function LoginScreen({
     }
   };
 
+  if (authFlow === "path") {
+    return (
+      <SignupPathChooser
+        onComplete={(profileType) => {
+          if (profileType === "normal") {
+            window.location.href = nextPath.startsWith("/") ? nextPath : "/";
+          } else {
+            window.location.href = "/profile/edit";
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -169,8 +206,14 @@ export default function LoginScreen({
 
       <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
         <div className="px-6 pt-6 pb-4 text-center">
-          <h1 className="text-xl font-bold text-foreground">{title}</h1>
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{subtitle}</p>
+          <h1 className="text-xl font-bold text-foreground">
+            {authFlow === "signup" ? "Create your SURNA account" : title}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+            {authFlow === "signup"
+              ? "Enter your details, then choose Quick Start or a Professional Profile."
+              : subtitle}
+          </p>
         </div>
 
         <div className="px-4 pb-2">
@@ -222,6 +265,20 @@ export default function LoginScreen({
 
           {mode === "email" && (
             <>
+              {authFlow === "signup" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
+                </div>
+              )}
               <Input
                 type="email"
                 autoComplete="email"
@@ -232,8 +289,8 @@ export default function LoginScreen({
               />
               <Input
                 type="password"
-                autoComplete="current-password"
-                placeholder="Password (min 8 characters)"
+                autoComplete={authFlow === "signup" ? "new-password" : "current-password"}
+                placeholder={authFlow === "signup" ? "Create password (min 8 characters)" : "Password (min 8 characters)"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 data-testid="input-login-password"
@@ -245,8 +302,18 @@ export default function LoginScreen({
                 onClick={handleEmail}
                 className="w-full h-11"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue with email"}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : authFlow === "signup" ? "Create account" : "Continue with email"}
               </Button>
+              <button
+                type="button"
+                className="w-full text-xs text-muted-foreground underline"
+                onClick={() => {
+                  setAuthFlow(authFlow === "signup" ? "signin" : "signup");
+                  setError(null);
+                }}
+              >
+                {authFlow === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
+              </button>
             </>
           )}
 

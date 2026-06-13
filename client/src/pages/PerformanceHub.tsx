@@ -162,7 +162,17 @@ export default function PerformanceHub() {
           ← Back
         </button>
 
-        <h2 className="text-3xl font-bold mb-8 text-foreground">Your Performance</h2>
+        <h2 className="text-3xl font-bold mb-4 text-foreground">Your Performance</h2>
+        <button
+          type="button"
+          onClick={() => setLocation("/activity/track")}
+          className="mb-8 w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2"
+          style={{ background: "#1DB954", color: "#121212" }}
+          data-testid="start-activity-track"
+        >
+          <Activity className="w-5 h-5" />
+          Start live activity
+        </button>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4 mb-8">
