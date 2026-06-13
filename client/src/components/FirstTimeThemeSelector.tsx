@@ -2,17 +2,33 @@ import { useState, useEffect } from "react";
 import { Sun, Moon, Sparkles } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+
+const PUBLIC_PATHS = /^\/(login|signin|auth\/login|join|landing)(\/|$)/;
 
 export default function FirstTimeThemeSelector() {
   const [showModal, setShowModal] = useState(false);
   const { setTheme } = useTheme();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     const themeSelected = localStorage.getItem("theme-selected");
+    const onPublicAuth = PUBLIC_PATHS.test(window.location.pathname);
+
+    // Never block login — default dark and ask for theme after sign-in.
+    if (onPublicAuth || isLoading || !user) {
+      if (onPublicAuth && !themeSelected) {
+        localStorage.setItem("theme-selected", "true");
+        setTheme("dark");
+      }
+      setShowModal(false);
+      return;
+    }
+
     if (!themeSelected) {
       setShowModal(true);
     }
-  }, []);
+  }, [isLoading, user, setTheme]);
 
   const handleThemeSelection = (selectedTheme: "light" | "dark") => {
     setTheme(selectedTheme);
