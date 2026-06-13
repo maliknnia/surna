@@ -57,8 +57,13 @@
       (function(){try{var s=localStorage.getItem("theme");var d=true;if(s==="light")d=false;else if(s==="dark")d=true;else if(s==="system")d=window.matchMedia("(prefers-color-scheme: dark)").matches;var c=d?"#121212":"#ffffff";var r=document.documentElement;if(d)r.classList.add("dark");else r.classList.remove("dark");r.style.colorScheme=d?"dark":"light";r.style.setProperty("--surna-nav-bar-bg",c);r.setAttribute("data-theme",d?"dark":"light");var m=document.getElementById("surna-theme-color");if(m)m.setAttribute("content",c);var a=document.getElementById("surna-apple-status-bar");if(a)a.setAttribute("content",d?"black":"default");}catch(e){}})();
     </script>
   </head>
-  <body style="background-color:#121212">
-    <div id="root"></div>
+  <body style="background-color:#121212;color:#ffffff">
+    <div id="root">
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif;padding:24px;text-align:center">
+        <p style="margin:0;font-size:18px;font-weight:700;letter-spacing:0.04em">SURNA</p>
+        <p style="margin:12px 0 0;opacity:0.7;font-size:14px">Loading…</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

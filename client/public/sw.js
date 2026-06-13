@@ -1,7 +1,7 @@
-const CACHE_NAME = 'surna-v3';
-const STATIC_CACHE = 'surna-static-v3';
-const DYNAMIC_CACHE = 'surna-dynamic-v3';
-const API_CACHE = 'surna-api-v3';
+const CACHE_NAME = 'surna-v4';
+const STATIC_CACHE = 'surna-static-v4';
+const DYNAMIC_CACHE = 'surna-dynamic-v4';
+const API_CACHE = 'surna-api-v4';
 const DEV_MODE = false; // Production: use cache strategies below
 
 // Assets to cache on install
@@ -145,15 +145,10 @@ async function handleApiRequest(request) {
   }
 }
 
-// Cache first strategy for static assets
+// Network-first for JS/CSS so deploys never serve stale hashed bundles (black screen).
 async function handleStaticAsset(request) {
   const cache = await caches.open(DYNAMIC_CACHE);
-  const cachedResponse = await cache.match(request);
-  
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-  
+
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
@@ -161,6 +156,10 @@ async function handleStaticAsset(request) {
     }
     return networkResponse;
   } catch (error) {
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
     console.log('Failed to fetch asset:', request.url);
     throw error;
   }

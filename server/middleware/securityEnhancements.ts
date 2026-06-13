@@ -11,7 +11,8 @@ export function productionSecurityMiddleware() {
           "'self'", 
           "'unsafe-inline'", // Allow inline styles for UI components
           "https://fonts.googleapis.com",
-          "https://cdn.jsdelivr.net" // For external stylesheets if needed
+          "https://cdn.jsdelivr.net", // For external stylesheets if needed
+          "https://unpkg.com" // Phosphor icon stylesheets
         ],
         scriptSrc: [
           "'self'",

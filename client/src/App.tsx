@@ -373,7 +373,17 @@ function App() {
     }
 
     // Register service worker for PWA functionality (production only)
-    registerSW({
+    void (async () => {
+      // Drop stale v3 caches that could serve old JS bundles (black screen after deploy).
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(
+          keys
+            .filter((k) => k.includes("surna-v3") || k.includes("surna-v2") || k.includes("surna-v1"))
+            .map((k) => caches.delete(k)),
+        );
+      }
+      registerSW({
       onSuccess: (registration) => {
         console.log('SW: Service worker registered successfully');
       },
@@ -382,6 +392,7 @@ function App() {
         // Optionally show update notification to user
       }
     });
+    })();
 
     // Initialize PWA install prompt
     initializePWAInstall();
