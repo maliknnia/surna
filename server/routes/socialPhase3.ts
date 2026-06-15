@@ -17,6 +17,32 @@ function requireUserId(req: any, res: any): string | null {
   return id;
 }
 
+/** GET /api/users/suggested — athletes you don't follow yet (register before /users/:id routes) */
+socialRouter.get("/users/suggested", async (req, res) => {
+  const viewerId = requireUserId(req, res);
+  if (!viewerId) return;
+  try {
+    await ensurePhase3SocialTables();
+    const limit = Math.min(Number(req.query.limit) || 24, 50);
+    const q = await db.execute(sql`
+      SELECT u.id, u.username, u.display_name, u.first_name, u.last_name,
+             u.profile_image_url, u.sport, u.location
+      FROM users u
+      WHERE u.id != ${viewerId}
+        AND u.id NOT IN (
+          SELECT f.following_id FROM follows f
+          WHERE f.follower_id = ${viewerId}
+            AND f.following_type IN ('user', 'coach')
+        )
+      ORDER BY u.created_at DESC
+      LIMIT ${limit}
+    `);
+    res.json(q.rows);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || "Failed to fetch suggestions" });
+  }
+});
+
 /** POST /api/users/:id/follow */
 socialRouter.post("/users/:id/follow", async (req, res) => {
   const followerId = requireUserId(req, res);

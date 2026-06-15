@@ -21,6 +21,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { createHubPath } from "@/lib/createHub";
 import TeamCard from "@/components/TeamCard";
+import TeamCircleStrip from "@/components/teams/TeamCircleStrip";
+import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/cards/DiscoverySectionHeading";
 import type { Team } from "@shared/schema";
 
 const SPORT_CHIPS = [
@@ -328,10 +330,20 @@ export default function Teams({
           </div>
         </div>
 
+        <TeamCircleStrip
+          teams={filteredTeams}
+          loading={isLoading}
+          onTeamClick={(teamId) => {
+            markNavReturn(embedded ? mobilePanelReturnPath("teams") : "/teams");
+            setLocation(`/teams/${teamId}`);
+          }}
+          onCreateTeam={() => setLocation(createHubPath("team"))}
+        />
+
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="rounded-2xl animate-pulse" style={{ background: chipBg, height: '260px' }} />
+              <div key={i} className="rounded-[28px] animate-pulse" style={{ background: chipBg, height: '148px' }} />
             ))}
           </div>
         ) : isError ? (
@@ -350,15 +362,15 @@ export default function Teams({
         ) : filteredTeams.length > 0 ? (
           <>
             {(() => {
-              const labels = ["Recommended for you", "Popular near you", "New on SURNA", "Trending"];
+              const labels = DISCOVERY_SECTION_LABELS.teams;
               const elements: React.ReactNode[] = [];
               let labelIdx = 0;
               filteredTeams.forEach((team, i) => {
                 if (i === 0 || (i > 0 && i % 3 === 0 && labelIdx < labels.length)) {
                   elements.push(
-                    <h3 key={`label-${labelIdx}`} className="surna-section-heading text-[12px] uppercase tracking-wider mt-5 mb-2" style={{ color: textSecondary }}>
+                    <DiscoverySectionHeading key={`label-${labelIdx}`}>
                       {labels[labelIdx] || labels[labels.length - 1]}
-                    </h3>
+                    </DiscoverySectionHeading>
                   );
                   labelIdx++;
                 }
@@ -374,7 +386,7 @@ export default function Teams({
                   />
                 );
               });
-              return <div className="space-y-3">{elements}</div>;
+              return <div className="discovery-card-list">{elements}</div>;
             })()}
 
             {hasNextPage && (

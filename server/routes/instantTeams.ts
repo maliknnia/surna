@@ -2,13 +2,13 @@
 import { Router } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
-import { authUserId } from "../lib/authUser";
+import { resolveRequestUserId } from "../lib/authUser";
 import { requireEmailVerified } from "../middleware/requireEmailVerified";
 
 export const instantTeamsRouter = Router();
 
 function requireAuthUserId(req: any, res: any): string | null {
-  const id = authUserId(req);
+  const id = resolveRequestUserId(req);
   if (!id) {
     res.status(401).json({ error: "Unauthorized" });
     return null;
@@ -16,17 +16,35 @@ function requireAuthUserId(req: any, res: any): string | null {
   return id;
 }
 
-const createTeamSchema = z.object({
-  sport: z.string().min(1).max(50),
-  startTime: z.string(),
-  locationName: z.string().min(1).max(200),
-  lat: z.string(),
-  lng: z.string(),
-  playersNeeded: z.number().int().min(2).max(100),
-  skillLevel: z.enum(['any', 'beginner', 'intermediate', 'advanced']).default('any'),
-  description: z.string().max(500).optional(),
-  isPrivate: z.boolean().optional(),
-});
+const createTeamSchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    sport: z.string().min(1).max(50),
+    startTime: z.string(),
+    locationName: z.string().max(200).optional(),
+    lat: z.string(),
+    lng: z.string(),
+    playersNeeded: z.number().int().min(2).max(100),
+    skillLevel: z
+      .enum(["any", "beginner", "intermediate", "advanced", "expert"])
+      .default("any"),
+    description: z.string().max(500).optional(),
+    visibility: z.enum(["public", "invite-only"]).optional(),
+    isPrivate: z.boolean().optional(),
+  })
+  .transform((data) => ({
+    name: data.name?.trim() || `${data.sport} Pickup`,
+    sport: data.sport,
+    startTime: data.startTime,
+    locationName: data.locationName?.trim() || null,
+    lat: data.lat,
+    lng: data.lng,
+    playersNeeded: data.playersNeeded,
+    skillLevel: data.skillLevel,
+    description: data.description,
+    visibility:
+      data.visibility ?? (data.isPrivate ? "invite-only" : "public"),
+  }));
 
 const availabilitySchema = z.object({
   isAvailable: z.boolean(),

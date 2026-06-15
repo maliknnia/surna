@@ -42,6 +42,11 @@ import { invalidateMyHubQueries } from "@/lib/hubQueries";
 import { useChallengesTheme } from "./challengesTheme";
 import { AccessRulesSummary } from "./ChallengeAccessInfo";
 import type { ChallengeTypeKey, VisibilityKey } from "./challengesTheme";
+import {
+  CreateMediaSection,
+  type CreateMediaValue,
+} from "@/components/create/CreateMediaSection";
+import { useHydrateCreateDraft } from "@/hooks/useHydrateCreateDraft";
 
 const createChallengeSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -107,6 +112,7 @@ export default function CreateChallenge() {
   const { toast } = useToast();
   const t = useChallengesTheme();
   const [step, setStep] = useState(1);
+  const [coverMedia, setCoverMedia] = useState<CreateMediaValue>(null);
 
   const form = useForm<CreateChallengeFormValues>({
     resolver: zodResolver(createChallengeSchema),
@@ -117,6 +123,11 @@ export default function CreateChallenge() {
       visibility: "public",
       reward: "xp",
     },
+  });
+
+  useHydrateCreateDraft({
+    onCover: setCoverMedia,
+    onTitle: (title) => form.setValue("title", title),
   });
 
   useEffect(() => {
@@ -248,6 +259,13 @@ export default function CreateChallenge() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             {step === 1 && (
               <div className="space-y-5">
+                <CreateMediaSection
+                  cover={coverMedia}
+                  onCoverChange={setCoverMedia}
+                  coverLabel="Challenge cover"
+                  coverHint="Shows on challenge cards when athletes browse nearby matches."
+                />
+
                 <FormField
                   control={form.control}
                   name="title"

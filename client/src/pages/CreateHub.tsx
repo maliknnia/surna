@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { ChevronRight, Clock, Sparkles, LayoutGrid } from "lucide-react";
 import {
@@ -11,6 +11,7 @@ import { ROUTES } from "@/navigation";
 import { useSurnaCameraOptional } from "@/features/camera";
 import { cn } from "@/lib/utils";
 import { HubManagePanel } from "@/components/create/HubManagePanel";
+import { CreateHubComposer } from "@/components/create/CreateHubComposer";
 
 function useCreateTypeParam(): CreateOptionId | null {
   const params = new URLSearchParams(window.location.search);
@@ -116,10 +117,16 @@ export default function CreateHub() {
   const camera = useSurnaCameraOptional();
   const focusType = useCreateTypeParam();
   const focusRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const [selectedType, setSelectedType] = useState<CreateOptionId | null>(focusType);
   const focusedOption = useMemo(
     () => (focusType ? getCreateOption(focusType) : undefined),
     [focusType],
   );
+
+  useEffect(() => {
+    if (focusType) setSelectedType(focusType);
+  }, [focusType]);
 
   useEffect(() => {
     if (!focusType || !focusRef.current) return;
@@ -128,6 +135,10 @@ export default function CreateHub() {
     }, 120);
     return () => window.clearTimeout(t);
   }, [focusType]);
+
+  const scrollToComposer = () => {
+    composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleSelect = (option: CreateOption) => {
     if (option.id === "post") {
@@ -138,7 +149,12 @@ export default function CreateHub() {
       }
       return;
     }
-    navigate(option.route);
+    setSelectedType(option.id);
+    scrollToComposer();
+  };
+
+  const handleContinue = (route: string) => {
+    navigate(route);
   };
 
   const handleManage = (option: CreateOption) => {
@@ -181,6 +197,14 @@ export default function CreateHub() {
       </header>
 
       <div className="max-w-lg mx-auto px-4 pt-5 space-y-8">
+        <div ref={composerRef}>
+          <CreateHubComposer
+            selectedType={selectedType}
+            onSelectedTypeChange={setSelectedType}
+            onContinue={handleContinue}
+          />
+        </div>
+
         <HubManagePanel compact />
 
         <div
@@ -234,7 +258,7 @@ export default function CreateHub() {
               className="w-full py-3.5 rounded-2xl text-base font-bold text-white active:scale-[0.98] transition-transform"
               style={{ background: "#000" }}
             >
-              Continue — {focusedOption.title}
+              Add photos — {focusedOption.title}
             </button>
             <button
               type="button"

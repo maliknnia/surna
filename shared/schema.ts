@@ -2126,15 +2126,16 @@ export const insertUserLiveStatusSchema = createInsertSchema(userLiveStatus).omi
 });
 
 // Zod schemas for Places ecosystem
-export const insertPlaceSchema = createInsertSchema(places).omit({ 
-  id: true, 
-  createdAt: true, 
+export const insertPlaceSchema = createInsertSchema(places).omit({
+  id: true,
+  createdAt: true,
   updatedAt: true,
   followersCount: true,
   reviewsCount: true,
   averageRating: true,
   bookingsCount: true,
-  viewsCount: true
+  viewsCount: true,
+  ownerId: true,
 });
 export const insertPlacePhotoSchema = createInsertSchema(placePhotos).omit({ id: true, createdAt: true });
 export const insertPlaceFollowerSchema = createInsertSchema(placeFollowers).omit({ id: true, createdAt: true });

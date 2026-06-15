@@ -12,9 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ROUTES } from "@/navigation";
 import { invalidateMyHubQueries } from "@/lib/hubQueries";
-import { ArrowLeft, ArrowRight, Check, Building2, Image as ImageIcon, MapPin, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Building2, MapPin, Clock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { InsertPlace } from "@shared/schema";
+import {
+  CreateMediaSection,
+  type CreateMediaValue,
+} from "@/components/create/CreateMediaSection";
+import { useHydrateCreateDraft } from "@/hooks/useHydrateCreateDraft";
 
 const SPORTS = [
   "Basketball", "Soccer", "Tennis", "Volleyball", "Swimming", "Baseball",
@@ -38,9 +43,7 @@ export default function CreatePlace() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
-  const totalSteps = 4;
-
-  // Form state
+  const totalSteps = 3;
   const [formData, setFormData] = useState<Partial<InsertPlace & { sports: string[] }>>({
     name: "",
     category: "gym",
@@ -66,8 +69,16 @@ export default function CreatePlace() {
     DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: "9:00 AM - 5:00 PM" }), {})
   );
 
-  const [profilePreview, setProfilePreview] = useState<string>("");
-  const [coverPreview, setCoverPreview] = useState<string>("");
+  const [coverMedia, setCoverMedia] = useState<CreateMediaValue>(null);
+  const [profileMedia, setProfileMedia] = useState<CreateMediaValue>(null);
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
+
+  useHydrateCreateDraft({
+    onCover: setCoverMedia,
+    onLogo: setProfileMedia,
+    onTitle: (title) => setFormData((f) => ({ ...f, name: title })),
+    onGallery: setGalleryUrls,
+  });
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -91,27 +102,28 @@ export default function CreatePlace() {
     },
   });
 
-  const handleImageUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: "profile" | "cover"
-  ) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        if (type === "profile") {
-          setProfilePreview(result);
-          setFormData({ ...formData, profileImageUrl: result });
-        } else {
-          setCoverPreview(result);
-          setFormData({ ...formData, coverImageUrl: result });
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleSubmit = () => {
+    const submitData = {
+      ...formData,
+      profileImageUrl: profileMedia?.publicUrl || formData.profileImageUrl,
+      coverImageUrl: coverMedia?.publicUrl || formData.coverImageUrl,
+      hours,
+    };
+    createMutation.mutate(submitData);
   };
 
+  const canProceed = () => {
+    switch (step) {
+      case 1:
+        return formData.name && formData.category && (formData.sports?.length ?? 0) > 0;
+      case 2:
+        return formData.address && formData.city && formData.state;
+      case 3:
+        return true;
+      default:
+        return false;
+    }
+  };
   const handleSportToggle = (sport: string) => {
     const currentSports = formData.sports || [];
     const newSports = currentSports.includes(sport)
@@ -128,34 +140,23 @@ export default function CreatePlace() {
     setFormData({ ...formData, amenities: newAmenities });
   };
 
-  const handleSubmit = () => {
-    const submitData = {
-      ...formData,
-      hours,
-    };
-    createMutation.mutate(submitData);
-  };
-
-  const canProceed = () => {
-    switch (step) {
-      case 1:
-        return formData.name && formData.category && (formData.sports?.length ?? 0) > 0;
-      case 2:
-        return true; // Media is optional
-      case 3:
-        return formData.address && formData.city && formData.state;
-      case 4:
-        return true;
-      default:
-        return false;
-    }
-  };
-
   const renderStep = () => {
     switch (step) {
       case 1:
         return (
           <div className="space-y-6" data-testid="step-basic-info">
+            <CreateMediaSection
+              cover={coverMedia}
+              onCoverChange={setCoverMedia}
+              logo={profileMedia}
+              onLogoChange={setProfileMedia}
+              gallery={galleryUrls}
+              onGalleryChange={setGalleryUrls}
+              maxGallery={6}
+              coverLabel="Venue cover"
+              coverHint="Shows on the map and when athletes browse places."
+            />
+
             <div className="space-y-2">
               <Label htmlFor="name">Place Name *</Label>
               <Input
@@ -235,51 +236,6 @@ export default function CreatePlace() {
         );
 
       case 2:
-        return (
-          <div className="space-y-6" data-testid="step-media">
-            <div className="space-y-2">
-              <Label htmlFor="profile-image">Profile Image</Label>
-              <div className="flex items-center gap-4">
-                {profilePreview && (
-                  <img
-                    src={profilePreview}
-                    alt="Profile preview"
-                    className="w-20 h-20 rounded-full object-cover border-2 border-token-text"
-                  />
-                )}
-                <Input
-                  id="profile-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(e, "profile")}
-                  data-testid="input-profile-image"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cover-image">Cover Image</Label>
-              <div className="space-y-2">
-                {coverPreview && (
-                  <img
-                    src={coverPreview}
-                    alt="Cover preview"
-                    className="w-full h-40 rounded-lg object-cover border-2 border-token-text"
-                  />
-                )}
-                <Input
-                  id="cover-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(e, "cover")}
-                  data-testid="input-cover-image"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 3:
         return (
           <div className="space-y-6" data-testid="step-contact-location">
             <div className="space-y-2">
@@ -366,7 +322,7 @@ export default function CreatePlace() {
           </div>
         );
 
-      case 4:
+      case 3:
         return (
           <div className="space-y-6" data-testid="step-details">
             <div className="space-y-4">
@@ -421,8 +377,8 @@ export default function CreatePlace() {
     }
   };
 
-  const stepIcons = [Building2, ImageIcon, MapPin, Clock];
-  const stepTitles = ["Basic Info", "Media", "Contact & Location", "Details"];
+  const stepIcons = [Building2, MapPin, Clock];
+  const stepTitles = ["Photos & info", "Contact & Location", "Hours & details"];
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -484,10 +440,9 @@ export default function CreatePlace() {
               {stepTitles[step - 1]}
             </CardTitle>
             <CardDescription className="text-token-text-muted">
-              {step === 1 && "Enter basic information about your place"}
-              {step === 2 && "Upload images to showcase your place"}
-              {step === 3 && "Provide contact and location details"}
-              {step === 4 && "Set operating hours and amenities"}
+              {step === 1 && "Add photos and basic information about your place"}
+              {step === 2 && "Provide contact and location details"}
+              {step === 3 && "Set operating hours and amenities"}
             </CardDescription>
           </CardHeader>
           <CardContent>{renderStep()}</CardContent>

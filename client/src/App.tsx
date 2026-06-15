@@ -17,7 +17,6 @@ import FirstTimeThemeSelector from "@/components/FirstTimeThemeSelector";
 import CookieConsent from "@/components/CookieConsent";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
 import { OnboardingGate } from "@/components/OnboardingGate";
-import ProfessionalProfileNudge from "@/components/ProfessionalProfileNudge";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import { SurnaCameraProvider, SurnaCamera } from "@/features/camera";
 
@@ -400,7 +399,6 @@ function App() {
               {/* First-time theme selector modal */}
               <FirstTimeThemeSelector />
               <OnboardingGate>
-                <ProfessionalProfileNudge />
                 <PushNotificationInit />
                 <Router />
               </OnboardingGate>

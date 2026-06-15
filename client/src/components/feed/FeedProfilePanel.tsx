@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ROUTES } from "@/navigation";
 import { mapPath } from "@/lib/mapNavigation";
 import { getQueryFn } from "@/lib/queryClient";
+import { discoverPeoplePath } from "@/lib/socialPeopleApi";
 
 type FeedProfilePanelProps = {
   user: {
@@ -69,9 +70,9 @@ export function FeedProfilePanel({ user, onNavigate }: FeedProfilePanelProps) {
   const sport = userStats?.primarySport || userStats?.sport;
 
   const stats = [
-    { label: "Posts", value: userStats?.postsCount ?? 0 },
-    { label: "Followers", value: userStats?.followersCount ?? 0 },
-    { label: "Following", value: userStats?.followingCount ?? 0 },
+    { label: "Posts", value: userStats?.postsCount ?? 0, path: ROUTES.feed },
+    { label: "Followers", value: userStats?.followersCount ?? 0, path: userId ? discoverPeoplePath("followers", userId) : ROUTES.discoverPeople },
+    { label: "Following", value: userStats?.followingCount ?? 0, path: userId ? discoverPeoplePath("following", userId) : ROUTES.discoverPeople },
   ];
 
   return (
@@ -105,14 +106,19 @@ export function FeedProfilePanel({ user, onNavigate }: FeedProfilePanelProps) {
 
         <div className="grid grid-cols-3 border-t" style={{ borderColor: "var(--surna-border)" }}>
           {stats.map((stat) => (
-            <div key={stat.label} className="py-3 text-center">
+            <button
+              key={stat.label}
+              type="button"
+              onClick={() => onNavigate(stat.path)}
+              className="py-3 text-center active:opacity-70 transition-opacity"
+            >
               <div className="text-lg font-bold tabular-nums" style={{ color: "var(--surna-text)" }}>
                 {stat.value}
               </div>
               <div className="text-[11px] font-medium" style={{ color: "var(--surna-text-muted)" }}>
                 {stat.label}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

@@ -14,7 +14,7 @@
     --card-bg-light: #ffffff;
     --card-border-light: #e5e5e5;
     --spotify-red: #8b2635;
-    --radius-card: 16px;
+    --radius-card: 28px;
     --label-light: #666666;
     --label-dark: #b3b3b3;
 
@@ -474,21 +474,255 @@
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    border: none;
+    box-shadow: none;
   }
   .card-spotify:active {
     transform: scale(0.97);
     transition: transform 0.1s ease;
   }
 
-  :root:not(.dark) .card-spotify {
-    background: var(--spotify-red);
-    border: none;
-    box-shadow: none;
+  .playlist-card {
+    padding: 14px 16px;
   }
 
-  .dark .card-spotify {
-    background: var(--spotify-red);
+  .playlist-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .playlist-card__thumb {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .playlist-card__thumb-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 1.35rem;
+  }
+
+  .playlist-card__titles {
+    flex: 1;
+    min-width: 0;
+    padding-top: 2px;
+  }
+
+  .playlist-card__title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .playlist-card__subtitle {
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .playlist-card__menu {
+    flex-shrink: 0;
+    margin: -4px -6px 0 0;
+  }
+
+  .playlist-card__meta {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .playlist-card__extra {
+    margin-top: 10px;
+  }
+
+  .playlist-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .playlist-card__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+
+  .playlist-card__pill:active {
+    transform: scale(0.96);
+  }
+
+  .playlist-card__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+
+  .playlist-card__icon-btn:active {
+    transform: scale(0.92);
+  }
+
+  .discovery-section-heading {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: var(--surna-text);
+    margin: 28px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .discovery-section-heading:first-child {
+    margin-top: 4px;
+  }
+
+  .discovery-section-heading__count {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--surna-text-muted);
+  }
+
+  :root:not(.dark) .discovery-section-heading__count {
+    background: rgba(0, 0, 0, 0.07);
+  }
+
+  .discovery-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ─── TEAM LOGO CIRCLE STRIP (horizontal scroll) ─── */
+  .team-circle-strip {
+    margin-top: 2px;
+  }
+
+  .team-circle-item {
+    width: 76px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .team-circle-ring {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    padding: 2.5px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+  }
+
+  .team-circle-ring--create {
+    border: 2px dashed var(--surna-border);
+    padding: 0;
+  }
+
+  .team-circle-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surna-void);
+    border: 2px solid var(--surna-void);
+    box-sizing: border-box;
+  }
+
+  .team-circle-inner--create {
     border: none;
+    background: var(--surna-surface);
+  }
+
+  .team-circle-emoji {
+    font-size: 1.65rem;
+    line-height: 1;
+  }
+
+  .team-circle-verified {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--surna-gold, #ffd60a);
+    border: 2px solid var(--surna-void);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: #000;
+    line-height: 1;
+  }
+
+  .team-circle-name {
+    margin-top: 8px;
+    width: 100%;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--surna-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+  }
+
+  .team-circle-sport {
+    margin-top: 2px;
+    width: 100%;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--surna-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* ─── PLACE CARD V2 ─── */
@@ -520,13 +754,14 @@
   /* ─── SECTION LABELS (Spotify) ─── */
   .section-label {
     font-family: var(--font-display);
-    font-size: 14px;
+    font-size: 22px;
     font-weight: 700;
     text-transform: none;
-    letter-spacing: -0.02em;
-    margin: 28px 0 14px;
+    letter-spacing: -0.03em;
+    margin: 28px 0 12px;
     color: var(--label-light);
     padding: 0;
+    line-height: 1.15;
   }
   .dark .section-label {
     color: var(--label-dark);
@@ -574,6 +809,14 @@
   }
   .dark .card-menu-btn:hover {
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  .card-menu-btn--inline {
+    position: static;
+    top: auto;
+    right: auto;
+    padding: 6px;
+    opacity: 0.75;
   }
 
   /* ─── BUTTONS ─── */

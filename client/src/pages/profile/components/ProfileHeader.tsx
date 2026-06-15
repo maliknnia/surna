@@ -96,18 +96,6 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     }
   };
 
-  const completionChecks = [
-    { key: "photo", label: "profile photo", filled: !!(profile.avatar || profile.profileImageUrl || profile.photo) },
-    { key: "bio", label: "bio", filled: !!profile.bio },
-    { key: "location", label: "location", filled: !!profile.location },
-    { key: "sport", label: "primary sport", filled: !!(profile.primarySport || profile.sport || (profile.sports && profile.sports[0])) },
-    { key: "position", label: "position", filled: !!profile.position },
-    { key: "skill", label: "skill level", filled: !!(profile.skillLevel || profile.level) },
-  ];
-  const completionFilled = completionChecks.filter((f) => f.filled).length;
-  const completionPercent = Math.round((completionFilled / completionChecks.length) * 100);
-  const nextMissing = completionChecks.find((f) => !f.filled);
-
   const renderRatingStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -248,25 +236,6 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
           </p>
         )}
 
-        {/* Profile completion indicator */}
-        <div className="mt-4 max-w-2xl">
-          <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-token-text-secondary">Profile completion</span>
-            <span className="font-semibold text-token-text">{completionPercent}%</span>
-          </div>
-          <div className="h-2 rounded-full overflow-hidden bg-background border border-border">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${completionPercent}%`, background: "var(--surna-accent)" }}
-            />
-          </div>
-          {nextMissing && (
-            <p className="text-xs mt-2 text-token-text-secondary">
-              Add your {nextMissing.label} to get found by teams.
-            </p>
-          )}
-        </div>
-
         {/* Stats Row */}
         <div className="flex gap-4 mt-6 flex-wrap">
           {/* Rating */}
@@ -283,24 +252,36 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
           )}
           
           {/* Followers */}
-          <div className="px-4 py-2 bg-background border border-border rounded-full">
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = `/discover/people?tab=followers&user=${encodeURIComponent(profile.id)}`;
+            }}
+            className="px-4 py-2 bg-background border border-border rounded-full active:opacity-80"
+          >
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold text-token-text">
                 {followersCount.toLocaleString()}
               </span>
               <span className="text-xs text-token-text-secondary">followers</span>
             </div>
-          </div>
+          </button>
 
           {/* Following */}
-          <div className="px-4 py-2 bg-background border border-border rounded-full">
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = `/discover/people?tab=following&user=${encodeURIComponent(profile.id)}`;
+            }}
+            className="px-4 py-2 bg-background border border-border rounded-full active:opacity-80"
+          >
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold text-token-text">
-                {(profile.following?.length || 0).toLocaleString()}
+                {(profile.followingCount ?? profile.following?.length ?? 0).toLocaleString()}
               </span>
               <span className="text-xs text-token-text-secondary">following</span>
             </div>
-          </div>
+          </button>
 
           {/* Sports */}
           {profile.sports && profile.sports.length > 0 && (

@@ -39,6 +39,8 @@ export async function getProfileFeed(userId: string, limit = 20) {
     .select({
       id: posts.id,
       content: posts.content,
+      imageUrl: posts.imageUrl,
+      videoUrl: posts.videoUrl,
       createdAt: posts.createdAt,
       likesCount: posts.likesCount,
       commentsCount: posts.commentsCount,
@@ -51,6 +53,8 @@ export async function getProfileFeed(userId: string, limit = 20) {
   return rows.map((p) => ({
     id: p.id,
     content: p.content,
+    imageUrl: p.imageUrl,
+    videoUrl: p.videoUrl,
     createdAt: p.createdAt?.toISOString?.() ?? p.createdAt,
     likesCount: p.likesCount ?? 0,
     commentsCount: p.commentsCount ?? 0,

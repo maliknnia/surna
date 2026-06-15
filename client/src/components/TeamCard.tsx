@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import type { Team } from "@shared/schema";
 import CardMenu from "./CardMenu";
-import { sportCardBg } from "@/lib/sportColors";
 import { useTheme } from "@/contexts/ThemeContext";
-import { extractDominantColor, getCachedColor } from "@/lib/extractColor";
 import { calculateDistance } from "@/lib/geo";
 import { demoPeopleForEntity } from "@/lib/activityPeople";
 import { ActivityPeopleSheet } from "@/components/people/ActivityPeopleSheet";
+import SpotifyPlaylistCard from "@/components/cards/SpotifyPlaylistCard";
+import { spotifyMutedCardBg } from "@/lib/spotifyCardColors";
+import { teamLogoUrl } from "@/lib/teamLogo";
 
 interface TeamCardProps {
   team: Team;
@@ -50,29 +51,26 @@ export function getSportConfig(sport: string | null | undefined) {
   return sportConfig[key] || defaultConfig;
 }
 
-export default function TeamCard({ team, onViewDetails, onJoinTeam, showJoinButton = true, compact = false }: TeamCardProps) {
+export default function TeamCard({
+  team,
+  onViewDetails,
+  onJoinTeam,
+  showJoinButton = true,
+  compact = false,
+}: TeamCardProps) {
   const [peopleOpen, setPeopleOpen] = useState(false);
   const config = getSportConfig(team.sport);
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const fallbackBg = sportCardBg(team.sport, theme as "light" | "dark");
-  const teamPhoto = team.cover || (team as any).logo || (team as any).logoUrl;
-  const [dominantColor, setDominantColor] = useState<string | null>(
-    teamPhoto ? getCachedColor(teamPhoto) : null
-  );
+  const teamPhoto = teamLogoUrl(team);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
-
-  useEffect(() => {
-    if (!teamPhoto) return;
-    extractDominantColor(teamPhoto).then(setDominantColor);
-  }, [teamPhoto]);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => {},
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
     );
   }, []);
 
@@ -83,15 +81,11 @@ export default function TeamCard({ team, onViewDetails, onJoinTeam, showJoinButt
     if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
     return null;
   })();
-  const distanceLabel = userCoords && teamCoords
-    ? `${calculateDistance(userCoords, teamCoords).toFixed(1)} km away`
-    : null;
 
-  const hasPhoto = !!teamPhoto;
-  const cardBg = hasPhoto && dominantColor ? dominantColor : fallbackBg;
-  const colorOverlay = hasPhoto && dominantColor
-    ? `linear-gradient(180deg, ${dominantColor}cc 0%, ${dominantColor}ee 100%)`
-    : undefined;
+  const distanceLabel =
+    userCoords && teamCoords
+      ? `${calculateDistance(userCoords, teamCoords).toFixed(1)} km away`
+      : null;
 
   const memberCount = team.currentMembers || 0;
   const memberPreview = demoPeopleForEntity(
@@ -99,53 +93,89 @@ export default function TeamCard({ team, onViewDetails, onJoinTeam, showJoinButt
     memberCount > 0 ? memberCount : undefined,
   );
 
-  const cardIsDark = isDark || hasPhoto;
-
-  const textPrimary = cardIsDark ? "#ffffff" : "#111111";
-  const textSecondary = cardIsDark ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.55)";
-  const textTertiary = cardIsDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)";
-  const surfaceLight = cardIsDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)";
-  const surfaceFaint = cardIsDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)";
-  const viewBtnBorder = cardIsDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)";
-
-  const openPeople = () => setPeopleOpen(true);
+  const cardBg = spotifyMutedCardBg(String(team.id), team.sport, theme as "light" | "dark");
+  const surfaceLight = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)";
 
   if (compact) {
     return (
       <>
-      <div
-        className="card-spotify relative overflow-hidden cursor-pointer active:scale-[0.97] transition-transform duration-200"
-        style={{ height: "140px", minWidth: "140px", padding: 0, background: cardBg }}
-        onClick={() => onViewDetails(team.id)}
-      >
-        {hasPhoto && (
-          <>
-            <img
-              src={teamPhoto}
-              alt={team.name}
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ filter: "blur(2px) saturate(1.1)", transform: "scale(1.05)" }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-            <div className="absolute inset-0" style={{ background: dominantColor ? `${dominantColor}55` : 'rgba(0,0,0,0.35)' }} />
-          </>
-        )}
-        <div className="absolute top-2.5 right-2.5 w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-          style={{ background: surfaceLight }}>
-          {config.emoji}
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 p-3">
-          <p className="text-xs font-bold truncate drop-shadow-sm" style={{ color: textPrimary }}>{team.name}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <CardAttendeeStrip
-              entityType="team"
-              entityId={String(team.id)}
-              fallbackCount={memberCount > 0 ? memberCount : undefined}
-              compact
-            />
+        <div
+          className="card-spotify relative overflow-hidden cursor-pointer active:scale-[0.97] transition-transform duration-200"
+          style={{ height: "140px", minWidth: "140px", padding: 0, background: cardBg }}
+          onClick={() => onViewDetails(team.id)}
+        >
+          <div className="absolute top-2.5 right-2.5 w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+            style={{ background: surfaceLight }}>
+            {config.emoji}
+          </div>
+          {teamPhoto ? (
+            <div className="absolute top-3 left-3 w-12 h-12 rounded-lg overflow-hidden">
+              <img src={teamPhoto} alt="" className="w-full h-full object-cover" />
+            </div>
+          ) : null}
+          <div className="absolute bottom-0 left-0 right-0 p-3">
+            <p className="text-xs font-bold truncate" style={{ color: isDark ? "#fff" : "#121212" }}>{team.name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <CardAttendeeStrip
+                entityType="team"
+                entityId={String(team.id)}
+                fallbackCount={memberCount > 0 ? memberCount : undefined}
+                compact
+              />
+            </div>
           </div>
         </div>
-      </div>
+        <ActivityPeopleSheet
+          open={peopleOpen}
+          onClose={() => setPeopleOpen(false)}
+          kind="team"
+          entityId={team.id}
+          title={team.name}
+          subtitle={team.sport || undefined}
+          route={`/teams/${team.id}`}
+          previewPeople={memberPreview}
+        />
+      </>
+    );
+  }
+
+  const metaParts = [
+    distanceLabel,
+    memberCount > 0 ? `${memberCount} members` : null,
+    team.description ? team.description : null,
+  ].filter(Boolean);
+
+  return (
+    <>
+      <SpotifyPlaylistCard
+        title={team.name}
+        subtitle={team.sport || undefined}
+        meta={metaParts.slice(0, 2).join(" · ")}
+        imageUrl={teamPhoto || null}
+        fallbackIcon={config.emoji}
+        backgroundColor={cardBg}
+        onCardClick={() => onViewDetails(team.id)}
+        menu={<CardMenu inline />}
+        extraContent={
+          <CardAttendeeStrip
+            entityType="team"
+            entityId={String(team.id)}
+            fallbackCount={memberCount > 0 ? memberCount : undefined}
+          />
+        }
+        primaryAction={
+          showJoinButton
+            ? {
+                label: "Join team",
+                onClick: (e) => {
+                  e.stopPropagation();
+                  onJoinTeam(team.id);
+                },
+              }
+            : undefined
+        }
+      />
+
       <ActivityPeopleSheet
         open={peopleOpen}
         onClose={() => setPeopleOpen(false)}
@@ -156,87 +186,6 @@ export default function TeamCard({ team, onViewDetails, onJoinTeam, showJoinButt
         route={`/teams/${team.id}`}
         previewPeople={memberPreview}
       />
-      </>
-    );
-  }
-
-  return (
-    <>
-    <div
-      className="card-spotify relative overflow-hidden cursor-pointer group active:scale-[0.97] transition-transform duration-200"
-      style={{ padding: "20px", background: cardBg }}
-      onClick={() => onViewDetails(team.id)}
-    >
-      {hasPhoto && (
-        <>
-          <img
-            src={teamPhoto}
-            alt={team.name}
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ filter: "blur(2px) saturate(1.1)", transform: "scale(1.05)" }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-          <div className="absolute inset-0" style={{ background: dominantColor ? `${dominantColor}55` : 'rgba(0,0,0,0.35)' }} />
-        </>
-      )}
-
-      <CardMenu />
-
-      <div className="relative z-[2]">
-        <div className="flex items-center justify-between mb-3">
-          {team.sport && (
-            <span className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider backdrop-blur-sm"
-              style={{ background: surfaceLight, color: textSecondary }}>
-              {team.sport}
-            </span>
-          )}
-        </div>
-
-        <h3 className="text-lg font-bold leading-tight mb-1 truncate drop-shadow-sm" style={{ color: textPrimary }}>{team.name}</h3>
-
-        {team.description && (
-          <p className="text-[13px] leading-snug mb-3 line-clamp-2" style={{ color: textSecondary }}>
-            {team.description}
-          </p>
-        )}
-
-        {distanceLabel && (
-          <div className="mb-3 text-[12px]" style={{ color: textSecondary }}>
-            {distanceLabel}
-          </div>
-        )}
-
-        <div className="mb-3">
-          <CardAttendeeStrip
-            entityType="team"
-            entityId={String(team.id)}
-            fallbackCount={memberCount > 0 ? memberCount : undefined}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          {showJoinButton && (
-            <button
-              className="flex-1 h-9 rounded-full text-[13px] font-bold transition-all duration-200 active:scale-[0.96] border-none"
-              style={{ background: cardIsDark ? '#ffffff' : '#111111', color: cardIsDark ? '#000000' : '#ffffff' }}
-              onClick={(e) => { e.stopPropagation(); onJoinTeam(team.id); }}
-            >
-              Join Team
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-    <ActivityPeopleSheet
-      open={peopleOpen}
-      onClose={() => setPeopleOpen(false)}
-      kind="team"
-      entityId={team.id}
-      title={team.name}
-      subtitle={team.sport || undefined}
-      route={`/teams/${team.id}`}
-      previewPeople={memberPreview}
-    />
     </>
   );
 }

@@ -98,11 +98,8 @@ export function useRSVP(eventId: string) {
           ticket: payload.issueTicket ? { code: `DEMO-${eventId.slice(-4).toUpperCase()}` } : null,
         };
       }
-      return getJSON(`/api/events/${eventId}/rsvp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await apiRequest("POST", `/api/events/${eventId}/rsvp`, payload);
+      return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["event", eventId] });
@@ -135,17 +132,16 @@ export function useCreateEvent() {
       capacity?: number;
       coverMediaId?: string;
     }) => {
-      return getJSON("/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(eventData),
-      }).then((result) => {
-        console.log("[Fix 6] Event created via POST /api/events");
-        return result;
-      });
+      const payload = { ...eventData };
+      if (payload.coverMediaId && !/^[0-9a-f-]{36}$/i.test(payload.coverMediaId)) {
+        delete payload.coverMediaId;
+      }
+      const res = await apiRequest("POST", "/api/events", payload);
+      return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["/api/events/me/organized"] });
     },
   });
 }

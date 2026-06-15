@@ -34,10 +34,15 @@ import {
 } from "@/components/create/CreateFlowShell";
 import { CreateSection, CreateFieldGroup } from "@/components/create/CreateSection";
 import {
+  CreateMediaSection,
+  type CreateMediaValue,
+} from "@/components/create/CreateMediaSection";
+import {
   VenueAddressPicker,
   EMPTY_VENUE_ADDRESS,
   type VenueGeocode,
 } from "@/components/create/VenueAddressPicker";
+import { useHydrateCreateDraft } from "@/hooks/useHydrateCreateDraft";
 import {
   formatVenueAddress,
   formatVenueAddressShort,
@@ -45,7 +50,7 @@ import {
 } from "@shared/venueAddress";
 
 const STEPS: CreateFlowStep[] = [
-  { id: 1, label: "Basics", icon: Sparkles },
+  { id: 1, label: "Photo & basics", icon: Sparkles },
   { id: 2, label: "When", icon: CalendarDays },
   { id: 3, label: "Where", icon: MapPin },
   { id: 4, label: "Details", icon: FileText },
@@ -79,6 +84,12 @@ export default function CreateEventWizardPage() {
   const [form, setForm] = useState<EventDraft>(EMPTY_DRAFT);
   const [venue, setVenue] = useState<VenueAddress>(EMPTY_VENUE_ADDRESS);
   const [geocode, setGeocode] = useState<VenueGeocode | null>(null);
+  const [coverMedia, setCoverMedia] = useState<CreateMediaValue>(null);
+
+  useHydrateCreateDraft({
+    onCover: setCoverMedia,
+    onTitle: (title) => setForm((f) => ({ ...f, title })),
+  });
 
   const canAdvance = (): boolean => {
     if (step === 1) return form.title.trim().length >= 3;
@@ -116,6 +127,7 @@ export default function CreateEventWizardPage() {
         locationDetail: venue,
         visibility: form.visibility,
         capacity: form.capacity ? Number(form.capacity) : undefined,
+        coverMediaId: coverMedia?.mediaId,
       });
 
       const eventId = (created as { id?: string })?.id;
@@ -193,8 +205,15 @@ export default function CreateEventWizardPage() {
         <CreateSection
           icon={Sparkles}
           title="What's happening?"
-          description="Start with a clear name — players and fans will see this everywhere."
+          description="Add a cover photo and name — this is what people see on the map and in feeds."
         >
+          <CreateMediaSection
+            cover={coverMedia}
+            onCoverChange={setCoverMedia}
+            coverLabel="Event cover"
+            coverHint="Shows on event cards, map pins, and when people share your event."
+            className="mb-2"
+          />
           <CreateFieldGroup label="Event title" required>
             <Input
               id="title"
@@ -321,7 +340,9 @@ export default function CreateEventWizardPage() {
             className="rounded-2xl overflow-hidden border"
             style={{ borderColor: "var(--surna-separator)", background: "var(--surna-elevated)" }}
           >
-            {geocode ? (
+            {coverMedia?.publicUrl ? (
+              <img src={coverMedia.publicUrl} alt="" className="w-full h-36 object-cover" />
+            ) : geocode ? (
               <div
                 className="h-36 bg-cover bg-center"
                 style={{

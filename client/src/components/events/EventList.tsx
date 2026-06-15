@@ -13,15 +13,16 @@ import { flags } from "@/config/flags";
 import FilterBottomSheet from "@/components/FilterBottomSheet";
 import { useTheme } from "@/contexts/ThemeContext";
 import { mergeWithDemoEvents } from "@/lib/demoEvents";
+import { DiscoverySectionHeading } from "@/components/cards/DiscoverySectionHeading";
 
 type DateGroup = "live" | "today" | "tomorrow" | "this-week" | "later";
 
-const GROUP_META: Record<DateGroup, { label: string; emoji: string }> = {
-  live: { label: "Happening Now", emoji: "🔴" },
-  today: { label: "Today", emoji: "⚡" },
-  tomorrow: { label: "Tomorrow", emoji: "🌅" },
-  "this-week": { label: "This Week", emoji: "📅" },
-  later: { label: "Coming Up", emoji: "🔮" },
+const GROUP_META: Record<DateGroup, { label: string }> = {
+  live: { label: "Happening now" },
+  today: { label: "Today" },
+  tomorrow: { label: "Tomorrow" },
+  "this-week": { label: "This week" },
+  later: { label: "Coming up" },
 };
 
 function getDateGroup(dateStr: string): DateGroup {
@@ -166,11 +167,6 @@ export default function EventList({
   ];
 
   const textSecondary = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)";
-  const sectionLabelStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 800, textTransform: "uppercase",
-    letterSpacing: "0.06em", color: textSecondary,
-    marginTop: 20, marginBottom: 10, display: "flex", alignItems: "center", gap: 6,
-  };
 
   const groupedItems = useMemo(() => {
     if (items.length === 0) return [];
@@ -248,13 +244,9 @@ export default function EventList({
       )}
 
       {status === "pending" ? (
-        <div className="space-y-3">
+        <div className="discovery-card-list">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="animate-pulse p-4 rounded-lg">
-              <div className="h-4 bg-token-text/20 rounded mb-2 w-3/4"></div>
-              <div className="h-3 bg-token-text/20 rounded mb-2 w-1/2"></div>
-              <div className="h-3 bg-token-text/20 rounded w-1/3"></div>
-            </div>
+            <div key={i} className="animate-pulse playlist-card rounded-[28px]" style={{ background: isDark ? '#282828' : '#f0f0f0', height: 140 }} />
           ))}
         </div>
       ) : null}
@@ -289,17 +281,23 @@ export default function EventList({
 
       {groupedItems.length > 0 && (
         <div>
-          {groupedItems.map(({ group, items: groupEvs }) => {
+          {groupedItems.map(({ group, items: groupEvs }, groupIndex) => {
             const meta = GROUP_META[group as DateGroup];
+            const sectionTitle =
+              groupIndex === 0
+                ? "For you"
+                : groupIndex === 1
+                  ? "Near you"
+                  : meta.label;
             return (
               <div key={group}>
-                <p style={sectionLabelStyle}>
-                  <span>{meta.emoji}</span>
-                  <span>{meta.label}</span>
-                  <span style={{ fontSize: 10, background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)', borderRadius: 99, padding: '1px 7px', fontWeight: 700, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }}>{groupEvs.length}</span>
-                </p>
-                <div className="space-y-3">
-                  {groupEvs.map((ev) => <EventCard key={ev.id} ev={ev} />)}
+                <DiscoverySectionHeading count={groupEvs.length}>
+                  {sectionTitle}
+                </DiscoverySectionHeading>
+                <div className="discovery-card-list">
+                  {groupEvs.map((ev) => (
+                    <EventCard key={ev.id} ev={ev} />
+                  ))}
                 </div>
               </div>
             );

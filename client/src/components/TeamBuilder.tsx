@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { getSportConfig } from '@/components/TeamCard';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import {
   ArrowLeft, Check, ChevronRight, MapPin, Users, Share2,
   Link2, Search, ShoppingBag, Megaphone, Award, Rocket,
@@ -107,31 +108,20 @@ export default function TeamBuilder({ onSuccess, onCancel }: TeamBuilderProps) {
     if (!canLaunch) return;
     setLoading(true);
     try {
-      const response = await fetch('/api/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: kit.teamName,
-          description: kit.description || `A ${kit.sport} team`,
-          sport: kit.sport,
-          skillLevel: kit.skillLevel || 'Intermediate',
-          isPublic: !kit.isPrivate,
-          location: kit.venue,
-          city: kit.venue,
-        }),
-        credentials: 'include',
+      const response = await apiRequest('POST', '/api/teams', {
+        name: kit.teamName,
+        description: kit.description || `A ${kit.sport} team`,
+        sport: kit.sport,
+        isPublic: !kit.isPrivate,
+        location: kit.venue,
+        city: kit.venue,
       });
-
-      if (response.ok) {
-        const team = await response.json();
-        const pts = calculatePoints(kit);
-        setEarnedPoints(pts);
-        setLaunched(true);
-        toast({ title: 'Team Launched! 🚀', description: `${kit.teamName} is live! +${pts} points` });
-        setTimeout(() => onSuccess?.(team), 2500);
-      } else {
-        throw new Error('Failed');
-      }
+      const team = await response.json();
+      const pts = calculatePoints(kit);
+      setEarnedPoints(pts);
+      setLaunched(true);
+      toast({ title: 'Team Launched! 🚀', description: `${kit.teamName} is live! +${pts} points` });
+      setTimeout(() => onSuccess?.(team), 2500);
     } catch {
       toast({ title: 'Error', description: 'Failed to create team. Please try again.', variant: 'destructive' });
     } finally {

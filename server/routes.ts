@@ -1999,6 +1999,9 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       res.json({ ...team, recommendations });
     } catch (error: unknown) {
       console.error("Error creating team:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid team data", issues: error.errors });
+      }
       res.status(500).json({ message: "Failed to create team" });
     }
   });

@@ -19,6 +19,7 @@ import { getPanelTheme } from "@/lib/panelTheme";
 import { PanelBackButton } from "@/components/panels/PanelBackButton";
 import { markNavReturn, mobilePanelReturnPath, useSmartBack } from "@/lib/navigation";
 import VenueCard from "@/components/VenueCard";
+import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/cards/DiscoverySectionHeading";
 import type { Place } from "@shared/schema";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
@@ -193,13 +194,15 @@ export default function PlacesDiscovery({
         </div>
       </div>
 
-      <div className="px-4 pt-3 space-y-3">
+      <div className="px-4 pt-3">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl overflow-hidden" style={{ background: skeletonBg }}>
-              <Skeleton className="h-40 w-full" style={{ background: skeletonBg }} />
+          <div className="discovery-card-list">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-[28px] overflow-hidden" style={{ background: skeletonBg }}>
+              <Skeleton className="h-[140px] w-full" style={{ background: skeletonBg }} />
             </div>
-          ))
+          ))}
+          </div>
         ) : places.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">
@@ -221,34 +224,50 @@ export default function PlacesDiscovery({
             )}
           </div>
         ) : (
-          places.map((place) => (
-            <VenueCard
-              key={place.id}
-              place={{
-                id: place.id,
-                name: place.name,
-                category: place.category,
-                sports: place.sports || [],
-                rating: place.averageRating ? parseFloat(place.averageRating) : undefined,
-                reviewsCount: place.reviewsCount || 0,
-                city: place.city || undefined,
-                state: place.state || undefined,
-                address: place.address || undefined,
-                phone: place.phone || undefined,
-                coverImageUrl: place.coverImageUrl || undefined,
-                profileImageUrl: place.profileImageUrl || undefined,
-                followersCount: place.followersCount || 0,
-                amenities: place.amenities || [],
-                hours: place.hours as Record<string, string> | undefined,
-                bio: place.bio || undefined,
-                pricing: place.pricing as Record<string, string> | null | undefined,
-              }}
-              onPreview={() => {
-                markNavReturn(embedded ? mobilePanelReturnPath("venues") : "/places");
-                setLocation(`/places/${place.id}`);
-              }}
-            />
-          ))
+          (() => {
+            const labels = DISCOVERY_SECTION_LABELS.venues;
+            const elements: React.ReactNode[] = [];
+            let labelIdx = 0;
+            places.forEach((place, i) => {
+              if (i === 0 || (i > 0 && i % 3 === 0 && labelIdx < labels.length)) {
+                elements.push(
+                  <DiscoverySectionHeading key={`venue-label-${labelIdx}`}>
+                    {labels[labelIdx] || labels[labels.length - 1]}
+                  </DiscoverySectionHeading>,
+                );
+                labelIdx++;
+              }
+              elements.push(
+                <VenueCard
+                  key={place.id}
+                  place={{
+                    id: place.id,
+                    name: place.name,
+                    category: place.category,
+                    sports: place.sports || [],
+                    rating: place.averageRating ? parseFloat(place.averageRating) : undefined,
+                    reviewsCount: place.reviewsCount || 0,
+                    city: place.city || undefined,
+                    state: place.state || undefined,
+                    address: place.address || undefined,
+                    phone: place.phone || undefined,
+                    coverImageUrl: place.coverImageUrl || undefined,
+                    profileImageUrl: place.profileImageUrl || undefined,
+                    followersCount: place.followersCount || 0,
+                    amenities: place.amenities || [],
+                    hours: place.hours as Record<string, string> | undefined,
+                    bio: place.bio || undefined,
+                    pricing: place.pricing as Record<string, string> | null | undefined,
+                  }}
+                  onPreview={() => {
+                    markNavReturn(embedded ? mobilePanelReturnPath("venues") : "/places");
+                    setLocation(`/places/${place.id}`);
+                  }}
+                />,
+              );
+            });
+            return <div className="discovery-card-list">{elements}</div>;
+          })()
         )}
 
         {hasNextPage && (

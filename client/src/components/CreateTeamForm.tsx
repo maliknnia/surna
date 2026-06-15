@@ -20,13 +20,15 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Check,
-  Upload,
-  Mail,
-  UserPlus,
   Calendar,
   MapPin,
-  Clock
 } from "lucide-react";
+import {
+  CreateMediaSection,
+  type CreateMediaValue,
+} from "@/components/create/CreateMediaSection";
+import { useHydrateCreateDraft } from "@/hooks/useHydrateCreateDraft";
+import { apiRequest } from "@/lib/queryClient";
 
 interface CreateTeamFormProps {
   onSuccess?: (team: any) => void;
@@ -73,7 +75,7 @@ const meetingFrequencies = [
 ];
 
 const steps = [
-  { id: 1, title: "Basic Info", icon: Users, description: "Name and sport" },
+  { id: 1, title: "Photo & basics", icon: Users, description: "Cover, logo, name, and sport" },
   { id: 2, title: "Team Details", icon: Trophy, description: "Description and settings" },
   { id: 3, title: "Goals & Rules", icon: Target, description: "Team objectives" },
   { id: 4, title: "Setup Complete", icon: Check, description: "Review and create" },
@@ -82,6 +84,8 @@ const steps = [
 export default function CreateTeamForm({ onSuccess, onCancel }: CreateTeamFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [coverMedia, setCoverMedia] = useState<CreateMediaValue>(null);
+  const [logoMedia, setLogoMedia] = useState<CreateMediaValue>(null);
   const [formData, setFormData] = useState<ExtendedTeamData>({
     name: "",
     description: "",
@@ -104,6 +108,12 @@ export default function CreateTeamForm({ onSuccess, onCancel }: CreateTeamFormPr
       location: insertTeamSchema.shape.description.optional(),
     })),
     defaultValues: formData,
+  });
+
+  useHydrateCreateDraft({
+    onCover: setCoverMedia,
+    onLogo: setLogoMedia,
+    onTitle: (title) => form.setValue("name", title),
   });
 
   const progress = (currentStep / steps.length) * 100;
@@ -132,45 +142,38 @@ export default function CreateTeamForm({ onSuccess, onCancel }: CreateTeamFormPr
         sport: data.sport,
         location: data.location,
         isPublic: !data.isPrivate,
+        logo: logoMedia?.publicUrl,
+        cover: coverMedia?.publicUrl,
       };
 
-      const response = await fetch("/api/teams", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(teamData),
-        credentials: "include",
+      const response = await apiRequest("POST", "/api/teams", teamData);
+      const team = await response.json();
+      toast({
+        title: "Team Created! 🎉",
+        description: `${data.name} team has been created successfully.`,
       });
-
-      if (response.ok) {
-        const team = await response.json();
-        toast({
-          title: "Team Created! 🎉",
-          description: `${data.name} team has been created successfully.`,
-        });
-        onSuccess?.(team);
-        form.reset();
-        setCurrentStep(1);
-        setFormData({
-          name: "",
-          description: "",
-          sport: "",
-          skillLevel: "",
-          isPrivate: false,
-          goals: "",
-          rules: "",
-          meetingFrequency: "",
-          location: "",
-          inviteEmails: [],
-        });
-      } else {
-        throw new Error("Failed to create team");
-      }
+      onSuccess?.(team);
+      form.reset();
+      setCurrentStep(1);
+      setFormData({
+        name: "",
+        description: "",
+        sport: "",
+        skillLevel: "",
+        isPrivate: false,
+        goals: "",
+        rules: "",
+        meetingFrequency: "",
+        location: "",
+        inviteEmails: [],
+      });
+      setCoverMedia(null);
+      setLogoMedia(null);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create team. Please try again.";
       toast({
         title: "Error",
-        description: "Failed to create team. Please try again.",
+        description: message.replace(/^\d+:\s*/, ""),
         variant: "destructive",
       });
     } finally {
@@ -185,8 +188,17 @@ export default function CreateTeamForm({ onSuccess, onCancel }: CreateTeamFormPr
           <div className="space-y-6">
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold mb-2">Let's Start Your Team</h3>
-              <p className="text-token-text">Choose a name and sport to get started</p>
+              <p className="text-token-text">Add photos, then choose a name and sport</p>
             </div>
+
+            <CreateMediaSection
+              cover={coverMedia}
+              onCoverChange={setCoverMedia}
+              logo={logoMedia}
+              onLogoChange={setLogoMedia}
+              coverLabel="Team cover"
+              coverHint="Shows on team cards and when people browse squads."
+            />
 
             <FormField
               control={form.control}
@@ -442,13 +454,25 @@ export default function CreateTeamForm({ onSuccess, onCancel }: CreateTeamFormPr
             </div>
 
             <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xl font-bold">{form.getValues("name")}</h4>
-                    <Badge variant="outline" className="text-lg px-3 py-1">
+              <CardContent className="p-0 overflow-hidden">
+                {coverMedia?.publicUrl ? (
+                  <img src={coverMedia.publicUrl} alt="" className="w-full h-32 object-cover" />
+                ) : null}
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    {logoMedia?.publicUrl ? (
+                      <img
+                        src={logoMedia.publicUrl}
+                        alt=""
+                        className="w-12 h-12 rounded-xl object-cover shrink-0"
+                      />
+                    ) : null}
+                    <div className="flex items-center justify-between flex-1 min-w-0">
+                    <h4 className="text-xl font-bold truncate">{form.getValues("name")}</h4>
+                    <Badge variant="outline" className="text-lg px-3 py-1 shrink-0">
                       {sports.find(s => s.name === form.getValues("sport"))?.emoji} {form.getValues("sport")}
                     </Badge>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4 text-sm">

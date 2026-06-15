@@ -12,6 +12,11 @@ import {
   FlowFooterButton,
   type CreateFlowStep,
 } from "@/components/create/CreateFlowShell";
+import {
+  CreateMediaSection,
+  type CreateMediaValue,
+} from "@/components/create/CreateMediaSection";
+import { useHydrateCreateDraft } from "@/hooks/useHydrateCreateDraft";
 
 const SPORTS = [
   "Football", "Basketball", "Tennis", "Volleyball", "Cricket", "Baseball",
@@ -26,7 +31,7 @@ const SKILL_LEVELS = [
 ];
 
 const STEPS: CreateFlowStep[] = [
-  { id: 1, label: "Sport", icon: Trophy },
+  { id: 1, label: "Photo & sport", icon: Trophy },
   { id: 2, label: "Players", icon: Users },
   { id: 3, label: "Go live", icon: CheckCircle2 },
 ];
@@ -57,6 +62,12 @@ export default function CreateInstantTeam() {
   const [description, setDescription] = useState("");
   const [lat] = useState(40.7128);
   const [lng] = useState(-74.006);
+  const [coverMedia, setCoverMedia] = useState<CreateMediaValue>(null);
+
+  useHydrateCreateDraft({
+    onCover: setCoverMedia,
+    onTitle: setName,
+  });
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -111,6 +122,14 @@ export default function CreateInstantTeam() {
             toast({ title: "Pick a sport", variant: "destructive" });
             return;
           }
+          if (!locationName.trim()) {
+            toast({
+              title: "Add a location",
+              description: "Tell players where to meet before going live.",
+              variant: "destructive",
+            });
+            return;
+          }
           createMutation.mutate();
         }}
         loading={createMutation.isPending}
@@ -129,6 +148,13 @@ export default function CreateInstantTeam() {
     >
       {step === 1 ? (
         <div className="space-y-5">
+          <CreateMediaSection
+            cover={coverMedia}
+            onCoverChange={setCoverMedia}
+            coverLabel="Game cover"
+            coverHint="Shows on pickup cards so players recognize your game."
+          />
+
           <div>
             <h2 className="text-lg font-bold" style={{ color: "var(--surna-text)" }}>Sport & time</h2>
             <p className="text-sm mt-1" style={{ color: "var(--surna-text-secondary)" }}>
@@ -311,6 +337,9 @@ export default function CreateInstantTeam() {
             </p>
             <p style={{ color: "var(--surna-text-secondary)" }}>{sport} · {playersNeeded} players · {skillLevel}</p>
             {locationName ? <p style={{ color: "var(--surna-text-secondary)" }}>{locationName}</p> : null}
+            {coverMedia?.publicUrl ? (
+              <img src={coverMedia.publicUrl} alt="" className="w-full h-28 rounded-xl object-cover mt-2" />
+            ) : null}
           </div>
         </div>
       ) : null}

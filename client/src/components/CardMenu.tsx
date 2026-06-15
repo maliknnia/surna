@@ -13,9 +13,18 @@ interface CardMenuProps {
   onShare?: () => void;
   onReport?: () => void;
   className?: string;
+  /** Row layout inside playlist cards (not absolute top-right). */
+  inline?: boolean;
 }
 
-export default function CardMenu({ onSave, onRemind, onShare, onReport, className = "" }: CardMenuProps) {
+export default function CardMenu({
+  onSave,
+  onRemind,
+  onShare,
+  onReport,
+  className = "",
+  inline = false,
+}: CardMenuProps) {
   const { toast } = useToast();
 
   const handleSave = (e: React.MouseEvent) => {
@@ -51,7 +60,7 @@ export default function CardMenu({ onSave, onRemind, onShare, onReport, classNam
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`card-menu-btn ${className}`}
+          className={`card-menu-btn ${inline ? "card-menu-btn--inline" : ""} ${className}`.trim()}
           onClick={(e) => e.stopPropagation()}
         >
           <MoreVertical size={18} />

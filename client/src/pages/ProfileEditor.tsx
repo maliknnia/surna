@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Plus, Save, Trash2, Sparkles } from "lucide-react";
+import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getPanelTheme } from "@/lib/panelTheme";
 import { ROUTES } from "@/navigation";
 import { fetchMyProfile, updateMyProfile } from "@/lib/userProfileApi";
 import type { UserHighlight } from "@shared/userProfile";
-import { profileCompletionSections } from "@shared/userProfile";
 import { SPORTS_CATEGORIES, POPULAR_SPORTS } from "@shared/sportsData";
 
 const INTEREST_SUGGESTIONS = [
@@ -103,10 +102,6 @@ export default function ProfileEditor() {
     );
   }
 
-  const completion = data
-    ? profileCompletionSections(data, data.profile).filter((s) => !s.complete).map((s) => s.label)
-    : [];
-
   return (
     <div className="min-h-screen pb-28" style={{ background: "var(--surna-void)" }}>
       <div className="sticky top-0 z-40 glass-effect border-b border-border">
@@ -115,10 +110,7 @@ export default function ProfileEditor() {
             <ArrowLeft className="w-5 h-5" style={{ color: "var(--surna-text)" }} />
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold" style={{ color: "var(--surna-text)" }}>Build your profile</h1>
-            <p className="text-[11px]" style={{ color: "var(--surna-text-muted)" }}>
-              {data?.profileCompletion ?? 0}% complete · finish anytime
-            </p>
+            <h1 className="text-lg font-semibold" style={{ color: "var(--surna-text)" }}>Edit profile</h1>
           </div>
           <button
             type="button"
@@ -128,14 +120,6 @@ export default function ProfileEditor() {
           >
             Done
           </button>
-        </div>
-        <div className="max-w-md mx-auto px-4 pb-2">
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surna-elevated)" }}>
-            <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${data?.profileCompletion ?? 0}%`, background: "var(--surna-gold)" }}
-            />
-          </div>
         </div>
         <div className="max-w-md mx-auto px-4 pb-3 flex gap-2 overflow-x-auto no-scrollbar">
           {sections.map((s) => (
@@ -156,13 +140,6 @@ export default function ProfileEditor() {
       </div>
 
       <div className="max-w-md mx-auto px-4 pt-4 space-y-4">
-        {completion.length > 0 && (
-          <div className="rounded-2xl p-4 text-[12px]" style={{ background: "var(--surna-elevated)", color: "var(--surna-text-secondary)" }}>
-            <Sparkles className="w-4 h-4 inline mr-1" style={{ color: "var(--surna-gold)" }} />
-            Still to add: {completion.join(", ")}
-          </div>
-        )}
-
         {section === "about" && (
           <div className="space-y-3">
             <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Short tagline</label>
@@ -265,7 +242,7 @@ export default function ProfileEditor() {
               onClick={() =>
                 saveMutation.mutate({
                   lookingForTags: lookingFor,
-                  markSetupComplete: (data?.profileCompletion ?? 0) >= 50,
+                  markSetupComplete: true,
                 })
               }
             />
