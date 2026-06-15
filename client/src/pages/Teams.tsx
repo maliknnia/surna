@@ -3,7 +3,7 @@ import { useInView } from "react-intersection-observer";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 import { useLocation } from "wouter";
-import { Plus, Users, TrendingUp, CheckCircle, ClipboardList } from "lucide-react";
+import { Plus, ClipboardList } from "lucide-react";
 import { FeatureFilterChips } from "@/components/panels/FeatureFilterBar";
 import {
   PanelFilterSheet,
@@ -21,8 +21,10 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { createHubPath } from "@/lib/createHub";
 import TeamCard from "@/components/TeamCard";
-import TeamCircleStrip from "@/components/teams/TeamCircleStrip";
+import DiscoveryCircleStrip from "@/components/cards/DiscoveryCircleStrip";
 import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/cards/DiscoverySectionHeading";
+import { teamLogoUrl } from "@/lib/teamLogo";
+import { getSportConfig } from "@/components/TeamCard";
 import type { Team } from "@shared/schema";
 
 const SPORT_CHIPS = [
@@ -203,8 +205,23 @@ export default function Teams({
     return matchesSport && matchesSearch;
   });
 
-  const totalMembers = teams?.reduce((sum, t) => sum + (t.currentMembers || 0), 0) || 0;
-  const joinedCount = teams?.filter((t: any) => t.hasJoined).length || 0;
+  const teamCircleItems = filteredTeams
+    .slice()
+    .sort((a, b) => {
+      const aLogo = !!teamLogoUrl(a);
+      const bLogo = !!teamLogoUrl(b);
+      if (aLogo !== bLogo) return aLogo ? -1 : 1;
+      return (b.currentMembers || 0) - (a.currentMembers || 0);
+    })
+    .slice(0, 18)
+    .map((team) => ({
+      id: team.id,
+      name: team.name,
+      imageUrl: teamLogoUrl(team),
+      emoji: getSportConfig(team.sport).emoji,
+      sport: team.sport,
+      verified: team.verified ?? false,
+    }));
 
   const teamSportChips = SPORT_CHIPS.map((c) => ({
     key: c.key,
@@ -306,40 +323,6 @@ export default function Teams({
       </div>
 
       <div className="px-4 pt-3">
-        <div className="grid grid-cols-3 gap-2 mb-5">
-          <div className="rounded-2xl p-3" style={{ background: chipBg, border: `1px solid ${borderColor}` }}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <TrendingUp size={12} style={{ color: textSecondary }} />
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSecondary }}>Teams</span>
-            </div>
-            <p className="surna-stat text-[20px]" style={{ color: textPrimary }}>{teams?.length || 0}</p>
-          </div>
-          <div className="rounded-2xl p-3" style={{ background: chipBg, border: `1px solid ${borderColor}` }}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <Users size={12} style={{ color: textSecondary }} />
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSecondary }}>Members</span>
-            </div>
-            <p className="surna-stat text-[20px]" style={{ color: textPrimary }}>{totalMembers}</p>
-          </div>
-          <div className="rounded-2xl p-3" style={{ background: chipBg, border: `1px solid ${borderColor}` }}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <CheckCircle size={12} style={{ color: textSecondary }} />
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSecondary }}>Joined</span>
-            </div>
-            <p className="text-[20px] font-black" style={{ color: textPrimary }}>{joinedCount}</p>
-          </div>
-        </div>
-
-        <TeamCircleStrip
-          teams={filteredTeams}
-          loading={isLoading}
-          onTeamClick={(teamId) => {
-            markNavReturn(embedded ? mobilePanelReturnPath("teams") : "/teams");
-            setLocation(`/teams/${teamId}`);
-          }}
-          onCreateTeam={() => setLocation(createHubPath("team"))}
-        />
-
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
@@ -365,6 +348,7 @@ export default function Teams({
               const labels = DISCOVERY_SECTION_LABELS.teams;
               const elements: React.ReactNode[] = [];
               let labelIdx = 0;
+              let circlesInserted = false;
               filteredTeams.forEach((team, i) => {
                 if (i === 0 || (i > 0 && i % 3 === 0 && labelIdx < labels.length)) {
                   elements.push(
@@ -385,6 +369,20 @@ export default function Teams({
                     onJoinTeam={handleJoinTeam}
                   />
                 );
+                if (i === 1 && !circlesInserted) {
+                  elements.push(
+                    <DiscoveryCircleStrip
+                      key="teams-circles"
+                      items={teamCircleItems}
+                      onItemClick={(teamId) => {
+                        markNavReturn(embedded ? mobilePanelReturnPath("teams") : "/teams");
+                        setLocation(`/teams/${teamId}`);
+                      }}
+                      onCreate={() => setLocation(createHubPath("team"))}
+                    />
+                  );
+                  circlesInserted = true;
+                }
               });
               return <div className="discovery-card-list">{elements}</div>;
             })()}

@@ -1,5 +1,5 @@
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
-import { useTheme } from "@/contexts/ThemeContext";
+import { isLightHex } from "@/lib/colorUtils";
 
 export type SpotifyCardAction = {
   label?: string;
@@ -26,13 +26,13 @@ export type SpotifyPlaylistCardProps = {
   className?: string;
 };
 
-function cardTextColors(theme: "light" | "dark") {
-  const isDark = theme === "dark";
+function cardTextColors(backgroundColor: string) {
+  const lightBg = isLightHex(backgroundColor);
   return {
-    primary: isDark ? "#ffffff" : "#121212",
-    muted: isDark ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.55)",
-    border: isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.14)",
-    thumbBg: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
+    primary: lightBg ? "#121212" : "#ffffff",
+    muted: lightBg ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
+    border: lightBg ? "rgba(0,0,0,0.14)" : "rgba(255,255,255,0.28)",
+    thumbBg: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)",
   };
 }
 
@@ -50,8 +50,7 @@ export default function SpotifyPlaylistCard({
   extraContent,
   className = "",
 }: SpotifyPlaylistCardProps) {
-  const { theme } = useTheme();
-  const colors = cardTextColors(theme as "light" | "dark");
+  const colors = cardTextColors(backgroundColor);
 
   const pillStyle: CSSProperties = {
     border: `1px solid ${colors.border}`,
@@ -155,7 +154,9 @@ export default function SpotifyPlaylistCard({
                 opacity: action.disabled ? 0.45 : 1,
                 ...(action.active
                   ? {
-                      background: theme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
+                      background: isLightHex(backgroundColor)
+                        ? "rgba(0,0,0,0.06)"
+                        : "rgba(255,255,255,0.12)",
                     }
                   : {}),
               }}

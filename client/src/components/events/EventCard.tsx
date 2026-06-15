@@ -6,13 +6,13 @@ import { mapPath } from "@/lib/mapNavigation";
 import { useLocation } from "wouter";
 import { markNavReturn, mobilePanelReturnPath } from "@/lib/navigation";
 import CardMenu from "../CardMenu";
-import { useTheme } from "@/contexts/ThemeContext";
 import { calculateDistance } from "@/lib/geo";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import { getSportConfig } from "@/components/TeamCard";
 import { getEventCoverUrl } from "@/lib/eventCover";
 import SpotifyPlaylistCard from "@/components/cards/SpotifyPlaylistCard";
-import { spotifyMutedCardBg } from "@/lib/spotifyCardColors";
+import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
+import { isLightHex } from "@/lib/colorUtils";
 
 function formatEventWhen(dateStr: string): string | null {
   const d = new Date(dateStr);
@@ -58,7 +58,6 @@ function inferSport(ev: any): string | null {
 export default function EventCard({ ev }: { ev: any }) {
   const rsvp = useRSVP(ev.id);
   const [, setLocation] = useLocation();
-  const { theme } = useTheme();
   const [interested, setInterested] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -102,11 +101,11 @@ export default function EventCard({ ev }: { ev: any }) {
   const spotsLeft = capacity > 0 ? Math.max(0, capacity - goingCount) : null;
   const isFull = spotsLeft === 0;
 
-  const cardBg = spotifyMutedCardBg(String(ev.id), sport, theme as "light" | "dark");
-  const isDark = theme === "dark";
-  const textPrimary = isDark ? "#ffffff" : "#121212";
-  const textMuted = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
-  const progressTrack = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)";
+  const cardBg = useDiscoveryCardBg(coverUrl, sport);
+  const lightCard = isLightHex(cardBg);
+  const textPrimary = lightCard ? "#121212" : "#ffffff";
+  const textMuted = lightCard ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.55)";
+  const progressTrack = lightCard ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)";
 
   const openEvent = () => {
     const onHome = window.location.pathname === "/" || window.location.pathname === "/mobile";
@@ -187,9 +186,9 @@ export default function EventCard({ ev }: { ev: any }) {
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${fillPercent}%`,
-                      background: isDark
-                        ? "linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.5) 100%)"
-                        : "linear-gradient(90deg, #121212 0%, rgba(0,0,0,0.45) 100%)",
+                      background: lightCard
+                        ? "linear-gradient(90deg, #121212 0%, rgba(0,0,0,0.45) 100%)"
+                        : "linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.5) 100%)",
                     }}
                   />
                 </div>

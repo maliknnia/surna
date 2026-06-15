@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import type { Team } from "@shared/schema";
 import CardMenu from "./CardMenu";
-import { useTheme } from "@/contexts/ThemeContext";
 import { calculateDistance } from "@/lib/geo";
 import { demoPeopleForEntity } from "@/lib/activityPeople";
 import { ActivityPeopleSheet } from "@/components/people/ActivityPeopleSheet";
 import SpotifyPlaylistCard from "@/components/cards/SpotifyPlaylistCard";
-import { spotifyMutedCardBg } from "@/lib/spotifyCardColors";
+import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
+import { isLightHex } from "@/lib/colorUtils";
 import { teamLogoUrl } from "@/lib/teamLogo";
 
 interface TeamCardProps {
@@ -60,8 +60,6 @@ export default function TeamCard({
 }: TeamCardProps) {
   const [peopleOpen, setPeopleOpen] = useState(false);
   const config = getSportConfig(team.sport);
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
   const teamPhoto = teamLogoUrl(team);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -93,8 +91,9 @@ export default function TeamCard({
     memberCount > 0 ? memberCount : undefined,
   );
 
-  const cardBg = spotifyMutedCardBg(String(team.id), team.sport, theme as "light" | "dark");
-  const surfaceLight = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)";
+  const cardBg = useDiscoveryCardBg(teamPhoto, team.sport);
+  const lightCard = isLightHex(cardBg);
+  const surfaceLight = lightCard ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)";
 
   if (compact) {
     return (
@@ -114,7 +113,7 @@ export default function TeamCard({
             </div>
           ) : null}
           <div className="absolute bottom-0 left-0 right-0 p-3">
-            <p className="text-xs font-bold truncate" style={{ color: isDark ? "#fff" : "#121212" }}>{team.name}</p>
+            <p className="text-xs font-bold truncate" style={{ color: lightCard ? "#121212" : "#fff" }}>{team.name}</p>
             <div className="flex items-center gap-2 mt-1">
               <CardAttendeeStrip
                 entityType="team"

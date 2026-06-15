@@ -291,7 +291,7 @@ export default function EventList({
                   : meta.label;
             return (
               <div key={group}>
-                <DiscoverySectionHeading count={groupEvs.length}>
+                <DiscoverySectionHeading>
                   {sectionTitle}
                 </DiscoverySectionHeading>
                 <div className="discovery-card-list">

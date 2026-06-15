@@ -19,6 +19,7 @@ import { getPanelTheme } from "@/lib/panelTheme";
 import { PanelBackButton } from "@/components/panels/PanelBackButton";
 import { markNavReturn, mobilePanelReturnPath, useSmartBack } from "@/lib/navigation";
 import VenueCard from "@/components/VenueCard";
+import DiscoveryCircleStrip from "@/components/cards/DiscoveryCircleStrip";
 import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/cards/DiscoverySectionHeading";
 import type { Place } from "@shared/schema";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
@@ -124,6 +125,18 @@ export default function PlacesDiscovery({
   const hasActiveFilter = selectedCategory !== "All";
   const hasActiveSearch = searchQuery.length > 0;
 
+  const venueCircleItems = places.slice(0, 18).map((place) => {
+    const cat = (place.category || "other").toLowerCase();
+    const emoji = CATEGORIES.find((c) => c.key === cat)?.emoji || "📍";
+    return {
+      id: place.id,
+      name: place.name,
+      imageUrl: place.profileImageUrl || place.coverImageUrl || null,
+      emoji,
+      sport: place.sports?.[0] ?? null,
+    };
+  });
+
   return (
     <div className={embedded ? "min-h-full pb-4" : "min-h-screen pb-24"} style={{ background: pageBg }} {...touchHandlers}>
       {panelActive && (
@@ -228,6 +241,7 @@ export default function PlacesDiscovery({
             const labels = DISCOVERY_SECTION_LABELS.venues;
             const elements: React.ReactNode[] = [];
             let labelIdx = 0;
+            let circlesInserted = false;
             places.forEach((place, i) => {
               if (i === 0 || (i > 0 && i % 3 === 0 && labelIdx < labels.length)) {
                 elements.push(
@@ -265,6 +279,21 @@ export default function PlacesDiscovery({
                   }}
                 />,
               );
+              if (i === 1 && !circlesInserted && venueCircleItems.length > 0) {
+                elements.push(
+                  <DiscoveryCircleStrip
+                    key="venue-circles"
+                    items={venueCircleItems}
+                    onItemClick={(id) => {
+                      markNavReturn(embedded ? mobilePanelReturnPath("venues") : "/places");
+                      setLocation(`/places/${id}`);
+                    }}
+                    onCreate={user ? () => setLocation("/places/create") : undefined}
+                    createLabel="Add venue"
+                  />,
+                );
+                circlesInserted = true;
+              }
             });
             return <div className="discovery-card-list">{elements}</div>;
           })()

@@ -629,34 +629,35 @@
     gap: 16px;
   }
 
-  /* ─── TEAM LOGO CIRCLE STRIP (horizontal scroll) ─── */
-  .team-circle-strip {
-    margin-top: 2px;
+  /* ─── DISCOVERY CIRCLE STRIP (horizontal scroll logos) ─── */
+  .discovery-circle-strip {
+    margin: 4px 0 8px;
   }
 
-  .team-circle-item {
-    width: 76px;
+  .discovery-circle-item {
+    width: 92px;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
 
-  .team-circle-ring {
+  .discovery-circle-ring {
     position: relative;
-    width: 72px;
-    height: 72px;
+    width: 88px;
+    height: 88px;
     border-radius: 50%;
-    padding: 2.5px;
+    padding: 3px;
     flex-shrink: 0;
     box-sizing: border-box;
   }
 
-  .team-circle-ring--create {
+  .discovery-circle-ring--create {
     border: 2px dashed var(--surna-border);
     padding: 0;
+    background: transparent !important;
   }
 
-  .team-circle-inner {
+  .discovery-circle-inner {
     width: 100%;
     height: 100%;
     border-radius: 50%;
@@ -669,39 +670,39 @@
     box-sizing: border-box;
   }
 
-  .team-circle-inner--create {
+  .discovery-circle-inner--create {
     border: none;
     background: var(--surna-surface);
   }
 
-  .team-circle-emoji {
-    font-size: 1.65rem;
+  .discovery-circle-emoji {
+    font-size: 1.85rem;
     line-height: 1;
   }
 
-  .team-circle-verified {
+  .discovery-circle-verified {
     position: absolute;
     bottom: 0;
     right: 0;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: var(--surna-gold, #ffd60a);
     border: 2px solid var(--surna-void);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 800;
     color: #000;
     line-height: 1;
   }
 
-  .team-circle-name {
-    margin-top: 8px;
+  .discovery-circle-name {
+    margin-top: 10px;
     width: 100%;
     text-align: center;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1.25;
     color: var(--surna-text);
@@ -710,19 +711,6 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     word-break: break-word;
-  }
-
-  .team-circle-sport {
-    margin-top: 2px;
-    width: 100%;
-    text-align: center;
-    font-size: 10px;
-    font-weight: 500;
-    line-height: 1.2;
-    color: var(--surna-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   /* ─── PLACE CARD V2 ─── */

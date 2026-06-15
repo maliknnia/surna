@@ -1,8 +1,7 @@
 import { MapPin, Star } from "lucide-react";
 import CardMenu from "./CardMenu";
-import { useTheme } from "@/contexts/ThemeContext";
 import SpotifyPlaylistCard from "@/components/cards/SpotifyPlaylistCard";
-import { spotifyMutedCardBg } from "@/lib/spotifyCardColors";
+import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
 
 interface VenueCardProps {
   place: {
@@ -58,18 +57,15 @@ function getTodayHours(hours?: Record<string, string>): string | null {
 }
 
 export default function VenueCard({ place, onPreview, onNavigate, onSave, style }: VenueCardProps) {
-  const { theme } = useTheme();
   const photo = place.coverImageUrl || place.imageUrl || place.profileImageUrl;
   const thumb = place.profileImageUrl || photo;
+  const primarySport = place.sports?.[0] || null;
+  const cardBg = useDiscoveryCardBg(thumb || photo, primarySport);
 
   const rating = place.rating || (place.averageRating ? parseFloat(place.averageRating) : 0);
   const emoji = categoryEmoji[(place.category || place.kind || "other").toLowerCase()] || "📍";
   const todayHours = getTodayHours(place.hours as Record<string, string> | undefined);
   const location = place.address || [place.city, place.state].filter(Boolean).join(", ");
-  const primarySport = place.sports?.[0] || null;
-
-  const cardBg = spotifyMutedCardBg(String(place.id), primarySport, theme as "light" | "dark");
-
   const distanceLabel =
     place.distanceKm !== undefined
       ? place.distanceKm < 1
