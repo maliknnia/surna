@@ -3,20 +3,34 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getMapOverlayTheme } from "@/lib/panelTheme";
-import { ArrowLeft, Navigation, Search, X, SlidersHorizontal, UserPlus, Settings, Layers } from "lucide-react";
+import { ArrowLeft, Navigation, Search, SlidersHorizontal, UserPlus, Settings, Layers } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import InteractiveMap from "@/components/map/InteractiveMap";
 import type { MapPin, MapRoute } from "@/components/map/InteractiveMap";
 import PinSheet from "@/components/map/PinSheet";
 import { MapSettingsSheet } from "@/components/map/MapSettingsSheet";
+import { MapFilterSheet } from "@/components/map/MapFilterSheet";
+import { MapModeBar } from "@/components/map/MapModeBar";
+import { MapPrivacyPill } from "@/components/map/MapPrivacyPill";
+import { MapSearchSheet } from "@/components/map/MapSearchSheet";
 import type { Coordinates } from "@/lib/geo";
-import { calculateDistance } from "@/lib/geo";
+import {
+  activeMapFilterCount,
+  MAP_SPORT_CHIP_OPTIONS,
+  pinMatchesCategory,
+  pinMatchesDistanceChip,
+  pinMatchesSportChip,
+  type MapCategoryFilter,
+} from "@/lib/mapFilters";
+import { mobilePanelReturnPath } from "@/lib/navigation";
+import { ROUTES } from "@/navigation";
+import { pushMapRecent, type MapRecentEntry } from "@/lib/mapSearchRecents";
 import {
   buildFocusPin,
   matchPinToFocus,
   parseMapFocusFromSearch,
 } from "@/lib/mapNavigation";
-import { enrichMapPinPhotos, generateDemoPins } from "@/lib/demoMapPins";
+import { enrichMapPinPhotos, generateDemoPins, shouldUseDemoMapPins } from "@/lib/demoMapPins";
 import { generateDemoRoutes } from "@/lib/demoMapRoutes";
 import { useLocationSharing } from "@/hooks/useLocationSharing";
 import { useMapSettings } from "@/hooks/useMapSettings";
@@ -24,15 +38,12 @@ import {
   blurCoordinates,
   layersToViewportParam,
   pinMatchesLayer,
-  pinMatchesSport,
 } from "@/lib/mapSettings";
 import { toggleMapTileStyleMenu } from "@/lib/mapTileStyle";
 import { eventDetailPath, isRouteSport, consumeMapRouteFocus } from "@/lib/eventRoutes";
 import "leaflet/dist/leaflet.css";
 
-type FilterType = 'all' | 'events' | 'places' | 'teams' | 'coaches' | 'players' | 'challenges';
 type TimeFilter = string;
-type MapMode = 'mixed' | 'friends' | 'teams' | 'events' | 'places';
 
 interface ViewportItem {
   type: string;
@@ -56,43 +67,6 @@ interface ViewportResponse {
   clusters: any[];
 }
 
-const categoryOptions: { value: FilterType; label: string; emoji: string }[] = [
-  { value: 'all', label: 'All', emoji: '📍' },
-  { value: 'events', label: 'Events', emoji: '📅' },
-  { value: 'places', label: 'Places', emoji: '🏟️' },
-  { value: 'teams', label: 'Teams', emoji: '👥' },
-  { value: 'coaches', label: 'Coaches', emoji: '🏅' },
-  { value: 'players', label: 'People', emoji: '🏃' },
-  { value: 'challenges', label: 'Challenges', emoji: '🏆' },
-];
-
-const timeOptions = [
-  { value: 'all', label: 'Anytime' },
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'This Week' },
-  { value: 'weekend', label: 'Weekend' },
-];
-
-const sportOptions = [
-  { value: 'all', label: 'All Sports', emoji: '⚡' },
-  { value: 'basketball', label: 'Basketball', emoji: '🏀' },
-  { value: 'soccer', label: 'Soccer', emoji: '⚽' },
-  { value: 'tennis', label: 'Tennis', emoji: '🎾' },
-  { value: 'mma', label: 'MMA', emoji: '🥊' },
-  { value: 'running', label: 'Running', emoji: '🏃' },
-  { value: 'yoga', label: 'Yoga', emoji: '🧘' },
-  { value: 'swimming', label: 'Swimming', emoji: '🏊' },
-  { value: 'crossfit', label: 'CrossFit', emoji: '🏋️' },
-  { value: 'volleyball', label: 'Volleyball', emoji: '🏐' },
-];
-
-const distanceOptions = [
-  { value: 'all', label: 'Any' },
-  { value: '1', label: '1 km' },
-  { value: '5', label: '5 km' },
-  { value: '10', label: '10 km' },
-];
-
 export default function MapPage({
   embedded = false,
   mapActive = true,
@@ -106,7 +80,8 @@ export default function MapPage({
   /** Snapchat-style: avatar opens profile / drawer */
   onOpenProfile?: () => void;
 }) {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const mapReturnPath = embedded ? mobilePanelReturnPath("map") : ROUTES.map;
   const { user } = useAuth();
   const { theme, isDark: isDarkTheme } = useTheme();
   const isDark = isDarkTheme ?? theme === "dark";
@@ -114,8 +89,8 @@ export default function MapPage({
   const [selectedPin, setSelectedPin] = useState<any>(null);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showSettingsSheet, setShowSettingsSheet] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [showSearchSheet, setShowSearchSheet] = useState(false);
+  const [filterType, setFilterType] = useState<MapCategoryFilter>("all");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [sportFilter, setSportFilter] = useState('all');
   const [distanceFilter, setDistanceFilter] = useState('all');
@@ -126,12 +101,21 @@ export default function MapPage({
   const [focusHintTitle, setFocusHintTitle] = useState<string | null>(null);
   const focusHandledRef = useRef<string | null>(null);
   const focusDismissedRef = useRef<string | null>(null);
+  const viewportDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [viewportBbox, setViewportBbox] = useState<string | null>(null);
+  const [mapZoom, setMapZoom] = useState(15);
+
+  useEffect(() => {
+    return () => {
+      if (viewportDebounceRef.current) clearTimeout(viewportDebounceRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}
+        () => {},
       );
     }
   }, []);
@@ -140,13 +124,28 @@ export default function MapPage({
     if (!user || sportFilter !== 'all') return;
     const prefSport = (user.sport || user.primarySport || '').toLowerCase();
     if (!prefSport) return;
-    const match = sportOptions.find(
-      (o) => o.value !== 'all' && prefSport.includes(o.value) || o.value.includes(prefSport),
+    const match = MAP_SPORT_CHIP_OPTIONS.find(
+      (o) => o.value !== "all" && (prefSport.includes(o.value) || o.value.includes(prefSport)),
     );
     if (match) setSportFilter(match.value);
   }, [user?.id, user?.sport, user?.primarySport]);
 
   const effectiveLocation = userLocation || { lat: 51.8985, lng: -8.4756 };
+
+  const defaultBbox = useMemo(() => {
+    const { lat, lng } = effectiveLocation;
+    return `${lng - 0.05},${lat - 0.05},${lng + 0.05},${lat + 0.05}`;
+  }, [effectiveLocation.lat, effectiveLocation.lng]);
+
+  const activeBbox = viewportBbox ?? defaultBbox;
+
+  const handleViewportChange = useCallback((bbox: string, zoom: number) => {
+    if (viewportDebounceRef.current) clearTimeout(viewportDebounceRef.current);
+    viewportDebounceRef.current = setTimeout(() => {
+      setViewportBbox(bbox);
+      setMapZoom(zoom);
+    }, 400);
+  }, []);
 
   const { settings: mapSettings, applySettings, resetToDefaults } = useMapSettings(!!user);
   const { updatePreferences } = useLocationSharing(userLocation, !!user);
@@ -218,14 +217,14 @@ export default function MapPage({
   );
 
   const { data: viewportData, isLoading, isError: viewportError } = useQuery<ViewportResponse | null>({
-    queryKey: ['/api/map/viewport', effectiveLocation.lat, effectiveLocation.lng, layersParam],
+    queryKey: ['/api/map/viewport', activeBbox, mapZoom, layersParam],
     refetchInterval: 30000,
     queryFn: async () => {
       try {
-        const lat = effectiveLocation.lat;
-        const lng = effectiveLocation.lng;
-        const bbox = `${lng - 0.05},${lat - 0.05},${lng + 0.05},${lat + 0.05}`;
-        const response = await fetch(`/api/map/viewport?bbox=${bbox}&zoom=15&layers=${layersParam}`, { credentials: 'include' });
+        const response = await fetch(
+          `/api/map/viewport?bbox=${encodeURIComponent(activeBbox)}&zoom=${mapZoom}&layers=${layersParam}`,
+          { credentials: 'include' },
+        );
         if (!response.ok) return null;
         return response.json();
       } catch { return null; }
@@ -306,7 +305,7 @@ export default function MapPage({
       allPins = [...allPins, ...instantPins];
     }
 
-    if (!isLoading && !viewportData?.items?.length) {
+    if (shouldUseDemoMapPins() && !isLoading && !viewportData?.items?.length) {
       const pinIds = new Set(allPins.map((p) => p.id));
       const demoSupplement = demoPins.filter((p) => !pinIds.has(p.id));
       allPins = [...allPins, ...demoSupplement];
@@ -340,20 +339,11 @@ export default function MapPage({
       const q = searchQuery.toLowerCase();
       return pin.title.toLowerCase().includes(q) || (pin.subtitle || '').toLowerCase().includes(q) || (pin.data?.sport || '').toLowerCase().includes(q);
     };
-    const matchesFilter = (pin: MapPin) => {
-      if (filterType === 'all') return true;
-      if (filterType === 'players') return pin.type === 'person' || pin.type === 'player';
-      const singular = filterType.replace(/s$/, '');
-      return pin.type === singular || (pin.type as string) === filterType;
-    };
-    const matchesSport = (pin: MapPin) => {
-      const sportRaw = pin.data?.sport || pin.subtitle;
-      return pinMatchesSport(sportRaw, mapSettings.selectedSports);
-    };
-    const matchesDistance = (pin: MapPin) => {
-      if (pin.type === "saved") return true;
-      return calculateDistance(effectiveLocation, pin.coords) <= mapSettings.radiusKm;
-    };
+    const matchesFilter = (pin: MapPin) => pinMatchesCategory(pin, filterType);
+    const matchesSport = (pin: MapPin) =>
+      pinMatchesSportChip(pin, sportFilter, mapSettings.selectedSports);
+    const matchesDistance = (pin: MapPin) =>
+      pinMatchesDistanceChip(pin, distanceFilter, effectiveLocation, mapSettings.radiusKm);
     const matchesLayer = (pin: MapPin) => pinMatchesLayer(pin.type, mapSettings.layers);
     const matchesTeammates = (pin: MapPin) => {
       if (!mapSettings.findTeammates) return true;
@@ -402,6 +392,8 @@ export default function MapPage({
     demoPins,
     filterType,
     timeFilter,
+    sportFilter,
+    distanceFilter,
     searchQuery,
     effectiveLocation,
     isLoading,
@@ -491,11 +483,22 @@ export default function MapPage({
     applyFocus();
   }, [location, pins, effectiveLocation]);
 
-  const mapChromeHidden = Boolean(selectedPin) || showFilterSheet || showSearch || showSettingsSheet;
+  const mapChromeHidden = Boolean(selectedPin) || showFilterSheet || showSearchSheet || showSettingsSheet;
 
   useEffect(() => {
     onPinSheetToggle?.(mapChromeHidden);
   }, [mapChromeHidden, onPinSheetToggle]);
+
+  const recordMapRecent = useCallback((pin: MapPin) => {
+    pushMapRecent({
+      id: pin.id,
+      type: pin.type,
+      title: pin.title,
+      subtitle: pin.subtitle,
+      lat: pin.coords.lat,
+      lng: pin.coords.lng,
+    });
+  }, []);
 
   const handlePinClick = useCallback(
     (pin: MapPin) => {
@@ -507,6 +510,7 @@ export default function MapPage({
         }
       }
 
+      recordMapRecent(pin);
       const focus = parseMapFocusFromSearch(
         typeof window !== "undefined" ? window.location.search : "",
       );
@@ -515,7 +519,23 @@ export default function MapPage({
       setFocusHintTitle(null);
       setSelectedPin(pin);
     },
-    [navigate],
+    [navigate, recordMapRecent],
+  );
+
+  const handleRecentSelect = useCallback(
+    (entry: MapRecentEntry) => {
+      const match = displayPins.find((p) => p.id === entry.id && p.type === entry.type)
+        ?? displayPins.find((p) => p.id === entry.id);
+      if (match) {
+        handlePinClick(match);
+        return;
+      }
+      if (entry.lat != null && entry.lng != null) {
+        setMapFlyTo({ lat: entry.lat, lng: entry.lng });
+      }
+      pushMapRecent(entry);
+    },
+    [displayPins, handlePinClick],
   );
   const handleRouteClick = useCallback(
     (route: MapRoute) => {
@@ -534,12 +554,14 @@ export default function MapPage({
     }
   }, []);
 
-  const activeFilterCount = [
-    filterType !== 'all' ? 1 : 0,
-    timeFilter !== 'all' ? 1 : 0,
-    sportFilter !== 'all' ? 1 : 0,
-    distanceFilter !== 'all' ? 1 : 0,
-  ].reduce((a, b) => a + b, 0);
+  const emphasisPinId = selectedPin?.id ?? focusedPinId;
+
+  const activeFilterCount = activeMapFilterCount({
+    filterType,
+    timeFilter,
+    sportFilter,
+    distanceFilter,
+  });
 
   const handleResetFilters = () => {
     setFilterType('all');
@@ -602,10 +624,10 @@ export default function MapPage({
               mapStyle={effectiveMapStyle}
               mapActive={mapActive}
               externalStyleControl
-              externalStyleControlOffsetTop={embedded ? 120 : 68}
+              externalStyleControlOffsetTop={embedded ? 132 : 68}
               flyTo={mapFlyTo}
               flyToZoom={focusedPinId ? 16 : 15}
-              highlightedPinId={focusedPinId}
+              highlightedPinId={emphasisPinId}
               userDisplayCoords={userDisplayCoords}
               userMarker={{
                 ghostMode: mapSettings.ghostMode,
@@ -616,6 +638,7 @@ export default function MapPage({
                   : "ME",
               }}
               onLongPress={handleSaveLocation}
+              onViewportChange={handleViewportChange}
             />
 
             {focusedPinId && !selectedPin && !showFilterSheet && (
@@ -648,7 +671,7 @@ export default function MapPage({
 
 
             {embedded && !mapChromeHidden && (
-              <div className="absolute top-0 left-0 z-[1001] p-3 pointer-events-none">
+              <div className="absolute top-0 left-0 right-0 z-[1001] p-3 pointer-events-none flex items-start justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => (onOpenProfile ? onOpenProfile() : navigate("/profile"))}
@@ -660,42 +683,75 @@ export default function MapPage({
                     <img
                       src={user.profileImageUrl}
                       alt=""
-                      className="w-10 h-10 rounded-xl object-cover ring-2 shadow-lg"
-                      style={{ outline: `2px solid ${isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.12)"}` }}
+                      className="w-11 h-11 rounded-full object-cover ring-2 ring-white/90 shadow-lg"
+                      style={{ outline: `2px solid ${isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.08)"}` }}
                     />
                   ) : (
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg"
-                      style={{ background: "var(--surna-elevated)", color: "var(--surna-text)", outline: `2px solid ${isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.12)"}` }}
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shadow-lg ring-2 ring-white/90"
+                      style={{
+                        background: "var(--surna-elevated)",
+                        color: "var(--surna-text)",
+                        outline: `2px solid ${isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.08)"}`,
+                      }}
                     >
                       {(user?.displayName || user?.firstName || "S").charAt(0)}
                     </div>
                   )}
-                  <span
-                    className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background"
-                    style={{ background: "hsl(var(--primary))" }}
-                  />
+                  {!mapSettings.ghostMode && mapSettings.locationAudience !== "nobody" && (
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background"
+                      style={{ background: "#30D158" }}
+                    />
+                  )}
                 </button>
+
+                <div className="flex flex-col items-end gap-2 min-w-0 flex-1 pt-0.5">
+                  <MapPrivacyPill
+                    ghostMode={mapSettings.ghostMode}
+                    locationAudience={mapSettings.locationAudience}
+                    onChange={(patch) => applySettings(patch)}
+                    surfaceBg={surfaceBg}
+                    surfaceBorder={surfaceBorder}
+                    textPrimary={textPrimary}
+                  />
+                  <MapModeBar
+                    value={filterType}
+                    onChange={setFilterType}
+                    surfaceBg={surfaceBg}
+                    surfaceBorder={surfaceBorder}
+                    activeBg={ctaBg}
+                    activeText={ctaText}
+                    mutedText={iconMuted}
+                  />
+                </div>
               </div>
             )}
 
-            {showSearch && !embedded && (
-              <div className="absolute top-3 left-3 right-3 z-[1000]">
-                <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: surfaceBgStrong, backdropFilter: 'blur(20px)', border: surfaceBorder }}>
-                  <Search size={16} style={{ color: iconFaint, flexShrink: 0 }} />
-                  <input
-                    type="text"
-                    placeholder="Search nearby..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-muted-foreground"
-                    autoFocus
-                  />
-                  <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: chipBg }}>
-                    <X size={14} style={{ color: iconColor }} />
-                  </button>
-                </div>
-              </div>
+            {showSearchSheet && (
+              <MapSearchSheet
+                open={showSearchSheet}
+                onClose={() => {
+                  setShowSearchSheet(false);
+                  setSearchQuery("");
+                }}
+                pins={displayPins}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSelectPin={handlePinClick}
+                onSelectRecent={handleRecentSelect}
+                theme={{
+                  sheetBg,
+                  sheetBackdrop,
+                  sheetHandle,
+                  textPrimary,
+                  iconMuted,
+                  chipBg,
+                  tileBg,
+                  tileBorder,
+                  tileText,
+                }}
+              />
             )}
 
             {!mapChromeHidden && (
@@ -722,16 +778,15 @@ export default function MapPage({
                 <Settings size={18} style={{ color: iconColor }} />
               </button>
 
-              {!embedded && (
-                <button
-                  onClick={() => setShowSearch(true)}
-                  className="w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-                  style={{ background: surfaceBg, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
-                  aria-label="Search map"
-                >
-                  <Search size={18} style={{ color: iconColor }} />
-                </button>
-              )}
+              <button
+                onClick={() => setShowSearchSheet(true)}
+                className="w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{ background: surfaceBg, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
+                aria-label="Search map"
+                data-testid="button-map-search"
+              >
+                <Search size={18} style={{ color: iconColor }} />
+              </button>
 
               <button
                 onClick={() => setShowFilterSheet(true)}
@@ -787,159 +842,39 @@ export default function MapPage({
         </div>
       )}
 
-      {showFilterSheet && (
-        <div className="absolute inset-0 z-[1002]" onClick={() => setShowFilterSheet(false)} style={{ position: 'absolute' }}>
-          <div className="absolute inset-0" style={{ background: sheetBackdrop, backdropFilter: 'blur(4px)' }} />
-          <div
-            className="absolute bottom-0 left-0 right-0 overflow-hidden"
-            style={{ borderRadius: '24px 24px 0 0', background: sheetBg, maxHeight: '70vh', animation: 'mapSheetUp 0.4s cubic-bezier(0.32, 0.72, 0, 1)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-2.5 pb-1">
-              <div className="w-10 h-[5px] rounded-full" style={{ background: sheetHandle }} />
-            </div>
-
-            <div className="px-5 pb-3 flex items-center justify-between">
-              <h3 className="text-[18px] font-bold" style={{ color: textPrimary }}>Filters</h3>
-              <div className="flex items-center gap-3">
-                {activeFilterCount > 0 && (
-                  <button onClick={handleResetFilters} className="text-[13px] font-semibold" style={{ color: sheetReset }}>
-                    Reset
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowFilterSheet(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ background: chipBg }}
-                >
-                  <X size={16} style={{ color: iconMuted }} />
-                </button>
-              </div>
-            </div>
-
-            <div className="px-5 pb-8 overflow-y-auto" style={{ maxHeight: 'calc(70vh - 70px)' }}>
-              <div className="mb-6">
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] mb-3" style={{ color: sheetLabel }}>Show me</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {categoryOptions.map((opt) => {
-                    const isActive = filterType === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setFilterType(opt.value)}
-                        className="flex flex-col items-center gap-1.5 py-3 rounded-2xl transition-all active:scale-95"
-                        style={{
-                          background: isActive ? tileActiveBg : tileBg,
-                          border: isActive ? tileActiveBorder : tileBorder,
-                        }}
-                      >
-                        <span className="text-[18px]">{opt.emoji}</span>
-                        <span className="text-[10px] font-semibold" style={{ color: isActive ? tileActiveText : tileText }}>{opt.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] mb-3" style={{ color: sheetLabel }}>When</p>
-                <div className="flex gap-2">
-                  {timeOptions.map((opt) => {
-                    const isActive = timeFilter === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setTimeFilter(opt.value)}
-                        className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold transition-all active:scale-95"
-                        style={{
-                          background: isActive ? tileActiveBg : tileBg,
-                          border: isActive ? tileActiveBorder : tileBorder,
-                          color: isActive ? tileActiveText : tileText,
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] mb-3" style={{ color: sheetLabel }}>Sport</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {sportOptions.slice(0, 3).map((opt) => {
-                    const isActive = sportFilter === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSportFilter(opt.value)}
-                        className="px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all active:scale-95"
-                        style={{
-                          background: isActive ? tileActiveBg : tileBg,
-                          border: isActive ? tileActiveBorder : tileBorder,
-                          color: isActive ? tileActiveText : tileText,
-                        }}
-                      >
-                        {opt.emoji} {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {sportOptions.slice(3).map((opt) => {
-                    const isActive = sportFilter === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSportFilter(opt.value)}
-                        className="px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all active:scale-95"
-                        style={{
-                          background: isActive ? tileActiveBg : tileBg,
-                          border: isActive ? tileActiveBorder : tileBorder,
-                          color: isActive ? tileActiveText : tileTextFaint,
-                        }}
-                      >
-                        {opt.emoji} {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] mb-3" style={{ color: sheetLabel }}>Distance</p>
-                <div className="flex gap-2">
-                  {distanceOptions.map((opt) => {
-                    const isActive = distanceFilter === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setDistanceFilter(opt.value)}
-                        className="flex-1 py-2.5 rounded-xl text-[11px] font-semibold transition-all active:scale-95"
-                        style={{
-                          background: isActive ? tileActiveBg : tileBg,
-                          border: isActive ? tileActiveBorder : tileBorder,
-                          color: isActive ? tileActiveText : tileText,
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowFilterSheet(false)}
-                className="w-full py-3.5 rounded-2xl text-[14px] font-bold transition-all active:scale-[0.97] mt-2"
-                style={{ background: ctaBg, color: ctaText }}
-              >
-                Show {pins.length} {pins.length === 1 ? 'Result' : 'Results'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MapFilterSheet
+        open={showFilterSheet}
+        onClose={() => setShowFilterSheet(false)}
+        filterType={filterType}
+        onFilterType={setFilterType}
+        timeFilter={timeFilter}
+        onTimeFilter={setTimeFilter}
+        sportFilter={sportFilter}
+        onSportFilter={setSportFilter}
+        distanceFilter={distanceFilter}
+        onDistanceFilter={setDistanceFilter}
+        resultCount={pins.length}
+        onReset={handleResetFilters}
+        activeCount={activeFilterCount}
+        theme={{
+          sheetBg,
+          sheetBackdrop,
+          sheetHandle,
+          sheetLabel,
+          sheetReset,
+          chipBg,
+          tileActiveBg,
+          tileBg,
+          tileActiveBorder,
+          tileBorder,
+          tileActiveText,
+          tileText,
+          textPrimary,
+          iconMuted,
+          ctaBg,
+          ctaText,
+        }}
+      />
 
       <MapSettingsSheet
         open={showSettingsSheet}
@@ -954,21 +889,10 @@ export default function MapPage({
         pin={selectedPin}
         userLocation={userLocation || undefined}
         onClose={handleCloseSheet}
+        returnPath={mapReturnPath}
       />
     </div>
   );
-}
-
-function typeEmoji(type: string): string {
-  const map: Record<string, string> = {
-    person: "👤",
-    event: "📅",
-    team: "👥",
-    place: "🏟️",
-    coach: "🏅",
-    challenge: "🏆",
-  };
-  return map[type] || "📍";
 }
 
 

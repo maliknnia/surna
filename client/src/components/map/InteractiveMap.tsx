@@ -598,6 +598,8 @@ interface InteractiveMapProps {
   onRouteClick?: (route: MapRoute) => void;
   /** Fit map to this route and show start (green) / finish (red) pins */
   routeFocus?: MapRoute | null;
+  /** Fired after pan/zoom — bbox string west,south,east,north */
+  onViewportChange?: (bbox: string, zoom: number) => void;
 }
 
 type DivIconLike = {
@@ -689,6 +691,7 @@ export default function InteractiveMap({
   routes = [],
   onRouteClick,
   routeFocus = null,
+  onViewportChange,
 }: InteractiveMapProps) {
   const [mounted, setMounted] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -698,6 +701,7 @@ export default function InteractiveMap({
   const clusterIndexRef = useRef<Supercluster<PinFeatureProps, ClusterProps> | null>(null);
   const prevCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   const onPinClickRef = useRef(onPinClick);
+  const onViewportChangeRef = useRef(onViewportChange);
   const onRouteClickRef = useRef(onRouteClick);
   const routesRef = useRef(routes);
   const routeFocusRef = useRef(routeFocus);
@@ -711,6 +715,9 @@ export default function InteractiveMap({
   useEffect(() => {
     onPinClickRef.current = onPinClick;
   }, [onPinClick]);
+  useEffect(() => {
+    onViewportChangeRef.current = onViewportChange;
+  }, [onViewportChange]);
   useEffect(() => {
     onRouteClickRef.current = onRouteClick;
   }, [onRouteClick]);
@@ -898,6 +905,12 @@ export default function InteractiveMap({
     const index = clusterIndexRef.current;
     if (!map) return;
 
+    const mapBounds = map.getBounds();
+    onViewportChangeRef.current?.(
+      `${mapBounds.getWest()},${mapBounds.getSouth()},${mapBounds.getEast()},${mapBounds.getNorth()}`,
+      Math.round(map.getZoom()),
+    );
+
     clearPinMarkers();
 
     const zoom = map.getZoom();
@@ -918,9 +931,8 @@ export default function InteractiveMap({
       return;
     }
 
-    const bounds = map.getBounds();
     const clusters = index.getClusters(
-      [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+      [mapBounds.getWest(), mapBounds.getSouth(), mapBounds.getEast(), mapBounds.getNorth()],
       Math.floor(zoom),
     );
 

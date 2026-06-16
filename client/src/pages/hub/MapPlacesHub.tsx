@@ -1,12 +1,20 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, Search, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import VenueCard from "@/components/VenueCard";
 import InteractiveMap from "@/components/map/InteractiveMap";
-import MapFilterBar from "@/components/map/MapFilterBar";
 import PinSheet from "@/components/map/PinSheet";
+import { MapModeBar } from "@/components/map/MapModeBar";
+import { MapFilterSheet } from "@/components/map/MapFilterSheet";
+import { MapSearchSheet } from "@/components/map/MapSearchSheet";
 import { calculateDistance, type Coordinates } from "@/lib/geo";
+import { getMapOverlayTheme } from "@/lib/panelTheme";
+import {
+  activeMapFilterCount,
+  type MapCategoryFilter,
+} from "@/lib/mapFilters";
+import { ROUTES } from "@/navigation";
 
 interface MapData {
   events: any[];
@@ -36,7 +44,7 @@ interface Place {
   distanceKm?: number;
 }
 
-type FilterType = 'all' | 'events' | 'places' | 'teams' | 'coaches' | 'players' | 'challenges';
+type FilterType = MapCategoryFilter;
 type TimeFilter = 'all' | 'today' | 'week' | 'weekend';
 type ViewMode = 'map' | 'list';
 
@@ -63,7 +71,10 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
   const [distanceFilter, setDistanceFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPin, setSelectedPin] = useState<any>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [showSearchSheet, setShowSearchSheet] = useState(false);
+
+  const mt = getMapOverlayTheme(true);
 
   const [enabledLayers] = useState<EnabledLayers>({
     events: true,
@@ -217,6 +228,21 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
     return allPins;
   }, [mapData, filterType, sportFilter, distanceFilter, searchQuery, enabledLayers, effectiveLocation]);
 
+  const activeFilterCount = activeMapFilterCount({
+    filterType,
+    timeFilter,
+    sportFilter,
+    distanceFilter,
+  });
+
+  const handleResetFilters = () => {
+    setFilterType("all");
+    setTimeFilter("all");
+    setSportFilter("all");
+    setDistanceFilter("all");
+    setSearchQuery("");
+  };
+
   const filteredPlaces = useMemo(() => {
     if (currentViewMode !== 'list') return [];
     return pins
@@ -267,33 +293,129 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
 
               {!selectedPin && (
                 <>
-                  <MapFilterBar
-                    filterType={filterType}
-                    onFilterTypeChange={setFilterType}
-                    timeFilter={timeFilter}
-                    onTimeFilterChange={setTimeFilter}
-                    sportFilter={sportFilter}
-                    onSportFilterChange={setSportFilter}
-                    distanceFilter={distanceFilter}
-                    onDistanceFilterChange={setDistanceFilter}
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    pinCount={pins.length}
-                    showAdvanced={showAdvanced}
-                    onAdvancedFiltersToggle={() => setShowAdvanced(!showAdvanced)}
-                  />
-
-                  <div className="map-pin-count">
-                    {pins.length} {pins.length === 1 ? 'location' : 'locations'}
+                  <div className="absolute top-3 left-3 right-3 z-[1000] pointer-events-none flex flex-col items-end gap-2">
+                    <MapModeBar
+                      value={filterType}
+                      onChange={setFilterType}
+                      surfaceBg={mt.surfaceBg}
+                      surfaceBorder={mt.surfaceBorder}
+                      activeBg={mt.chipActiveBg}
+                      activeText={mt.chipActiveText}
+                      mutedText={mt.iconMuted}
+                    />
+                    <div className="pointer-events-auto flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowSearchSheet(true)}
+                        className="w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-xl"
+                        style={{ background: mt.surfaceBg, border: mt.surfaceBorder }}
+                        aria-label="Search"
+                      >
+                        <Search size={17} style={{ color: mt.iconColor }} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilterSheet(true)}
+                        className="relative w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-xl"
+                        style={{ background: mt.surfaceBg, border: mt.surfaceBorder }}
+                        aria-label="Filters"
+                      >
+                        <SlidersHorizontal size={17} style={{ color: mt.iconColor }} />
+                        {activeFilterCount > 0 && (
+                          <span
+                            className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full text-[9px] font-bold flex items-center justify-center px-1"
+                            style={{ background: mt.chipActiveBg, color: mt.chipActiveText }}
+                          >
+                            {activeFilterCount}
+                          </span>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="map-bottom-controls">
-                    <button className="map-fab" onClick={handleRecenter} aria-label="Center on my location">
-                      <Navigation size={18} />
+                  <div
+                    className="absolute bottom-24 right-3 z-[999] pointer-events-auto"
+                  >
+                    <button
+                      type="button"
+                      className="w-11 h-11 rounded-full flex items-center justify-center shadow-lg backdrop-blur-xl"
+                      style={{ background: mt.surfaceBg, border: mt.surfaceBorder }}
+                      onClick={handleRecenter}
+                      aria-label="Center on my location"
+                    >
+                      <Navigation size={18} style={{ color: mt.iconColor }} />
                     </button>
+                  </div>
+
+                  <div
+                    className="absolute bottom-24 left-3 z-[999] px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-xl pointer-events-none"
+                    style={{ background: mt.surfaceBg, border: mt.surfaceBorder, color: mt.textPrimary }}
+                  >
+                    {pins.length} {pins.length === 1 ? "location" : "locations"}
                   </div>
                 </>
               )}
+
+              <MapSearchSheet
+                open={showSearchSheet}
+                onClose={() => {
+                  setShowSearchSheet(false);
+                  setSearchQuery("");
+                }}
+                pins={pins}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSelectPin={handlePinClick}
+                onSelectRecent={(entry) => {
+                  const match = pins.find((p) => p.id === entry.id);
+                  if (match) handlePinClick(match);
+                }}
+                theme={{
+                  sheetBg: mt.sheetBg,
+                  sheetBackdrop: mt.sheetBackdrop,
+                  sheetHandle: mt.sheetHandle,
+                  textPrimary: mt.textPrimary,
+                  iconMuted: mt.iconMuted,
+                  chipBg: mt.overlayChipBg,
+                  tileBg: mt.tileBg,
+                  tileBorder: mt.tileBorder,
+                  tileText: mt.tileText,
+                }}
+              />
+
+              <MapFilterSheet
+                open={showFilterSheet}
+                onClose={() => setShowFilterSheet(false)}
+                filterType={filterType}
+                onFilterType={setFilterType}
+                timeFilter={timeFilter}
+                onTimeFilter={(v) => setTimeFilter(v as TimeFilter)}
+                sportFilter={sportFilter}
+                onSportFilter={setSportFilter}
+                distanceFilter={distanceFilter}
+                onDistanceFilter={setDistanceFilter}
+                resultCount={pins.length}
+                onReset={handleResetFilters}
+                activeCount={activeFilterCount}
+                theme={{
+                  sheetBg: mt.sheetBg,
+                  sheetBackdrop: mt.sheetBackdrop,
+                  sheetHandle: mt.sheetHandle,
+                  sheetLabel: mt.sheetLabel,
+                  sheetReset: mt.sheetReset,
+                  chipBg: mt.overlayChipBg,
+                  tileActiveBg: mt.tileActiveBg,
+                  tileBg: mt.tileBg,
+                  tileActiveBorder: mt.tileActiveBorder,
+                  tileBorder: mt.tileBorder,
+                  tileActiveText: mt.tileActiveText,
+                  tileText: mt.tileText,
+                  textPrimary: mt.textPrimary,
+                  iconMuted: mt.iconMuted,
+                  ctaBg: mt.ctaBg,
+                  ctaText: mt.ctaText,
+                }}
+              />
             </>
           )}
         </div>
@@ -344,7 +466,12 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
         </div>
       )}
 
-      <PinSheet pin={selectedPin} userLocation={userLocation || undefined} onClose={handleCloseSheet} />
+      <PinSheet
+        pin={selectedPin}
+        userLocation={userLocation || undefined}
+        onClose={handleCloseSheet}
+        returnPath={ROUTES.discover}
+      />
     </div>
   );
 }

@@ -150,9 +150,18 @@ export async function createVideoPost(
     thumbnailUrl: string;
     sport?: string;
     location?: string;
+    videoFormat?: "reel" | "video";
+    durationSec?: number;
   },
 ) {
   await ensurePhase9MobileTables();
+  const eventData =
+    params.videoFormat || params.durationSec != null
+      ? {
+          ...(params.videoFormat ? { videoFormat: params.videoFormat } : {}),
+          ...(params.durationSec != null ? { durationSec: params.durationSec } : {}),
+        }
+      : null;
   const [post] = await db
     .insert(posts)
     .values({
@@ -164,6 +173,7 @@ export async function createVideoPost(
       postType: "video",
       sport: params.sport ?? null,
       location: params.location ?? null,
+      eventData,
     })
     .returning();
   console.log("[Phase9-5] Video post created:", post.id);

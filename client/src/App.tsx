@@ -27,6 +27,7 @@ const EventsPage = lazy(() => import("@/components/events/EventsPage"));
 
 // Package #4: Team Profiles
 const TeamPage = lazy(() => import("@/pages/team/TeamPage"));
+const TeamPlayerPage = lazy(() => import("@/pages/team/TeamPlayerPage"));
 
 // Package #5: Enhanced Person Profiles
 const PersonProfile = lazy(() => import("@/pages/profile/PersonProfile"));
@@ -232,9 +233,10 @@ function Router() {
 
         <Route path="/teams" component={() => <ProtectedRoute component={Teams} />} />
         <Route path="/teams/create" component={() => <ProtectedRoute component={CreateTeamPage} />} />
+        <Route path="/teams/:teamId/player/:userId" component={() => <ProtectedRoute component={TeamPlayerPage} />} />
         <Route path="/teams/:id" component={() => <ProtectedRoute component={TeamPage} />} />
         <Route path="/team/:id" component={() => <ProtectedRoute component={TeamPage} />} />
-        <Route path="/teams/manage" component={() => <ProtectedRoute component={TeamManagement} />} />
+        <Route path="/teams/manage" component={() => <ProtectedRoute component={MyHubTeamsPage} />} />
         <Route path="/events" component={() => <ProtectedRoute component={EventsPage} />} />
         <Route path="/events/create" component={() => <ProtectedRoute component={CreateEventWizardPage} />} />
         <Route path="/events/:id/route" component={() => <ProtectedRoute component={EventRoutePage} />} />

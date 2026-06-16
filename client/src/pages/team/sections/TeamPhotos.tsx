@@ -5,7 +5,7 @@ import { apiRequest, queryClient, getQueryFn } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { capturePhoto } from '@/lib/capacitor/camera';
+import { uploadCreateImage } from "@/lib/uploadCreateMedia";
 
 interface TeamPhoto {
   id: string;
@@ -57,17 +57,24 @@ export default function TeamPhotos({ teamId }: TeamPhotosProps) {
 
   const processPhotoFile = async (file: File) => {
     setUploading(true);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
+    try {
+      const uploaded = await uploadCreateImage(file);
       const img = new Image();
-      img.onload = () => {
-        addPhoto.mutate({ imageUrl: dataUrl, width: img.width, height: img.height });
-        setUploading(false);
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Invalid image"));
+        img.src = uploaded.publicUrl;
+      });
+      addPhoto.mutate({
+        imageUrl: uploaded.publicUrl,
+        width: img.width,
+        height: img.height,
+      });
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,7 +106,7 @@ export default function TeamPhotos({ teamId }: TeamPhotosProps) {
             data-testid="input-team-photo-upload"
           />
           <Button
-            onClick={() => void capturePhoto({ source: "gallery" }).then((f) => f && processPhotoFile(f))}
+            onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             className="gap-2"
             data-testid="button-add-team-photo"

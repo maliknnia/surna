@@ -92,6 +92,14 @@ mobilePhase9Router.post("/posts/video", upload.single("video"), async (req, res)
       thumbnailUrl,
       sport: typeof req.body.sport === "string" ? req.body.sport : undefined,
       location: typeof req.body.location === "string" ? req.body.location : undefined,
+      videoFormat:
+        req.body.videoFormat === "reel" || req.body.videoFormat === "video"
+          ? req.body.videoFormat
+          : undefined,
+      durationSec:
+        typeof req.body.durationSec === "string" && !Number.isNaN(Number(req.body.durationSec))
+          ? Number(req.body.durationSec)
+          : undefined,
     });
 
     res.status(201).json({ post, videoUrl, thumbnailUrl });

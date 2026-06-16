@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   X,
   Navigation,
@@ -10,6 +11,8 @@ import {
   Clock,
   Users,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Play,
   MapPin,
   Share2,
@@ -23,6 +26,8 @@ import {
 } from "lucide-react";
 import { formatDistance, getNavigationUrl, type Coordinates } from "@/lib/geo";
 import { entityPath } from "@/lib/mapNavigation";
+import { markNavReturn } from "@/lib/navigation";
+import { pushMapRecent } from "@/lib/mapSearchRecents";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { LazyImage } from "@/components/ui/lazy-image";
@@ -42,17 +47,6 @@ const TYPE_LABEL: Record<string, string> = {
   player: "Player",
   challenge: "Challenge",
   instant: "Pick-up game",
-};
-
-const TYPE_EMOJI: Record<string, string> = {
-  event: "📅",
-  place: "🏟",
-  team: "👥",
-  coach: "🏅",
-  person: "👤",
-  player: "👤",
-  challenge: "🏆",
-  instant: "⚡",
 };
 
 export interface MapPinSheetData {
@@ -75,6 +69,8 @@ interface PinSheetProps {
   onClose: () => void;
   onNavigate?: (coords: Coordinates) => void;
   onViewStory?: (pin: MapPinSheetData) => void;
+  /** Session return path after opening entity detail (map panel or /map). */
+  returnPath?: string;
 }
 
 
@@ -99,31 +95,6 @@ function resolvePinAvatar(pin: MapPinSheetData): string | undefined {
   const d = pin.data || {};
   const u = (d.profileImageUrl || d.avatarUrl || d.logo) as string | undefined;
   return u?.trim() ? u : undefined;
-}
-
-/** Sport placeholders — fade into the sheet surface for each theme. */
-function sportGradient(sport?: string, isDark = true): string {
-  const key = (sport || "").toLowerCase();
-  if (!isDark) {
-    const light: Record<string, string> = {
-      basketball: "linear-gradient(145deg, #e4e4f0 0%, #d8dce8 50%, #f2f2f7 100%)",
-      soccer: "linear-gradient(145deg, #dcece4 0%, #cde0d4 50%, #f2f2f7 100%)",
-      football: "linear-gradient(145deg, #dce2ec 0%, #ccd6e4 50%, #f2f2f7 100%)",
-      tennis: "linear-gradient(145deg, #ece4d8 0%, #e0d4c4 50%, #f2f2f7 100%)",
-      running: "linear-gradient(145deg, #e0e4ea 0%, #d0d6de 50%, #f2f2f7 100%)",
-      yoga: "linear-gradient(145deg, #e8e4f0 0%, #ddd4ec 50%, #f2f2f7 100%)",
-    };
-    return light[key] || "linear-gradient(160deg, #ebebeb 0%, #f0f0f0 55%, #f2f2f7 100%)";
-  }
-  const dark: Record<string, string> = {
-    basketball: "linear-gradient(145deg, #252540 0%, #1c2038 50%, #121212 100%)",
-    soccer: "linear-gradient(145deg, #152a1c 0%, #1a3328 50%, #121212 100%)",
-    football: "linear-gradient(145deg, #1e2838 0%, #243048 50%, #121212 100%)",
-    tennis: "linear-gradient(145deg, #2a2218 0%, #3d3228 50%, #121212 100%)",
-    running: "linear-gradient(145deg, #222830 0%, #2c3540 50%, #121212 100%)",
-    yoga: "linear-gradient(145deg, #2a2240 0%, #352a55 50%, #121212 100%)",
-  };
-  return dark[key] || "linear-gradient(160deg, #1e1e1e 0%, #161616 55%, #121212 100%)";
 }
 
 function formatEventWhenLine(startRaw: unknown, endRaw?: unknown): string | null {
@@ -403,9 +374,10 @@ function EventPinDetails({
   );
 }
 
-export default function PinSheet({ pin, userLocation, onClose, onNavigate, onViewStory }: PinSheetProps) {
+export default function PinSheet({ pin, userLocation, onClose, onNavigate, onViewStory, returnPath = "/?panel=map" }: PinSheetProps) {
   const [isActing, setIsActing] = useState(false);
   const [actionDone, setActionDone] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { isDark: isDarkTheme, theme } = useTheme();
@@ -414,13 +386,46 @@ export default function PinSheet({ pin, userLocation, onClose, onNavigate, onVie
 
   useEffect(() => {
     setActionDone(null);
+    setExpanded(false);
   }, [pin?.id]);
+
+  const { data: preview } = useQuery<{
+    coverUrl?: string;
+    imageUrl?: string;
+    images?: string[];
+    description?: string;
+  } | null>({
+    queryKey: ["/api/map/preview", pin?.type, pin?.id],
+    enabled: expanded && !!pin && !String(pin.id).startsWith("demo"),
+    queryFn: async () => {
+      const res = await fetch(`/api/map/preview/${pin!.type}/${pin!.id}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
 
   const coverUrl = pin ? resolvePinCover(pin) : undefined;
   const avatarUrl = pin ? resolvePinAvatar(pin) : undefined;
+  const galleryUrls = useMemo(() => {
+    const urls: string[] = [];
+    const push = (u?: string | null) => {
+      if (u && typeof u === "string" && u.trim() && !urls.includes(u)) urls.push(u);
+    };
+    push(coverUrl);
+    push(preview?.coverUrl);
+    push(preview?.imageUrl);
+    if (preview?.images) preview.images.forEach((u) => push(u));
+    push(avatarUrl);
+    return urls;
+  }, [coverUrl, avatarUrl, preview]);
   const chips = pin ? buildChips(pin) : [];
   const infoRows = pin ? buildInfoRows(pin) : [];
-  const description = pin?.data?.description ? String(pin.data.description) : "";
+  const description = pin?.data?.description
+    ? String(pin.data.description)
+    : preview?.description
+      ? String(preview.description)
+      : "";
   const isEvent = pin?.type === "event";
   const eventCountdown = useMemo(() => {
     if (!pin || pin.type !== "event") return null;
@@ -443,14 +448,9 @@ export default function PinSheet({ pin, userLocation, onClose, onNavigate, onVie
   if (!pin) return null;
 
   const typeLabel = TYPE_LABEL[pin.type] || pin.type;
-  const emoji = TYPE_EMOJI[pin.type] || "📍";
   const isPerson = pin.type === "person" || pin.type === "player";
-  const hasCover = Boolean(coverUrl);
-  const showEventAvatar = !isEvent || !hasCover;
-  const eventSport =
-    isEvent && pin.data?.sport != null && String(pin.data.sport).trim()
-      ? String(pin.data.sport)
-      : null;
+  const heroUrl = galleryUrls[0];
+  const hasHero = Boolean(heroUrl);
 
   const handleNavigateMap = () => {
     window.open(getNavigationUrl(pin.coords, userLocation), "_blank");
@@ -458,6 +458,16 @@ export default function PinSheet({ pin, userLocation, onClose, onNavigate, onVie
   };
 
   const handleViewPage = () => {
+    if (!pin) return;
+    pushMapRecent({
+      id: pin.id,
+      type: pin.type,
+      title: pin.title,
+      subtitle: pin.subtitle,
+      lat: pin.coords.lat,
+      lng: pin.coords.lng,
+    });
+    markNavReturn(returnPath);
     onClose();
     navigate(entityPath(pin.type, pin.id));
   };
@@ -542,319 +552,163 @@ export default function PinSheet({ pin, userLocation, onClose, onNavigate, onVie
   };
 
   const primaryAction = getPrimaryAction(pin.type, actionDone);
+  const subtitleLine = isEvent
+    ? [pin.subtitle, distance].filter(Boolean).join(" · ") || typeLabel
+    : [typeLabel, distance].filter(Boolean).join(" · ");
+
+  const avatarInitials = pin.title
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase() || "?";
 
   return (
     <div
       className="absolute inset-0 z-[1003] flex items-end justify-center"
       style={{
         background: sheet.backdrop,
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
       }}
       onClick={onClose}
     >
       <div
         className={cn(
-          "w-full max-w-lg flex flex-col overflow-hidden",
-          "max-h-[min(88dvh,720px)]",
-          "border-t border-[var(--surna-border)]",
+          "w-full max-w-lg flex flex-col overflow-hidden border-t border-[var(--surna-border)]",
+          expanded ? "max-h-[min(88dvh,720px)]" : "max-h-[min(46dvh,480px)]",
         )}
         style={{
-          borderRadius: "24px 24px 0 0",
+          borderRadius: "20px 20px 0 0",
           background: sheet.surface,
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
           boxShadow: sheet.shadow,
-          animation: "mapSheetUp 0.38s cubic-bezier(0.32, 0.72, 0, 1)",
+          animation: "mapSheetUp 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0">
-          <div className="w-10 h-[5px] rounded-full" style={{ background: sheet.handle }} />
+        <div className="flex justify-center pt-2 pb-0.5 flex-shrink-0">
+          <div className="w-9 h-1 rounded-full" style={{ background: sheet.handle }} />
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          {/* Hero */}
-          <div className="relative h-44 sm:h-52 flex-shrink-0">
-            {hasCover ? (
+          {hasHero && (
+            <div className="relative h-28 flex-shrink-0">
               <LazyImage
-                src={coverUrl!}
+                src={heroUrl!}
                 alt=""
-                sources={deriveModernSources(coverUrl!)}
-                placeholder={deriveLqipPlaceholder(coverUrl!)}
+                sources={deriveModernSources(heroUrl!)}
+                placeholder={deriveLqipPlaceholder(heroUrl!)}
                 wrapperClassName="absolute inset-0"
                 className="w-full h-full object-cover"
               />
-            ) : (
-              <div
-                className="absolute inset-0"
-                style={{ background: sportGradient(String(pin.data?.sport || ""), isDark) }}
-              >
-                <div
-                  className="absolute inset-0 opacity-40"
-                  style={{
-                    background: isDark
-                      ? "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,255,255,0.12) 0%, transparent 70%)"
-                      : "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,255,255,0.65) 0%, transparent 70%)",
-                  }}
-                />
-                <span className="absolute inset-0 flex items-center justify-center text-5xl opacity-30 select-none">
-                  {emoji}
-                </span>
-              </div>
-            )}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: sheet.heroFade }}
-            />
-            <button
-              type="button"
-              onClick={onClose}
-              className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
-              style={{
-                background: sheet.heroScrim,
-                border: `1px solid ${sheet.heroControlBorder}`,
-              }}
-              aria-label="Close"
-            >
-              <X size={18} style={{ color: sheet.heroControlIcon }} />
-            </button>
-            <span
-              className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide backdrop-blur-md"
-              style={{
-                background: sheet.heroScrim,
-                border: `1px solid ${sheet.heroControlBorder}`,
-                color: sheet.heroBadgeColor,
-              }}
-            >
-              {typeLabel}
-            </span>
-            {pin.hasStory && pin.storyState === "live" && (
-              <span className="absolute top-3 left-[5.5rem] px-2 py-1 rounded-full text-[10px] font-bold bg-red-500 text-white">
-                LIVE
-              </span>
-            )}
-            {isEvent && hasCover && (
-              <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-1.5 pointer-events-none">
-                {eventSport && (
-                  <span
-                    className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide backdrop-blur-md"
-                    style={{ background: sheet.heroScrim, color: sheet.heroBadgeColor, border: `1px solid ${sheet.heroControlBorder}` }}
-                  >
-                    {eventSport}
-                  </span>
-                )}
-                {eventCountdown && (
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold backdrop-blur-md bg-white/95 text-black">
-                    {eventCountdown}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div
-            className={cn("px-5", hasCover ? "-mt-10 relative z-[1]" : "pt-2")}
-            style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}
-          >
-            <div className="flex gap-3.5 items-start mb-4">
+              <div className="absolute inset-0 pointer-events-none" style={{ background: sheet.heroFade }} />
               <button
                 type="button"
-                onClick={handleViewPage}
-                className="flex flex-1 gap-3.5 items-start text-left active:opacity-90 transition-opacity min-w-0"
+                onClick={onClose}
+                className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md"
+                style={{ background: sheet.heroScrim, border: `1px solid ${sheet.heroControlBorder}` }}
+                aria-label="Close"
               >
-                {showEventAvatar && (
-                <div className="relative flex-shrink-0">
-                  <div
-                    className={cn(
-                      "w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center ring-2",
-                      pin.hasStory && pin.storyState === "new"
-                        ? "ring-[var(--surna-accent)]"
-                        : "ring-[var(--surna-border)]",
-                    )}
-                    style={{ background: sheet.inset }}
-                  >
-                    {avatarUrl ? (
-                      <LazyImage
-                        src={avatarUrl}
-                        alt=""
-                        sources={deriveModernSources(avatarUrl)}
-                        placeholder={deriveLqipPlaceholder(avatarUrl)}
-                        wrapperClassName="w-full h-full"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-2xl">{emoji}</span>
-                    )}
-                  </div>
-                  {isPerson && pin.presence === "active" && (
-                    <span
-                      className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2"
-                      style={{ background: "#30D158", borderColor: sheet.presenceRing }}
-                    />
-                  )}
-                </div>
-                )}
-                <div className={cn("flex-1 min-w-0", showEventAvatar ? "pt-1" : "")}>
-                  <h2 className="text-xl font-bold text-[var(--surna-text)] leading-tight line-clamp-2">
-                    {pin.title}
-                  </h2>
-                  <p className="text-sm text-[var(--surna-text-secondary)] mt-1 line-clamp-2">
-                    {isEvent
-                      ? [pin.subtitle, distance].filter(Boolean).join(" · ") || typeLabel
-                      : `${pin.subtitle || typeLabel}${distance ? ` · ${distance}` : ""}`}
-                  </p>
-                </div>
+                <X size={16} style={{ color: sheet.heroControlIcon }} />
               </button>
-              {!hasCover && (
+            </div>
+          )}
+
+          <div
+            className="px-4 pt-3"
+            style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))" }}
+          >
+            {!hasHero && (
+              <div className="flex justify-end mb-1">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  className="w-8 h-8 rounded-full flex items-center justify-center"
                   style={{ background: sheet.inset }}
                   aria-label="Close"
                 >
-                  <X size={18} style={{ color: "var(--surna-text-muted)" }} />
+                  <X size={16} style={{ color: "var(--surna-text-muted)" }} />
                 </button>
-              )}
-            </div>
-
-            {pin.hasStory && pin.storyState !== "none" && (
-              <button
-                type="button"
-                onClick={() => onViewStory?.(pin)}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl mb-4 font-semibold text-sm active:scale-[0.98] transition-transform"
-                style={{
-                  background:
-                    pin.storyState === "new" ? "var(--surna-text)" : sheet.inset,
-                  color: pin.storyState === "new" ? sheet.textOnAccent : "var(--surna-text)",
-                  border: pin.storyState === "new" ? "none" : "1px solid var(--surna-border)",
-                }}
-              >
-                <Play size={16} fill="currentColor" />
-                {pin.storyState === "new" ? "Watch story" : "Story viewed"}
-              </button>
-            )}
-
-            {isEvent ? (
-              <EventPinDetails pin={pin} sheet={sheet} distance={distance} />
-            ) : (
-              <>
-                {chips.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {chips.map((chip, i) => (
-                      <span
-                        key={`${chip}-${i}`}
-                        className={cn(
-                          "px-2.5 py-1 rounded-full text-[11px] font-medium",
-                          chip.toLowerCase().includes("live")
-                            ? "bg-red-500/15 text-red-400 border border-red-500/25"
-                            : "text-[var(--surna-text-secondary)] border border-[var(--surna-border)]",
-                        )}
-                        style={
-                          !chip.toLowerCase().includes("live")
-                            ? { background: sheet.inset }
-                            : undefined
-                        }
-                      >
-                        {chip}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {description && (
-                  <p className="text-sm leading-relaxed text-[var(--surna-text-secondary)] mb-4">
-                    {description.length > 280 ? `${description.slice(0, 280)}…` : description}
-                  </p>
-                )}
-
-                {infoRows.length > 0 && (
-                  <div
-                    className="rounded-2xl border border-[var(--surna-border)] overflow-hidden mb-4"
-                    style={{ background: sheet.inset }}
-                  >
-                    {infoRows.map((row, i) => {
-                      const Icon = row.icon;
-                      return (
-                        <div
-                          key={`${row.label}-${i}`}
-                          className={cn(
-                            "flex items-start gap-3 px-3.5 py-3",
-                            i > 0 && "border-t border-[var(--surna-border)]",
-                          )}
-                        >
-                          <Icon
-                            size={16}
-                            className="mt-0.5 flex-shrink-0"
-                            style={{
-                              color: row.highlight ? "var(--surna-text)" : "var(--surna-text-muted)",
-                            }}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] uppercase tracking-wide text-[var(--surna-text-muted)]">
-                              {row.label}
-                            </p>
-                            <p
-                              className={cn(
-                                "text-sm mt-0.5",
-                                row.highlight
-                                  ? "font-semibold text-[var(--surna-text)]"
-                                  : "text-[var(--surna-text-secondary)]",
-                              )}
-                            >
-                              {row.value}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-
-            {isEvent && description && (
-              <p className="text-sm leading-relaxed text-[var(--surna-text-secondary)] mb-4 -mt-1">
-                {description.length > 220 ? `${description.slice(0, 220)}…` : description}
-              </p>
-            )}
-
-            {feeAmount != null && (
-              <div
-                className="flex items-center gap-2 mb-4 px-3.5 py-3 rounded-xl border border-[var(--surna-border)]"
-                style={{ background: sheet.inset }}
-              >
-                <DollarSign size={16} className="text-[var(--surna-text)]" />
-                <span className="text-sm font-medium text-[var(--surna-text)]">
-                  {typeof feeAmount === "object" && feeAmount !== null && "amount" in feeAmount
-                    ? `${(feeAmount as { amount: unknown }).amount} ${(feeAmount as { currency?: string }).currency || "EUR"}`
-                    : String(feeAmount)}{" "}
-                  entry
-                </span>
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex gap-3 items-start mb-3">
+              <div className="relative flex-shrink-0">
+                <div
+                  className={cn(
+                    "w-[52px] h-[52px] rounded-full overflow-hidden flex items-center justify-center ring-2",
+                    pin.hasStory && pin.storyState === "new"
+                      ? "ring-[var(--surna-accent)]"
+                      : "ring-[var(--surna-border)]",
+                  )}
+                  style={{ background: sheet.inset }}
+                >
+                  {avatarUrl ? (
+                    <LazyImage
+                      src={avatarUrl}
+                      alt=""
+                      sources={deriveModernSources(avatarUrl)}
+                      placeholder={deriveLqipPlaceholder(avatarUrl)}
+                      wrapperClassName="w-full h-full"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-sm font-bold text-[var(--surna-text-secondary)]">{avatarInitials}</span>
+                  )}
+                </div>
+                {isPerson && pin.presence === "active" && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
+                    style={{ background: "#30D158", borderColor: sheet.presenceRing }}
+                  />
+                )}
+              </div>
+              <div className="flex-1 min-w-0 pt-0.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--surna-text-muted)]">
+                  {typeLabel}
+                  {isEvent && eventCountdown ? ` · ${eventCountdown}` : ""}
+                </p>
+                <h2 className="text-lg font-bold text-[var(--surna-text)] leading-snug line-clamp-2 mt-0.5">
+                  {pin.title}
+                </h2>
+                <p className="text-[13px] text-[var(--surna-text-secondary)] mt-0.5 line-clamp-2">{subtitleLine}</p>
+              </div>
+            </div>
+
+            {expanded && galleryUrls.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto mb-3 pb-1" style={{ scrollbarWidth: "none" }}>
+                {galleryUrls.slice(0, 5).map((url) => (
+                  <div key={url} className="shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-[var(--surna-border)]">
+                    <LazyImage
+                      src={url}
+                      alt=""
+                      wrapperClassName="w-full h-full"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2 mb-3">
               <button
                 type="button"
                 onClick={handleNavigateMap}
-                className="flex items-center justify-center gap-2 h-12 px-4 rounded-xl text-sm font-semibold active:scale-[0.97] transition-transform border border-[var(--surna-border)]"
+                className="flex items-center justify-center h-11 w-11 rounded-full border border-[var(--surna-border)] active:scale-[0.97]"
                 style={{ background: sheet.inset, color: "var(--surna-text)" }}
+                aria-label="Directions"
               >
-                <Navigation size={16} />
+                <Navigation size={18} />
               </button>
               {primaryAction && (
                 <button
                   type="button"
                   disabled={isActing || actionDone === primaryAction.key}
                   onClick={() => handleQuickAction(primaryAction.key)}
-                  className="flex-1 flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-bold active:scale-[0.97] transition-transform disabled:opacity-60"
+                  className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full text-sm font-bold active:scale-[0.97] disabled:opacity-60"
                   style={{
-                    background:
-                      actionDone === primaryAction.key ? "#30D158" : "var(--surna-text)",
-                    color:
-                      actionDone === primaryAction.key ? "#fff" : sheet.textOnAccent,
+                    background: actionDone === primaryAction.key ? "#30D158" : "var(--surna-text)",
+                    color: actionDone === primaryAction.key ? "#fff" : sheet.textOnAccent,
                   }}
                 >
                   <primaryAction.icon size={16} />
@@ -863,14 +717,118 @@ export default function PinSheet({ pin, userLocation, onClose, onNavigate, onVie
               )}
               <button
                 type="button"
-                onClick={() => handleQuickAction("share")}
-                className="flex items-center justify-center h-12 w-12 rounded-xl border border-[var(--surna-border)] active:scale-[0.97]"
+                onClick={() => (expanded ? setExpanded(false) : setExpanded(true))}
+                className="flex items-center justify-center h-11 px-3 rounded-full border border-[var(--surna-border)] text-[13px] font-semibold gap-1 active:scale-[0.97]"
                 style={{ background: sheet.inset, color: "var(--surna-text)" }}
-                aria-label="Share"
               >
-                <Share2 size={16} />
+                {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                {expanded ? "Less" : "More"}
               </button>
             </div>
+
+            {expanded && (
+              <div className="space-y-3 animate-in fade-in duration-200">
+                {pin.hasStory && pin.storyState !== "none" && (
+                  <button
+                    type="button"
+                    onClick={() => onViewStory?.(pin)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm active:scale-[0.98]"
+                    style={{
+                      background: pin.storyState === "new" ? "var(--surna-text)" : sheet.inset,
+                      color: pin.storyState === "new" ? sheet.textOnAccent : "var(--surna-text)",
+                      border: pin.storyState === "new" ? "none" : "1px solid var(--surna-border)",
+                    }}
+                  >
+                    <Play size={15} fill="currentColor" />
+                    {pin.storyState === "new" ? "Watch story" : "Story viewed"}
+                  </button>
+                )}
+
+                {isEvent ? (
+                  <EventPinDetails pin={pin} sheet={sheet} distance={distance} />
+                ) : (
+                  <>
+                    {chips.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {chips.map((chip, i) => (
+                          <span
+                            key={`${chip}-${i}`}
+                            className="px-2.5 py-1 rounded-full text-[11px] font-medium text-[var(--surna-text-secondary)] border border-[var(--surna-border)]"
+                            style={{ background: sheet.inset }}
+                          >
+                            {chip}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {description && (
+                      <p className="text-sm leading-relaxed text-[var(--surna-text-secondary)]">{description}</p>
+                    )}
+                    {infoRows.length > 0 && (
+                      <div
+                        className="rounded-2xl border border-[var(--surna-border)] overflow-hidden"
+                        style={{ background: sheet.inset }}
+                      >
+                        {infoRows.map((row, i) => {
+                          const RowIcon = row.icon;
+                          return (
+                            <div
+                              key={`${row.label}-${i}`}
+                              className={cn(
+                                "flex items-start gap-3 px-3.5 py-2.5",
+                                i > 0 && "border-t border-[var(--surna-border)]",
+                              )}
+                            >
+                              <RowIcon size={15} className="mt-0.5 flex-shrink-0 text-[var(--surna-text-muted)]" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] uppercase tracking-wide text-[var(--surna-text-muted)]">{row.label}</p>
+                                <p className="text-sm text-[var(--surna-text)] mt-0.5">{row.value}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {feeAmount != null && (
+                  <div
+                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--surna-border)]"
+                    style={{ background: sheet.inset }}
+                  >
+                    <DollarSign size={16} className="text-[var(--surna-text)]" />
+                    <span className="text-sm font-medium text-[var(--surna-text)]">
+                      {typeof feeAmount === "object" && feeAmount !== null && "amount" in feeAmount
+                        ? `${(feeAmount as { amount: unknown }).amount} ${(feeAmount as { currency?: string }).currency || "EUR"}`
+                        : String(feeAmount)}{" "}
+                      entry
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleViewPage}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-full text-sm font-semibold border border-[var(--surna-border)] active:scale-[0.97]"
+                    style={{ background: sheet.inset, color: "var(--surna-text)" }}
+                  >
+                    View profile
+                    <ChevronRight size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAction("share")}
+                    className="flex items-center justify-center h-11 w-11 rounded-full border border-[var(--surna-border)] active:scale-[0.97]"
+                    style={{ background: sheet.inset, color: "var(--surna-text)" }}
+                    aria-label="Share"
+                  >
+                    <Share2 size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

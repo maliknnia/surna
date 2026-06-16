@@ -161,6 +161,8 @@ export interface IStorage {
   createTeam(ownerId: string, team: InsertTeam): Promise<Team>;
   getTeams(limit?: number, offset?: number, sport?: string): Promise<Team[]>;
   joinTeam(teamId: string, userId: string): Promise<void>;
+  ensureTeamMember(teamId: string, userId: string, role?: string): Promise<void>;
+  leaveTeam(teamId: string, userId: string): Promise<void>;
   
   // Message operations
   sendMessage(senderId: string, message: InsertMessage): Promise<Message>;
@@ -818,14 +820,63 @@ export class DatabaseStorage implements IStorage {
   }
 
   async joinTeam(teamId: string, userId: string): Promise<void> {
+    const existing = await db
+      .select({ status: teamMembers.status })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
+      .limit(1);
+    if (existing[0]?.status === "active") {
+      throw new Error("Already a team member");
+    }
+    await this.ensureTeamMember(teamId, userId, "member");
+  }
+
+  async ensureTeamMember(teamId: string, userId: string, role = "member"): Promise<void> {
     await db.transaction(async (tx) => {
-      // Add user to team
-      await tx.insert(teamMembers).values({ teamId, userId });
-      
-      // Update member count
+      const existing = await tx
+        .select({ id: teamMembers.id, status: teamMembers.status })
+        .from(teamMembers)
+        .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
+        .limit(1);
+      if (existing[0]?.status === "active") return;
+      if (existing[0]) {
+        await tx
+          .update(teamMembers)
+          .set({ status: "active", role, approvedAt: new Date() })
+          .where(eq(teamMembers.id, existing[0].id));
+      } else {
+        await tx.insert(teamMembers).values({
+          teamId,
+          userId,
+          role,
+          status: "active",
+          approvedAt: new Date(),
+        });
+        await tx
+          .update(teams)
+          .set({ currentMembers: sql`${teams.currentMembers} + 1` })
+          .where(eq(teams.id, teamId));
+      }
+    });
+  }
+
+  async leaveTeam(teamId: string, userId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      const [team] = await tx.select({ captainId: teams.captainId }).from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team) throw new Error("Team not found");
+      if (team.captainId === userId) throw new Error("Captain cannot leave — transfer captaincy first");
+
+      const [member] = await tx
+        .select({ id: teamMembers.id })
+        .from(teamMembers)
+        .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId), eq(teamMembers.status, "active")))
+        .limit(1);
+      if (!member) throw new Error("Not an active member");
+
+      await tx.delete(teamMembers).where(eq(teamMembers.id, member.id));
       await tx
         .update(teams)
-        .set({ currentMembers: sql`${teams.currentMembers} + 1` })
+        .set({ currentMembers: sql`GREATEST(${teams.currentMembers} - 1, 0)` })
         .where(eq(teams.id, teamId));
     });
   }
@@ -2509,6 +2560,9 @@ export class DatabaseStorage implements IStorage {
 
   async addProPlayer(teamId: string, data: any): Promise<ProTeamPlayer> {
     const [player] = await db.insert(proTeamPlayers).values({ teamId, ...data }).returning();
+    if (data.userId) {
+      await this.ensureTeamMember(teamId, data.userId, "member");
+    }
     return player;
   }
 

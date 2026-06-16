@@ -52,6 +52,7 @@ export type ApiNotificationRow = {
 const ACTIONABLE_TYPES = new Set([
   "follow_request",
   "team_invite",
+  "team_join_request",
   "message",
   "mention",
   "challenge",
@@ -278,6 +279,12 @@ function titleFromType(type: string): string {
     follow_request: "Follow request",
     message: "Message",
     team_invite: "Team invite",
+    team_join_request: "Join request",
+    team_join_approved: "Request approved",
+    team_join_rejected: "Request declined",
+    team_member_joined: "New member",
+    team_schedule_reminder: "Training reminder",
+    team_schedule_update: "Schedule update",
     team_update: "Team update",
     event_live: "Live event",
     event_reminder: "Event reminder",
@@ -327,6 +334,8 @@ function routeFromApiRow(row: ApiNotificationRow): string | undefined {
 
   if (row.postId) return ROUTES.feed;
   if (row.type === "message") return ROUTES.messages;
+  const teamId = row.metadata?.teamId;
+  if (typeof teamId === "string" && row.type.includes("team")) return `/teams/${teamId}`;
   if (row.type.includes("team")) return ROUTES.teams;
   if (row.type.includes("event")) return ROUTES.events;
   if (row.type.includes("challenge")) return ROUTES.challenges;
@@ -371,11 +380,17 @@ function buildActionsForType(type: string, route?: string): NotifAction[] | unde
       { label: "Decline", variant: "secondary" },
     ];
   }
-  if (t === "team_invite") {
+  if (t === "team_invite" || t === "team_join_request") {
     return [
-      { label: "Join", variant: "primary", route: route ?? ROUTES.teams },
-      { label: "View", variant: "secondary", route: route ?? ROUTES.teams },
+      { label: t === "team_join_request" ? "Review" : "Join", variant: "primary", route: route ?? ROUTES.teams },
+      { label: "View team", variant: "secondary", route: route ?? ROUTES.teams },
     ];
+  }
+  if (t === "team_join_approved") {
+    return [{ label: "View team", variant: "primary", route: route ?? ROUTES.teams }];
+  }
+  if (t === "team_schedule_reminder" || t === "team_schedule_update") {
+    return [{ label: "View schedule", variant: "primary", route: route ?? ROUTES.teams }];
   }
   if (t === "message") {
     return [{ label: "Reply", variant: "primary", route: ROUTES.messages }];

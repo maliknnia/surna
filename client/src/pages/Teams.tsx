@@ -3,12 +3,11 @@ import { useInView } from "react-intersection-observer";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 import { useLocation } from "wouter";
-import { Plus, ClipboardList } from "lucide-react";
+import { Plus } from "lucide-react";
 import { FeatureFilterChips } from "@/components/panels/FeatureFilterBar";
 import {
   PanelFilterSheet,
   PanelHeaderToolButtons,
-  PanelInlineSearch,
   panelToolsStyle,
   usePanelToolToggles,
   usePanelToolsLifecycle,
@@ -22,6 +21,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { createHubPath } from "@/lib/createHub";
 import TeamCard from "@/components/TeamCard";
+import { YourTeamsStrip } from "@/components/teams/YourTeamsStrip";
+import { joinTeamUnified } from "@/lib/teamJoin";
 import DiscoveryCircleStrip from "@/components/cards/DiscoveryCircleStrip";
 import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/cards/DiscoverySectionHeading";
 import { teamLogoUrl } from "@/lib/teamLogo";
@@ -58,8 +59,6 @@ export default function Teams({
   panelActive?: boolean;
 }) {
   const [sportFilter, setSportFilter] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [, setLocation] = useLocation();
   const goBack = useSmartBack({
@@ -117,38 +116,34 @@ export default function Teams({
   }, [inView, hasNextPage, isFetchingNextPage, loadMore]);
 
   const joinTeamMutation = useMutation({
-    mutationFn: async (teamId: string) => {
-      const response = await fetch(`/api/teams/${teamId}/join`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to join team");
-      return response.json();
-    },
+    mutationFn: async (teamId: string) => joinTeamUnified(teamId),
     onMutate: async (teamId: string) => {
       await queryClient.cancelQueries({ queryKey: ["/api/teams"] });
-      const previousTeams = queryClient.getQueryData(["/api/teams"]);
-      queryClient.setQueryData(["/api/teams"], (old: any) => {
-        if (!old) return old;
-        if (old.pages) {
+      return { teamId };
+    },
+    onSuccess: (result, teamId) => {
+      if (result.status === "joined") {
+        queryClient.setQueryData(["/api/teams"], (old: any) => {
+          if (!old?.pages) return old;
           return {
             ...old,
             pages: old.pages.map((page: any) => ({
               ...page,
-              data: page.data.map((team: any) => 
+              data: page.data.map((team: any) =>
                 team.id === teamId
                   ? { ...team, currentMembers: (team.currentMembers || 0) + 1, hasJoined: true }
-                  : team
-              )
-            }))
+                  : team,
+              ),
+            })),
           };
-        }
-        return old;
-      });
-      return { previousTeams, teamId };
-    },
-    onSuccess: () => {
+        });
+      }
       if (navigator.vibrate) navigator.vibrate(10);
+      if (result.status === "pending") {
+        toast({ title: "Request sent", description: "The captain will review your join request." });
+        queryClient.invalidateQueries({ queryKey: ["/api/teams/my-teams"] });
+        return;
+      }
       localStorage.setItem("surna_meaningful_action_done", "1");
       try {
         const joinedTeam = (teams || []).find((t: any) => t.id === teamIdForPostRef.current);
@@ -161,12 +156,14 @@ export default function Teams({
         }
       } catch {}
       toast({ title: "Joined Team!", description: "You've successfully joined the team." });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams/my-teams"] });
     },
-    onError: (error, teamId, context) => {
-      if (context?.previousTeams) {
-        queryClient.setQueryData(["/api/teams"], context.previousTeams);
-      }
-      toast({ title: "Error", description: "Failed to join team. Please try again.", variant: "destructive" });
+    onError: (error) => {
+      toast({
+        title: "Couldn't join team",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
@@ -196,9 +193,7 @@ export default function Teams({
   const chipText = t.chipText;
 
   const filteredTeams = (teams || []).filter((team: any) => {
-    const matchesSport = sportFilter === "All" || (team.sport && team.sport.toLowerCase().includes(sportFilter.toLowerCase()));
-    const matchesSearch = !searchQuery || (team.name && team.name.toLowerCase().includes(searchQuery.toLowerCase())) || (team.sport && team.sport.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSport && matchesSearch;
+    return sportFilter === "All" || (team.sport && team.sport.toLowerCase().includes(sportFilter.toLowerCase()));
   });
 
   const teamCircleItems = filteredTeams
@@ -226,15 +221,14 @@ export default function Teams({
   }));
 
   const toolsStyle = panelToolsStyle(isDark);
-  const { onToggleSearch, onToggleFilter } = usePanelToolToggles(
-    setSearchOpen,
+  const { onToggleFilter } = usePanelToolToggles(
+    () => {},
     setFilterOpen,
-    searchOpen,
+    false,
     filterOpen,
   );
-  usePanelToolsLifecycle(panelActive, setSearchOpen, setFilterOpen);
+  usePanelToolsLifecycle(panelActive, () => {}, setFilterOpen);
   const hasActiveFilter = sportFilter !== "All";
-  const hasActiveSearch = searchQuery.length > 0;
 
   return (
     <div className={embedded ? "min-h-full pb-4" : "min-h-screen pb-24"} style={{ background: pageBg, color: textPrimary }} {...touchHandlers}>
@@ -275,20 +269,6 @@ export default function Teams({
               <h1 className="text-[18px] font-bold flex-1" style={{ color: textPrimary }}>Teams</h1>
             ) : null}
             <button
-              type="button"
-              onClick={() => {
-                if (embedded) markNavReturn(mobilePanelReturnPath("teams"));
-                setLocation("/teams/manage");
-              }}
-              className="h-8 px-2.5 rounded-full flex items-center justify-center gap-1 active:scale-90 transition-transform"
-              style={{ background: inputBg, color: textPrimary }}
-              aria-label="Manage my teams"
-              title="Manage my teams"
-            >
-              <ClipboardList size={15} />
-              <span className="text-[11px] font-semibold">Manage</span>
-            </button>
-            <button
               onClick={() => setLocation(createHubPath("team"))}
               className="h-8 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 active:scale-[0.96] transition-transform"
               style={{ background: chipActiveBg, color: chipActiveText }}
@@ -299,26 +279,25 @@ export default function Teams({
             {panelActive && (
               <PanelHeaderToolButtons
                 style={toolsStyle}
-                searchOpen={searchOpen || hasActiveSearch}
+                searchOpen={false}
                 filterOpen={filterOpen}
                 filterActive={hasActiveFilter}
-                onToggleSearch={onToggleSearch}
+                showSearch={false}
+                onToggleSearch={() => {}}
                 onToggleFilter={onToggleFilter}
               />
             )}
           </div>
         </div>
-        {panelActive && searchOpen && (
-          <PanelInlineSearch
-            style={toolsStyle}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            placeholder="Search teams by name or sport…"
-          />
-        )}
       </div>
 
       <div className="px-4 pt-3">
+        <YourTeamsStrip
+          onTeamClick={(teamId) => {
+            markNavReturn(embedded ? mobilePanelReturnPath("teams") : "/teams");
+            setLocation(`/teams/${teamId}`);
+          }}
+        />
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
@@ -399,7 +378,7 @@ export default function Teams({
             </h3>
             <p className="text-[13px] mb-6" style={{ color: textSecondary }}>
               {(teams?.length ?? 0) > 0
-                ? "Try a different sport or clear your search."
+                ? "Try a different sport filter."
                 : sportFilter !== "All"
                   ? `No ${sportFilter} teams yet. Be the first!`
                   : "Be the first to create a team and build your sports community!"}
@@ -407,7 +386,7 @@ export default function Teams({
             {(teams?.length ?? 0) > 0 ? (
               <button
                 type="button"
-                onClick={() => { setSportFilter("All"); setSearchQuery(""); }}
+                onClick={() => setSportFilter("All")}
                 className="px-6 py-2.5 rounded-full text-[13px] font-bold active:scale-95 transition-all"
                 style={{ background: chipBg, color: chipText, border: `1px solid ${borderColor}` }}
               >

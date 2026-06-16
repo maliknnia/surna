@@ -224,10 +224,14 @@
 
   html.dark {
     color-scheme: dark;
+    --immersive-sheet-bg: #121212;
+    --immersive-sheet-text: #ffffff;
   }
 
   html:not(.dark) {
     color-scheme: light;
+    --immersive-sheet-bg: #ffffff;
+    --immersive-sheet-text: #1a1a1a;
   }
 
   body {
@@ -501,6 +505,12 @@
     flex-shrink: 0;
   }
 
+  .playlist-card__thumb--lg {
+    width: 76px;
+    height: 76px;
+    border-radius: 12px;
+  }
+
   .playlist-card__thumb-fallback {
     display: flex;
     align-items: center;
@@ -635,7 +645,7 @@
   }
 
   .discovery-circle-item {
-    width: 92px;
+    width: 76px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -643,12 +653,15 @@
 
   .discovery-circle-ring {
     position: relative;
-    width: 88px;
-    height: 88px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     padding: 3px;
     flex-shrink: 0;
     box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .discovery-circle-ring--create {
@@ -666,7 +679,6 @@
     align-items: center;
     justify-content: center;
     background: var(--surna-void);
-    border: 2px solid var(--surna-void);
     box-sizing: border-box;
   }
 
@@ -699,7 +711,7 @@
   }
 
   .discovery-circle-name {
-    margin-top: 10px;
+    margin-top: 8px;
     width: 100%;
     text-align: center;
     font-size: 12px;
@@ -1112,9 +1124,9 @@
 
 .spotify-album-art {
   position: relative;
-  width: 200px;
-  height: 200px;
-  border-radius: 16px;
+  width: min(280px, 78vw);
+  height: min(280px, 78vw);
+  border-radius: 20px;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -1122,7 +1134,29 @@
 .spotify-album-shadow {
   position: absolute;
   inset: 0;
-  border-radius: 16px;
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+.team-highlight-tile {
+  width: 108px;
+  height: 152px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.team-highlight-play {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
   pointer-events: none;
 }
 

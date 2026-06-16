@@ -42,6 +42,8 @@ export interface CommentsSheetProps {
   entityId?: string;
   /** pre-fetched comment list (e.g. from PostCard) */
   initialComments?: Comment[];
+  /** Slim UI when opened over fullscreen video */
+  variant?: "default" | "immersive";
 }
 
 /* ─── Entity CTA config ─────────────────────────────────────────────────────── */
@@ -372,7 +374,7 @@ function CommentRow({
 }
 
 /* ─── Main CommentsSheet ─────────────────────────────────────────────────────── */
-export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", entityId, initialComments }: CommentsSheetProps) {
+export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", entityId, initialComments, variant = "default" }: CommentsSheetProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { theme } = useTheme();
@@ -509,8 +511,10 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
 
   if (!isOpen) return null;
 
+  const isImmersive = variant === "immersive";
+
   // Theme
-  const sheetBg     = isDark ? "#0e0814" : "#ffffff";
+  const sheetBg     = isDark ? (isImmersive ? "#121212" : "#0e0814") : "#ffffff";
   const handleBg    = isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.12)";
   const titleClr    = isDark ? "#ffffff" : "#1a0033";
   const borderTop   = isDark ? "rgba(255,255,255,0.08)" : "rgba(109,40,217,0.1)";
@@ -585,7 +589,7 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {/* Sort */}
+            {!isImmersive && (
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setShowSortMenu((v) => !v)}
@@ -631,6 +635,7 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
                 </>
               )}
             </div>
+            )}
             {/* Close */}
             <button
               onClick={handleClose}
@@ -681,8 +686,7 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
             flexShrink: 0,
           }}
         >
-          {/* Entity CTAs */}
-          {entityCTAs.length > 0 && (
+          {!isImmersive && entityCTAs.length > 0 && (
             <div style={{ display: "flex", gap: 8, padding: "8px 16px 4px", overflowX: "auto" }}>
               {entityCTAs.map((cta) => (
                 <button
@@ -700,7 +704,7 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
             </div>
           )}
 
-          {/* Quick emoji row */}
+          {!isImmersive && (
           <div
             className="overflow-x-auto"
             style={{ display: "flex", gap: 6, padding: "6px 16px", background: emojiRowBg, borderTop: `1px solid ${dividerClr}`, borderBottom: `1px solid ${dividerClr}` }}
@@ -721,6 +725,7 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
               </button>
             ))}
           </div>
+          )}
 
           {/* Reply indicator */}
           {replyTo && (

@@ -116,19 +116,21 @@ export function createSurnaMarker(
     `</div>`,
   ].join("");
 
+  const labelsBlock = isFocused ? pinLabelsMarkup(pin, borderColor) : "";
+
   const html = [
     `<div class="surna-spot surna-type-${pin.type} surna-spot--avatar ${activeClass} ${focusClass} ${teammateClass}" data-type="${pin.type}" aria-label="${escapeHtml(pin.title)}">`,
     graphic,
-    pinLabelsMarkup(pin, borderColor),
+    labelsBlock,
     `</div>`,
   ].join("");
 
   const pointerH = 10;
   const graphicH = iconSize + 6 + pointerH;
-  const labelsH = 26;
+  const labelsH = isFocused ? 26 : 0;
   const graphicW = iconSize;
-  const iconW = Math.max(graphicW, 108);
-  const iconH = graphicH + 4 + labelsH;
+  const iconW = isFocused ? Math.max(graphicW, 108) : graphicW + 8;
+  const iconH = graphicH + (isFocused ? 4 + labelsH : 2);
   const anchorX = iconW / 2;
   const anchorY = graphicH;
 

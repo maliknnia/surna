@@ -59,7 +59,7 @@ export function PostComposerSheet({ open, onOpenChange }: Props) {
     onOpenChange(false);
     openCamera({
       source: "feed",
-      mode: "photo",
+      mode: "post",
       onFeedPosted: () => invalidateFeedQueries(queryClient),
       onStoryPosted: () => queryClient.invalidateQueries({ queryKey: ["/api/stories"] }),
     });

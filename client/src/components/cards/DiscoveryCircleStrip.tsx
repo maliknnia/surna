@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { getSportColor } from "@/lib/sportColors";
+import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
+import { brightenHex } from "@/lib/extractColor";
 
 export type DiscoveryCircleItem = {
   id: string;
@@ -19,11 +20,6 @@ type DiscoveryCircleStripProps = {
   loading?: boolean;
 };
 
-function sportRingGradient(sport?: string | null): string {
-  const { base, light } = getSportColor(sport);
-  return `linear-gradient(135deg, ${light} 0%, ${base} 55%, ${base} 100%)`;
-}
-
 function CircleSkeleton() {
   return (
     <div className="discovery-circle-item shrink-0">
@@ -38,6 +34,62 @@ function CircleSkeleton() {
   );
 }
 
+function DiscoveryCircleItemButton({
+  item,
+  onItemClick,
+}: {
+  item: DiscoveryCircleItem;
+  onItemClick: (id: string) => void;
+}) {
+  const [pressedId, setPressedId] = useState(false);
+  const ringColor = useDiscoveryCardBg(item.imageUrl, item.sport);
+  const ringGradient = `linear-gradient(145deg, ${brightenHex(ringColor, 0.38)} 0%, ${ringColor} 58%, ${ringColor} 100%)`;
+
+  return (
+    <button
+      type="button"
+      className="discovery-circle-item shrink-0 text-left"
+      style={{
+        transform: pressedId ? "scale(0.94)" : "scale(1)",
+        transition: "transform 0.15s ease",
+      }}
+      onPointerDown={() => setPressedId(true)}
+      onPointerUp={() => setPressedId(false)}
+      onPointerLeave={() => setPressedId(false)}
+      onPointerCancel={() => setPressedId(false)}
+      onClick={() => onItemClick(item.id)}
+    >
+      <div className="discovery-circle-ring" style={{ background: ringGradient }}>
+        <div className="discovery-circle-inner">
+          {item.imageUrl ? (
+            <img
+              src={item.imageUrl}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            <span className="discovery-circle-emoji" aria-hidden>
+              {item.emoji || "🏆"}
+            </span>
+          )}
+        </div>
+        {item.verified ? (
+          <span className="discovery-circle-verified" aria-label="Verified">
+            ✓
+          </span>
+        ) : null}
+      </div>
+      <span className="discovery-circle-name">{item.name}</span>
+    </button>
+  );
+}
+
 export default function DiscoveryCircleStrip({
   items,
   onItemClick,
@@ -45,8 +97,6 @@ export default function DiscoveryCircleStrip({
   createLabel = "Create",
   loading = false,
 }: DiscoveryCircleStripProps) {
-  const [pressedId, setPressedId] = useState<string | null>(null);
-
   if (!loading && items.length === 0 && !onCreate) return null;
 
   return (
@@ -55,54 +105,9 @@ export default function DiscoveryCircleStrip({
         <div className="flex gap-4 pb-1">
           {loading
             ? Array.from({ length: 7 }).map((_, i) => <CircleSkeleton key={i} />)
-            : items.map((item) => {
-                const isPressed = pressedId === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="discovery-circle-item shrink-0 text-left"
-                    style={{
-                      transform: isPressed ? "scale(0.94)" : "scale(1)",
-                      transition: "transform 0.15s ease",
-                    }}
-                    onPointerDown={() => setPressedId(item.id)}
-                    onPointerUp={() => setPressedId(null)}
-                    onPointerLeave={() => setPressedId(null)}
-                    onPointerCancel={() => setPressedId(null)}
-                    onClick={() => onItemClick(item.id)}
-                  >
-                    <div
-                      className="discovery-circle-ring"
-                      style={{ background: sportRingGradient(item.sport) }}
-                    >
-                      <div className="discovery-circle-inner">
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <span className="discovery-circle-emoji" aria-hidden>
-                            {item.emoji || "🏆"}
-                          </span>
-                        )}
-                      </div>
-                      {item.verified ? (
-                        <span className="discovery-circle-verified" aria-label="Verified">
-                          ✓
-                        </span>
-                      ) : null}
-                    </div>
-                    <span className="discovery-circle-name">{item.name}</span>
-                  </button>
-                );
-              })}
+            : items.map((item) => (
+                <DiscoveryCircleItemButton key={item.id} item={item} onItemClick={onItemClick} />
+              ))}
 
           {!loading && onCreate ? (
             <button type="button" className="discovery-circle-item shrink-0 text-left" onClick={onCreate}>

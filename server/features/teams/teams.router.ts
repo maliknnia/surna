@@ -1,5 +1,5 @@
 ﻿import { Router, type Request, type Response } from 'express';
-import { sql, eq, and, desc, or } from 'drizzle-orm';
+import { sql, eq, and, desc, or, inArray, gte, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../../db';
 import {
@@ -9,11 +9,20 @@ import {
   teamChannels,
   teamChannelMessages,
   users,
+  posts,
+  proTrainingSessions,
+  proMatchSquads,
+  events,
+  insertTeamSchema,
 } from '@shared/schema';
 import { teamManagementService } from '../../services/teamManagementService';
+import { storage } from '../../storage';
 import { toPublicUser } from '../../lib/publicData';
 import { authUserId } from '../../lib/authUser';
 import { isAuthenticated } from '../../replitAuth';
+import { cacheAside } from '../../infrastructure/cache';
+import { validateBody } from '../../middleware/validate';
+import { csrfProtection } from '../../middleware/csrfMiddleware';
 
 const teamsRouter = Router();
 
@@ -121,13 +130,111 @@ teamsRouter.get('/my-teams', isAuthenticated, async (req: AuthedRequest, res: Re
       })
       .from(teamMembers)
       .innerJoin(teams, eq(teamMembers.teamId, teams.id))
-      .where(eq(teamMembers.userId, userId))
+      .where(and(eq(teamMembers.userId, userId), eq(teamMembers.status, 'active')))
       .orderBy(desc(teams.createdAt));
 
     res.json(rows.map(({ team, role }) => ({ ...team, myRole: role })));
   } catch (err) {
     console.error('[teams] my-teams error', err);
     res.status(500).json({ message: 'Failed to load your teams' });
+  }
+});
+
+/**
+ * PUT /api/teams/join-requests/:requestId
+ * Approve or reject a pending join request (captains/co-captains).
+ */
+teamsRouter.put('/join-requests/:requestId', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const decision = (req.body ?? {}).decision;
+    if (decision !== 'approved' && decision !== 'rejected') {
+      return res.status(400).json({ message: 'decision must be approved or rejected' });
+    }
+
+    const result = await teamManagementService.reviewJoinRequest(
+      req.params.requestId,
+      userId,
+      decision,
+    );
+    res.json({ message: `Request ${decision} successfully`, request: result });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to review join request';
+    res.status(403).json({ message: msg });
+  }
+});
+
+teamsRouter.delete('/photos/:photoId', isAuthenticated, csrfProtection, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const ok = await storage.deleteTeamPhoto(req.params.photoId, userId);
+    if (!ok) return res.status(403).json({ message: 'Not authorized' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[teams] delete photo error', err);
+    res.status(500).json({ message: 'Failed to delete photo' });
+  }
+});
+
+/**
+ * GET /api/teams — public discovery list (cached).
+ */
+teamsRouter.get('/', async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(String(req.query.limit)) || 20;
+    const offset = parseInt(String(req.query.offset)) || 0;
+    const sportRaw = typeof req.query.sport === 'string' ? req.query.sport : '';
+    const sportParam = sportRaw && sportRaw.toLowerCase() !== 'all' ? sportRaw : undefined;
+    const sportKey = sportParam?.toLowerCase() ?? 'all';
+
+    const list = await cacheAside(`teams_${limit}_${offset}_${sportKey}`, 30, async () =>
+      storage.getTeams(limit, offset, sportParam),
+    );
+
+    res.setHeader('Cache-Control', 'private, max-age=15, stale-while-revalidate=60');
+    res.json(list);
+  } catch (err) {
+    console.error('[teams] list error', err);
+    res.status(500).json({ message: 'Failed to fetch teams' });
+  }
+});
+
+/**
+ * POST /api/teams — create a team.
+ */
+teamsRouter.post('/', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const teamData = insertTeamSchema.omit({ captainId: true }).parse(req.body);
+    const team = await storage.createTeam(userId, teamData as Parameters<typeof storage.createTeam>[1]);
+
+    let recommendations: Awaited<
+      ReturnType<typeof import('../../services/phase6SportService').getTeamCreationRecommendations>
+    > | null = null;
+    try {
+      const { getTeamCreationRecommendations } = await import('../../services/phase6SportService');
+      recommendations = await getTeamCreationRecommendations({
+        sport: team.sport,
+        city: team.city ?? undefined,
+        lat: req.body?.lat != null ? Number(req.body.lat) : undefined,
+        lng: req.body?.lng != null ? Number(req.body.lng) : undefined,
+      });
+    } catch (recErr) {
+      console.warn('[Phase6-6] Team recommendations skipped:', recErr);
+    }
+
+    res.json({ ...team, recommendations });
+  } catch (err: unknown) {
+    console.error('[teams] create error', err);
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ message: 'Invalid team data', issues: err.errors });
+    }
+    res.status(500).json({ message: 'Failed to create team' });
   }
 });
 
@@ -138,6 +245,10 @@ const UpdateTeamSchema = z.object({
   location: z.string().max(120).optional(),
   city: z.string().max(120).optional(),
   isPublic: z.boolean().optional(),
+  joinPolicy: z.enum(['open', 'approval']).optional(),
+  logo: z.string().url().optional(),
+  cover: z.string().url().optional(),
+  featuredHighlightIds: z.array(z.string()).max(12).optional(),
 });
 
 /**
@@ -188,6 +299,12 @@ teamsRouter.patch('/:id', isAuthenticated, async (req: AuthedRequest, res: Respo
         ...(body.location !== undefined ? { location: body.location } : {}),
         ...(body.city !== undefined ? { city: body.city } : {}),
         ...(body.isPublic !== undefined ? { isPublic: body.isPublic } : {}),
+        ...(body.joinPolicy !== undefined ? { joinPolicy: body.joinPolicy } : {}),
+        ...(body.logo !== undefined ? { logo: body.logo } : {}),
+        ...(body.cover !== undefined ? { cover: body.cover } : {}),
+        ...(body.featuredHighlightIds !== undefined
+          ? { featuredHighlightIds: body.featuredHighlightIds }
+          : {}),
         updatedAt: new Date(),
       })
       .where(eq(teams.id, id))
@@ -281,6 +398,447 @@ teamsRouter.post('/:id/updates', isAuthenticated, async (req: AuthedRequest, res
 // Team detail (real DB) — replaces legacy mocks that shadowed routes.ts handlers
 // =============================================================================
 
+async function activeMemberUserIds(teamId: string): Promise<string[]> {
+  const rows = await db
+    .select({ userId: teamMembers.userId })
+    .from(teamMembers)
+    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.status, 'active')));
+  return rows.map((r) => r.userId);
+}
+
+function authorDisplayName(user: typeof users.$inferSelect): string {
+  const display = (user as { displayName?: string | null }).displayName;
+  if (display?.trim()) return display.trim();
+  return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Member';
+}
+
+function mapPostRows(rows: { post: typeof posts.$inferSelect; author: typeof users.$inferSelect }[]) {
+  return rows.map(({ post, author }) => ({
+    ...post,
+    author: toPublicUser(author),
+    authorName: authorDisplayName(author),
+  }));
+}
+
+async function viewerCanManageTeam(teamId: string, userId: string): Promise<boolean> {
+  const [team] = await db.select({ captainId: teams.captainId }).from(teams).where(eq(teams.id, teamId)).limit(1);
+  if (!team) return false;
+  if (team.captainId === userId) return true;
+  const [m] = await db
+    .select({ role: teamMembers.role, status: teamMembers.status })
+    .from(teamMembers)
+    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
+    .limit(1);
+  return (
+    m?.status === 'active' &&
+    (m.role === 'captain' || m.role === 'co-captain' || m.role === 'admin')
+  );
+}
+
+teamsRouter.post('/:id/join', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const teamId = req.params.id;
+    const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+
+    const joinPolicy = (team as { joinPolicy?: string | null }).joinPolicy ?? 'open';
+    if (joinPolicy === 'approval') {
+      const { message } = (req.body ?? {}) as { message?: string };
+      const result = await teamManagementService.requestToJoinTeam(teamId, userId, message);
+      return res.json({ success: true, status: 'pending', joined: false, request: result });
+    }
+
+    await storage.joinTeam(teamId, userId);
+    try {
+      const { notifyTeamMemberJoined } = await import('../../services/teamNotificationService');
+      await notifyTeamMemberJoined(teamId, userId);
+    } catch (notifyErr) {
+      console.warn('[teams] Member joined notification skipped:', notifyErr);
+    }
+    try {
+      const { triggerNudgeIfNeeded } = await import('../../services/phase8ProfileService');
+      const count = await db
+        .select({ c: sql<number>`count(*)::int` })
+        .from(teamMembers)
+        .where(eq(teamMembers.userId, userId));
+      if (Number(count[0]?.c ?? 0) === 1) {
+        await triggerNudgeIfNeeded(userId, 'first_team_join');
+      }
+    } catch (nudgeErr) {
+      console.warn('[Phase8-3] Team join nudge skipped:', nudgeErr);
+    }
+    const [updated] = await db.select({ currentMembers: teams.currentMembers }).from(teams).where(eq(teams.id, teamId));
+    res.json({
+      success: true,
+      status: 'joined',
+      joined: true,
+      currentMembers: updated?.currentMembers ?? team.currentMembers,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to join team';
+    res.status(400).json({ message: msg });
+  }
+});
+
+teamsRouter.post('/:id/leave', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    await storage.leaveTeam(req.params.id, userId);
+    res.json({ success: true });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to leave team';
+    res.status(400).json({ message: msg });
+  }
+});
+
+const CreateScheduleSchema = z.object({
+  title: z.string().min(1).max(120),
+  dateTime: z.string().min(1),
+  notes: z.string().max(500).optional(),
+});
+
+teamsRouter.post('/:id/schedule', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const teamId = req.params.id;
+    const canManage = await viewerCanManageTeam(teamId, userId);
+    if (!canManage) return res.status(403).json({ message: 'Only team managers can add schedule items' });
+
+    const parsed = CreateScheduleSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'INVALID_BODY', issues: parsed.error.issues });
+    }
+
+    const [session] = await db
+      .insert(proTrainingSessions)
+      .values({
+        teamId,
+        dateTime: new Date(parsed.data.dateTime),
+        focus: parsed.data.title,
+        notes: parsed.data.notes,
+        createdBy: userId,
+      })
+      .returning();
+
+    try {
+      const { notifyTeamScheduleCreated } = await import('../../services/teamNotificationService');
+      await notifyTeamScheduleCreated(
+        teamId,
+        session.id,
+        parsed.data.title,
+        new Date(parsed.data.dateTime),
+        userId,
+      );
+    } catch (notifyErr) {
+      console.warn('[teams] Schedule notification skipped:', notifyErr);
+    }
+
+    res.status(201).json({
+      schedule: {
+        id: session.id,
+        title: session.focus || parsed.data.title,
+        timeStart: session.dateTime,
+        status: 'upcoming',
+        type: 'training',
+      },
+    });
+  } catch (err) {
+    console.error('[teams] schedule create error', err);
+    res.status(500).json({ message: 'Failed to create schedule item' });
+  }
+});
+
+teamsRouter.get('/:id/feed', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const authorIds = await activeMemberUserIds(req.params.id);
+    if (authorIds.length === 0) return res.json({ posts: [] });
+
+    const rows = await db
+      .select({ post: posts, author: users })
+      .from(posts)
+      .innerJoin(users, eq(posts.authorId, users.id))
+      .where(
+        and(
+          inArray(posts.authorId, authorIds),
+          eq(posts.removed, false),
+          or(eq(posts.visibility, 'public'), eq(posts.visibility, 'friends')),
+        ),
+      )
+      .orderBy(desc(posts.createdAt))
+      .limit(40);
+
+    res.json({ posts: mapPostRows(rows) });
+  } catch (err) {
+    console.error('[teams] feed error', err);
+    res.status(500).json({ message: 'Failed to fetch team feed' });
+  }
+});
+
+teamsRouter.get('/:id/highlights', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const teamId = req.params.id;
+    const [team] = await db
+      .select({ featuredHighlightIds: teams.featuredHighlightIds })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+    const featuredIds = (team?.featuredHighlightIds ?? []).filter(Boolean);
+
+    const authorIds = await activeMemberUserIds(teamId);
+    const seen = new Set<string>();
+    const highlights: ReturnType<typeof mapPostRows> = [];
+
+    if (featuredIds.length > 0) {
+      const featuredRows = await db
+        .select({ post: posts, author: users })
+        .from(posts)
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .where(
+          and(
+            inArray(posts.id, featuredIds),
+            eq(posts.removed, false),
+            isNotNull(posts.videoUrl),
+          ),
+        );
+      const byId = new Map(featuredRows.map((r) => [r.post.id, r]));
+      for (const id of featuredIds) {
+        const row = byId.get(id);
+        if (row) {
+          highlights.push(...mapPostRows([row]));
+          seen.add(id);
+        }
+      }
+    }
+
+    if (authorIds.length > 0 && highlights.length < 12) {
+      const rows = await db
+        .select({ post: posts, author: users })
+        .from(posts)
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .where(
+          and(
+            inArray(posts.authorId, authorIds),
+            eq(posts.removed, false),
+            isNotNull(posts.videoUrl),
+            or(eq(posts.visibility, 'public'), eq(posts.visibility, 'friends')),
+          ),
+        )
+        .orderBy(desc(posts.createdAt))
+        .limit(24);
+
+      for (const row of rows) {
+        if (highlights.length >= 12) break;
+        if (seen.has(row.post.id)) continue;
+        highlights.push(...mapPostRows([row]));
+        seen.add(row.post.id);
+      }
+    }
+
+    res.json({ highlights });
+  } catch (err) {
+    console.error('[teams] highlights error', err);
+    res.status(500).json({ message: 'Failed to fetch team highlights' });
+  }
+});
+
+teamsRouter.get('/:id/schedule', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const teamId = req.params.id;
+    const now = new Date();
+
+    const sessions = await db
+      .select()
+      .from(proTrainingSessions)
+      .where(and(eq(proTrainingSessions.teamId, teamId), gte(proTrainingSessions.dateTime, now)))
+      .orderBy(proTrainingSessions.dateTime)
+      .limit(20);
+
+    const matchRows = await db
+      .select({ event: events })
+      .from(proMatchSquads)
+      .innerJoin(events, eq(proMatchSquads.eventId, events.id))
+      .where(and(eq(proMatchSquads.teamId, teamId), gte(events.startDate, now)))
+      .orderBy(events.startDate)
+      .limit(20);
+
+    const schedule = [
+      ...sessions.map((s) => ({
+        id: s.id,
+        title: s.focus || 'Training session',
+        timeStart: s.dateTime,
+        status: 'upcoming',
+        type: 'training',
+      })),
+      ...matchRows.map(({ event }) => ({
+        id: event.id,
+        title: event.title,
+        timeStart: event.startDate,
+        timeEnd: event.endDate,
+        location: event.location ? { address: event.location } : undefined,
+        status: 'upcoming',
+        type: 'match',
+      })),
+    ].sort(
+      (a, b) =>
+        new Date(String(a.timeStart)).getTime() - new Date(String(b.timeStart)).getTime(),
+    );
+
+    res.json({ schedule });
+  } catch (err) {
+    console.error('[teams] schedule error', err);
+    res.status(500).json({ message: 'Failed to fetch team schedule' });
+  }
+});
+
+teamsRouter.get('/:id/details', async (req: AuthedRequest, res: Response) => {
+  try {
+    const team = await teamManagementService.getTeamWithMembers(req.params.id);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+    res.json(team);
+  } catch (err) {
+    console.error('[teams] details error', err);
+    res.status(500).json({ message: 'Failed to fetch team details' });
+  }
+});
+
+teamsRouter.get('/:id/join-requests', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const requests = await teamManagementService.getJoinRequests(req.params.id, userId);
+    res.json(requests);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to fetch join requests';
+    res.status(403).json({ message: msg });
+  }
+});
+
+teamsRouter.put('/:id/members/:memberId/role', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const { role } = req.body ?? {};
+    await teamManagementService.assignRole(req.params.id, req.params.memberId, role, userId);
+    res.json({ message: 'Role assigned successfully' });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to assign role';
+    res.status(403).json({ message: msg });
+  }
+});
+
+teamsRouter.post('/:id/members/:memberId/attendance', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const canManage = await teamManagementService.hasPermission(req.params.id, userId, 'canManageMembers');
+    if (!canManage) return res.status(403).json({ message: 'Only captains can manage attendance' });
+    await teamManagementService.updateMemberActivity(req.params.id, req.params.memberId, 'attendance');
+    res.json({ ok: true });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to mark attendance';
+    res.status(500).json({ message: msg });
+  }
+});
+
+teamsRouter.delete('/:id/members/:memberId', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    await teamManagementService.removeMember(req.params.id, req.params.memberId, userId);
+    res.json({ message: 'Member removed successfully' });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to remove member';
+    res.status(403).json({ message: msg });
+  }
+});
+
+teamsRouter.get('/:id/channels', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const channels = await teamManagementService.getTeamChannels(req.params.id, userId);
+    res.json(channels);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to fetch channels';
+    res.status(403).json({ message: msg });
+  }
+});
+
+teamsRouter.post('/:id/channels', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const { name, description, channelType } = req.body ?? {};
+    const channel = await teamManagementService.createChannel(
+      req.params.id,
+      userId,
+      name,
+      description,
+      channelType,
+    );
+    res.json({ message: 'Channel created successfully', channel });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to create channel';
+    res.status(403).json({ message: msg });
+  }
+});
+
+teamsRouter.get('/:id/photos', async (req: Request, res: Response) => {
+  try {
+    const photos = await storage.getTeamPhotos(req.params.id);
+    res.json(photos);
+  } catch (err) {
+    console.error('[teams] photos list error', err);
+    res.status(500).json({ message: 'Failed to fetch photos' });
+  }
+});
+
+teamsRouter.post(
+  '/:id/photos',
+  isAuthenticated,
+  csrfProtection,
+  validateBody(
+    z.object({
+      imageUrl: z.string().url(),
+      caption: z.string().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+    }),
+  ),
+  async (req: AuthedRequest, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const isMember = await storage.isTeamMember(req.params.id, userId);
+      if (!isMember) return res.status(403).json({ message: 'Only team members can upload' });
+      const photo = await storage.addTeamPhoto({
+        teamId: req.params.id,
+        uploaderId: userId,
+        ...req.body,
+      });
+      res.json(photo);
+    } catch (err) {
+      console.error('[teams] photo upload error', err);
+      res.status(500).json({ message: 'Failed to add photo' });
+    }
+  },
+);
+
 teamsRouter.get('/:id', isAuthenticated, async (req: AuthedRequest, res: Response) => {
   try {
     const teamId = req.params.id;
@@ -301,16 +859,43 @@ teamsRouter.get('/:id', isAuthenticated, async (req: AuthedRequest, res: Respons
       .innerJoin(users, eq(teamMembers.userId, users.id))
       .where(eq(teamMembers.teamId, teamId));
 
-    const isMember = members.some((m) => m.member.userId === userId);
+    const isMember = members.some(
+      (m) => m.member.userId === userId && m.member.status === 'active',
+    );
+    const myMembership = members.find((m) => m.member.userId === userId);
+    const myRole = myMembership?.member.role ?? null;
+    const isCaptain = team.team.captainId === userId;
+    const canManage =
+      isCaptain ||
+      (myMembership?.member.status === 'active' &&
+        (myRole === 'captain' || myRole === 'co-captain' || myRole === 'admin'));
+
+    const pendingRequest = await db
+      .select({ id: teamJoinRequests.id })
+      .from(teamJoinRequests)
+      .where(
+        and(
+          eq(teamJoinRequests.teamId, teamId),
+          eq(teamJoinRequests.userId, userId),
+          eq(teamJoinRequests.status, 'pending'),
+        ),
+      )
+      .limit(1);
 
     res.json({
       ...team.team,
+      joinPolicy: (team.team as { joinPolicy?: string | null }).joinPolicy ?? 'open',
       owner: toPublicUser(team.owner),
       members: members.map(({ member, user }) => ({
         ...member,
         user: toPublicUser(user),
       })),
       isMember,
+      myRole,
+      isCaptain,
+      canManage,
+      hasJoined: isMember,
+      hasRequestedToJoin: pendingRequest.length > 0,
     });
   } catch (err) {
     console.error('[teams] get team error', err);

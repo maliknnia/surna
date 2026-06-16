@@ -47,7 +47,7 @@ export default function FeedShareMoment({ isDark: isDarkProp }: Props) {
 
       source: "feed",
 
-      mode: "photo",
+      mode: "post",
 
       onFeedPosted: () => {
 

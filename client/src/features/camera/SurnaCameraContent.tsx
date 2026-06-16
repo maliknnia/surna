@@ -1,16 +1,17 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useSurnaCamera } from "./SurnaCameraContext";
+import CameraView from "./CameraView";
+import GifPickerSheet from "./GifPickerSheet";
+import MediaPreviewScreen from "./MediaPreviewScreen";
+import { normalizeCameraMode, type CameraMode } from "./constants";
+import type { GiphyItem } from "./giphyApi";
+import { publishGifToChat } from "./cameraPublishApi";
 
 const CameraEmbedContext = createContext(false);
 
 export function useCameraEmbed() {
   return useContext(CameraEmbedContext);
 }
-import CameraView from "./CameraView";
-import GifPickerSheet from "./GifPickerSheet";
-import MediaPreviewScreen from "./MediaPreviewScreen";
-import type { CameraMode } from "./constants";
-import type { GiphyItem } from "./giphyApi";
 
 type CaptureState = {
   blob: Blob;
@@ -18,6 +19,9 @@ type CaptureState = {
   type: "image" | "video";
   filterId: string;
   arId: string | null;
+  mode: CameraMode;
+  durationSec?: number;
+  filterBaked?: boolean;
 };
 
 type Props = {
@@ -28,7 +32,6 @@ type Props = {
 export default function SurnaCameraContent({ inline = false }: Props) {
   const { view, requestClose, setView, options } = useSurnaCamera();
   const [capture, setCapture] = useState<CaptureState | null>(null);
-  const [pendingTool, setPendingTool] = useState<"stickers" | "text" | "draw" | null>(null);
 
   const handleGif = async (gif: GiphyItem) => {
     if (options.onGifSelect) {
@@ -37,12 +40,7 @@ export default function SurnaCameraContent({ inline = false }: Props) {
       return;
     }
     if (options.conversationId) {
-      await fetch("/api/messenger/dm/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ conversationId: options.conversationId, body: gif.url }),
-      });
+      await publishGifToChat(options.conversationId, gif.url);
       options.onMediaSent?.({ url: gif.url, type: "image" });
       requestClose();
       return;
@@ -61,10 +59,12 @@ export default function SurnaCameraContent({ inline = false }: Props) {
         blob={capture.blob}
         mediaType={capture.type}
         filterId={capture.filterId}
-        initialTool={pendingTool}
+        arId={capture.arId}
+        filterBaked={capture.filterBaked}
+        captureMode={capture.mode}
+        durationSec={capture.durationSec}
         onDone={() => {
           setCapture(null);
-          setPendingTool(null);
           setView("camera");
         }}
       />
@@ -73,9 +73,18 @@ export default function SurnaCameraContent({ inline = false }: Props) {
     content = (
       <div className={inline ? "surna-camera-inline-root" : "surna-camera-enter surna-camera-root"}>
         <CameraView
-          initialMode={(options.mode as CameraMode) ?? "photo"}
+          initialMode={normalizeCameraMode(options.mode)}
           onCaptured={(payload) => {
-            setCapture(payload);
+            setCapture({
+              blob: payload.blob,
+              previewUrl: payload.previewUrl,
+              type: payload.type,
+              filterId: payload.filterId,
+              arId: payload.arId,
+              mode: payload.mode,
+              durationSec: payload.durationSec,
+              filterBaked: payload.filterBaked,
+            });
             setView("preview");
           }}
         />

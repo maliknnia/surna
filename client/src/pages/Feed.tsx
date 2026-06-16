@@ -18,17 +18,15 @@ import { useInView } from "react-intersection-observer";
 import type { PostWithAuthorEnhanced, PostWithAuthor, User, Hashtag } from "@shared/schema";
 import PlacePostCard from "@/components/PlacePostCard";
 import { FeedShareMoment, useSurnaCamera } from "@/features/camera";
+import { FeedPostCard } from "@/components/feed/FeedPostCard";
+import { PostDetailSheet } from "@/components/feed/PostDetailSheet";
 import { FeedMenuSheet } from "@/components/feed/FeedMenuSheet";
-import { PostManageSheet } from "@/components/feed/PostManageSheet";
-import { FeedProfilePanel } from "@/components/feed/FeedProfilePanel";
 import { eventDetailPath } from "@/lib/eventRoutes";
 import { apiRequest } from "@/lib/queryClient";
 import {
   FeedVideoViewer,
-  filterVideosByMode,
-  inferVideoFormat,
 } from "@/components/video/FeedVideoViewer";
-import type { VideoPost, FeedViewerMode } from "@/components/video/FeedVideoViewer";
+import { FeedVideosHub } from "@/components/video/FeedVideosHub";
 import { flags } from "@/config/flags";
 import { StoriesBar } from "@/components/stories/StoriesBar";
 import { StoryViewer } from "@/components/stories/StoryViewer";
@@ -43,8 +41,9 @@ import { entityPath, mapPath, resolveContentLinks } from "@/lib/mapNavigation";
 import { ROUTES } from "@/navigation";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
-import { PostCardMediaBackdrop } from "@/components/feed/PostCardMediaBackdrop";
-import { postCardTintGradient } from "@/lib/postCardBackground";
+import { usePostEngagement } from "@/hooks/usePostEngagement";
+import { useVideoViewer } from "@/hooks/useVideoViewer";
+import { mapPostToVideoPost } from "@/lib/mapPostToVideoPost";
 
 /** Neutral media placeholder for non-tinted surfaces (e.g. video rail) */
 const FEED_MEDIA_BG = "var(--surna-elevated)";
@@ -84,25 +83,19 @@ const STALE_TIME = 1000 * 60 * 2; // 2 minutes stale time
 // Post Skeleton Loader Component
 function PostSkeleton() {
   return (
-    <div className="relative p-4 bg-background" data-testid="post-skeleton">
-      <div className="absolute bottom-0 left-4 right-4 h-px bg-surna-outline"></div>
-      <div className="flex items-start gap-3">
-        <Skeleton className="h-8 w-8 rounded-full bg-token-text/10" />
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Skeleton className="h-4 w-32 bg-token-text/10" />
-              <Skeleton className="h-3 w-20 bg-token-text/10" />
-            </div>
-          </div>
-          <Skeleton className="h-12 w-full bg-token-text/10" />
-          <Skeleton className="h-48 w-full rounded-lg bg-token-text/10" />
-          <div className="flex items-center gap-4 pt-2">
-            <Skeleton className="h-8 w-16 bg-token-text/10" />
-            <Skeleton className="h-8 w-16 bg-token-text/10" />
-            <Skeleton className="h-8 w-16 bg-token-text/10" />
-          </div>
+    <div className="border-b border-border bg-background" data-testid="post-skeleton">
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <Skeleton className="h-9 w-9 rounded-full bg-token-text/10" />
+        <div className="space-y-1">
+          <Skeleton className="h-4 w-28 bg-token-text/10" />
+          <Skeleton className="h-3 w-16 bg-token-text/10" />
         </div>
+      </div>
+      <Skeleton className="aspect-[4/5] w-full rounded-none bg-token-text/10" />
+      <div className="flex gap-3 px-3 py-2">
+        <Skeleton className="h-6 w-6 rounded bg-token-text/10" />
+        <Skeleton className="h-6 w-6 rounded bg-token-text/10" />
+        <Skeleton className="h-6 w-6 rounded bg-token-text/10" />
       </div>
     </div>
   );
@@ -129,306 +122,6 @@ interface SidebarProps {
   followingUserIds: Set<string>;
 }
 
-// Optimized Post Card with lazy loading
-const OptimizedPostCard = ({ post, onLike, onComment, onShare, onVideoClick }: {
-  post: PostWithAuthor & { likedByMe?: boolean };
-  onLike: (postId: string, currentlyLiked: boolean) => void;
-  onComment: (postId: string) => void;
-  onShare: (postId: string) => void;
-  onVideoClick?: (post: PostWithAuthor) => void;
-}) => {
-  const [, setLocation] = useLocation();
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [manageOpen, setManageOpen] = useState(false);
-  const { user } = useAuth();
-
-  // Derive liked state from the cached post so that when the parent
-  // rolls back the cache on failure, the heart re-renders correctly.
-  const isLiked = !!post.likedByMe;
-  const author = post.author ?? {
-    id: "",
-    firstName: "SURNA",
-    lastName: "Member",
-    profileImageUrl: null as string | null,
-    email: "",
-  };
-
-  // Lazy load images
-  const { ref: imageRef, inView: imageInView } = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  });
-
-  const handleLike = useCallback(() => {
-    onLike(post.id, isLiked);
-  }, [isLiked, post.id, onLike]);
-
-  const renderContentWithHashtags = (content: string) => {
-    const parts = content.split(/(#[a-zA-Z0-9_]+)/g);
-    return parts.map((part, idx) => {
-      if (!part.startsWith("#")) return <span key={`txt-${idx}`}>{part}</span>;
-      const tag = part.slice(1);
-      return (
-        <button
-          key={`tag-${idx}`}
-          onClick={() => setLocation(`/search?hashtag=${encodeURIComponent(tag)}`)}
-          className="text-token-accent hover:underline"
-          style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
-        >
-          {part}
-        </button>
-      );
-    });
-  };
-
-  return (
-    <div className="relative p-4 bg-background">
-      {/* Minimal divider line that doesn't touch sides */}
-      <div className="absolute bottom-0 left-4 right-4 h-px bg-surna-outline"></div>
-      <div className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={() => author.id && setLocation(`/person/${author.id}`)}
-          className="shrink-0 rounded-full"
-          aria-label="View profile"
-        >
-        <Avatar className="h-8 w-8">
-          <AvatarImage 
-            src={author.profileImageUrl || undefined} 
-            alt={author.firstName || "User"}
-          />
-          <AvatarFallback className="bg-card border border-border text-foreground text-xs font-medium">
-            {author.firstName?.[0] || "U"}
-          </AvatarFallback>
-        </Avatar>
-        </button>
-        
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-2 gap-2">
-            <button
-              type="button"
-              onClick={() => author.id && setLocation(`/person/${author.id}`)}
-              className="text-left min-w-0 flex-1"
-            >
-              <p className="font-semibold text-sm hover:underline">
-                {author.firstName} {author.lastName}
-              </p>
-              <p className="text-xs text-token-text-muted">
-                {new Date(post.createdAt || Date.now()).toLocaleString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
-            </button>
-            <div className="flex items-center gap-1 shrink-0">
-              {post.sport && (
-                <Badge variant="secondary" className="text-xs">
-                  {post.sport}
-                </Badge>
-              )}
-              <button
-                type="button"
-                onClick={() => setManageOpen(true)}
-                className="p-1.5 rounded-full text-token-text-muted hover:text-token-text hover:bg-muted/50 transition-colors"
-                aria-label="Post options"
-                data-testid={`post-options-${post.id}`}
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          
-          <p className="text-sm text-token-text mb-3 whitespace-pre-wrap break-words">
-            {renderContentWithHashtags(post.content || "")}
-          </p>
-
-          {(() => {
-            const links = resolveContentLinks({
-              postType: (post as { postType?: string }).postType,
-              eventId: (post as { eventId?: string }).eventId,
-              placeId: (post as { placeId?: string }).placeId,
-              teamId: (post as { teamId?: string }).teamId,
-            });
-            if (!links.primary) return null;
-            return (
-              <div className="flex flex-wrap gap-2 mb-3">
-                <button
-                  type="button"
-                  className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card text-foreground hover:bg-muted/50"
-                  onClick={() => setLocation(links.primary!)}
-                >
-                  {(post as { postType?: string }).postType === "event" ? "View event" : (post as { postType?: string }).postType === "place" ? "View venue" : "View details"}
-                </button>
-                {links.map && (
-                  <button
-                    type="button"
-                    className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border hover:bg-accent/10"
-                    onClick={() => setLocation(links.map!)}
-                  >
-                    Map
-                  </button>
-                )}
-              </div>
-            );
-          })()}
-
-          {post.postType === "event" && (post as { eventData?: Record<string, unknown> }).eventData && (
-            <div className="mb-3 p-3 sm:p-4 border border-border rounded-lg bg-card w-full">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                  <Calendar className="h-5 w-5 text-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm text-foreground truncate">
-                    {String((post as { eventData?: { title?: string } }).eventData?.title || "Event")}
-                  </h4>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {String((post as { eventData?: { date?: string } }).eventData?.date || "Date TBD")}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {String((post as { eventData?: { location?: string } }).eventData?.location || "Location TBD")}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="default"
-                className="w-full mt-3 text-sm"
-                onClick={() => {
-                  const eventData = (post as { eventData?: { id?: string; sport?: string }; eventId?: string }).eventData;
-                  const eventId = eventData?.id ?? (post as { eventId?: string }).eventId;
-                  if (eventId) setLocation(eventDetailPath(eventId, eventData?.sport ?? (post as { sport?: string }).sport));
-                }}
-              >
-                Join Event
-              </Button>
-            </div>
-          )}
-          
-          {/* Video card — tap to open immersive viewer */}
-          {post.videoUrl && flags.videoContent && (
-            <div
-              className="mb-3 relative rounded-xl overflow-hidden cursor-pointer"
-              style={{ aspectRatio: "16/9", background: "linear-gradient(180deg, #1a0a3d 0%, #2d1165 50%, #0e0514 100%)" }}
-              onClick={() => onVideoClick?.(post)}
-              data-testid={`video-post-${post.id}`}
-            >
-              <video
-                src={post.videoUrl}
-                muted
-                playsInline
-                preload="metadata"
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }}
-              />
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)" }} />
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.18)", backdropFilter: "blur(10px)", border: "1.5px solid rgba(255,255,255,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Play className="h-6 w-6 text-foreground" style={{ marginLeft: 3 }} />
-                </div>
-              </div>
-              {post.sport && (
-                <div style={{ position: "absolute", bottom: 8, left: 10, fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.8)", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", borderRadius: 10, padding: "2px 8px" }}>
-                  {post.sport}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Lazy loaded image — feed cards are a list surface, so we prefer
-              the small `_thumb` variant when the resize worker has produced
-              one (and serve modern WebP/AVIF siblings via <picture>). Falls
-              back to the legacy `imageUrl` for posts that pre-date the
-              worker. */}
-          {(post.thumbUrl || post.imageUrl) && !post.videoUrl && (() => {
-            const baseSrc = post.thumbUrl || post.imageUrl!;
-            const webp = post.thumbWebpUrl;
-            const avif = post.thumbAvifUrl;
-            return (
-            <div ref={imageRef} className="relative mb-3 rounded-lg overflow-hidden border border-border">
-              {imageInView && (
-                <PostCardMediaBackdrop
-                  imageUrl={baseSrc}
-                  sport={post.sport}
-                  contentKind={post.postType ?? undefined}
-                  aspectRatio="auto"
-                  className="min-h-[200px] max-h-96"
-                  showImage={false}
-                  mediaSlot={
-                    <picture className="block h-full w-full">
-                      {avif && <source type="image/avif" srcSet={avif} />}
-                      {webp && <source type="image/webp" srcSet={webp} />}
-                      <img
-                        src={baseSrc}
-                        alt="Post"
-                        className={`h-full w-full max-h-96 object-cover transition-opacity duration-300 ${
-                          imageLoaded ? "opacity-100" : "opacity-0"
-                        }`}
-                        onLoad={() => setImageLoaded(true)}
-                        loading="lazy"
-                        data-testid={`image-post-${post.id}`}
-                      />
-                    </picture>
-                  }
-                />
-              )}
-              {!imageLoaded && imageInView && (
-                <div className="absolute inset-0 z-[2] flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-white/60" />
-                </div>
-              )}
-            </div>
-            );
-          })()}
-          
-          {/* Interaction buttons */}
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`p-1 h-8 ${isLiked ? 'text-token-text' : 'text-token-text-muted'} hover:text-token-text transition-colors`}
-              onClick={handleLike}
-              data-testid={`like-post-${post.id}`}
-            >
-              <Heart className={`h-4 w-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
-              <span className="text-xs">{post.likesCount || 0}</span>
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-1 h-8 text-token-text-muted hover:text-token-text transition-colors"
-              onClick={() => onComment(post.id)}
-              data-testid={`comment-post-${post.id}`}
-            >
-              <MessageCircle className="h-4 w-4 mr-1" />
-              <span className="text-xs">{post.commentsCount || 0}</span>
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-1 h-8 text-token-text-muted hover:text-token-text transition-colors"
-              onClick={() => onShare(post.id)}
-              data-testid={`share-post-${post.id}`}
-            >
-              <Share2 className="h-4 w-4 mr-1" />
-              <span className="text-xs">Share</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <PostManageSheet
-        post={post}
-        open={manageOpen}
-        onOpenChange={setManageOpen}
-        currentUserId={user?.id}
-      />
-    </div>
-  );
-};
-
 const FEED_TABS = ["For You", "Following", "Events", "Nearby"] as const;
 type FeedTabType = (typeof FEED_TABS)[number];
 
@@ -440,32 +133,6 @@ function normalizeFeedBottomTab(tab: string): FeedSwipeTab {
   if (tab === "feed") return "home";
   if (tab === "reels") return "videos";
   return (FEED_SWIPE_TABS as readonly string[]).includes(tab) ? (tab as FeedSwipeTab) : "home";
-}
-
-/** One play badge for reels and long-form grid cards. */
-function VideoGridPlayBadge({ durationSec }: { durationSec?: number }) {
-  const label =
-    durationSec != null
-      ? `${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, "0")}`
-      : null;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: 8,
-        left: 8,
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        background: "rgba(0,0,0,0.5)",
-        borderRadius: 8,
-        padding: label ? "4px 8px" : "5px 7px",
-      }}
-    >
-      <Play size={14} color="#fff" fill="#fff" />
-      {label && <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{label}</span>}
-    </div>
-  );
 }
 
 function Sidebar({ suggestedUsers, trendingHashtags, onFollowUser, onHashtagClick, onUserClick, followingUserIds }: SidebarProps) {
@@ -558,12 +225,8 @@ export default function Feed() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharePostId, setSharePostId] = useState<string>("");
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
-  const [videoViewer, setVideoViewer] = useState<{
-    videos: VideoPost[];
-    startIndex: number;
-    label: string;
-    mode: FeedViewerMode;
-  } | null>(null);
+  const [detailPostId, setDetailPostId] = useState<string | null>(null);
+  const { videoViewer, openFromPost, openFromGrid, close: closeVideoViewer } = useVideoViewer();
   const [feedTab, setFeedTab] = useState<FeedTabType>("For You");
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
   const unreadNotificationCount = useUnreadNotificationCount(isAuthenticated);
@@ -633,117 +296,26 @@ export default function Feed() {
     getScrollTop: () => feedScrollRef.current?.scrollTop ?? 0,
   });
 
-  // Optimistic updates for likes — flip the cached count instantly,
-  // snapshot the previous cache so we can restore it if the request fails.
-  const handleLike = useCallback(async (postId: string, currentlyLiked: boolean) => {
-    const likeDelta = currentlyLiked ? -1 : 1;
-    const queryKey = ['/api/posts/feed-keyset'];
-
-    await queryClient.cancelQueries({ queryKey });
-    const previous = queryClient.getQueryData(queryKey);
-
-    queryClient.setQueryData(queryKey, (old: any) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page: FeedResponse) => ({
-          ...page,
-          items: page.items.map((post: PostWithAuthor & { likedByMe?: boolean }) =>
-            post.id === postId
-              ? {
-                  ...post,
-                  likedByMe: !currentlyLiked,
-                  likesCount: Math.max(0, (post.likesCount || 0) + likeDelta),
-                }
-              : post
-          ),
-        })),
-      };
-    });
-
-    try {
-      if (currentlyLiked) {
-        await apiRequest("POST", `/api/posts/${postId}/unlike`);
-      } else {
-        await apiRequest("POST", `/api/posts/${postId}/like`);
-      }
-    } catch (error) {
-      // Restore the exact prior cache so we don't double-count.
-      if (previous !== undefined) {
-        queryClient.setQueryData(queryKey, previous);
-      }
-      toast({
-        title: 'Could not update like',
-        description: 'Please check your connection and try again.',
-        variant: 'destructive',
-      });
-    }
-  }, [queryClient, toast]);
+  const { like: handleLike, save: handleSave } = usePostEngagement();
 
   const handleComment = useCallback((postId: string) => {
     setCommentsPostId(postId);
   }, []);
 
   const handleVideoClick = useCallback((post: PostWithAuthor) => {
-    const author = post.author ?? {
-      id: "",
-      firstName: "SURNA",
-      lastName: "Member",
-      profileImageUrl: null as string | null,
-      email: "",
-    };
-    const videoPost: VideoPost = {
-      id: post.id,
-      videoUrl: post.videoUrl ?? undefined,
-      imageUrl: post.imageUrl ?? undefined,
-      content: post.content ?? undefined,
-      sport: (post as any).sport ?? undefined,
-      format: (post as any).videoFormat,
-      durationSec: (post as any).durationSec,
-      likesCount: post.likesCount ?? 0,
-      commentsCount: post.commentsCount ?? 0,
-      author: {
-        id: author.id,
-        firstName: author.firstName,
-        lastName: author.lastName,
-        profileImageUrl: author.profileImageUrl,
-        email: author.email,
-      },
-    };
-    const format = inferVideoFormat(videoPost);
-    const mode: FeedViewerMode = format === "video" ? "videos" : "reels";
-    const feedVideos = posts
-      .filter((p: any) => p.videoUrl)
-      .map((p: any) => {
-        const a = p.author ?? author;
-        const item: VideoPost = {
-          id: p.id,
-          videoUrl: p.videoUrl ?? undefined,
-          format: p.videoFormat,
-          durationSec: p.durationSec,
-          content: p.content ?? undefined,
-          sport: p.sport ?? undefined,
-          likesCount: p.likesCount ?? 0,
-          commentsCount: p.commentsCount ?? 0,
-          author: {
-            id: a.id,
-            firstName: a.firstName,
-            lastName: a.lastName,
-            profileImageUrl: a.profileImageUrl,
-            email: a.email,
-          },
-        };
-        return { ...item, format: inferVideoFormat(item) };
-      });
-    const chain = filterVideosByMode(feedVideos, mode);
-    const startIndex = chain.findIndex((v) => v.id === post.id);
-    setVideoViewer({
-      videos: chain,
-      startIndex: startIndex >= 0 ? startIndex : 0,
-      label: (post as any).sport || (mode === "videos" ? "Videos" : "Reels"),
-      mode,
-    });
-  }, [posts]);
+    openFromPost(post, posts);
+  }, [openFromPost, posts]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("post");
+    if (!id) return;
+    setDetailPostId(id);
+    setActiveTab("home");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("post");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
 
   const handleShare = useCallback((postId: string) => {
     setSharePostId(postId);
@@ -816,38 +388,8 @@ export default function Feed() {
   const videoPostsFromFeed = useMemo(() => {
     return posts
       .filter((p: any) => p.videoUrl)
-      .map((p: any) => {
-        const a = p.author ?? {};
-        const item: VideoPost = {
-          id: p.id,
-          videoUrl: p.videoUrl ?? undefined,
-          content: p.content ?? undefined,
-          sport: p.sport ?? undefined,
-          format: p.videoFormat,
-          durationSec: p.durationSec,
-          likesCount: p.likesCount ?? 0,
-          commentsCount: p.commentsCount ?? 0,
-          author: {
-            id: a.id,
-            firstName: a.firstName,
-            lastName: a.lastName,
-            profileImageUrl: a.profileImageUrl,
-            email: a.email,
-          },
-        };
-        return { ...item, format: inferVideoFormat(item) };
-      });
+      .map((p: any) => mapPostToVideoPost(p));
   }, [posts]);
-
-  const reelVideos = useMemo(
-    () => filterVideosByMode(videoPostsFromFeed, "reels"),
-    [videoPostsFromFeed],
-  );
-
-  const fullVideos = useMemo(
-    () => filterVideosByMode(videoPostsFromFeed, "videos"),
-    [videoPostsFromFeed],
-  );
 
   const handleFollowUser = useCallback(async (userId: string) => {
     try {
@@ -878,6 +420,10 @@ export default function Feed() {
   }, [scrollFeedToTop]);
 
   const handleTabChange = (tab: string) => {
+    if (tab === "profile") {
+      navigateFromFeed(ROUTES.profile);
+      return;
+    }
     const next = normalizeFeedBottomTab(tab);
     const current = normalizeFeedBottomTab(activeTab);
     if (next === current) return;
@@ -924,11 +470,23 @@ export default function Feed() {
   const openFeedSnapCamera = useCallback(() => {
     openCamera({
       source: "feed",
-      mode: "photo",
+      mode: "post",
       onFeedPosted: invalidateFeedAndStories,
       onStoryPosted: invalidateFeedAndStories,
     });
   }, [openCamera, invalidateFeedAndStories]);
+
+  const openVideosCamera = useCallback(
+    (captureMode: "reel" | "post") => {
+      openCamera({
+        source: "feed",
+        mode: captureMode === "reel" ? "reel" : "post",
+        onFeedPosted: invalidateFeedAndStories,
+        onStoryPosted: invalidateFeedAndStories,
+      });
+    },
+    [openCamera, invalidateFeedAndStories],
+  );
 
   const openStoryCamera = useCallback(() => {
     openCamera({
@@ -1104,10 +662,11 @@ export default function Feed() {
                             return <PlacePostCard key={post.id} post={post} onShare={handleShare} />;
                           }
                           return (
-                            <OptimizedPostCard
+                            <FeedPostCard
                               key={post.id}
                               post={post}
                               onLike={handleLike}
+                              onSave={handleSave}
                               onComment={handleComment}
                               onShare={handleShare}
                               onVideoClick={handleVideoClick}
@@ -1166,94 +725,16 @@ export default function Feed() {
                 )}
 
                 {feedBottomTab === "videos" && (
-                  <div className="animate-in fade-in duration-200 pb-4">
-                    <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Play className="h-5 w-5" style={{ color: "var(--surna-text)" }} fill="currentColor" />
-                          <h3 className="text-base font-bold" style={{ color: "var(--surna-text)" }}>Videos</h3>
-                        </div>
-                        <p className="text-xs mt-0.5" style={{ color: "var(--surna-text-muted)" }}>
-                          Reels and full videos · swipe up stays on the same type
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="rounded-full shrink-0"
-                        style={{ background: "linear-gradient(135deg, #7C3AED, #5B21B6)", color: "#fff", border: "none" }}
-                        onClick={openFeedSnapCamera}
-                        data-testid="videos-create"
-                      >
-                        <Camera className="h-4 w-4 mr-1.5" />
-                        Create
-                      </Button>
-                    </div>
-
-                    <p className="px-4 text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--surna-text-muted)" }}>
-                      Reels
-                    </p>
-                    <div className="grid grid-cols-2 gap-1.5 px-2 mb-4">
-                      {reelVideos.length === 0 ? (
-                        <p className="col-span-2 px-2 py-6 text-center text-sm text-token-text-muted">No reels yet — share a video from the feed.</p>
-                      ) : reelVideos.map((video, idx) => (
-                        <div
-                          key={`reel-${video.id}`}
-                          className="relative rounded-xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-                          style={{ aspectRatio: "9/16", background: FEED_MEDIA_BG, maxHeight: 280 }}
-                          onClick={() => setVideoViewer({ videos: reelVideos, startIndex: idx, label: "Reels", mode: "reels" })}
-                          data-testid={`reel-grid-card-${video.id}`}
-                        >
-                          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 55%)" }} />
-                          <VideoGridPlayBadge />
-                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 10px" }}>
-                            {video.sport && (
-                              <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.65)", background: "rgba(0,0,0,0.4)", borderRadius: 8, padding: "2px 6px" }}>{video.sport}</span>
-                            )}
-                            <p style={{ fontSize: 12, fontWeight: 600, color: "#ffffff", marginTop: 4, lineHeight: 1.3, display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden" }}>
-                              {video.content}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <p className="px-4 text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--surna-text-muted)" }}>
-                      Full videos
-                    </p>
-                    <div className="grid grid-cols-1 gap-2 px-2">
-                      {fullVideos.length === 0 ? (
-                        <p className="px-2 py-6 text-center text-sm text-token-text-muted">No full videos yet.</p>
-                      ) : fullVideos.map((video, idx) => (
-                        <div
-                          key={`video-${video.id}`}
-                          className="relative rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform flex"
-                          style={{ aspectRatio: "16/9", background: FEED_MEDIA_BG, minHeight: 120 }}
-                          onClick={() => setVideoViewer({ videos: fullVideos, startIndex: idx, label: video.sport || "Videos", mode: "videos" })}
-                          data-testid={`video-grid-card-${video.id}`}
-                        >
-                          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 100%)" }} />
-                          <VideoGridPlayBadge durationSec={video.durationSec} />
-                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "10px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.85), transparent)" }}>
-                            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.25, marginBottom: 2 }}>{video.content}</p>
-                            <p style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>
-                              {video.author.firstName} {video.author.lastName}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <FeedVideosHub
+                    videos={videoPostsFromFeed}
+                    onOpenViewer={openFromGrid}
+                    onCreate={openVideosCamera}
+                  />
                 )}
 
                 {feedBottomTab === "notifications" && (
                   <div className="animate-in fade-in duration-200 rounded-2xl overflow-hidden">
                     <NotificationsPanel />
-                  </div>
-                )}
-
-                {feedBottomTab === "profile" && (
-                  <div className="animate-in fade-in duration-200 px-4 pt-3">
-                    <FeedProfilePanel user={user as any} onNavigate={navigateFromFeed} />
                   </div>
                 )}
               </div>
@@ -1311,7 +792,7 @@ export default function Feed() {
           )}
           <span className="nav-label">Alerts</span>
         </button>
-        <button type="button" onClick={() => handleTabChange("profile")} className={cn("nav-item", activeTab === "profile" && "active")} data-testid="tab-profile" aria-label="Profile">
+        <button type="button" onClick={() => navigateFromFeed(ROUTES.profile)} className="nav-item" data-testid="tab-profile" aria-label="Profile">
           <UserProfile className="w-6 h-6" strokeWidth={activeTab === "profile" ? 2.5 : 1.5} />
           <span className="nav-label">Profile</span>
         </button>
@@ -1342,7 +823,12 @@ export default function Feed() {
           initialIndex={videoViewer.startIndex}
           contextLabel={videoViewer.label}
           mode={videoViewer.mode}
-          onClose={() => setVideoViewer(null)}
+          followingIds={followingIds}
+          onEngagementChange={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/posts/feed-keyset"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+          }}
+          onClose={closeVideoViewer}
         />
       )}
 
@@ -1369,6 +855,13 @@ export default function Feed() {
         isOpen={!!commentsPostId}
         onClose={() => setCommentsPostId(null)}
         postId={commentsPostId || undefined}
+      />
+
+      <PostDetailSheet
+        postId={detailPostId}
+        open={!!detailPostId}
+        onClose={() => setDetailPostId(null)}
+        onVideoClick={handleVideoClick}
       />
 
       {/* Go Live Modal */}

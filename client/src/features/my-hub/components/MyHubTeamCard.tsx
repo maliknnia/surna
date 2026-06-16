@@ -44,6 +44,7 @@ interface Props {
   onEdit: (team: MyHubTeam) => void;
   onPostUpdate: (team: MyHubTeam) => void;
   onReviewRequests: (team: MyHubTeam) => void;
+  onManageHighlights?: (team: MyHubTeam) => void;
   canEdit: boolean;
 }
 
@@ -62,7 +63,7 @@ function formatRelative(iso?: string | null) {
   return d.toLocaleDateString();
 }
 
-export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, canEdit }: Props) {
+export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, onManageHighlights, canEdit }: Props) {
   const [proOpen, setProOpen] = useState(false);
   const members = team.currentMembers ?? 0;
   const cap = team.maxMembers ?? null;
@@ -173,6 +174,14 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, ca
           onClick={() => onPostUpdate(team)}
           testId={`team-post-${team.id}`}
         />
+        {canEdit && onManageHighlights ? (
+          <ActionChip
+            icon={BarChart3}
+            label="Highlights"
+            onClick={() => onManageHighlights(team)}
+            testId={`team-highlights-${team.id}`}
+          />
+        ) : null}
       </div>
 
       {/* Pro tools */}

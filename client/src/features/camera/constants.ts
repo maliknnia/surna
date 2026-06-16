@@ -1,12 +1,28 @@
-export type CameraMode = "photo" | "video" | "story" | "reel" | "live";
+export type CameraMode = "post" | "story" | "reel";
+
+/** @deprecated use post | story | reel */
+export type LegacyCameraMode = "photo" | "video" | "live";
+
+export function normalizeCameraMode(mode?: CameraMode | LegacyCameraMode | string): CameraMode {
+  if (mode === "story") return "story";
+  if (mode === "reel") return "reel";
+  return "post";
+}
 
 export const CAMERA_MODES: { id: CameraMode; label: string }[] = [
-  { id: "photo", label: "Photo" },
-  { id: "video", label: "Video" },
   { id: "story", label: "Story" },
+  { id: "post", label: "Post" },
   { id: "reel", label: "Reel" },
-  { id: "live", label: "Live" },
 ];
+
+export const MODE_LIMITS: Record<
+  CameraMode,
+  { maxMs: number; aspect: string; guideLabel: string }
+> = {
+  story: { maxMs: 15_000, aspect: "9/16", guideLabel: "Story" },
+  post: { maxMs: 60_000, aspect: "4/5", guideLabel: "Post" },
+  reel: { maxMs: 90_000, aspect: "9/16", guideLabel: "Reel" },
+};
 
 export type FilterCategory = "sport" | "cultural" | "cinematic" | "energy" | "ar";
 
@@ -80,11 +96,6 @@ export const STICKER_CATEGORIES = [
   "Time",
   "SURNA",
 ] as const;
-
-/** @deprecated use EDITOR_COLORS from cameraTheme */
-export const TEXT_COLORS = ["#FFFFFF", "#000000", "#FF453A", "#FFD60A"] as const;
-/** @deprecated use EDITOR_COLORS from cameraTheme */
-export const DRAW_COLORS = ["#FFFFFF", "#000000", "#FF453A", "#FFD60A"] as const;
 
 export const SPORT_TAGS = [
   "Football",

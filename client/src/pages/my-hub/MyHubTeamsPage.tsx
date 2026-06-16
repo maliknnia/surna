@@ -10,6 +10,7 @@ import { MyHubTeamCard, type MyHubTeam } from "@/features/my-hub/components/MyHu
 import { EditTeamSheet } from "@/features/my-hub/components/EditTeamSheet";
 import { PostTeamUpdateSheet } from "@/features/my-hub/components/PostTeamUpdateSheet";
 import { TeamJoinRequestsSheet } from "@/features/my-hub/components/TeamJoinRequestsSheet";
+import { ManageHighlightsSheet } from "@/features/my-hub/components/ManageHighlightsSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { HubSubpageHeader } from "@/components/create/HubSubpageHeader";
 import { createHubPath } from "@/lib/createHub";
@@ -29,6 +30,8 @@ export default function MyHubTeamsPage() {
   const [postOpen, setPostOpen] = useState(false);
   const [reqTarget, setReqTarget] = useState<MyHubTeam | null>(null);
   const [reqOpen, setReqOpen] = useState(false);
+  const [highlightsTarget, setHighlightsTarget] = useState<MyHubTeam | null>(null);
+  const [highlightsOpen, setHighlightsOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery<ManagedTeamsResponse>({
     queryKey: ["/api/teams/me/managed"],
@@ -50,6 +53,11 @@ export default function MyHubTeamsPage() {
   const handleRequests = (t: MyHubTeam) => {
     setReqTarget(t);
     setReqOpen(true);
+  };
+
+  const handleHighlights = (t: MyHubTeam) => {
+    setHighlightsTarget(t);
+    setHighlightsOpen(true);
   };
 
   return (
@@ -119,6 +127,7 @@ export default function MyHubTeamsPage() {
                       onEdit={handleEdit}
                       onPostUpdate={handlePost}
                       onReviewRequests={handleRequests}
+                      onManageHighlights={handleHighlights}
                     />
                   ))}
                 </div>
@@ -140,6 +149,7 @@ export default function MyHubTeamsPage() {
                       onEdit={handleEdit}
                       onPostUpdate={handlePost}
                       onReviewRequests={handleRequests}
+                      onManageHighlights={handleHighlights}
                     />
                   ))}
                 </div>
@@ -178,6 +188,14 @@ export default function MyHubTeamsPage() {
         onOpenChange={(o) => {
           setReqOpen(o);
           if (!o) setReqTarget(null);
+        }}
+      />
+      <ManageHighlightsSheet
+        team={highlightsTarget}
+        open={highlightsOpen}
+        onOpenChange={(o) => {
+          setHighlightsOpen(o);
+          if (!o) setHighlightsTarget(null);
         }}
       />
     </div>

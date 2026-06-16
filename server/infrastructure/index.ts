@@ -54,6 +54,13 @@ export async function initializeInfrastructure() {
     logger.warn("Readiness report job deferred", { error: e?.message });
   }
 
+  try {
+    const { startTeamScheduleReminderJob } = await import("../services/teamNotificationService");
+    startTeamScheduleReminderJob();
+  } catch (e: any) {
+    logger.warn("Team schedule reminder job deferred", { error: e?.message });
+  }
+
   initializeWorkers();
 
   logger.info("Infrastructure initialized successfully");

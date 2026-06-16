@@ -3,6 +3,7 @@ import { X, Upload, Image as ImageIcon } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { uploadCreateFile } from "@/lib/uploadCreateMedia";
 
 interface AddStoryModalProps {
   open: boolean;
@@ -47,32 +48,14 @@ export function AddStoryModal({ open, onClose }: AddStoryModalProps) {
 
     setUploading(true);
     try {
-      // Upload file using FormData
-      const formData = new FormData();
-      formData.append('files', selectedFile);
-
-      const uploadRes = await fetch('/api/media/upload-multiple', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const uploadResult = await uploadRes.json();
       const mediaType = selectedFile.type.startsWith("video/") ? "video" : "image";
+      const { publicUrl } = await uploadCreateFile(selectedFile);
 
-      // Wait for processing (simplified)
-      const job = uploadResult.jobs[0];
-      const mediaUrl = job.url || preview; // Use preview as fallback
-
-      // Create story
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
 
       createStoryMutation.mutate({
-        mediaUrl,
+        mediaUrl: publicUrl,
         mediaType,
         caption,
         visibility: "public",

@@ -41,6 +41,7 @@ export function PanelHeaderToolButtons({
   searchOpen,
   filterOpen,
   filterActive = false,
+  showSearch = true,
   onToggleSearch,
   onToggleFilter,
 }: {
@@ -48,11 +49,13 @@ export function PanelHeaderToolButtons({
   searchOpen: boolean;
   filterOpen: boolean;
   filterActive?: boolean;
+  showSearch?: boolean;
   onToggleSearch: () => void;
   onToggleFilter: () => void;
 }) {
   return (
     <div className="flex items-center gap-1.5 shrink-0">
+      {showSearch ? (
       <button
         type="button"
         onClick={onToggleSearch}
@@ -65,6 +68,7 @@ export function PanelHeaderToolButtons({
       >
         <Search size={17} strokeWidth={2.25} />
       </button>
+      ) : null}
       <button
         type="button"
         onClick={onToggleFilter}

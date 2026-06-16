@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import type { CameraMode } from "./constants";
+import { normalizeCameraMode } from "./constants";
 
 export type CameraSource = "nav" | "feed" | "messenger" | "story";
 
@@ -51,7 +52,10 @@ export function SurnaCameraProvider({ children }: { children: ReactNode }) {
 
   const openCamera = useCallback((opts: CameraOpenOptions = {}) => {
     setIsClosing(false);
-    setOptionsState(opts);
+    setOptionsState({
+      ...opts,
+      mode: normalizeCameraMode(opts.mode),
+    });
     setView(opts.initialView === "gif" ? "gif" : "camera");
     setIsOpen(true);
     if (opts.source === "feed") {

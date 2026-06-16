@@ -153,6 +153,7 @@ export default function TeamCard({
         imageUrl={teamPhoto || null}
         fallbackIcon={config.emoji}
         backgroundColor={cardBg}
+        thumbSize="large"
         onCardClick={() => onViewDetails(team.id)}
         menu={<CardMenu inline />}
         extraContent={

@@ -73,6 +73,7 @@ type ProfileInstagramViewProps = {
   onFollowToggle?: () => void;
   onMessage?: () => void;
   onStatClick?: (label: string) => void;
+  onPostClick?: (postId: string) => void;
   headerExtra?: React.ReactNode;
 };
 
@@ -91,6 +92,7 @@ export function ProfileInstagramView({
   onFollowToggle,
   onMessage,
   onStatClick,
+  onPostClick,
   headerExtra,
 }: ProfileInstagramViewProps) {
   const [tab, setTab] = useState<ProfileTab>("posts");
@@ -366,31 +368,35 @@ export function ProfileInstagramView({
         ) : (
           <div className="grid grid-cols-3 gap-[2px]">
             {posts.map((post) => (
-              <Link key={post.id} href={`/feed?post=${post.id}`}>
-                <div className="aspect-square relative overflow-hidden bg-muted/20">
-                  {post.imageUrl ? (
-                    <LazyImage
-                      src={post.imageUrl}
-                      alt=""
-                      sources={deriveModernSources(post.imageUrl)}
-                      placeholder={deriveLqipPlaceholder(post.imageUrl)}
-                      wrapperClassName="block w-full h-full"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : post.videoUrl ? (
-                    <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ background: "var(--surna-elevated)", color: "var(--surna-text-muted)" }}>
-                      ▶
-                    </div>
-                  ) : (
-                    <div
-                      className="w-full h-full p-2 flex items-center justify-center text-center text-[10px] leading-tight line-clamp-4"
-                      style={{ background: "var(--surna-elevated)", color: "var(--surna-text-secondary)" }}
-                    >
-                      {post.content?.slice(0, 80) || "Post"}
-                    </div>
-                  )}
-                </div>
-              </Link>
+              <button
+                key={post.id}
+                type="button"
+                className="aspect-square relative overflow-hidden bg-muted/20 active:opacity-90"
+                onClick={() => onPostClick?.(post.id)}
+                data-testid={`profile-post-${post.id}`}
+              >
+                {post.imageUrl ? (
+                  <LazyImage
+                    src={post.imageUrl}
+                    alt=""
+                    sources={deriveModernSources(post.imageUrl)}
+                    placeholder={deriveLqipPlaceholder(post.imageUrl)}
+                    wrapperClassName="block w-full h-full"
+                    className="w-full h-full object-cover"
+                  />
+                ) : post.videoUrl ? (
+                  <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ background: "var(--surna-elevated)", color: "var(--surna-text-muted)" }}>
+                    ▶
+                  </div>
+                ) : (
+                  <div
+                    className="w-full h-full p-2 flex items-center justify-center text-center text-[10px] leading-tight line-clamp-4"
+                    style={{ background: "var(--surna-elevated)", color: "var(--surna-text-secondary)" }}
+                  >
+                    {post.content?.slice(0, 80) || "Post"}
+                  </div>
+                )}
+              </button>
             ))}
           </div>
         )

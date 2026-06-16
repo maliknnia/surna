@@ -63,6 +63,8 @@ export async function uploadVideoPost(params: {
   content: string;
   sport?: string;
   location?: string;
+  videoFormat?: "reel" | "video";
+  durationSec?: number;
 }): Promise<{ post: unknown; videoUrl: string; thumbnailUrl: string }> {
   const compressed = await compressVideoForUpload(params.file);
   const form = new FormData();
@@ -70,6 +72,8 @@ export async function uploadVideoPost(params: {
   form.append("content", params.content);
   if (params.sport) form.append("sport", params.sport);
   if (params.location) form.append("location", params.location);
+  if (params.videoFormat) form.append("videoFormat", params.videoFormat);
+  if (params.durationSec != null) form.append("durationSec", String(params.durationSec));
 
   const res = await apiFormRequest("POST", "/api/posts/video", form);
   if (!res.ok) {

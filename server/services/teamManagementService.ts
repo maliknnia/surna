@@ -126,12 +126,21 @@ export class TeamManagementService {
       throw new Error('Join request already pending');
     }
 
-    return await db.insert(teamJoinRequests).values({
+    const inserted = await db.insert(teamJoinRequests).values({
       teamId,
       userId,
       message: message || '',
       status: 'pending'
     }).returning();
+
+    try {
+      const { notifyTeamJoinRequest } = await import('./teamNotificationService');
+      await notifyTeamJoinRequest(teamId, userId, inserted[0]?.id);
+    } catch (notifyErr) {
+      console.warn('[teams] Join request notification skipped:', notifyErr);
+    }
+
+    return inserted;
   }
 
   // Approve or reject join request
@@ -172,6 +181,18 @@ export class TeamManagementService {
 
       // Update team member count
       await this.updateTeamMemberCount(request[0].teamId);
+    }
+
+    try {
+      const { notifyJoinRequestReviewed } = await import('./teamNotificationService');
+      await notifyJoinRequestReviewed(
+        request[0].teamId,
+        request[0].userId,
+        decision,
+        reviewerId,
+      );
+    } catch (notifyErr) {
+      console.warn('[teams] Join review notification skipped:', notifyErr);
     }
 
     return request[0];

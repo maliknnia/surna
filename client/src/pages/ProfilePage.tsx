@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoute, useLocation, Link } from "wouter";
@@ -9,6 +9,10 @@ import { ArrowLeft, Settings, Trophy } from "lucide-react";
 import { OWNER_PROFILE_AVATAR } from "@/lib/ownerAvatar";
 import type { UserWithProfile } from "@/lib/userProfileApi";
 import { ProfileInstagramView } from "@/components/profile/ProfileInstagramView";
+import { PostDetailSheet } from "@/components/feed/PostDetailSheet";
+import { FeedVideoViewer } from "@/components/video/FeedVideoViewer";
+import { useVideoViewer } from "@/hooks/useVideoViewer";
+import type { PostWithAuthor } from "@shared/schema";
 import { discoverPeoplePath } from "@/lib/socialPeopleApi";
 
 export default function ProfilePage() {
@@ -16,6 +20,8 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isFollowing, setIsFollowing] = useState(false);
   const [socialLoading, setSocialLoading] = useState(false);
+  const [detailPostId, setDetailPostId] = useState<string | null>(null);
+  const { videoViewer, openFromPost, close: closeVideoViewer } = useVideoViewer();
 
   const [_, params] = useRoute("/profile/:userId?");
   const viewingUserId = params?.userId || (user as { id?: string })?.id;
@@ -68,9 +74,20 @@ export default function ProfilePage() {
     setLocation(`/messages?userId=${encodeURIComponent(viewingUserId!)}`);
   };
 
+  const { data: profileFeedData } = useQuery<{ posts: { id: string; videoUrl?: string | null }[] }>({
+    queryKey: ["/api/profile", viewingUserId, "feed"],
+    enabled: !!viewingUserId,
+  });
+
+  const handleProfileVideoClick = useCallback(
+    (post: PostWithAuthor) => {
+      openFromPost(post, profileFeedData?.posts?.length ? profileFeedData.posts : [post]);
+    },
+    [profileFeedData?.posts, openFromPost],
+  );
+
   const handleStatClick = (label: string) => {
     if (label === "posts") {
-      setLocation("/feed");
       return;
     }
     if (label === "followers") {
@@ -167,8 +184,30 @@ export default function ProfilePage() {
           onFollowToggle={handleFollowToggle}
           onMessage={handleSendMessage}
           onStatClick={handleStatClick}
+          onPostClick={setDetailPostId}
         />
       </div>
+
+      <PostDetailSheet
+        postId={detailPostId}
+        open={!!detailPostId}
+        onClose={() => setDetailPostId(null)}
+        onVideoClick={handleProfileVideoClick}
+      />
+
+      {videoViewer && (
+        <FeedVideoViewer
+          videos={videoViewer.videos}
+          initialIndex={videoViewer.startIndex}
+          contextLabel={videoViewer.label}
+          mode={videoViewer.mode}
+          onEngagementChange={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/posts/feed-keyset"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/profile", viewingUserId, "feed"] });
+          }}
+          onClose={closeVideoViewer}
+        />
+      )}
     </div>
   );
 }

@@ -143,7 +143,7 @@ export default function CreateHub() {
   const handleSelect = (option: CreateOption) => {
     if (option.id === "post") {
       if (camera) {
-        camera.openCamera({ source: "feed", mode: "photo" });
+        camera.openCamera({ source: "feed", mode: "post" });
       } else {
         navigate(ROUTES.feed);
       }

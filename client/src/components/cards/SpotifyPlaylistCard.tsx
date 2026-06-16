@@ -24,6 +24,8 @@ export type SpotifyPlaylistCardProps = {
   menu?: ReactNode;
   extraContent?: ReactNode;
   className?: string;
+  /** Larger artwork for team discovery cards */
+  thumbSize?: "default" | "large";
 };
 
 function cardTextColors(backgroundColor: string) {
@@ -49,8 +51,13 @@ export default function SpotifyPlaylistCard({
   menu,
   extraContent,
   className = "",
+  thumbSize = "default",
 }: SpotifyPlaylistCardProps) {
   const colors = cardTextColors(backgroundColor);
+  const thumbClass =
+    thumbSize === "large"
+      ? "playlist-card__thumb playlist-card__thumb--lg"
+      : "playlist-card__thumb";
 
   const pillStyle: CSSProperties = {
     border: `1px solid ${colors.border}`,
@@ -86,7 +93,7 @@ export default function SpotifyPlaylistCard({
       }
     >
       <div className="playlist-card__header">
-        <div className="playlist-card__thumb" style={{ background: colors.thumbBg }}>
+        <div className={thumbClass} style={{ background: colors.thumbBg }}>
           {imageUrl ? (
             <img
               src={imageUrl}

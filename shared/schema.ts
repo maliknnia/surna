@@ -164,6 +164,10 @@ export const teams = pgTable("teams", {
   followersCount: integer("followers_count").default(0), // Package #4: Follow count
   sponsors: jsonb("sponsors"), // Package #4: Sponsor array [{id, name, logo, link, tier}]
   isPublic: boolean("is_public").default(true),
+  /** open = instant join; approval = captain reviews join requests */
+  joinPolicy: varchar("join_policy").default("open"),
+  /** Curated highlight video post ids (captain-managed; Pro can extend later) */
+  featuredHighlightIds: text("featured_highlight_ids").array().default(sql`ARRAY[]::text[]`),
   maxMembers: integer("max_members").default(20),
   currentMembers: integer("current_members").default(1),
   currentWinStreak: integer("current_win_streak").default(0),

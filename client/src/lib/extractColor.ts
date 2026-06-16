@@ -1,8 +1,14 @@
 const colorCache = new Map<string, string>();
 const edgeColorCache = new Map<string, string>();
 
+function normalizeImageUrl(imageUrl: string): string {
+  const trimmed = imageUrl.trim();
+  if (trimmed.startsWith("//")) return `${window.location.protocol}${trimmed}`;
+  return trimmed;
+}
+
 export function getCachedColor(imageUrl: string): string | null {
-  return colorCache.get(imageUrl) || null;
+  return colorCache.get(normalizeImageUrl(imageUrl)) || null;
 }
 
 export function getCachedEdgeColor(imageUrl: string): string | null {
@@ -97,14 +103,29 @@ export function brightenHex(hex: string, amount = 0.45): string {
   return `#${((1 << 24) + (lift(r) << 16) + (lift(g) << 8) + lift(b)).toString(16).slice(1)}`;
 }
 
+/** Same-origin, blob, and data URLs can be sampled without CORS taint issues. */
+function canSampleImagePixels(imageUrl: string): boolean {
+  if (imageUrl.startsWith("data:") || imageUrl.startsWith("blob:")) return true;
+  if (imageUrl.startsWith("/")) return true;
+  try {
+    return new URL(imageUrl, window.location.origin).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 export function extractDominantColor(imageUrl: string): Promise<string> {
-  if (colorCache.has(imageUrl)) {
-    return Promise.resolve(colorCache.get(imageUrl)!);
+  const normalized = normalizeImageUrl(imageUrl);
+  if (colorCache.has(normalized)) {
+    return Promise.resolve(colorCache.get(normalized)!);
   }
 
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (canSampleImagePixels(normalized) || normalized.startsWith("http")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.referrerPolicy = "no-referrer";
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");
@@ -127,13 +148,13 @@ export function extractDominantColor(imageUrl: string): Promise<string> {
         g = Math.round(g / count);
         b = Math.round(b / count);
         const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-        colorCache.set(imageUrl, hex);
+        colorCache.set(normalized, hex);
         resolve(hex);
       } catch {
         resolve("#8b2635");
       }
     };
     img.onerror = () => resolve("#8b2635");
-    img.src = imageUrl;
+    img.src = normalized;
   });
 }

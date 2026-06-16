@@ -21,6 +21,8 @@ type PostCardMediaBackdropProps = {
   onClick?: () => void;
   /** Foreground UI (play button, tags) — rendered above scrim */
   children?: ReactNode;
+  /** Feed posts: full-bleed photo/video with no dark scrim or sport wash */
+  clean?: boolean;
   /**
    * When true, renders `imageUrl` as cover. When false, use `mediaSlot` for `<picture>` etc.
    * Edge colour is still sampled from `imageUrl` when set.
@@ -54,6 +56,7 @@ export function PostCardMediaBackdrop({
   onImageLoad,
   imageClassName,
   backgroundOverride,
+  clean = false,
 }: PostCardMediaBackdropProps) {
   const tint = useMemo(
     () => resolvePostCardTint({ sport, contentKind, authorRole }),
@@ -95,7 +98,7 @@ export function PostCardMediaBackdrop({
       className={cn("relative overflow-hidden", className)}
       style={{
         aspectRatio: aspectRatio === "auto" ? undefined : aspectRatio,
-        background: hasImage ? "#0a0a0a" : noImageBackground,
+        background: hasImage ? (clean ? "#000" : "#0a0a0a") : noImageBackground,
         ...style,
       }}
       onClick={onClick}
@@ -123,7 +126,7 @@ export function PostCardMediaBackdrop({
           />
         )}
         {hasImage && !showImage && mediaSlot}
-        {hasImage && (
+        {hasImage && !clean && (
           <>
             <div className="pointer-events-none absolute inset-0" style={{ background: sportWash }} />
             <div className="pointer-events-none absolute inset-0" style={{ background: edgeGradient }} />

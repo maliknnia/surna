@@ -1927,28 +1927,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  // Team routes - Stage 2 cached
-  app.get('/api/teams', async (req, res) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 20;
-      const offset = parseInt(req.query.offset as string) || 0;
-      const sportRaw = typeof req.query.sport === "string" ? req.query.sport : "";
-      const sportParam =
-        sportRaw && sportRaw.toLowerCase() !== "all" ? sportRaw : undefined;
-      const sportKey = sportParam?.toLowerCase() ?? "all";
-
-      const teams = await withCache(`teams_${limit}_${offset}_${sportKey}`, 30, async () => {
-        return await storage.getTeams(limit, offset, sportParam);
-      });
-      
-      res.setHeader('Cache-Control', 'private, max-age=15, stale-while-revalidate=60');
-      res.json(teams);
-    } catch (error: unknown) {
-      errorCount++;
-      console.error("Error fetching teams:", error);
-      res.status(500).json({ message: "Failed to fetch teams" });
-    }
-  });
+  // Team routes — canonical handlers live in server/features/teams/teams.router.ts
+  // (mounted at /api/teams before this block; duplicates here were dead code).
 
   app.get("/api/coaches", async (req, res) => {
     try {
@@ -1971,233 +1951,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     } catch (error: unknown) {
       console.error("Error fetching coaches:", error);
       res.status(500).json({ message: "Failed to fetch coaches" });
-    }
-  });
-
-  app.post('/api/teams', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      const teamData = insertTeamSchema.omit({ captainId: true }).parse(req.body);
-      
-      const team = await storage.createTeam(userId, teamData as Parameters<typeof storage.createTeam>[1]);
-
-      let recommendations: Awaited<ReturnType<typeof import("./services/phase6SportService").getTeamCreationRecommendations>> | null = null;
-      try {
-        const { getTeamCreationRecommendations } = await import("./services/phase6SportService");
-        recommendations = await getTeamCreationRecommendations({
-          sport: team.sport,
-          city: team.city ?? undefined,
-          lat: req.body?.lat != null ? Number(req.body.lat) : undefined,
-          lng: req.body?.lng != null ? Number(req.body.lng) : undefined,
-        });
-      } catch (recErr) {
-        console.warn("[Phase6-6] Team recommendations skipped:", recErr);
-      }
-
-      res.json({ ...team, recommendations });
-    } catch (error: unknown) {
-      console.error("Error creating team:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid team data", issues: error.errors });
-      }
-      res.status(500).json({ message: "Failed to create team" });
-    }
-  });
-
-  app.post('/api/teams/:teamId/join', isAuthenticated, requireEmailVerified, async (req: any, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      const { teamId } = req.params;
-      
-      await storage.joinTeam(teamId, userId);
-
-      try {
-        const { triggerNudgeIfNeeded } = await import("./services/phase8ProfileService");
-        const { db } = await import("./db");
-        const { teamMembers } = await import("@shared/schema");
-        const { eq, sql } = await import("drizzle-orm");
-        const count = await db
-          .select({ c: sql<number>`count(*)::int` })
-          .from(teamMembers)
-          .where(eq(teamMembers.userId, userId));
-        if (Number(count[0]?.c ?? 0) === 1) {
-          await triggerNudgeIfNeeded(userId, "first_team_join");
-        }
-      } catch (nudgeErr) {
-        console.warn("[Phase8-3] Team join nudge skipped:", nudgeErr);
-      }
-
-      res.json({ success: true });
-    } catch (error: unknown) {
-      console.error("Error joining team:", error);
-      res.status(500).json({ message: "Failed to join team" });
-    }
-  });
-
-  // Enhanced Team Management Routes
-  app.get("/api/teams/:id/details", async (req, res) => {
-    try {
-      const team = await teamManagementService.getTeamWithMembers(req.params.id);
-      if (!team) {
-        return res.status(404).json({ message: "Team not found" });
-      }
-      res.json(team);
-    } catch (error: unknown) {
-      console.error("Error fetching team details:", error);
-      res.status(500).json({ message: "Failed to fetch team details" });
-    }
-  });
-
-  // Request to join team with message
-  app.post("/api/teams/:id/request-join", isAuthenticated, requireEmailVerified, async (req: any, res) => {
-    try {
-      const { message } = req.body;
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      
-      const result = await teamManagementService.requestToJoinTeam(
-        req.params.id, 
-        userId, 
-        message
-      );
-      
-      res.json({ message: "Join request submitted successfully", request: result });
-    } catch (error: unknown) {
-      console.error("Error submitting join request:", error);
-      res.status(400).json({ message: errMsg(error) });
-    }
-  });
-
-  // Get pending join requests (captains/co-captains only)
-  app.get("/api/teams/:id/join-requests", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      const requests = await teamManagementService.getJoinRequests(req.params.id, userId);
-      res.json(requests);
-    } catch (error: unknown) {
-      console.error("Error fetching join requests:", error);
-      res.status(403).json({ message: errMsg(error) });
-    }
-  });
-
-  // Review join request
-  app.put("/api/teams/join-requests/:requestId", isAuthenticated, async (req: any, res) => {
-    try {
-      const { decision } = req.body; // 'approved' or 'rejected'
-      const reviewerId = req.user?.claims?.sub;
-      
-      const result = await teamManagementService.reviewJoinRequest(
-        req.params.requestId,
-        reviewerId,
-        decision
-      );
-      
-      res.json({ message: `Request ${decision} successfully`, request: result });
-    } catch (error: unknown) {
-      console.error("Error reviewing join request:", error);
-      res.status(403).json({ message: errMsg(error) });
-    }
-  });
-
-  // Assign team role
-  app.put("/api/teams/:id/members/:memberId/role", isAuthenticated, async (req: any, res) => {
-    try {
-      const { role } = req.body;
-      const assignerId = req.user?.claims?.sub;
-      
-      await teamManagementService.assignRole(
-        req.params.id,
-        req.params.memberId,
-        role,
-        assignerId
-      );
-      
-      console.log("[Phase3-7] Team role updated:", req.params.memberId, "→", role);
-      res.json({ message: "Role assigned successfully" });
-    } catch (error: unknown) {
-      console.error("Error assigning role:", error);
-      res.status(403).json({ message: errMsg(error) });
-    }
-  });
-
-  // Captain/co-captain marks member attendance
-  app.post("/api/teams/:id/members/:memberId/attendance", isAuthenticated, async (req: any, res) => {
-    try {
-      const assignerId = sessionUserId(req);
-      if (!assignerId) return res.status(401).json({ message: "User not authenticated" });
-      const canManage = await teamManagementService.hasPermission(req.params.id, assignerId, "canManageMembers");
-      if (!canManage) return res.status(403).json({ message: "Only captains can manage attendance" });
-      await teamManagementService.updateMemberActivity(req.params.id, req.params.memberId, "attendance");
-      console.log("[Phase3-7] Attendance marked for", req.params.memberId, "on team", req.params.id);
-      res.json({ ok: true });
-    } catch (error: unknown) {
-      console.error("Error marking attendance:", error);
-      res.status(500).json({ message: errMsg(error) });
-    }
-  });
-
-  // Remove team member
-  app.delete("/api/teams/:id/members/:memberId", isAuthenticated, async (req: any, res) => {
-    try {
-      const removerId = req.user?.claims?.sub;
-      
-      await teamManagementService.removeMember(
-        req.params.id,
-        req.params.memberId,
-        removerId
-      );
-      
-      res.json({ message: "Member removed successfully" });
-    } catch (error: unknown) {
-      console.error("Error removing member:", error);
-      res.status(403).json({ message: errMsg(error) });
-    }
-  });
-
-  // Get team channels
-  app.get("/api/teams/:id/channels", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      const channels = await teamManagementService.getTeamChannels(req.params.id, userId);
-      res.json(channels);
-    } catch (error: unknown) {
-      console.error("Error fetching team channels:", error);
-      res.status(403).json({ message: errMsg(error) });
-    }
-  });
-
-  // Create team channel
-  app.post("/api/teams/:id/channels", isAuthenticated, async (req: any, res) => {
-    try {
-      const { name, description, channelType } = req.body;
-      const creatorId = req.user?.claims?.sub;
-      
-      const channel = await teamManagementService.createChannel(
-        req.params.id,
-        creatorId,
-        name,
-        description,
-        channelType
-      );
-      
-      res.json({ message: "Channel created successfully", channel });
-    } catch (error: unknown) {
-      console.error("Error creating channel:", error);
-      res.status(403).json({ message: errMsg(error) });
     }
   });
 
@@ -3071,6 +2824,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       }
       
       const isLiked = await storage.isPostLiked(userId, postId);
+      const savedByMe = await storage.isPostSaved(userId, postId);
       
       // Get comments for the post
       const comments = await db
@@ -3114,6 +2868,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         thumbAvifUrl:    variants.thumbAvifUrl,
         mediumAvifUrl:   variants.mediumAvifUrl,
         author: postData.author,
+        likedByMe: isLiked,
+        savedByMe,
         isLiked,
         comments: comments.map(({ comment, author }) => ({ ...comment, author }))
       };
@@ -6102,48 +5858,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  // Team photos
-  app.get('/api/teams/:teamId/photos', async (req, res) => {
-    try {
-      const photos = await storage.getTeamPhotos(req.params.teamId);
-      res.json(photos);
-    } catch (error: unknown) {
-      console.error("Error fetching team photos:", error);
-      res.status(500).json({ message: "Failed to fetch photos" });
-    }
-  });
-
-  app.post('/api/teams/:teamId/photos', isAuthenticated, csrfProtection, validateBody(z.object({
-    imageUrl: z.string().url(),
-    caption: z.string().optional(),
-    width: z.number().optional(),
-    height: z.number().optional(),
-  })), async (req: any, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) return res.status(401).json({ message: "User not authenticated" });
-      const isMember = await storage.isTeamMember(req.params.teamId, userId);
-      if (!isMember) return res.status(403).json({ message: "Only team members can upload" });
-      const photo = await storage.addTeamPhoto({ teamId: req.params.teamId, uploaderId: userId, ...req.body });
-      res.json(photo);
-    } catch (error: unknown) {
-      console.error("Error adding team photo:", error);
-      res.status(500).json({ message: "Failed to add photo" });
-    }
-  });
-
-  app.delete('/api/teams/photos/:photoId', isAuthenticated, csrfProtection, async (req: any, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) return res.status(401).json({ message: "User not authenticated" });
-      const ok = await storage.deleteTeamPhoto(req.params.photoId, userId);
-      if (!ok) return res.status(403).json({ message: "Not authorized" });
-      res.json({ success: true });
-    } catch (error: unknown) {
-      console.error("Error deleting team photo:", error);
-      res.status(500).json({ message: "Failed to delete photo" });
-    }
-  });
+  // Team photos — see server/features/teams/teams.router.ts
 
   // User calendar (upcoming events) and events attended (past)
   app.get('/api/users/:userId/calendar', async (req, res) => {

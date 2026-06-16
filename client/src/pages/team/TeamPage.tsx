@@ -3,8 +3,11 @@ import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { getSportConfig } from '@/components/TeamCard';
 import TeamHeader from './components/TeamHeader';
+import TeamHighlights from './sections/TeamHighlights';
+import { EntityShareSheet } from '@/components/teams/EntityShareSheet';
 import { Loader2, ArrowLeft, Share2, QrCode, X } from 'lucide-react';
-import { extractDominantColor, getCachedColor } from '@/lib/extractColor';
+import { useDiscoveryCardBg } from '@/hooks/useDiscoveryCardBg';
+import { teamLogoUrl } from '@/lib/teamLogo';
 import { useSmartBack } from '@/lib/navigation';
 import QRCode from 'qrcode';
 
@@ -14,9 +17,10 @@ const TeamSchedule = lazy(() => import('./sections/TeamSchedule'));
 const TeamPhotos = lazy(() => import('./sections/TeamPhotos'));
 const TeamSponsors = lazy(() => import('./sections/TeamSponsors'));
 const TeamFeed = lazy(() => import('./sections/TeamFeed'));
-const TeamDonations = lazy(() => import('./sections/TeamDonations'));
+const TeamChat = lazy(() => import('./sections/TeamChat'));
+const TeamProPublic = lazy(() => import('./sections/TeamProPublic'));
 const TeamChallenges = lazy(() => import('./sections/TeamChallenges'));
-type TabType = 'about' | 'members' | 'schedule' | 'photos' | 'sponsors' | 'feed' | 'donations' | 'challenges';
+type TabType = 'about' | 'members' | 'schedule' | 'photos' | 'sponsors' | 'feed' | 'challenges' | 'chat' | 'roster';
 
 export default function TeamPage() {
   const params = useParams();
@@ -25,6 +29,7 @@ export default function TeamPage() {
   const goBack = useSmartBack({ fallback: '/?panel=teams' });
   const [activeTab, setActiveTab] = useState<TabType>('about');
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
@@ -34,15 +39,8 @@ export default function TeamPage() {
     enabled: !!teamId,
   });
 
-  const teamPhoto = (team as any)?.cover || (team as any)?.logo || (team as any)?.logoUrl;
-  const [extractedColor, setExtractedColor] = useState<string | null>(
-    teamPhoto ? getCachedColor(teamPhoto) : null
-  );
-
-  useEffect(() => {
-    if (!teamPhoto) return;
-    extractDominantColor(teamPhoto).then(setExtractedColor);
-  }, [teamPhoto]);
+  const teamPhoto = team ? teamLogoUrl(team as never) : null;
+  const extractedColor = useDiscoveryCardBg(teamPhoto, (team as any)?.sport);
 
   useEffect(() => {
     if (!showQrModal || !teamId) return;
@@ -53,7 +51,7 @@ export default function TeamPage() {
   }, [showQrModal, teamId]);
 
   const config = getSportConfig((team as any)?.sport);
-  const [topColor] = extractedColor ? [extractedColor] : config.colors;
+  const topColor = extractedColor || config.colors[0];
 
   const handleScroll = useCallback(() => {
     if (scrollRef.current) {
@@ -93,14 +91,19 @@ export default function TeamPage() {
     );
   }
 
+  const teamAny = team as Record<string, unknown>;
+  const sponsors = (teamAny.sponsors as unknown[] | null) ?? [];
+
   const tabs: { id: TabType; label: string }[] = [
     { id: 'about', label: 'About' },
     { id: 'members', label: 'Members' },
+    { id: 'feed', label: 'Feed' },
+    { id: 'chat', label: 'Chat' },
     { id: 'challenges', label: 'Challenges' },
     { id: 'schedule', label: 'Schedule' },
     { id: 'photos', label: 'Photos' },
-    { id: 'feed', label: 'Feed' },
-    { id: 'donations', label: 'Donate' },
+    { id: 'roster', label: 'Roster' },
+    ...(sponsors.length > 0 ? [{ id: 'sponsors' as TabType, label: 'Sponsors' }] : []),
   ];
 
   const bgOpacity = Math.max(0, 1 - scrollY / 400);
@@ -137,7 +140,12 @@ export default function TeamPage() {
         >
           <QrCode size={16} className="text-foreground" />
         </button>
-        <button className="w-8 h-8 rounded-full flex items-center justify-center bg-background/40 backdrop-blur-sm ml-2">
+        <button
+          type="button"
+          className="w-8 h-8 rounded-full flex items-center justify-center bg-background/40 backdrop-blur-sm ml-2"
+          onClick={() => setShowShare(true)}
+          aria-label="Share team"
+        >
           <Share2 size={16} className="text-foreground" />
         </button>
       </div>
@@ -147,6 +155,7 @@ export default function TeamPage() {
         {/* Hero section with parallax */}
         <div className="spotify-hero" style={{ transform: `translateY(-${heroParallax}px)` }}>
           <TeamHeader team={team} sportConfig={extractedColor ? { ...config, colors: [extractedColor, extractedColor] as [string, string], ringColor: extractedColor } : config} />
+          <TeamHighlights teamId={teamId!} teamName={(team as any).name} />
         </div>
 
         {/* Sticky tab bar */}
@@ -178,12 +187,18 @@ export default function TeamPage() {
             </div>
           }>
             {activeTab === 'about' && <TeamAbout team={team} />}
-            {activeTab === 'members' && <TeamMembers teamId={teamId!} />}
+            {activeTab === 'members' && <TeamMembers teamId={teamId!} teamName={(team as any).name} />}
             {activeTab === 'challenges' && <TeamChallenges teamId={teamId!} />}
-            {activeTab === 'schedule' && <TeamSchedule teamId={teamId!} />}
+            {activeTab === 'schedule' && (
+              <TeamSchedule teamId={teamId!} canManage={!!teamAny.canManage || !!teamAny.isCaptain} />
+            )}
             {activeTab === 'photos' && <TeamPhotos teamId={teamId!} />}
             {activeTab === 'feed' && <TeamFeed teamId={teamId!} />}
-            {activeTab === 'donations' && <TeamDonations team={team} />}
+            {activeTab === 'chat' && (
+              <TeamChat teamId={teamId!} isMember={!!teamAny.isMember || !!teamAny.hasJoined} />
+            )}
+            {activeTab === 'roster' && <TeamProPublic teamId={teamId!} />}
+            {activeTab === 'sponsors' && <TeamSponsors sponsors={sponsors} />}
           </Suspense>
         </div>
       </div>
@@ -221,6 +236,14 @@ export default function TeamPage() {
           </div>
         </div>
       )}
+
+      <EntityShareSheet
+        open={showShare}
+        onClose={() => setShowShare(false)}
+        title={(team as any).name}
+        path={`/teams/${teamId}`}
+        shareText={`Check out ${(team as any).name} on Surna`}
+      />
     </div>
   );
 }

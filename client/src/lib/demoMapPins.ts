@@ -1,5 +1,6 @@
 import type { MapPin } from "@/components/map/InteractiveMap";
 import type { Coordinates } from "@/lib/geo";
+import { flags } from "@/config/flags";
 import { getEventCoverUrl } from "@/lib/eventCover";
 import { getDemoEvent } from "@/lib/demoEvents";
 
@@ -261,4 +262,9 @@ export function findDemoMapPin(
     }
   }
   return undefined;
+}
+
+/** Demo pins only when explicitly enabled (dev by default). */
+export function shouldUseDemoMapPins(): boolean {
+  return flags.mapDemoPins;
 }

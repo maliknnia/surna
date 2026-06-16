@@ -1,22 +1,26 @@
-import { useState, useRef, useEffect, useCallback, type MouseEvent } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type MouseEvent } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { entityPath, mapPath, resolveContentLinks } from "@/lib/mapNavigation";
+import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowLeft, Heart, MessageCircle, Share2, Bookmark,
-  Volume2, VolumeX, Play, Pause, Search,
-  Users, Calendar, GraduationCap, MapPin, Zap, UserPlus,
+  Volume2, VolumeX, Play,
   MoreHorizontal, Flag, Ban, Copy,
 } from "lucide-react";
 import { CommentsSheet } from "@/components/comments/CommentsSheet";
 import { ShareModal } from "@/components/ShareModal";
 import {
+  ImmersiveActionIcon,
+  ImmersiveCaption,
+  PrimaryEntityLink,
+  IMMERSIVE,
+} from "@/components/video/immersiveMediaUi";
+import { usePostEngagement } from "@/hooks/usePostEngagement";
+import {
   hideCreatorInSession,
   isDemoMediaId,
   submitContentReport,
-  togglePostLike,
-  togglePostSave,
 } from "@/lib/feedMediaActions";
 
 /* ─── Types ────────────────────────────────────────────────────────────────── */
@@ -33,6 +37,8 @@ export interface VideoPost {
   likesCount?: number;
   commentsCount?: number;
   sharesCount?: number;
+  likedByMe?: boolean;
+  savedByMe?: boolean;
   context?: "For You" | "Nearby" | "Following";
   format?: VideoFormat;
   durationSec?: number;
@@ -81,7 +87,9 @@ interface FeedVideoViewerProps {
   initialIndex?: number;
   contextLabel?: string;
   mode?: FeedViewerMode;
+  followingIds?: Set<string>;
   onClose: () => void;
+  onEngagementChange?: () => void;
 }
 
 /* ─── Demo videos ─────────────────────────────────────────────────────────── */
@@ -219,11 +227,6 @@ function fmtDuration(sec?: number) {
   const s = sec % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
-function fmtCount(n: number = 0) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
 function authorName(v: VideoPost) {
   return v.author.firstName && v.author.lastName
     ? `${v.author.firstName} ${v.author.lastName}`
@@ -238,167 +241,13 @@ function authorInitials(v: VideoPost) {
 const REELS_TABS = ["For You", "Nearby", "Following"] as const;
 type ReelsTab = (typeof REELS_TABS)[number];
 
-/* ─── Action button ─────────────────────────────────────────────────────────── */
-function ActionBtn({
-  icon: Icon, label, count, active, activeColor, onClick,
-}: {
-  icon: React.ElementType; label: string; count?: number;
-  active?: boolean; activeColor?: string; onClick?: (e: React.MouseEvent) => void;
-}) {
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
-      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer" }}
-    >
-      <div style={{
-        width: 50, height: 50, borderRadius: "50%",
-        background: active ? `${activeColor || "#FF453A"}28` : "rgba(0,0,0,0.45)",
-        backdropFilter: "blur(12px)",
-        border: active ? `1.5px solid ${activeColor || "#FF453A"}60` : "1.5px solid rgba(255,255,255,0.14)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "all 0.18s ease",
-        transform: active ? "scale(1.08)" : "scale(1)",
-      }}>
-        <Icon size={22} color={active ? (activeColor || "#FF453A") : "white"} fill={active ? (activeColor || "#FF453A") : "none"} style={{ transition: "all 0.18s ease" }} />
-      </div>
-      {count !== undefined
-        ? <span style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{fmtCount(count)}</span>
-        : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", fontWeight: 600 }}>{label}</span>
-      }
-    </button>
-  );
-}
-
-/* ─── Role badge ────────────────────────────────────────────────────────────── */
-function RoleBadge({ role }: { role?: string }) {
-  if (!role || role === "player") return null;
-  const map: Record<string, { label: string; color: string }> = {
-    coach:     { label: "Coach",     color: "#FFD700" },
-    team:      { label: "Team",      color: "#000000" },
-    organizer: { label: "Organizer", color: "#30D158" },
-  };
-  const cfg = map[role];
-  if (!cfg) return null;
-  return (
-    <span style={{
-      fontSize: 10, fontWeight: 800, color: cfg.color,
-      background: `${cfg.color}18`, borderRadius: 5,
-      padding: "1px 6px", border: `1px solid ${cfg.color}35`,
-    }}>{cfg.label}</span>
-  );
-}
-
-/* ─── Smart contextual CTA row ──────────────────────────────────────────────── */
-function ContextCTAs({ video }: { video: VideoPost; isDark: boolean }) {
-  const [, setLocation] = useLocation();
-  const [joined, setJoined] = useState(false);
-  const [booked, setBooked] = useState(false);
-
-  const links = resolveContentLinks({
-    entityKind: video.entityType,
-    entityId: video.entityId,
-    postType: video.entityType,
-  });
-
-  const go = (path?: string) => (e: MouseEvent) => {
-    e.stopPropagation();
-    if (path) setLocation(path);
-  };
-
-  if (video.entityType === "event" || (video.role === "organizer" && video.eventName)) {
-    return (
-      <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (links.primary) setLocation(links.primary);
-            else setJoined((j) => !j);
-          }}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            height: 33, paddingLeft: 14, paddingRight: 14, borderRadius: 99,
-            background: joined ? "rgba(255,255,255,0.12)" : "linear-gradient(135deg,#000000,#000000)",
-            border: "none", fontSize: 12, fontWeight: 700,
-            color: joined ? "rgba(255,255,255,0.6)" : "#fff", cursor: "pointer",
-            transition: "all 0.18s ease",
-          }}
-        >
-          <Zap size={12} />{joined ? "Joined ✓" : "Join Event"}
-        </button>
-        {links.map && (
-          <button
-            onClick={go(links.map)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 33, paddingLeft: 14, paddingRight: 14, borderRadius: 99, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.2)", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.85)", cursor: "pointer" }}
-          >
-            <MapPin size={12} />View on Map
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  if (video.entityType === "coach" || video.role === "coach") {
-    const coachRoute =
-      links.primary ||
-      (video.entityId ? entityPath("coach", video.entityId) : undefined);
-    return (
-      <div style={{ display: "flex", gap: 7, marginBottom: 10 }}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (coachRoute) setLocation(coachRoute);
-            else setBooked((b) => !b);
-          }}
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 33, paddingLeft: 14, paddingRight: 14, borderRadius: 99, background: booked ? "rgba(255,255,255,0.12)" : "linear-gradient(135deg,#FF9F0A,#D4750A)", border: "none", fontSize: 12, fontWeight: 700, color: booked ? "rgba(255,255,255,0.6)" : "#fff", cursor: "pointer", transition: "all 0.18s ease" }}
-        >
-          <Calendar size={12} />{booked ? "Booked ✓" : "Book Session"}
-        </button>
-        {coachRoute && (
-          <button
-            onClick={go(coachRoute)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 33, paddingLeft: 14, paddingRight: 14, borderRadius: 99, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.2)", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.85)", cursor: "pointer" }}
-          >
-            <GraduationCap size={12} />View Coach
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  if (video.entityType === "team" || video.role === "team") {
-    return (
-      <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (links.primary) setLocation(links.primary);
-            else setJoined((j) => !j);
-          }}
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 33, paddingLeft: 14, paddingRight: 14, borderRadius: 99, background: joined ? "rgba(255,255,255,0.12)" : "linear-gradient(135deg,#0A84FF,#0055CC)", border: "none", fontSize: 12, fontWeight: 700, color: joined ? "rgba(255,255,255,0.6)" : "#fff", cursor: "pointer", transition: "all 0.18s ease" }}
-        >
-          <Users size={12} />{joined ? "Joined ✓" : "Join Team"}
-        </button>
-        {links.map && (
-          <button
-            onClick={go(links.map)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 33, paddingLeft: 14, paddingRight: 14, borderRadius: 99, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.2)", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.85)", cursor: "pointer" }}
-          >
-            <MapPin size={12} />View on Map
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  return null;
-}
-
 /* ─── Single video slide ────────────────────────────────────────────────────── */
 
 function VideoSlide({
   video, index, isActive, isMuted, viewerMode, onToggleMuted,
   onLike, likedSet, savedSet, onSave, onComment,
   onShare, onProgress, onOpenAuthor, onOpenOptions,
+  followingIds, onFollow, followPending,
 }: {
   video: VideoPost; index: number; isActive: boolean; isMuted: boolean;
   viewerMode: FeedViewerMode;
@@ -410,16 +259,15 @@ function VideoSlide({
   onProgress: (progress: number) => void;
   onOpenAuthor: (authorId: string) => void;
   onOpenOptions: () => void;
+  followingIds: Set<string>;
+  onFollow: (authorId: string) => void;
+  followPending: boolean;
 }) {
   const videoRef    = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying]       = useState(false);
-  const [captionExpanded, setCaptionExpanded] = useState(false);
   const [localLikes, setLocalLikes]     = useState(video.likesCount || 0);
-  const [followed, setFollowed]         = useState(false);
   const [heartVisible, setHeartVisible] = useState(false);
   const [progress, setProgress]         = useState(0);
-  const [connected, setConnected]       = useState(false);
-  const [showLongPressMenu, setShowLongPressMenu] = useState(false);
 
   const lastTapRef    = useRef(0);
   const holdTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -431,9 +279,14 @@ function VideoSlide({
 
   const isLiked = likedSet.has(video.id);
   const isSaved = savedSet.has(video.id);
+  const isFollowing = followingIds.has(video.author.id);
   const gradient = DEMO_GRADIENTS[index % DEMO_GRADIENTS.length];
   const isReel = viewerMode === "reels";
   const durationLabel = fmtDuration(video.durationSec);
+
+  useEffect(() => {
+    setLocalLikes(video.likesCount || 0);
+  }, [video.id, video.likesCount]);
 
   // Play / pause on active change
   useEffect(() => {
@@ -493,8 +346,12 @@ function VideoSlide({
 
   const handleHoldStart = () => {
     holdTimerRef.current = setTimeout(() => {
-      setShowLongPressMenu(true);
-    }, 500);
+      const el = videoRef.current;
+      if (el && !el.paused) {
+        el.pause();
+        setIsPlaying(false);
+      }
+    }, 450);
   };
 
   const handleHoldEnd = () => {
@@ -540,30 +397,12 @@ function VideoSlide({
                 left: "50%",
                 top: "50%",
                 transform: "translate(-50%, -50%)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 8,
                 pointerEvents: "none",
               }}
             >
-              <div
-                style={{
-                  width: isReel ? 56 : 52,
-                  height: isReel ? 56 : 52,
-                  borderRadius: "50%",
-                  background: "rgba(0,0,0,0.45)",
-                  backdropFilter: "blur(8px)",
-                  border: "1.5px solid rgba(255,255,255,0.35)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Play size={isReel ? 26 : 22} strokeWidth={2.2} fill="#fff" color="#fff" style={{ marginLeft: 3 }} />
-              </div>
+              <Play size={isReel ? 44 : 40} strokeWidth={1.5} fill="rgba(255,255,255,0.9)" color="rgba(255,255,255,0.9)" style={{ marginLeft: 4, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }} />
               {!isReel && durationLabel && (
-                <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.92)", background: "rgba(0,0,0,0.5)", borderRadius: 8, padding: "3px 10px" }}>
+                <span style={{ display: "block", textAlign: "center", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginTop: 6, textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
                   {durationLabel}
                 </span>
               )}
@@ -582,165 +421,95 @@ function VideoSlide({
       {/* Top progress bar */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2.5, background: "rgba(255,255,255,0.14)", zIndex: 22, pointerEvents: "none" }} />
 
-      {/* Mute + options */}
-      <div style={{ position: "absolute", top: 70, right: 12, display: "flex", flexDirection: "column", gap: 8, zIndex: 15 }}>
+      {/* Mute + options — icon only */}
+      <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 16, zIndex: 15 }}>
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onOpenOptions(); }}
-          style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}
           aria-label="More options"
         >
-          <MoreHorizontal size={16} color="white" />
+          <MoreHorizontal size={22} color={IMMERSIVE.icon} style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.8))" }} />
         </button>
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onToggleMuted(); }}
-          style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}
           aria-label={isMuted ? "Unmute" : "Mute"}
         >
-          {isMuted ? <VolumeX size={15} color="white" /> : <Volume2 size={15} color="white" />}
+          {isMuted
+            ? <VolumeX size={22} color={IMMERSIVE.icon} style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.8))" }} />
+            : <Volume2 size={22} color={IMMERSIVE.icon} style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.8))" }} />}
         </button>
       </div>
 
-      {/* Gradient overlays */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 180, background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "65%", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 120, background: IMMERSIVE.overlayTop, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "42%", background: IMMERSIVE.overlayBottom, pointerEvents: "none" }} />
 
-      {/* Right action stack */}
+      {/* Right action rail — bare icons */}
       <div
-        style={{ position: "absolute", right: 10, bottom: 150, display: "flex", flexDirection: "column", alignItems: "center", gap: 18, zIndex: 15 }}
+        style={{ position: "absolute", right: 8, bottom: 120, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, zIndex: 15 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <ActionBtn icon={Heart} label="Like" count={localLikes} active={isLiked} activeColor="#FF453A" onClick={handleLike} />
-        <ActionBtn icon={MessageCircle} label="Comments" count={video.commentsCount} onClick={() => onComment()} />
-        <ActionBtn icon={Share2} label="Share" count={video.sharesCount} onClick={() => onShare(video.id)} />
-        <ActionBtn icon={Bookmark} label="Save" active={isSaved} activeColor="#000000" onClick={() => onSave(video.id)} />
-        {/* Join button — shown if event or team */}
-        {(video.entityType === "event" || video.entityType === "team") && (
-          <ActionBtn icon={Zap} label="Join" activeColor="#000000" />
-        )}
-        {/* Connect — shown for people / coaches */}
-        {(video.entityType === "coach" || video.entityType === "person") && (
-          <ActionBtn
-            icon={UserPlus} label={connected ? "Added" : "Connect"}
-            active={connected} activeColor="#30D158"
-            onClick={() => setConnected(c => !c)}
-          />
-        )}
+        <ImmersiveActionIcon icon={Heart} count={localLikes} active={isLiked} onClick={handleLike} testId={`like-${video.id}`} />
+        <ImmersiveActionIcon icon={MessageCircle} count={video.commentsCount} onClick={() => onComment()} testId={`comment-${video.id}`} />
+        <ImmersiveActionIcon icon={Share2} count={video.sharesCount} onClick={() => onShare(video.id)} testId={`share-${video.id}`} />
+        <ImmersiveActionIcon icon={Bookmark} active={isSaved} activeColor={IMMERSIVE.saveActive} onClick={() => onSave(video.id)} testId={`save-${video.id}`} />
       </div>
 
-      {/* Bottom info area */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 70, padding: "0 14px 28px", zIndex: 15 }}>
-        {/* Smart contextual CTAs */}
-        <ContextCTAs video={video} isDark={true} />
-
-        {/* Location + event tags */}
-        {(video.location || video.eventName) && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
-            {video.location && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.8)", background: "rgba(0,0,0,0.38)", backdropFilter: "blur(6px)", borderRadius: 8, padding: "2px 8px" }}>
-                <MapPin size={9} />{video.location}{video.distance && ` · ${video.distance}`}
-              </span>
-            )}
-            {video.eventName && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", borderRadius: 8, padding: "2px 8px" }}>
-                <Zap size={9} />{video.eventName}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Creator row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
-          {/* Avatar */}
+      {/* Bottom info */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 56, padding: "0 14px max(20px, env(safe-area-inset-bottom))", zIndex: 15 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onOpenAuthor(video.author.id); }}
-            style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.28)", padding: 0, background: "transparent", cursor: "pointer" }}
+            style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.35)", padding: 0, background: "transparent", cursor: "pointer" }}
           >
             {video.author.profileImageUrl ? (
               <img src={video.author.profileImageUrl} alt={authorName(video)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
-              <div style={{ width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" }}>{authorInitials(video)}</div>
+              <div style={{ width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>{authorInitials(video)}</div>
             )}
           </button>
-
-          {/* Name + badge + sport */}
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onOpenAuthor(video.author.id); }}
             style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff" }}>{authorName(video)}</span>
-              <RoleBadge role={video.role} />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>
-              {video.sportEmoji && <span>{video.sportEmoji}</span>}
-              {video.sport && <span>{video.sport}</span>}
-              {video.location && <><span>·</span><span>{video.location}</span></>}
-              {video.distance && <><span>·</span><span>{video.distance}</span></>}
-            </div>
+            <span style={{ fontSize: 14, fontWeight: 700, color: IMMERSIVE.icon, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{authorName(video)}</span>
+            {(video.sport || video.location) && (
+              <div style={{ fontSize: 11, color: IMMERSIVE.meta, marginTop: 1, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>
+                {[video.sportEmoji, video.sport, video.location].filter(Boolean).join(" · ")}
+              </div>
+            )}
           </button>
-
-          {/* Follow pill */}
-          <button
-            onClick={(e) => { e.stopPropagation(); setFollowed(f => !f); }}
-            style={{
-              flexShrink: 0, height: 30, paddingLeft: 14, paddingRight: 14,
-              borderRadius: 99,
-              background: followed ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.16)",
-              backdropFilter: "blur(8px)",
-              border: followed ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(255,255,255,0.28)",
-              fontSize: 12, fontWeight: 700,
-              color: followed ? "rgba(255,255,255,0.5)" : "#fff",
-              cursor: "pointer", transition: "all 0.18s ease",
-            }}
-          >
-            {followed ? "Following" : "Follow"}
-          </button>
+          {video.author.id && (
+            <button
+              type="button"
+              disabled={followPending}
+              onClick={(e) => { e.stopPropagation(); onFollow(video.author.id); }}
+              style={{
+                flexShrink: 0,
+                height: 28,
+                paddingLeft: 12,
+                paddingRight: 12,
+                borderRadius: 8,
+                background: isFollowing ? "transparent" : "rgba(255,255,255,0.2)",
+                border: isFollowing ? "1px solid rgba(255,255,255,0.25)" : "none",
+                fontSize: 12,
+                fontWeight: 700,
+                color: isFollowing ? IMMERSIVE.meta : IMMERSIVE.icon,
+                cursor: followPending ? "wait" : "pointer",
+              }}
+            >
+              {isFollowing ? "Following" : "Follow"}
+            </button>
+          )}
         </div>
 
-        {/* Caption */}
-        {video.content && (
-          <p
-            onClick={(e) => { e.stopPropagation(); setCaptionExpanded(v => !v); }}
-            style={{
-              fontSize: 13, color: "rgba(255,255,255,0.88)", lineHeight: 1.5,
-              display: "-webkit-box", WebkitBoxOrient: "vertical" as any,
-              WebkitLineClamp: captionExpanded ? undefined : 2,
-              overflow: "hidden", cursor: "pointer",
-            }}
-          >
-            {video.content}
-          </p>
-        )}
+        <PrimaryEntityLink video={video} />
+        {video.content && <ImmersiveCaption text={video.content} />}
       </div>
-
-      {showLongPressMenu && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}
-          onClick={() => setShowLongPressMenu(false)}
-        >
-          <div
-            style={{ width: "100%", background: "#121212", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "12px 14px 20px" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ width: 42, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.25)", margin: "0 auto 10px" }} />
-            {[
-              { label: "Not interested", action: () => { setShowLongPressMenu(false); onOpenOptions(); } },
-              { label: "Report", action: () => { setShowLongPressMenu(false); onOpenOptions(); } },
-              { label: "Save", action: () => { onSave(video.id); setShowLongPressMenu(false); } },
-              { label: "Share", action: () => { onShare(video.id); setShowLongPressMenu(false); } },
-              { label: "Copy link", action: () => { navigator.clipboard?.writeText(`${window.location.origin}/feed?post=${video.id}`); setShowLongPressMenu(false); } },
-            ].map((item) => (
-              <button
-                key={item.label}
-                onClick={item.action}
-                style={{ width: "100%", textAlign: "left", color: "white", background: "transparent", border: "none", padding: "12px 6px", fontSize: 15, fontWeight: 600 }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -844,8 +613,18 @@ function MediaOptionsSheet({
 }
 
 /* ─── FeedVideoViewer ──────────────────────────────────────────────────────── */
-export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode = "reels", onClose }: FeedVideoViewerProps) {
+export function FeedVideoViewer({
+  videos,
+  initialIndex = 0,
+  contextLabel,
+  mode = "reels",
+  followingIds: followingIdsProp,
+  onClose,
+  onEngagementChange,
+}: FeedVideoViewerProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { like: engagementLike, save: engagementSave } = usePostEngagement();
   const [, setLocation] = useLocation();
   const resolvedVideos = filterVideosByMode(videos, mode);
   const initialVideoIdx = Math.max(0, Math.min(initialIndex, Math.max(0, resolvedVideos.length - 1)));
@@ -858,8 +637,8 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
   const [visible, setVisible]         = useState(false);
   const [currentIdx, setCurrentIdx]   = useState(initialVideoIdx);
   const [isMuted, setIsMuted]         = useState(true);
-  const [likedSet, setLikedSet]       = useState<Set<string>>(new Set());
-  const [savedSet, setSavedSet]       = useState<Set<string>>(new Set());
+  const [likedSet, setLikedSet]       = useState<Set<string>>(() => new Set(videos.filter((v) => v.likedByMe).map((v) => v.id)));
+  const [savedSet, setSavedSet]       = useState<Set<string>>(() => new Set(videos.filter((v) => v.savedByMe).map((v) => v.id)));
   const [showComments, setShowComments] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharePostId, setSharePostId] = useState<string>("");
@@ -867,11 +646,23 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
   const [reelsTab, setReelsTab]       = useState<ReelsTab>("For You");
   const [showOptions, setShowOptions] = useState(false);
   const [hiddenIds, setHiddenIds]     = useState<Set<string>>(new Set());
-  const followingIds = new Set(
-    ((myProfile?.following || []) as Array<any>)
-      .map((f) => (typeof f === "string" ? f : f?.id))
-      .filter(Boolean)
+  const [followPending, setFollowPending] = useState(false);
+
+  const profileFollowing = useMemo(
+    () =>
+      new Set(
+        ((myProfile?.following || []) as Array<{ id?: string } | string>)
+          .map((f) => (typeof f === "string" ? f : f?.id))
+          .filter(Boolean) as string[],
+      ),
+    [myProfile],
   );
+  const followingIds = followingIdsProp ?? profileFollowing;
+
+  useEffect(() => {
+    setLikedSet(new Set(videos.filter((v) => v.likedByMe).map((v) => v.id)));
+    setSavedSet(new Set(videos.filter((v) => v.savedByMe).map((v) => v.id)));
+  }, [videos]);
   const filteredVideos = resolvedVideos.filter((v) => {
     if (hiddenIds.has(v.id)) return false;
     if (mode === "videos") return true;
@@ -953,8 +744,9 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
       return n;
     });
     try {
-      await togglePostLike(id, wasLiked);
-      setToast(wasLiked ? "Like removed" : "❤️ Liked");
+      await engagementLike(id, wasLiked);
+      onEngagementChange?.();
+      if (isDemoMediaId(id)) setToast(wasLiked ? "Like removed" : "❤️ Liked");
     } catch {
       setLikedSet((s) => {
         const n = new Set(s);
@@ -964,7 +756,7 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
       });
       setToast("Could not update like");
     }
-  }, [likedSet]);
+  }, [likedSet, engagementLike, onEngagementChange]);
 
   const handleSave = useCallback(async (id: string) => {
     const wasSaved = savedSet.has(id);
@@ -975,7 +767,8 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
       return n;
     });
     try {
-      await togglePostSave(id, wasSaved);
+      await engagementSave(id, wasSaved);
+      onEngagementChange?.();
       setToast(wasSaved ? "Removed from saved" : "🔖 Saved");
     } catch {
       setSavedSet((s) => {
@@ -986,7 +779,27 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
       });
       setToast("Could not save");
     }
-  }, [savedSet]);
+  }, [savedSet, engagementSave, onEngagementChange]);
+
+  const handleFollow = useCallback(async (authorId: string) => {
+    if (!authorId || isDemoMediaId(authorId)) return;
+    const wasFollowing = followingIds.has(authorId);
+    setFollowPending(true);
+    try {
+      if (wasFollowing) {
+        await apiRequest("DELETE", `/api/users/${authorId}/unfollow`);
+      } else {
+        await apiRequest("POST", `/api/users/${authorId}/follow`, { followingType: "user" });
+      }
+      await queryClient.invalidateQueries({ queryKey: ["/api/profile", (user as any)?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "following"] });
+      setToast(wasFollowing ? "Unfollowed" : "Following");
+    } catch {
+      setToast("Could not update follow");
+    } finally {
+      setFollowPending(false);
+    }
+  }, [followingIds, queryClient, user]);
 
   const handleShare = useCallback((id: string) => {
     setSharePostId(id);
@@ -1097,18 +910,13 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
               ))}
             </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#fff", fontWeight: 800, fontSize: 15 }}>
-                <Play size={16} fill="#fff" color="#fff" />
+              <div style={{ display: "flex", alignItems: "center", gap: 6, color: IMMERSIVE.icon, fontWeight: 800, fontSize: 15 }}>
+                <Play size={16} fill={IMMERSIVE.icon} color={IMMERSIVE.icon} />
                 <span>{contextLabel || "Videos"}</span>
               </div>
             )}
 
-            <button
-              style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-              aria-label="Search"
-            >
-              <Search size={16} color="white" />
-            </button>
+            <div style={{ width: 38 }} />
           </div>
 
           {/* Active sport / context subtitle */}
@@ -1145,6 +953,9 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
                   onProgress={setActiveProgress}
                   onOpenAuthor={(authorId) => setLocation(`/person/${authorId}`)}
                   onOpenOptions={() => setShowOptions(true)}
+                  followingIds={followingIds}
+                  onFollow={handleFollow}
+                  followPending={followPending}
                 />
               </div>
             );
@@ -1157,6 +968,7 @@ export function FeedVideoViewer({ videos, initialIndex = 0, contextLabel, mode =
         <CommentsSheet
           postId={activeVideo?.id || ""}
           isOpen={showComments}
+          variant="immersive"
           onClose={() => setShowComments(false)}
         />
       )}

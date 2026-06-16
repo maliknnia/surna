@@ -1,8 +1,10 @@
-import { MapPin, Star, Users, Heart, MessageCircle, UserPlus, Trophy } from 'lucide-react';
+import { MapPin, Star, Users, Heart, MessageCircle, UserPlus, Trophy, Settings, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
+import { teamLogoUrl } from '@/lib/teamLogo';
+import { joinTeamUnified, joinButtonLabel, leaveTeam } from '@/lib/teamJoin';
 
 interface SportConfig {
   emoji: string;
@@ -20,7 +22,7 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
   const [, setLocation] = useLocation();
   const [isFollowing, setIsFollowing] = useState(!!team.isFollowing);
   const [followersCount, setFollowersCount] = useState(team.followersCount || 0);
-  const [hasJoined, setHasJoined] = useState(!!team.hasJoined);
+  const [hasJoined, setHasJoined] = useState(!!(team.hasJoined || team.isMember));
   const [hasRequested, setHasRequested] = useState(!!team.hasRequestedToJoin);
   const [memberCountState, setMemberCountState] = useState<number>(
     team.currentMembers || team.memberCount || 0
@@ -73,29 +75,43 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
 
   const handleJoin = async () => {
     if (hasJoined || hasRequested) return;
-    // This endpoint sends a join *request* — the captain still has to
-    // approve it — so optimistically flip only the button state, not
-    // the member count. The count will reconcile from the server when
-    // the request is actually accepted.
-    const prevRequested = hasRequested;
-    setHasRequested(true);
-
     try {
-      const res = await apiRequest('POST', `/api/teams/${team.id}/join-request`, { message: "I'd like to join your team!" });
-      const data = await res.json().catch(() => ({}));
-      // If the server reports immediate membership (e.g. open team),
-      // sync both the joined flag and the authoritative member count.
-      if (data.joined === true) {
-        setHasJoined(true);
-        if (typeof data.currentMembers === 'number') {
-          setMemberCountState(data.currentMembers);
-        }
+      const result = await joinTeamUnified(team.id);
+      if (result.status === "pending") {
+        setHasRequested(true);
+        queryClient.invalidateQueries({ queryKey: ['/api/teams', team.id] });
+        toast({ title: "Request sent", description: "The captain will review your request" });
+        return;
+      }
+      setHasJoined(true);
+      if (typeof result.currentMembers === "number") {
+        setMemberCountState(result.currentMembers);
+      } else {
+        setMemberCountState((c) => c + 1);
       }
       queryClient.invalidateQueries({ queryKey: ['/api/teams', team.id] });
-      toast({ title: "Request Sent", description: "Your join request has been sent to the team captain" });
-    } catch (error) {
-      setHasRequested(prevRequested);
-      toast({ title: "Couldn't send request", description: "Please try again in a moment.", variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ['/api/teams/my-teams'] });
+      toast({ title: "Joined Team!", description: `You're now a member of ${team.name}` });
+    } catch {
+      toast({ title: "Couldn't join team", description: "Please try again in a moment.", variant: "destructive" });
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!hasJoined || team.canManage || team.isCaptain) return;
+    try {
+      await leaveTeam(team.id);
+      setHasJoined(false);
+      setMemberCountState((c) => Math.max(0, c - 1));
+      queryClient.invalidateQueries({ queryKey: ['/api/teams', team.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/teams/my-teams'] });
+      toast({ title: "Left team", description: `You left ${team.name}` });
+    } catch (err) {
+      toast({
+        title: "Couldn't leave team",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
     }
   };
 
@@ -105,13 +121,20 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
 
   const memberCount = memberCountState;
   const maxMembers = team.maxMembers || 25;
+  const logoUrl = teamLogoUrl(team);
 
   return (
     <div className="spotify-hero-inner">
       {/* Large team logo/photo — Spotify album art style */}
       <div className="spotify-album-art">
-        {team.logo || team.logoUrl ? (
-          <img src={team.logo || team.logoUrl} alt={team.name} className="w-full h-full object-cover" />
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={team.name}
+            className="w-full h-full object-cover"
+            crossOrigin="anonymous"
+            referrerPolicy="no-referrer"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-7xl"
             style={{ background: `linear-gradient(135deg, ${sportConfig.colors[0]}88, ${sportConfig.colors[1]}88)` }}>
@@ -161,7 +184,30 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
           </div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Rating</p>
         </div>
+        {team.currentWinStreak > 0 ? (
+          <>
+            <div className="w-px h-8 bg-muted/40" />
+            <div className="text-center">
+              <div className="flex items-center gap-1 justify-center">
+                <Trophy size={14} style={{ color: accentColor }} />
+                <p className="text-[17px] font-bold text-foreground">{team.currentWinStreak}</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Win streak</p>
+            </div>
+          </>
+        ) : null}
       </div>
+
+      {(team.canManage || team.isCaptain) ? (
+        <button
+          type="button"
+          onClick={() => setLocation('/my-hub/teams')}
+          className="mt-4 h-10 px-5 rounded-full text-[13px] font-semibold flex items-center gap-2 bg-muted/40 text-foreground active:scale-[0.97] transition-transform"
+        >
+          <Settings size={15} />
+          Manage team
+        </button>
+      ) : null}
 
       {/* Primary CTA buttons */}
       <div className="flex items-center gap-2.5 w-full max-w-sm mt-5">
@@ -175,7 +221,7 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
             opacity: (hasJoined || hasRequested) ? 0.85 : 1,
           }}>
           <UserPlus size={16} />
-          {hasJoined ? 'Joined' : hasRequested ? 'Requested' : 'Join Team'}
+          {joinButtonLabel({ hasJoined, hasRequestedToJoin: hasRequested, joinPolicy: team.joinPolicy })}
         </button>
         <button onClick={handleFollow}
           className="h-12 px-5 rounded-full text-[13px] font-semibold flex items-center gap-2 transition-all active:scale-[0.96] bg-muted/60 hover:bg-muted text-foreground border border-border backdrop-blur-sm">
@@ -196,6 +242,16 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
           <Trophy size={14} />
           Challenge
         </button>
+        {hasJoined && !team.canManage && !team.isCaptain ? (
+          <button
+            type="button"
+            onClick={() => void handleLeave()}
+            className="h-9 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 transition-all active:scale-[0.96] bg-muted/40 text-muted-foreground border border-border backdrop-blur-sm"
+          >
+            <LogOut size={14} />
+            Leave
+          </button>
+        ) : null}
       </div>
 
       {team.record && (

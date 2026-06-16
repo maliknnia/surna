@@ -5,7 +5,12 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { CommentsSheet } from "@/components/comments/CommentsSheet";
+import { useLocation } from "wouter";
+import {
+  ImmersiveActionIcon,
+  ImmersiveCaption,
+  IMMERSIVE,
+} from "@/components/video/immersiveMediaUi";
 import {
   X,
   MoreVertical,
@@ -18,7 +23,6 @@ import {
   Volume2,
   VolumeX,
   Heart,
-  MessageCircle,
   Share2,
   Bookmark,
   Plus,
@@ -232,6 +236,7 @@ function ReactionToast({ emoji, onDone }: { emoji: string; onDone: () => void })
 /* ─── Main component ─────────────────────────────────────────────────────── */
 export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: StoryViewerProps) {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [visible, setVisible]               = useState(false);
   const [currentUserIndex, setCurrentUserIndex] = useState(0);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(initialStoryIndex);
@@ -248,8 +253,6 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
   const [showPlus, setShowPlus]             = useState(false);
   const [likedStories, setLikedStories]     = useState<Set<string>>(new Set());
   const [savedStories, setSavedStories]     = useState<Set<string>>(new Set());
-  const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [showCommentsSheet, setShowCommentsSheet] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [inputFocused, setInputFocused]     = useState(false);
 
@@ -342,7 +345,6 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
 
   const nextStory = useCallback(() => {
     if (!currentGroup) return;
-    setCaptionExpanded(false);
     if (currentStoryIndex < currentGroup.stories.length - 1) {
       setCurrentStoryIndex((p) => p + 1); setProgress(0);
     } else if (currentUserIndex < userGroups.length - 1) {
@@ -353,7 +355,6 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
   }, [currentGroup, currentStoryIndex, currentUserIndex, userGroups.length, handleClose]);
 
   const previousStory = useCallback(() => {
-    setCaptionExpanded(false);
     if (currentStoryIndex > 0) {
       setCurrentStoryIndex((p) => p - 1); setProgress(0);
     } else if (currentUserIndex > 0) {
@@ -468,9 +469,38 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
     e.stopPropagation();
     setSavedStories((prev) => {
       const next = new Set(prev);
-      if (next.has(storyId)) next.delete(storyId); else next.add(storyId);
+      if (next.has(storyId)) next.delete(storyId);
+      else next.add(storyId);
       return next;
     });
+    setReactionToast(savedStories.has(storyId) ? "Removed" : "Saved");
+  };
+
+  const handleShareStory = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/?story=${storyId}`;
+    const title =
+      currentGroup?.user?.displayName ||
+      currentGroup?.user?.username ||
+      currentGroup?.user?.firstName ||
+      "Story";
+    try {
+      if (navigator.share) {
+        await navigator.share({ url, title });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+      setReactionToast("Shared");
+    } catch {
+      /* user cancelled share */
+    }
+  };
+
+  const openReply = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setShowReply(true);
+    setIsPaused(true);
+    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   if (!currentStory || !currentGroup) {
@@ -683,69 +713,12 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
           {!isOwnStory && (
             <div
               className="absolute right-3 z-20 flex flex-col items-center"
-              style={{ bottom: 130, gap: 22 }}
+              style={{ bottom: 130, gap: 14 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Like */}
-              <button
-                onClick={handleLike}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer" }}
-              >
-                <div
-                  style={{
-                    width: 44, height: 44, borderRadius: "50%",
-                    background: isLiked ? "rgba(255,69,58,0.25)" : "rgba(0,0,0,0.45)",
-                    backdropFilter: "blur(10px)",
-                    border: isLiked ? "1.5px solid rgba(255,69,58,0.5)" : "1.5px solid rgba(255,255,255,0.15)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "all 180ms ease",
-                    transform: isLiked ? "scale(1.1)" : "scale(1)",
-                  }}
-                >
-                  <Heart size={20} color={isLiked ? "#FF453A" : "white"} fill={isLiked ? "#FF453A" : "none"} />
-                </div>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>Like</span>
-              </button>
-
-              {/* Comment */}
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowCommentsSheet(true); setIsPaused(true); }}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer" }}
-              >
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", border: "1.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <MessageCircle size={20} color="white" />
-                </div>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>Comments</span>
-              </button>
-
-              {/* Share */}
-              <button
-                onClick={(e) => e.stopPropagation()}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer" }}
-              >
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", border: "1.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Share2 size={20} color="white" />
-                </div>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>Share</span>
-              </button>
-
-              {/* Save */}
-              <button
-                onClick={handleSave}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer" }}
-              >
-                <div style={{
-                  width: 44, height: 44, borderRadius: "50%",
-                  background: isSaved ? "rgba(139,92,246,0.25)" : "rgba(0,0,0,0.45)",
-                  backdropFilter: "blur(10px)",
-                  border: isSaved ? "1.5px solid rgba(139,92,246,0.5)" : "1.5px solid rgba(255,255,255,0.15)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all 180ms ease",
-                }}>
-                  <Bookmark size={20} color={isSaved ? "#8B5CF6" : "white"} fill={isSaved ? "#8B5CF6" : "none"} />
-                </div>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>Save</span>
-              </button>
+              <ImmersiveActionIcon icon={Heart} active={isLiked} onClick={handleLike} />
+              <ImmersiveActionIcon icon={Share2} onClick={handleShareStory} />
+              <ImmersiveActionIcon icon={Bookmark} active={isSaved} activeColor={IMMERSIVE.saveActive} onClick={handleSave} />
             </div>
           )}
 
@@ -753,53 +726,48 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
           {currentStory.caption && currentStory.mediaType !== "text" && (
             <div
               className="absolute left-0 z-10"
-              style={{ bottom: showReply ? 128 : 108, padding: "0 16px", right: isOwnStory ? 16 : 72 }}
-              onClick={(e) => { e.stopPropagation(); setCaptionExpanded((v) => !v); }}
+              style={{ bottom: showReply ? 128 : 108, padding: "0 16px", right: isOwnStory ? 16 : 56 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <p
-                style={{
-                  color: "rgba(255,255,255,0.92)",
-                  fontSize: 14,
-                  lineHeight: "1.5",
-                  textShadow: "0 1px 6px rgba(0,0,0,0.7)",
-                  display: "-webkit-box",
-                  WebkitLineClamp: captionExpanded ? undefined : 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                  transition: "all 200ms ease",
-                }}
-              >
-                {currentStory.caption}
-              </p>
-              {!captionExpanded && (currentStory.caption?.length || 0) > 80 && (
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2, display: "block" }}>
-                  Tap to expand
-                </span>
-              )}
+              <ImmersiveCaption text={currentStory.caption} />
             </div>
           )}
 
-          {/* ── Entity CTAs ── */}
-          {ownerType !== "person" && !isOwnStory && (
+          {/* ── Entity CTAs — primary only ── */}
+          {ownerType !== "person" && !isOwnStory && entityConfig.actions[0] && (
             <div
-              className="absolute left-0 right-0 z-20 flex gap-2 overflow-x-auto"
-              style={{ bottom: showReply ? 152 : 130, padding: "0 12px", paddingRight: 72 }}
+              className="absolute left-0 z-20"
+              style={{ bottom: showReply ? 152 : 130, padding: "0 16px", right: 56 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {entityConfig.actions.map((action) => (
-                <button
-                  key={action.label}
-                  className="flex-shrink-0 flex items-center gap-1 rounded-full px-3"
-                  style={{
-                    height: 30, background: "rgba(255,255,255,0.15)", backdropFilter: "blur(12px)",
-                    border: "1px solid rgba(255,255,255,0.25)", fontSize: 12, fontWeight: 600,
-                    color: "#ffffff", whiteSpace: "nowrap", cursor: "pointer",
-                  }}
-                >
-                  {action.label}
-                  <ChevronRight size={11} />
-                </button>
-              ))}
+              <button
+                type="button"
+                className="flex items-center gap-1"
+                onClick={() => {
+                  const label = entityConfig.actions[0].label.toLowerCase();
+                  if (label.includes("message") || label.includes("reply")) {
+                    openReply();
+                    return;
+                  }
+                  const ownerId = (currentStory as { ownerId?: string }).ownerId || currentGroup.user.id;
+                  if (label.includes("team")) setLocation(`/teams/${ownerId}`);
+                  else if (label.includes("coach")) setLocation(`/coaches/${ownerId}`);
+                  else if (label.includes("event")) setLocation(`/events/${ownerId}`);
+                  else if (label.includes("profile")) setLocation(`/person/${ownerId}`);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: IMMERSIVE.link,
+                  cursor: "pointer",
+                  textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                }}
+              >
+                {entityConfig.actions[0].label}
+                <ChevronRight size={12} />
+              </button>
             </div>
           )}
 
@@ -893,7 +861,7 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
                 >
                   {/* Smart reply field */}
                   <button
-                    onClick={() => { setShowReply(true); setIsPaused(true); setTimeout(() => inputRef.current?.focus(), 100); }}
+                    onClick={openReply}
                     style={{ flex: 1, background: "none", border: "none", textAlign: "left", cursor: "pointer", color: "rgba(255,255,255,0.45)", fontSize: 14, padding: "0 4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                   >
                     {SMART_PLACEHOLDERS[placeholderIdx]}
@@ -967,11 +935,6 @@ export function StoryViewer({ initialUserId, initialStoryIndex, onClose }: Story
           onClose={() => { setShowPlus(false); setIsPaused(false); }}
         />
       )}
-
-      <CommentsSheet
-        isOpen={showCommentsSheet}
-        onClose={() => { setShowCommentsSheet(false); setIsPaused(false); }}
-      />
 
       <style>{`
         @keyframes reactionPop {

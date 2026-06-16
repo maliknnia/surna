@@ -27,11 +27,12 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentUserId?: string | null;
+  onDeleted?: () => void;
 };
 
 type Mode = "menu" | "edit";
 
-export function PostManageSheet({ post, open, onOpenChange, currentUserId }: Props) {
+export function PostManageSheet({ post, open, onOpenChange, currentUserId, onDeleted }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>("menu");
@@ -63,6 +64,7 @@ export function PostManageSheet({ post, open, onOpenChange, currentUserId }: Pro
     },
     onSuccess: (updated) => {
       patchPostInFeedCache(queryClient, updated.id, updated);
+      invalidateFeedQueries(queryClient, post?.authorId);
       toast({ title: "Post updated" });
       onOpenChange(false);
     },
@@ -80,10 +82,14 @@ export function PostManageSheet({ post, open, onOpenChange, currentUserId }: Pro
       return deletePost(post.id);
     },
     onSuccess: () => {
-      if (post) removePostFromFeedCache(queryClient, post.id);
-      invalidateFeedQueries(queryClient);
+      if (post) {
+        removePostFromFeedCache(queryClient, post.id);
+        invalidateFeedQueries(queryClient, post.authorId);
+        queryClient.removeQueries({ queryKey: ["/api/posts", post.id] });
+      }
       toast({ title: "Post deleted" });
       onOpenChange(false);
+      onDeleted?.();
     },
     onError: () => {
       toast({
