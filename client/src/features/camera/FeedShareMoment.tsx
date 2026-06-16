@@ -69,8 +69,6 @@ export default function FeedShareMoment({ isDark: isDarkProp }: Props) {
 
 
 
-  const border = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
-
   const pillBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
 
   const pillBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
@@ -96,11 +94,7 @@ export default function FeedShareMoment({ isDark: isDarkProp }: Props) {
       <div
 
         style={{
-
-          borderBottom: `1px solid ${border}`,
-
           padding: "10px 16px 12px",
-
         }}
 
         data-testid="feed-share-moment"

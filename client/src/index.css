@@ -84,6 +84,7 @@
     --surna-text-secondary: rgba(235, 235, 245, 0.6);
     --surna-text-muted: rgba(235, 235, 245, 0.3);
     --surna-text-disabled: rgba(235, 235, 245, 0.18);
+    --ig-profile-btn-bg: rgba(255, 255, 255, 0.12);
     --surna-accent: #FFFFFF;
     --surna-accent-soft: rgba(255, 255, 255, 0.15);
     --surna-border: rgba(255, 255, 255, 0.06);
@@ -179,6 +180,7 @@
     --surna-text-secondary: rgba(60, 60, 67, 0.6);
     --surna-text-muted: rgba(60, 60, 67, 0.3);
     --surna-text-disabled: rgba(60, 60, 67, 0.18);
+    --ig-profile-btn-bg: rgba(0, 0, 0, 0.06);
     --surna-accent: #000000;
     --surna-accent-soft: rgba(0, 0, 0, 0.1);
     --surna-border: rgba(0, 0, 0, 0.08);
@@ -374,8 +376,8 @@
   }
 
   .nav-item:not(.active) {
-    color: var(--surna-text-muted);
-    opacity: 0.75;
+    color: var(--surna-text-secondary);
+    opacity: 1;
   }
 
   .nav-item.active {

@@ -40,7 +40,7 @@ function FeedPostCaption({
   const needsMore = trimmed.length > CAPTION_COLLAPSE_CHARS;
 
   return (
-    <div className="px-3 pb-1 text-sm leading-snug text-foreground">
+    <div className="px-3 pb-1 text-[14px] leading-snug" style={{ color: "var(--surna-text)" }}>
       <span className="font-semibold mr-1.5">{authorName}</span>
       <span className="whitespace-pre-wrap break-words">
         {needsMore && !expanded
@@ -50,7 +50,8 @@ function FeedPostCaption({
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="ml-1 font-semibold text-muted-foreground hover:text-foreground"
+            className="ml-1 font-semibold active:opacity-70"
+            style={{ color: "var(--surna-text-secondary)" }}
           >
             {expanded ? "less" : "more"}
           </button>
@@ -191,18 +192,22 @@ export function FeedPostCard({
   });
 
   return (
-    <article className="bg-background pb-3" data-testid={`feed-post-${post.id}`}>
+    <article
+      className="pb-2"
+      style={{ background: "var(--surna-base)", color: "var(--surna-text)" }}
+      data-testid={`feed-post-${post.id}`}
+    >
       {/* Header */}
-      <div className="flex items-center gap-3 px-3 py-2.5">
+      <div className="flex items-center gap-3 px-3 py-2">
         <button
           type="button"
           onClick={() => author.id && setLocation(`/person/${author.id}`)}
           className="shrink-0 rounded-full"
           aria-label="View profile"
         >
-          <Avatar className="h-9 w-9">
+          <Avatar className="h-8 w-8">
             <AvatarImage src={author.profileImageUrl || undefined} alt={authorName} />
-            <AvatarFallback className="bg-muted text-xs font-semibold">
+            <AvatarFallback className="text-xs font-semibold" style={{ background: "var(--surna-elevated)", color: "var(--surna-text)" }}>
               {author.firstName?.[0] || "U"}
             </AvatarFallback>
           </Avatar>
@@ -212,19 +217,23 @@ export function FeedPostCard({
           onClick={() => author.id && setLocation(`/person/${author.id}`)}
           className="min-w-0 flex-1 text-left"
         >
-          <p className="truncate text-sm font-semibold leading-tight">{authorName}</p>
+          <p className="truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--surna-text)" }}>
+            {authorName}
+          </p>
           {post.sport && (
-            <p className="truncate text-xs text-muted-foreground">{post.sport}</p>
+            <p className="truncate text-xs" style={{ color: "var(--surna-text-secondary)" }}>
+              {post.sport}
+            </p>
           )}
         </button>
         <button
           type="button"
           onClick={() => setManageOpen(true)}
-          className="rounded-full p-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          className="p-1 active:opacity-60"
           aria-label="Post options"
           data-testid={`post-options-${post.id}`}
         >
-          <MoreVertical className="h-5 w-5" />
+          <MoreVertical className="h-6 w-6" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
         </button>
       </div>
 
@@ -276,57 +285,57 @@ export function FeedPostCard({
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex items-center gap-1 px-3 py-2.5">
+      {/* Actions — Instagram-style icon row */}
+      <div className="flex items-center px-1.5 py-1.5" style={{ color: "var(--surna-text)" }}>
         <button
           type="button"
           onClick={() => onLike(post.id, isLiked)}
-          className="p-2 transition-transform active:scale-95"
+          className="p-2 transition-transform active:scale-90"
           aria-label={isLiked ? "Unlike" : "Like"}
           data-testid={`like-post-${post.id}`}
         >
           <Heart
-            className={cn("h-[26px] w-[26px]", isLiked ? "fill-red-500 text-red-500" : "")}
+            className={cn("h-[26px] w-[26px]", isLiked && "fill-red-500 text-red-500")}
+            strokeWidth={isLiked ? 0 : 1.75}
             style={!isLiked ? { color: "var(--surna-text)" } : undefined}
-            strokeWidth={isLiked ? 0 : 2}
           />
         </button>
         <button
           type="button"
           onClick={() => onComment(post.id)}
-          className="p-2 transition-transform active:scale-95"
+          className="p-2 transition-transform active:scale-90"
           aria-label="Comment"
           data-testid={`comment-post-${post.id}`}
         >
-          <MessageCircle className="h-[26px] w-[26px]" style={{ color: "var(--surna-text)" }} strokeWidth={2} />
+          <MessageCircle className="h-[26px] w-[26px]" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
         </button>
         <button
           type="button"
           onClick={() => onShare(post.id)}
-          className="p-2 transition-transform active:scale-95"
+          className="p-2 transition-transform active:scale-90"
           aria-label="Share"
           data-testid={`share-post-${post.id}`}
         >
-          <Send className="h-[26px] w-[26px] -rotate-12" style={{ color: "var(--surna-text)" }} strokeWidth={2} />
+          <Send className="h-[26px] w-[26px] -rotate-[24deg]" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
         </button>
         <div className="flex-1" />
         <button
           type="button"
           onClick={() => onSave(post.id, isSaved)}
-          className="p-2 transition-transform active:scale-95"
+          className="p-2 transition-transform active:scale-90"
           aria-label={isSaved ? "Unsave" : "Save"}
           data-testid={`save-post-${post.id}`}
         >
           <Bookmark
-            className={cn("h-[26px] w-[26px]", isSaved ? "fill-[var(--surna-text)]" : "")}
+            className={cn("h-[26px] w-[26px]", isSaved && "fill-[var(--surna-text)]")}
+            strokeWidth={isSaved ? 0 : 1.75}
             style={{ color: "var(--surna-text)" }}
-            strokeWidth={isSaved ? 0 : 2}
           />
         </button>
       </div>
 
       {(post.likesCount ?? 0) > 0 && (
-        <p className="px-3 pb-1 text-sm font-semibold">
+        <p className="px-3 pb-1 text-[14px] font-semibold" style={{ color: "var(--surna-text)" }}>
           {(post.likesCount ?? 0).toLocaleString()} {(post.likesCount ?? 0) === 1 ? "like" : "likes"}
         </p>
       )}
@@ -372,14 +381,15 @@ export function FeedPostCard({
         <button
           type="button"
           onClick={() => onComment(post.id)}
-          className="px-3 pb-1 text-left text-sm text-muted-foreground hover:text-foreground"
+          className="px-3 pb-1 text-left text-[14px] active:opacity-70"
+          style={{ color: "var(--surna-text-secondary)" }}
           data-testid={`view-comments-${post.id}`}
         >
           View all {post.commentsCount} comments
         </button>
       )}
 
-      <p className="px-3 pb-3 pt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+      <p className="px-3 pb-2 pt-0.5 text-[11px] uppercase tracking-wide" style={{ color: "var(--surna-text-muted)" }}>
         {formatDistanceToNow(new Date(post.createdAt || Date.now()), { addSuffix: true })}
       </p>
 

@@ -5,7 +5,7 @@ import { useRoute, useLocation, Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Settings, Trophy } from "lucide-react";
+import { ArrowLeft, Settings } from "lucide-react";
 import { OWNER_PROFILE_AVATAR } from "@/lib/ownerAvatar";
 import type { UserWithProfile } from "@/lib/userProfileApi";
 import { ProfileInstagramView } from "@/components/profile/ProfileInstagramView";
@@ -133,45 +133,37 @@ export default function ProfilePage() {
   if (!viewingUserId) return null;
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: "var(--surna-void)" }}>
-      <div
-        className="sticky top-0 z-40 glass-effect"
+    <div className="min-h-screen pb-32" style={{ background: "var(--surna-base)", color: "var(--surna-text)" }}>
+      <header
+        className="sticky top-0 z-40"
         style={{
-          background: "var(--glass-bg)",
+          background: "var(--surna-base)",
           borderBottom: "0.5px solid var(--surna-border)",
+          paddingTop: "max(8px, env(safe-area-inset-top))",
         }}
       >
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/">
-            <button type="button" className="p-2 rounded-xl transition-all hover:bg-muted/40 active:scale-95">
-              <ArrowLeft className="w-5 h-5" style={{ color: "var(--surna-text)" }} />
+        <div className="max-w-md mx-auto px-3 h-11 flex items-center justify-between">
+          <Link href="/feed">
+            <button type="button" className="p-2 -ml-1 active:opacity-60" aria-label="Back">
+              <ArrowLeft className="w-6 h-6" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
             </button>
           </Link>
-          <h1 className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
-            @{username.replace(/^@+/, "")}
+          <h1 className="text-[16px] font-semibold truncate max-w-[50%]" style={{ color: "var(--surna-text)" }}>
+            {username.replace(/^@+/, "")}
           </h1>
-          <div className="flex items-center gap-0.5">
-            {isOwnProfile ? (
-              <>
-                <Link href="/settings">
-                  <button type="button" className="p-2 rounded-xl hover:bg-muted/40 active:scale-95" aria-label="Settings">
-                    <Settings className="w-5 h-5" style={{ color: "var(--surna-text)" }} />
-                  </button>
-                </Link>
-                <Link href="/seller/dashboard">
-                  <button type="button" className="p-2 rounded-xl hover:bg-muted/40 active:scale-95" aria-label="Seller">
-                    <Trophy className="w-5 h-5" style={{ color: "var(--surna-text)" }} />
-                  </button>
-                </Link>
-              </>
-            ) : (
-              <div className="w-9" />
-            )}
-          </div>
+          {isOwnProfile ? (
+            <Link href="/settings">
+              <button type="button" className="p-2 -mr-1 active:opacity-60" aria-label="Settings">
+                <Settings className="w-6 h-6" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
+              </button>
+            </Link>
+          ) : (
+            <div className="w-10" />
+          )}
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-md mx-auto px-4 pt-4">
+      <div className="max-w-md mx-auto px-4 pt-3">
         <ProfileInstagramView
           user={{
             ...userData,

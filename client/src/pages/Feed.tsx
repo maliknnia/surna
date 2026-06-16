@@ -4,7 +4,6 @@ import NotificationsPanel from "@/components/notifications/NotificationsPanel";
 import NotificationPeekSheet from "@/components/notifications/NotificationPeekSheet";
 import { Heart, MessageCircle, Share2, Users, Zap, TrendingUp, UserPlus, Camera, Play, Trophy, ArrowLeft, Bell, User as UserProfile, Loader2, MoreVertical, Calendar, MapPin, RefreshCw, Bookmark } from "lucide-react";
 import { NavHomeIcon } from "@/components/icons/NavHomeIcon";
-import { Icon } from "@/components/Icon";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -522,10 +521,9 @@ export default function Feed() {
         }}
       >
       <header
-        className="surna-header sticky top-0 z-50 flex w-full items-center justify-between gap-2 border-b px-3"
+        className="surna-header sticky top-0 z-50 flex w-full items-center justify-between gap-2 px-3"
         style={{
           background: "var(--surna-base)",
-          borderColor: "var(--surna-border)",
           paddingTop: "max(6px, env(safe-area-inset-top))",
           paddingBottom: 6,
           minHeight: 44,
@@ -565,11 +563,11 @@ export default function Feed() {
           <button
             type="button"
             onClick={() => setShowNotifPeek(true)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-full active:scale-95 transition-transform"
+            className="relative flex h-9 w-9 items-center justify-center active:opacity-60 transition-opacity"
             aria-label="Notifications"
             data-testid="bell-notif-btn"
           >
-            <Icon name="bell" size="sm" weight="regular" color="var(--surna-text)" />
+            <Bell className="h-[22px] w-[22px]" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
             {unreadNotificationCount > 0 && (
               <span
                 className="absolute -top-0.5 -right-0.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full px-0.5 text-[9px] font-bold text-white bg-surna-ios-red"
@@ -581,18 +579,18 @@ export default function Feed() {
           <button
             type="button"
             onClick={() => setLocation("/messages")}
-            className="flex h-9 w-9 items-center justify-center rounded-full active:scale-95 transition-transform"
+            className="flex h-9 w-9 items-center justify-center active:opacity-60 transition-opacity"
             aria-label="Messages"
           >
-            <Icon name="chat-circle" size="sm" weight="regular" color="var(--surna-text)" />
+            <MessageCircle className="h-[22px] w-[22px]" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
           </button>
           <button
             type="button"
             onClick={() => setFeedMenuOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full active:scale-95 transition-transform"
+            className="flex h-9 w-9 items-center justify-center active:opacity-60 transition-opacity"
             aria-label="Menu"
           >
-            <Icon name="dots-three-vertical" size="sm" weight="bold" color="var(--surna-text)" />
+            <MoreVertical className="h-[22px] w-[22px]" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
           </button>
         </div>
       </header>
@@ -650,7 +648,7 @@ export default function Feed() {
                       </div>
                     )}
 
-                    <div ref={containerRef} className="divide-y divide-border/40" style={{ minHeight: "50vh" }}>
+                    <div ref={containerRef} style={{ minHeight: "50vh" }}>
                       {isLoading && feedEntries.length === 0 ? (
                         <div data-testid="posts-loading">
                           <PostSkeleton /><PostSkeleton /><PostSkeleton />
@@ -780,11 +778,11 @@ export default function Feed() {
           <span className="nav-label">Camera</span>
         </button>
         <button type="button" onClick={() => handleTabChange("videos")} className={cn("nav-item", feedBottomTab === "videos" && "active")} data-testid="tab-videos" aria-label="Videos">
-          <Play className="w-6 h-6" strokeWidth={feedBottomTab === "videos" ? 2.5 : 1.5} fill={feedBottomTab === "videos" ? "currentColor" : "none"} />
+          <Play className="w-6 h-6" strokeWidth={feedBottomTab === "videos" ? 2.25 : 1.75} fill={feedBottomTab === "videos" ? "currentColor" : "none"} />
           <span className="nav-label">Videos</span>
         </button>
         <button type="button" onClick={() => handleTabChange("notifications")} className={cn("nav-item relative", activeTab === "notifications" && "active")} data-testid="tab-notifications" aria-label="Notifications">
-          <Bell className="w-6 h-6" strokeWidth={activeTab === "notifications" ? 2.5 : 1.5} />
+          <Bell className="w-6 h-6" strokeWidth={activeTab === "notifications" ? 2.25 : 1.75} />
           {unreadNotificationCount > 0 && (
             <span className="absolute top-0.5 right-1 min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-bold text-white px-0.5 bg-surna-ios-red">
               {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
@@ -793,7 +791,7 @@ export default function Feed() {
           <span className="nav-label">Alerts</span>
         </button>
         <button type="button" onClick={() => navigateFromFeed(ROUTES.profile)} className="nav-item" data-testid="tab-profile" aria-label="Profile">
-          <UserProfile className="w-6 h-6" strokeWidth={activeTab === "profile" ? 2.5 : 1.5} />
+          <UserProfile className="w-6 h-6" strokeWidth={activeTab === "profile" ? 2.25 : 1.75} />
           <span className="nav-label">Profile</span>
         </button>
       </nav>

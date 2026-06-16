@@ -5,14 +5,13 @@ import {
   LayoutGrid,
   Image as ImageIcon,
   MapPin,
-  MessageCircle,
-  UserMinus,
   UserPlus,
   CheckCircle2,
   BarChart3,
+  Share2,
+  Play,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { deriveLqipPlaceholder, deriveModernSources } from "@/lib/imageSources";
 import { getQueryFn } from "@/lib/queryClient";
@@ -84,6 +83,9 @@ function formatCount(n: number): string {
   return String(n);
 }
 
+const igBtn =
+  "flex-1 h-[34px] rounded-lg text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 active:opacity-70 transition-opacity";
+
 export function ProfileInstagramView({
   user,
   avatarUrl,
@@ -105,7 +107,6 @@ export function ProfileInstagramView({
   const username = (user.username || user.email?.split("@")[0] || "user").replace(/^@+/, "");
   const initials = `${(user.firstName || displayName[0] || "U")[0]}${(user.lastName || "")[0] || ""}`;
   const bioText = user.bio || user.profile?.tagline || "";
-  const sportsList = user.profile?.sports ?? [];
   const highlightsList = user.profile?.highlights ?? [];
 
   const { data: photos = [], isLoading: photosLoading } = useQuery<UserPhoto[]>({
@@ -134,32 +135,46 @@ export function ProfileInstagramView({
     { value: user.followingCount ?? 0, label: "following" },
   ];
 
+  const btnSurface = {
+    background: "var(--ig-profile-btn-bg)",
+    color: "var(--surna-text)",
+  };
+
+  const handleShareProfile = () => {
+    const url = `${window.location.origin}/profile/${userId}`;
+    if (navigator.share) {
+      void navigator.share({ title: displayName, url }).catch(() => {});
+    } else {
+      void navigator.clipboard.writeText(url);
+    }
+  };
+
   return (
-    <div className="space-y-5 pb-2">
-      {/* Top row: avatar + stats */}
-      <div className="flex items-center gap-6 px-1">
-        <Avatar className="w-[96px] h-[96px] shrink-0 ring-1 ring-white/10">
-          <AvatarImage src={avatarUrl} alt={displayName} />
+    <div className="pb-2">
+      {/* Avatar + stats — Instagram layout */}
+      <div className="flex items-center gap-5 mb-3">
+        <Avatar className="w-[86px] h-[86px] shrink-0">
+          <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
           <AvatarFallback
-            className="text-2xl font-semibold"
+            className="text-xl font-semibold"
             style={{ background: "var(--surna-elevated)", color: "var(--surna-text)" }}
           >
             {initials}
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 grid grid-cols-3 text-center">
+        <div className="flex-1 flex justify-around text-center">
           {stats.map((stat) => (
             <button
               key={stat.label}
               type="button"
               onClick={() => onStatClick?.(stat.label)}
-              className="py-1 active:opacity-70 transition-opacity"
+              className="min-w-0 px-1 active:opacity-60 transition-opacity"
             >
-              <span className="block text-lg font-bold leading-tight" style={{ color: "var(--surna-text)" }}>
+              <span className="block text-[18px] font-semibold leading-none" style={{ color: "var(--surna-text)" }}>
                 {formatCount(typeof stat.value === "number" ? stat.value : 0)}
               </span>
-              <span className="text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
+              <span className="block text-[13px] mt-1" style={{ color: "var(--surna-text)" }}>
                 {stat.label}
               </span>
             </button>
@@ -167,326 +182,282 @@ export function ProfileInstagramView({
         </div>
       </div>
 
-      {/* Name & bio */}
-      <div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <h2 className="text-[15px] font-bold" style={{ color: "var(--surna-text)" }}>
+      {/* Name, username, bio */}
+      <div className="mb-3 space-y-0.5">
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-[14px] font-semibold leading-tight" style={{ color: "var(--surna-text)" }}>
             {displayName}
           </h2>
           {user.verified ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "var(--surna-gold)" }} />
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--surna-gold)" }} />
           ) : null}
         </div>
+        <p className="text-[14px] leading-tight" style={{ color: "var(--surna-text-secondary)" }}>
+          @{username}
+        </p>
         {bioText ? (
-          <p className="text-[14px] mt-1 leading-snug whitespace-pre-wrap" style={{ color: "var(--surna-text)" }}>
+          <p className="text-[14px] pt-1 leading-snug whitespace-pre-wrap" style={{ color: "var(--surna-text)" }}>
             {bioText}
           </p>
         ) : null}
         {user.location ? (
-          <div className="flex items-center gap-1 mt-1.5">
-            <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--surna-text-muted)" }} />
+          <div className="flex items-center gap-1 pt-0.5">
+            <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--surna-text-secondary)" }} />
             <span className="text-[13px]" style={{ color: "var(--surna-text-secondary)" }}>
               {user.location}
             </span>
           </div>
         ) : null}
-        {sportsList.length > 0 ? (
-          <p className="text-[13px] mt-1.5" style={{ color: "var(--surna-text-secondary)" }}>
-            {sportsList.join(" · ")}
-          </p>
-        ) : null}
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-2 px-1">
+      {/* Action row — IG Edit / Share or Follow / Message */}
+      <div className="flex gap-1.5 mb-4">
         {isOwnProfile ? (
           <>
             <Link href={ROUTES.profileEdit} className="flex-1">
-              <Button
-                variant="outline"
-                className="w-full rounded-lg h-10 text-[13px] font-semibold"
-                style={{ background: "var(--surna-elevated)", color: "var(--surna-text)", borderColor: "var(--surna-border)" }}
-              >
+              <button type="button" className={cn(igBtn, "w-full")} style={btnSurface}>
                 Edit profile
-              </Button>
+              </button>
             </Link>
-            <Link href="/my-hub">
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-lg h-10 w-10 shrink-0"
-                style={{ background: "var(--surna-elevated)", borderColor: "var(--surna-border)" }}
-                aria-label="My Hub"
-              >
-                <LayoutGrid className="w-4 h-4" style={{ color: "var(--surna-text)" }} />
-              </Button>
-            </Link>
+            <button
+              type="button"
+              onClick={handleShareProfile}
+              className={cn(igBtn, "w-[34px] flex-none px-0")}
+              style={btnSurface}
+              aria-label="Share profile"
+            >
+              <Share2 className="w-[15px] h-[15px]" strokeWidth={2} />
+            </button>
           </>
         ) : (
           <>
-            <Button
+            <button
+              type="button"
               onClick={onFollowToggle}
               disabled={socialLoading}
               className={cn(
-                "flex-1 rounded-lg h-10 text-[13px] font-semibold",
-                user.isFollowing ? "bg-transparent" : "bg-primary text-primary-foreground",
+                igBtn,
+                user.isFollowing ? "" : "bg-primary text-primary-foreground",
               )}
-              style={user.isFollowing ? { border: "1px solid var(--surna-border)", color: "var(--surna-text)" } : undefined}
+              style={user.isFollowing ? { ...btnSurface, border: "none" } : undefined}
             >
               {socialLoading ? (
-                <div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin mx-auto" />
+                <div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" />
               ) : user.isFollowing ? (
-                <>
-                  <UserMinus className="w-4 h-4 mr-1.5 inline" />
-                  Following
-                </>
+                "Following"
               ) : (
                 <>
-                  <UserPlus className="w-4 h-4 mr-1.5 inline" />
+                  <UserPlus className="w-4 h-4" strokeWidth={2} />
                   Follow
                 </>
               )}
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={onMessage}
-              variant="outline"
-              className="flex-1 rounded-lg h-10 text-[13px] font-semibold"
-              style={{ background: "var(--surna-elevated)", color: "var(--surna-text)", borderColor: "var(--surna-border)" }}
+              className={igBtn}
+              style={btnSurface}
             >
-              <MessageCircle className="w-4 h-4 mr-1.5 inline" />
               Message
-            </Button>
+            </button>
           </>
         )}
       </div>
 
       {headerExtra}
 
-      {/* Highlights — Instagram story-style rings */}
+      {/* Highlights */}
       {highlightsList.length > 0 ? (
-        <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
-          <div className="flex gap-4 pb-1">
+        <div className="overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
+          <div className="flex gap-4">
             {highlightsList.map((h) => (
-              <div key={h.id} className="shrink-0 flex flex-col items-center w-[72px]">
+              <div key={h.id} className="shrink-0 flex flex-col items-center w-[64px]">
                 <div
-                  className="w-[68px] h-[68px] rounded-full p-[2px]"
+                  className="w-[64px] h-[64px] rounded-full p-[2px]"
                   style={{
                     background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
                   }}
                 >
                   <div
-                    className="w-full h-full rounded-full flex items-center justify-center text-2xl border-2"
-                    style={{
-                      background: "var(--surna-void)",
-                      borderColor: "var(--surna-void)",
-                    }}
+                    className="w-full h-full rounded-full flex items-center justify-center text-xl"
+                    style={{ background: "var(--surna-base)", border: "2px solid var(--surna-base)" }}
                   >
                     {h.emoji || "🏆"}
                   </div>
                 </div>
                 <span
-                  className="text-[11px] font-medium mt-1.5 text-center leading-tight line-clamp-2 w-full"
+                  className="text-[11px] mt-1.5 text-center leading-tight line-clamp-1 w-full"
                   style={{ color: "var(--surna-text)" }}
                 >
                   {h.title}
                 </span>
               </div>
             ))}
-            {isOwnProfile ? (
-              <Link href={ROUTES.profileEdit} className="shrink-0 flex flex-col items-center w-[72px]">
-                <div
-                  className="w-[68px] h-[68px] rounded-full border-2 border-dashed flex items-center justify-center"
-                  style={{ borderColor: "var(--surna-border)" }}
-                >
-                  <span className="text-xl" style={{ color: "var(--surna-text-muted)" }}>+</span>
-                </div>
-                <span className="text-[11px] mt-1.5" style={{ color: "var(--surna-text-muted)" }}>
-                  New
-                </span>
-              </Link>
-            ) : null}
           </div>
         </div>
-      ) : isOwnProfile ? (
-        <Link href={ROUTES.profileEdit}>
-          <div
-            className="rounded-xl px-4 py-3 text-[13px] text-center border border-dashed active:opacity-80"
-            style={{ borderColor: "var(--surna-border)", color: "var(--surna-text-secondary)" }}
-          >
-            Add highlights — trophies, seasons, milestones
-          </div>
-        </Link>
       ) : null}
 
-      {/* Tab bar */}
-      <div
-        className="flex border-t"
-        style={{ borderColor: "var(--surna-border)" }}
-      >
+      {/* Tab bar — icon only, IG style */}
+      <div className="flex border-t border-b" style={{ borderColor: "var(--surna-border)" }}>
         {(
           [
-            { id: "posts" as const, icon: LayoutGrid, label: "Posts" },
-            { id: "photos" as const, icon: ImageIcon, label: "Photos" },
-            { id: "stats" as const, icon: BarChart3, label: "Stats" },
+            { id: "posts" as const, icon: LayoutGrid },
+            { id: "photos" as const, icon: ImageIcon },
+            { id: "stats" as const, icon: BarChart3 },
           ] as const
-        ).map(({ id, icon: Icon }) => (
+        ).map(({ id, icon: TabIcon }) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
             className={cn(
-              "flex-1 flex items-center justify-center py-3 border-b-[2px] transition-colors",
-              tab === id ? "border-[var(--surna-text)] opacity-100" : "border-transparent opacity-40",
+              "flex-1 flex items-center justify-center py-3 border-b-[1.5px] -mb-px transition-opacity",
+              tab === id ? "border-[var(--surna-text)] opacity-100" : "border-transparent opacity-50",
             )}
+            aria-label={id}
           >
-            <Icon className="w-5 h-5" style={{ color: "var(--surna-text)" }} />
+            <TabIcon className="w-6 h-6" strokeWidth={tab === id ? 2 : 1.5} style={{ color: "var(--surna-text)" }} />
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
-      {tab === "posts" ? (
-        postsLoading ? (
-          <div className="grid grid-cols-3 gap-[2px]">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-square animate-pulse" style={{ background: "var(--surna-elevated)" }} />
-            ))}
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="py-16 text-center">
-            <LayoutGrid className="w-12 h-12 mx-auto mb-3 opacity-30" style={{ color: "var(--surna-text)" }} />
-            <p className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>
-              No posts yet
-            </p>
-            {isOwnProfile ? (
-              <Link href="/feed">
-                <p className="text-xs mt-1 underline" style={{ color: "var(--surna-text-secondary)" }}>
-                  Share your first post
-                </p>
-              </Link>
-            ) : null}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-[2px]">
-            {posts.map((post) => (
-              <button
-                key={post.id}
-                type="button"
-                className="aspect-square relative overflow-hidden bg-muted/20 active:opacity-90"
-                onClick={() => onPostClick?.(post.id)}
-                data-testid={`profile-post-${post.id}`}
-              >
-                {post.imageUrl ? (
+      {/* Grid — edge to edge */}
+      <div className="-mx-4 mt-0">
+        {tab === "posts" ? (
+          postsLoading ? (
+            <div className="grid grid-cols-3 gap-[1px]">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="aspect-square animate-pulse" style={{ background: "var(--surna-elevated)" }} />
+              ))}
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="py-20 text-center px-6">
+              <LayoutGrid className="w-12 h-12 mx-auto mb-3 opacity-25" style={{ color: "var(--surna-text)" }} />
+              <p className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
+                No posts yet
+              </p>
+              {isOwnProfile ? (
+                <Link href="/feed">
+                  <p className="text-sm mt-2" style={{ color: "var(--surna-text-secondary)" }}>
+                    When you share photos, they will appear here.
+                  </p>
+                </Link>
+              ) : null}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-[1px]">
+              {posts.map((post) => (
+                <button
+                  key={post.id}
+                  type="button"
+                  className="aspect-square relative overflow-hidden active:opacity-90"
+                  style={{ background: "var(--surna-elevated)" }}
+                  onClick={() => onPostClick?.(post.id)}
+                  data-testid={`profile-post-${post.id}`}
+                >
+                  {post.imageUrl ? (
+                    <LazyImage
+                      src={post.imageUrl}
+                      alt=""
+                      sources={deriveModernSources(post.imageUrl)}
+                      placeholder={deriveLqipPlaceholder(post.imageUrl)}
+                      wrapperClassName="block w-full h-full"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : post.videoUrl ? (
+                    <>
+                      <div className="w-full h-full flex items-center justify-center text-xs" style={{ background: "var(--surna-elevated)" }}>
+                        <Play className="w-8 h-8 opacity-80" fill="currentColor" style={{ color: "var(--surna-text)" }} />
+                      </div>
+                    </>
+                  ) : (
+                    <div
+                      className="w-full h-full p-2 flex items-center justify-center text-center text-[10px] leading-tight line-clamp-4"
+                      style={{ color: "var(--surna-text-secondary)" }}
+                    >
+                      {post.content?.slice(0, 80) || "Post"}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )
+        ) : null}
+
+        {tab === "photos" ? (
+          photosLoading ? (
+            <div className="grid grid-cols-3 gap-[1px]">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="aspect-square animate-pulse" style={{ background: "var(--surna-elevated)" }} />
+              ))}
+            </div>
+          ) : photos.length === 0 ? (
+            <div className="py-20 text-center px-6">
+              <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-25" style={{ color: "var(--surna-text)" }} />
+              <p className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
+                No photos yet
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-[1px]">
+              {photos.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="aspect-square overflow-hidden active:opacity-90"
+                  onClick={() => window.open(p.imageUrl, "_blank")}
+                >
                   <LazyImage
-                    src={post.imageUrl}
-                    alt=""
-                    sources={deriveModernSources(post.imageUrl)}
-                    placeholder={deriveLqipPlaceholder(post.imageUrl)}
+                    src={p.imageUrl}
+                    alt={p.caption || "photo"}
+                    sources={deriveModernSources(p.imageUrl)}
+                    placeholder={deriveLqipPlaceholder(p.imageUrl)}
                     wrapperClassName="block w-full h-full"
                     className="w-full h-full object-cover"
                   />
-                ) : post.videoUrl ? (
-                  <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ background: "var(--surna-elevated)", color: "var(--surna-text-muted)" }}>
-                    ▶
-                  </div>
-                ) : (
-                  <div
-                    className="w-full h-full p-2 flex items-center justify-center text-center text-[10px] leading-tight line-clamp-4"
-                    style={{ background: "var(--surna-elevated)", color: "var(--surna-text-secondary)" }}
-                  >
-                    {post.content?.slice(0, 80) || "Post"}
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-        )
-      ) : null}
+                </button>
+              ))}
+            </div>
+          )
+        ) : null}
 
-      {tab === "photos" ? (
-        photosLoading ? (
-          <div className="grid grid-cols-3 gap-[2px]">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-square animate-pulse" style={{ background: "var(--surna-elevated)" }} />
-            ))}
-          </div>
-        ) : photos.length === 0 ? (
-          <div className="py-16 text-center">
-            <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30" style={{ color: "var(--surna-text)" }} />
-            <p className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>
-              No photos yet
-            </p>
-            {isOwnProfile ? (
-              <Link href={`/person/${userId}#gallery`}>
-                <p className="text-xs mt-1 underline" style={{ color: "var(--surna-text-secondary)" }}>
-                  Add photos to your gallery
-                </p>
-              </Link>
+        {tab === "stats" ? (
+          <div className="px-4 py-6 space-y-4">
+            <div className="grid grid-cols-3 gap-6 text-center">
+              {[
+                { label: "Wins", value: wins || "—" },
+                { label: "This week", value: activityTotal || "—" },
+                {
+                  label: "Goals",
+                  value:
+                    performance?.monthlyGoals?.total != null
+                      ? `${performance.monthlyGoals.completed ?? 0}/${performance.monthlyGoals.total}`
+                      : "—",
+                },
+              ].map((s) => (
+                <div key={s.label}>
+                  <p className="text-[22px] font-semibold leading-none" style={{ color: "var(--surna-text)" }}>
+                    {s.value}
+                  </p>
+                  <p className="text-[13px] mt-1" style={{ color: "var(--surna-text-secondary)" }}>
+                    {s.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {performance?.consistency ? (
+              <p className="text-[13px] text-center" style={{ color: "var(--surna-text-secondary)" }}>
+                Activity: {performance.consistency}
+              </p>
             ) : null}
+            {!performance && (
+              <p className="text-[13px] text-center py-6" style={{ color: "var(--surna-text-muted)" }}>
+                Play games and join events to build your stats.
+              </p>
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-[2px]">
-            {photos.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className="aspect-square overflow-hidden"
-                onClick={() => window.open(p.imageUrl, "_blank")}
-              >
-                <LazyImage
-                  src={p.imageUrl}
-                  alt={p.caption || "photo"}
-                  sources={deriveModernSources(p.imageUrl)}
-                  placeholder={deriveLqipPlaceholder(p.imageUrl)}
-                  wrapperClassName="block w-full h-full"
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        )
-      ) : null}
-
-      {tab === "stats" ? (
-        <div className="py-4 space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Wins", value: wins || "—" },
-              { label: "This week", value: activityTotal || "—" },
-              {
-                label: "Goals",
-                value:
-                  performance?.monthlyGoals?.total != null
-                    ? `${performance.monthlyGoals.completed ?? 0}/${performance.monthlyGoals.total}`
-                    : "—",
-              },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-xl py-4 text-center"
-                style={{ background: "var(--surna-elevated)", border: "0.5px solid var(--surna-border)" }}
-              >
-                <p className="text-xl font-bold" style={{ color: "var(--surna-text)" }}>
-                  {s.value}
-                </p>
-                <p className="text-[11px] mt-0.5" style={{ color: "var(--surna-text-secondary)" }}>
-                  {s.label}
-                </p>
-              </div>
-            ))}
-          </div>
-          {performance?.consistency ? (
-            <p className="text-[13px] text-center" style={{ color: "var(--surna-text-secondary)" }}>
-              Activity: {performance.consistency}
-            </p>
-          ) : null}
-          {!performance && (
-            <p className="text-[13px] text-center py-8" style={{ color: "var(--surna-text-muted)" }}>
-              Play games and join events to build your stats.
-            </p>
-          )}
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
