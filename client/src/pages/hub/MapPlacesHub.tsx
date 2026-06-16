@@ -76,6 +76,7 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
   const [showSearchSheet, setShowSearchSheet] = useState(false);
 
   const mt = getMapOverlayTheme(true);
+  const mapCtrlIconColor = "#ffffff";
 
   const [enabledLayers] = useState<EnabledLayers>({
     events: true,
@@ -287,28 +288,26 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
 
               {!selectedPin && (
                 <>
-                  <div className="absolute top-3 right-3 z-[1000] pointer-events-auto flex flex-col gap-1.5">
+                  <div className="absolute top-3 right-2 z-[1000] pointer-events-auto flex flex-col items-center gap-0.5">
                     <button
                       type="button"
                       onClick={() => setShowSearchSheet(true)}
-                      className="map-tool-btn flex items-center justify-center backdrop-blur-xl"
-                      style={{ background: mt.surfaceBgStrong, border: mt.surfaceBorder }}
+                      className="map-ctrl-icon active:scale-90 transition-transform"
                       aria-label="Search"
                     >
-                      <Search size={22} strokeWidth={2.25} style={{ color: mt.textPrimary }} />
+                      <Search size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowFilterSheet(true)}
-                      className="relative map-tool-btn flex items-center justify-center backdrop-blur-xl"
-                      style={{ background: mt.surfaceBgStrong, border: mt.surfaceBorder }}
+                      className="map-ctrl-icon active:scale-90 transition-transform relative"
                       aria-label="Filters"
                     >
-                      <SlidersHorizontal size={22} strokeWidth={2.25} style={{ color: mt.textPrimary }} />
+                      <SlidersHorizontal size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
                       {activeFilterCount > 0 && (
                         <span
-                          className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full text-[9px] font-bold flex items-center justify-center px-1"
-                          style={{ background: mt.chipActiveBg, color: mt.chipActiveText }}
+                          className="absolute top-0 right-0 min-w-[16px] h-4 rounded-full text-[9px] font-bold flex items-center justify-center px-1"
+                          style={{ background: mt.chipActiveBg, color: mt.chipActiveText, filter: "none" }}
                         >
                           {activeFilterCount}
                         </span>
@@ -316,17 +315,14 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
                     </button>
                   </div>
 
-                  <div
-                    className="absolute bottom-24 right-3 z-[999] pointer-events-auto"
-                  >
+                  <div className="absolute bottom-24 right-2 z-[999] pointer-events-auto">
                     <button
                       type="button"
-                      className="w-11 h-11 rounded-full flex items-center justify-center shadow-lg backdrop-blur-xl"
-                      style={{ background: mt.surfaceBg, border: mt.surfaceBorder }}
+                      className="map-ctrl-icon active:scale-90 transition-transform"
                       onClick={handleRecenter}
                       aria-label="Center on my location"
                     >
-                      <Navigation size={18} style={{ color: mt.iconColor }} />
+                      <Navigation size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
                     </button>
                   </div>
 

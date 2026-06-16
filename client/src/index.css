@@ -2014,19 +2014,26 @@
   position: relative;
 }
 
-.surna-spot-avatar--square {
-  border-radius: 10px;
-  border-width: 2px;
+/* Map toolbar — icon only, no circular/square chrome */
+.map-ctrl-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  cursor: pointer;
+  line-height: 0;
 }
 
-.surna-snap-avatar--square .surna-snap-avatar-ring {
-  border-radius: 12px;
+.map-ctrl-icon svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.65));
 }
 
-.map-tool-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+.surna-map-light .map-ctrl-icon svg {
+  filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.75));
 }
 
 .surna-spot-avatar-ring-event,

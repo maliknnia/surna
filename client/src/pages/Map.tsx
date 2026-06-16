@@ -597,6 +597,7 @@ export default function MapPage({
 
   /** Map tiles follow app theme — light app = light map, dark app = dark map. */
   const effectiveMapStyle = isDark ? "dark" : "standard";
+  const mapCtrlIconColor = isDark ? "#ffffff" : "#111111";
 
   return (
     <div className={`relative overflow-hidden ${embedded ? 'h-full w-full' : 'h-screen w-screen'}`} style={{ background: pageBg }}>
@@ -734,48 +735,48 @@ export default function MapPage({
             )}
 
             {!mapChromeHidden && (
-            <div className={`absolute z-[999] flex flex-col gap-1.5 ${embedded ? "top-16 right-3" : "top-3 right-3"}`}>
+            <div className={`absolute z-[999] flex flex-col items-center gap-0.5 ${embedded ? "top-16 right-2" : "top-3 right-2"}`}>
               <button
                 onClick={() => toggleMapTileStyleMenu()}
-                className="map-tool-btn flex items-center justify-center active:scale-90 transition-transform"
-                style={{ background: surfaceBgStrong, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
+                className="map-ctrl-icon active:scale-90 transition-transform relative"
                 data-testid="button-map-style-toolbar"
                 data-map-style-trigger
                 aria-label="Map style — dark, light, or satellite"
                 title="Map style"
               >
-                <Layers size={22} strokeWidth={2.25} style={{ color: textPrimary }} />
+                <Layers size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
               </button>
 
               <button
                 onClick={() => setShowSettingsSheet(true)}
-                className="map-tool-btn flex items-center justify-center active:scale-90 transition-transform"
-                style={{ background: surfaceBgStrong, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
+                className="map-ctrl-icon active:scale-90 transition-transform"
                 data-testid="button-map-settings"
                 aria-label="Map settings"
               >
-                <Settings size={22} strokeWidth={2.25} style={{ color: textPrimary }} />
+                <Settings size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
               </button>
 
               <button
                 onClick={() => setShowSearchSheet(true)}
-                className="map-tool-btn flex items-center justify-center active:scale-90 transition-transform"
-                style={{ background: surfaceBgStrong, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
+                className="map-ctrl-icon active:scale-90 transition-transform"
                 aria-label="Search map"
                 data-testid="button-map-search"
               >
-                <Search size={22} strokeWidth={2.25} style={{ color: textPrimary }} />
+                <Search size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
               </button>
 
               <button
                 onClick={() => setShowFilterSheet(true)}
-                className="map-tool-btn flex items-center justify-center active:scale-90 transition-transform relative"
-                style={{ background: surfaceBgStrong, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
+                className="map-ctrl-icon active:scale-90 transition-transform relative"
                 data-testid="button-open-filters"
+                aria-label="Filters"
               >
-                <SlidersHorizontal size={22} strokeWidth={2.25} style={{ color: textPrimary }} />
+                <SlidersHorizontal size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold px-1" style={{ background: mt.chipActiveBg, color: mt.chipActiveText }}>
+                  <span
+                    className="absolute top-0 right-0 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[9px] font-bold px-1"
+                    style={{ background: mt.chipActiveBg, color: mt.chipActiveText, filter: "none" }}
+                  >
                     {activeFilterCount}
                   </span>
                 )}
@@ -783,22 +784,20 @@ export default function MapPage({
 
               <button
                 onClick={() => navigate('/discover/people')}
-                className="map-tool-btn flex items-center justify-center active:scale-90 transition-transform"
-                style={{ background: surfaceBgStrong, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
+                className="map-ctrl-icon active:scale-90 transition-transform"
                 data-testid="button-find-players"
                 aria-label="Find Players Nearby"
               >
-                <UserPlus size={22} strokeWidth={2.25} style={{ color: textPrimary }} />
+                <UserPlus size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
               </button>
 
               <button
-                className="map-tool-btn flex items-center justify-center active:scale-90 transition-transform"
+                className="map-ctrl-icon active:scale-90 transition-transform"
                 onClick={handleRecenter}
-                style={{ background: surfaceBgStrong, backdropFilter: 'blur(20px)', border: surfaceBorder, boxShadow: surfaceShadow }}
                 data-testid="button-recenter"
                 aria-label="Recenter"
               >
-                <Navigation size={22} strokeWidth={2.25} style={{ color: textPrimary }} />
+                <Navigation size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
               </button>
             </div>
             )}
