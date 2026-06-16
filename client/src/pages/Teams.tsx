@@ -17,6 +17,7 @@ import { PanelBackButton } from "@/components/panels/PanelBackButton";
 import { markNavReturn, mobilePanelReturnPath, useSmartBack } from "@/lib/navigation";
 import { getPanelTheme } from "@/lib/panelTheme";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { createHubPath } from "@/lib/createHub";
@@ -152,15 +153,10 @@ export default function Teams({
       try {
         const joinedTeam = (teams || []).find((t: any) => t.id === teamIdForPostRef.current);
         if (joinedTeam) {
-          fetch("/api/posts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-              content: `Joined team ${joinedTeam.name}${joinedTeam.sport ? ` (${joinedTeam.sport})` : ""}.`,
-              teamId: joinedTeam.id,
-              sport: joinedTeam.sport,
-            }),
+          apiRequest("POST", "/api/posts", {
+            content: `Joined team ${joinedTeam.name}${joinedTeam.sport ? ` (${joinedTeam.sport})` : ""}.`,
+            teamId: joinedTeam.id,
+            sport: joinedTeam.sport,
           }).catch(() => {});
         }
       } catch {}

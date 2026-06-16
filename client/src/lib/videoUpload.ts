@@ -1,4 +1,4 @@
-/** Client-side video compression before Cloudinary upload */
+import { apiFormRequest } from "@/lib/queryClient";
 export async function compressVideoForUpload(file: File, maxSizeMb = 50): Promise<File> {
   if (file.size <= maxSizeMb * 1024 * 1024) return file;
 
@@ -71,11 +71,7 @@ export async function uploadVideoPost(params: {
   if (params.sport) form.append("sport", params.sport);
   if (params.location) form.append("location", params.location);
 
-  const res = await fetch("/api/posts/video", {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
+  const res = await apiFormRequest("POST", "/api/posts/video", form);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Video upload failed");

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { uploadCreateFile } from '@/lib/uploadCreateMedia';
 
 interface UploadJob {
   id: string;
@@ -42,112 +43,63 @@ export function MediaUploader({
     
     const fileArray = Array.from(files).slice(0, maxFiles);
     setUploading(true);
+
+    const newJobs: UploadJob[] = fileArray.map((file, index) => ({
+      id: `job-${Date.now()}-${index}`,
+      filename: file.name,
+      status: 'processing' as const,
+      progress: 10,
+      type: file.type.startsWith('image/') ? 'image' : 'video',
+    }));
+    setJobs(newJobs);
     
     try {
-      const formData = new FormData();
-      fileArray.forEach(file => {
-        formData.append('files', file);
-      });
-      
-      // Start upload
-      const response = await fetch('/api/media/upload-multiple', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        throw new Error('Upload failed');
+      const completed: Array<{ url: string; thumbnailUrl?: string; type: string }> = [];
+
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
+        const jobId = newJobs[i].id;
+        setJobs((prev) =>
+          prev.map((j) => (j.id === jobId ? { ...j, progress: 40 } : j)),
+        );
+
+        const uploaded = await uploadCreateFile(file);
+        const type = file.type.startsWith('video/') ? 'video' : 'image';
+        completed.push({
+          url: uploaded.publicUrl,
+          thumbnailUrl: type === 'image' ? uploaded.publicUrl : undefined,
+          type,
+        });
+
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === jobId
+              ? { ...j, status: 'completed', progress: 100, url: uploaded.publicUrl }
+              : j,
+          ),
+        );
       }
-      
-      const result = await response.json();
-      
-      // Initialize job tracking
-      const newJobs: UploadJob[] = result.jobs.map((job: any, index: number) => ({
-        id: job.jobId,
-        filename: fileArray[index].name,
-        status: job.status,
-        progress: 0,
-        type: fileArray[index].type.startsWith('image/') ? 'image' : 'video'
-      }));
-      
-      setJobs(newJobs);
-      
-      // Poll for completion
-      const polling = setInterval(async () => {
-        const updates = await Promise.all(
-          newJobs.map(async (job) => {
-            try {
-              const statusResponse = await fetch(`/api/media/status/${job.id}`);
-              const statusData = await statusResponse.json();
-              
-              return {
-                ...job,
-                status: statusData.status,
-                progress: statusData.status === 'completed' ? 100 : 
-                         statusData.status === 'processing' ? 50 : 0,
-                url: statusData.result?.originalUrl,
-                thumbnailUrl: statusData.result?.thumbnailUrl,
-                error: statusData.error
-              };
-            } catch {
-              return { ...job, status: 'failed' as const, error: 'Status check failed' };
-            }
-          })
-        );
-        
-        setJobs(updates);
-        
-        // Check if all completed
-        const allCompleted = updates.every(job => 
-          job.status === 'completed' || job.status === 'failed'
-        );
-        
-        if (allCompleted) {
-          clearInterval(polling);
-          setUploading(false);
-          
-          const successfulUploads = updates
-            .filter(job => job.status === 'completed' && job.url)
-            .map(job => ({
-              url: job.url!,
-              thumbnailUrl: job.thumbnailUrl,
-              type: job.type
-            }));
-          
-          if (successfulUploads.length > 0) {
-            onUploadComplete?.(successfulUploads);
-            toast({
-              title: "Upload Complete",
-              description: `${successfulUploads.length} file(s) uploaded successfully`,
-            });
-          }
-          
-          const failedCount = updates.filter(job => job.status === 'failed').length;
-          if (failedCount > 0) {
-            toast({
-              title: "Upload Issues",
-              description: `${failedCount} file(s) failed to upload`,
-              variant: "destructive",
-            });
-          }
-        }
-      }, 1000);
-      
-    } catch (error: any) {
-      console.error('Upload error:', error);
+
+      onUploadComplete?.(completed);
+      toast({ title: 'Upload complete', description: `${completed.length} file(s) ready.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.status === 'processing' || j.status === 'pending'
+            ? { ...j, status: 'failed', error: message }
+            : j,
+        ),
+      );
+      toast({ title: 'Upload failed', description: message, variant: 'destructive' });
+    } finally {
       setUploading(false);
-      toast({
-        title: "Upload Failed",
-        description: error.message || 'Failed to upload files',
-        variant: "destructive",
-      });
     }
   }, [maxFiles, onUploadComplete, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    
     if (e.dataTransfer.files) {
       handleFileSelect(e.dataTransfer.files);
     }
@@ -158,8 +110,7 @@ export function MediaUploader({
     setDragOver(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragLeave = useCallback(() => {
     setDragOver(false);
   }, []);
 
@@ -167,82 +118,74 @@ export function MediaUploader({
     setJobs(prev => prev.filter(job => job.id !== jobId));
   };
 
-  const getTypeIcon = (type: string) => {
-    if (type === 'image') return <Image className="w-4 h-4" />;
-    if (type === 'video') return <Video className="w-4 h-4" />;
-    return <FileText className="w-4 h-4" />;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-transparent border border-border';
-      case 'failed': return 'bg-transparent border border-border';
-      case 'processing': return 'bg-transparent border border-border';
-      default: return 'bg-transparent border border-border';
-    }
-  };
-
   return (
     <div className={className}>
-      <Card
-        className={`bg-transparent border border-border transition-colors ${
-          dragOver ? ' bg-transparent border border-border' : ''
+      {/* Drop Zone */}
+      <Card 
+        className={`border-2 border-dashed transition-colors ${
+          dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
         }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
       >
-        <CardContent className="p-6">
-          <div className="text-center">
-            <Upload className="mx-auto h-12 w-12 text-token-text mb-4" />
-            <h3 className="text-lg font-medium text-token-text mb-2">
-              Upload Media Files
-            </h3>
-            <p className="text-sm text-token-text mb-4">
-              Drag and drop files here, or click to select
-            </p>
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="mb-2"
-              data-testid="button-select-files"
-            >
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-              Select Files
-            </Button>
-            <p className="text-xs text-token-text">
-              Maximum {maxFiles} files. Images and videos only.
-            </p>
-            
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept={accept}
-              onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
-              className="hidden"
-              data-testid="input-file-hidden"
-            />
-          </div>
+        <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+          <Upload className="h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Upload Media</h3>
+          <p className="text-muted-foreground mb-4">
+            Drag and drop files here, or click to browse
+          </p>
+          <Button 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="mb-2"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              'Choose Files'
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Supports images and videos up to {process.env.UPLOAD_MAX_MB || 15}MB
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={accept}
+            multiple={maxFiles > 1}
+            className="hidden"
+            onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
+          />
         </CardContent>
       </Card>
 
+      {/* Upload Jobs */}
       {jobs.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <h4 className="text-sm font-medium text-token-text">Upload Progress</h4>
+        <div className="mt-4 space-y-3">
+          <h4 className="font-medium">Upload Progress</h4>
           {jobs.map((job) => (
-            <Card key={job.id} className="p-3" data-testid={`card-upload-job-${job.id}`}>
+            <Card key={job.id} className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  {getTypeIcon(job.type)}
-                  <span className="text-sm font-medium truncate" data-testid={`text-filename-${job.id}`}>
+                <div className="flex items-center gap-2">
+                  {job.type === 'image' ? (
+                    <Image className="h-4 w-4" />
+                  ) : job.type === 'video' ? (
+                    <Video className="h-4 w-4" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                  <span className="text-sm font-medium truncate max-w-[200px]">
                     {job.filename}
                   </span>
-                  <Badge 
-                    variant="secondary" 
-                    className={getStatusColor(job.status)}
-                    data-testid={`badge-status-${job.id}`}
-                  >
+                  <Badge variant={
+                    job.status === 'completed' ? 'default' :
+                    job.status === 'failed' ? 'destructive' :
+                    'secondary'
+                  }>
                     {job.status}
                   </Badge>
                 </div>
@@ -250,35 +193,33 @@ export function MediaUploader({
                   variant="ghost"
                   size="sm"
                   onClick={() => removeJob(job.id)}
-                  data-testid={`button-remove-job-${job.id}`}
                 >
-                  <X className="w-4 h-4" />
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
               
               {job.status === 'processing' && (
-                <Progress value={job.progress} className="w-full" />
+                <Progress value={job.progress} className="mb-2" />
               )}
               
               {job.error && (
-                <p className="text-xs text-token-text mt-1" data-testid={`text-error-${job.id}`}>
-                  {job.error}
-                </p>
+                <p className="text-sm text-destructive">{job.error}</p>
               )}
               
-              {job.status === 'completed' && job.url && (
+              {job.url && job.status === 'completed' && (
                 <div className="mt-2">
                   {job.type === 'image' ? (
                     <img 
-                      src={job.thumbnailUrl || job.url} 
-                      alt="Upload preview"
-                      className="w-16 h-16 object-cover rounded"
-                      data-testid={`img-preview-${job.id}`}
+                      src={job.url} 
+                      alt={job.filename}
+                      className="h-20 w-20 object-cover rounded"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-transparent border border-border rounded flex items-center justify-center">
-                      <Video className="w-6 h-6 text-token-text" />
-                    </div>
+                    <video 
+                      src={job.url}
+                      className="h-20 w-32 object-cover rounded"
+                      controls
+                    />
                   )}
                 </div>
               )}

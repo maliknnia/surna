@@ -132,6 +132,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, asc, lt, gte, lte, isNotNull } from "drizzle-orm";
+import { formatApiComment, formatApiCommentFromJoin, type ApiComment } from "./lib/commentFormat";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -149,8 +150,8 @@ export interface IStorage {
   likePost(userId: string, postId: string): Promise<boolean>;
   unlikePost(userId: string, postId: string): Promise<boolean>;
   isPostLiked(userId: string, postId: string): Promise<boolean>;
-  addComment(postId: string, authorId: string, content: string): Promise<void>;
-  addCommentReply(commentId: string, authorId: string, content: string): Promise<void>;
+  addComment(postId: string, authorId: string, content: string): Promise<ApiComment>;
+  addCommentReply(commentId: string, authorId: string, content: string): Promise<ApiComment>;
   editComment(commentId: string, authorId: string, content: string): Promise<boolean>;
   deleteComment(commentId: string, authorId: string): Promise<boolean>;
   getCommentReplies(commentId: string): Promise<any[]>;
@@ -657,40 +658,56 @@ export class DatabaseStorage implements IStorage {
     return !!like;
   }
 
-  async addComment(postId: string, authorId: string, content: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      // Add comment
-      await tx.insert(postComments).values({ postId, authorId, content });
-      
-      // Update comments count
+  async addComment(postId: string, authorId: string, content: string): Promise<ApiComment> {
+    const [newComment] = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(postComments)
+        .values({ postId, authorId, content })
+        .returning();
+
       await tx
         .update(posts)
         .set({ commentsCount: sql`${posts.commentsCount} + 1` })
         .where(eq(posts.id, postId));
+
+      return [inserted];
     });
+
+    const author = await this.getUser(authorId);
+    if (!author) throw new Error("Author not found");
+    return formatApiComment(newComment, author);
   }
 
-  async addCommentReply(commentId: string, authorId: string, content: string): Promise<void> {
+  async addCommentReply(commentId: string, authorId: string, content: string): Promise<ApiComment> {
     const [parentComment] = await db
       .select()
       .from(postComments)
       .where(eq(postComments.id, commentId));
-    
+
     if (!parentComment) throw new Error("Parent comment not found");
-    
-    await db.transaction(async (tx) => {
-      await tx.insert(postComments).values({
-        postId: parentComment.postId,
-        authorId,
-        content,
-        parentId: commentId,
-      });
-      
+
+    const [newComment] = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(postComments)
+        .values({
+          postId: parentComment.postId,
+          authorId,
+          content,
+          parentId: commentId,
+        })
+        .returning();
+
       await tx
         .update(posts)
         .set({ commentsCount: sql`${posts.commentsCount} + 1` })
         .where(eq(posts.id, parentComment.postId));
+
+      return [inserted];
     });
+
+    const author = await this.getUser(authorId);
+    if (!author) throw new Error("Author not found");
+    return formatApiComment(newComment, author);
   }
 
   async editComment(commentId: string, authorId: string, content: string): Promise<boolean> {
@@ -748,7 +765,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(postComments.parentId, commentId))
       .orderBy(asc(postComments.createdAt));
     
-    return replies.map(({ comment, author }) => ({ ...comment, author }));
+    return replies.map(({ comment, author }) => formatApiComment(comment, author));
   }
 
   async sharePost(userId: string, postId: string, shareType: string = "default"): Promise<void> {
@@ -2878,7 +2895,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(postComments.authorId, users.id))
       .where(and(eq(postComments.postId, postId), eq(postComments.removed, false)))
       .orderBy(asc(postComments.createdAt));
-    return rows;
+    return rows.map((row) => formatApiCommentFromJoin(row));
   }
 
   async getTeamPhotos(teamId: string): Promise<any[]> {

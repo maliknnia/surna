@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   X, Send, ChevronDown, ChevronRight,
@@ -75,6 +76,30 @@ function timeAgo(dateStr: string | Date) {
 
 function authorName(a: CommentAuthor) {
   return a.firstName && a.lastName ? `${a.firstName} ${a.lastName}` : a.email || "User";
+}
+
+function normalizeComment(raw: Record<string, unknown>): Comment {
+  if (raw.author && typeof raw.author === "object") {
+    return raw as unknown as Comment;
+  }
+  const name = String(raw.authorName || raw.authorUsername || "User");
+  const parts = name.split(/\s+/);
+  return {
+    id: String(raw.id),
+    content: String(raw.content),
+    authorId: String(raw.authorId),
+    postId: raw.postId ? String(raw.postId) : undefined,
+    parentId: (raw.parentId as string | null) ?? null,
+    createdAt: (raw.createdAt as string | Date) ?? new Date(),
+    likesCount: Number(raw.likesCount ?? 0),
+    author: {
+      id: String(raw.authorId),
+      firstName: parts[0] ?? null,
+      lastName: parts.slice(1).join(" ") || null,
+      email: raw.authorUsername ? String(raw.authorUsername) : null,
+      profileImageUrl: raw.authorAvatar ? String(raw.authorAvatar) : null,
+    },
+  };
 }
 
 /* ─── Highlight @mentions ────────────────────────────────────────────────────── */
@@ -349,6 +374,7 @@ function CommentRow({
 /* ─── Main CommentsSheet ─────────────────────────────────────────────────────── */
 export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", entityId, initialComments }: CommentsSheetProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const queryClient = useQueryClient();
@@ -397,10 +423,13 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
       if (!postId) return [];
-      const r = await fetch(`/api/posts/${postId}/details`, { credentials: "include" });
+      const r = await fetch(`/api/posts/${postId}/comments`, { credentials: "include" });
       if (!r.ok) return [];
       const data = await r.json();
-      return data.comments?.filter((c: Comment) => !c.parentId) || [];
+      const list = Array.isArray(data) ? data : [];
+      return list
+        .filter((c: Record<string, unknown>) => !c.parentId)
+        .map((c: Record<string, unknown>) => normalizeComment(c));
     },
     enabled: isOpen && !!postId,
   });
@@ -426,10 +455,20 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
       return r.json();
     },
     onSuccess: (newComment) => {
-      setLocalComments((prev) => [newComment, ...prev]);
+      const comment = normalizeComment(newComment as Record<string, unknown>);
+      if (!replyTo) {
+        setLocalComments((prev) => [comment, ...prev]);
+      }
       setInputText("");
       setReplyTo(null);
       if (postId) queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Could not post comment",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 

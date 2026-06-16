@@ -69,6 +69,7 @@ import { recommendationService } from "./services/recommendationService";
 import { registerAnalyticsRoutes } from "./routes/analytics";
 import { registerFeatureRouters } from "./features";
 import { deriveImageVariants } from "./features/media/variants";
+import { formatApiComment, formatApiCommentFromJoin, type ApiComment } from "./lib/commentFormat";
 import { authMiddleware } from "./middleware/auth";
 import { adminRouter } from "./admin/admin.routes";
 import { errorHandler } from "./middleware/errorHandler";
@@ -1785,9 +1786,9 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       }
       const content = sanitizePlainText(String(req.body.content || ""));
       const { postId } = req.params;
-      
-      await storage.addComment(postId, userId, content);
-      res.json({ success: true });
+
+      const comment = await storage.addComment(postId, userId, content);
+      res.json(comment);
     } catch (error: unknown) {
       console.error("Error adding comment:", error);
       res.status(500).json({ message: "Failed to add comment" });
@@ -1801,10 +1802,10 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         return res.status(401).json({ message: "User not authenticated" });
       }
       const { commentId } = req.params;
-      const { content } = req.body;
-      
-      await storage.addCommentReply(commentId, userId, content);
-      res.json({ success: true });
+      const content = sanitizePlainText(String(req.body.content || ""));
+
+      const comment = await storage.addCommentReply(commentId, userId, content);
+      res.json(comment);
     } catch (error: unknown) {
       console.error("Error adding comment reply:", error);
       res.status(500).json({ message: "Failed to add comment reply" });

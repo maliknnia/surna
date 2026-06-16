@@ -24,6 +24,7 @@ import { AvatarStack } from "@/components/people/AvatarStack";
 import { AddToCalendarSheet } from "@/components/calendar/AddToCalendarSheet";
 import { calendarInputFromApiEvent } from "@/lib/eventCalendar";
 import { mapPath } from "@/lib/mapNavigation";
+import { apiRequest } from "@/lib/queryClient";
 import { extractDominantColor, getCachedColor } from "@/lib/extractColor";
 import EventHeader, { eventAccentColor } from "./components/EventHeader";
 
@@ -249,15 +250,10 @@ export default function EventDetailsPage() {
           setRsvpStatus(status);
           if (data?.ticket?.code) setTicketCode(data.ticket.code);
           if (status === "going") {
-            fetch("/api/posts", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({
-                content: `Attending ${ev.title}${ev.location ? ` at ${ev.location}` : ""}.`,
-                eventId: ev.id,
-                sport: ev.sport,
-              }),
+            apiRequest("POST", "/api/posts", {
+              content: `Attending ${ev.title}${ev.location ? ` at ${ev.location}` : ""}.`,
+              eventId: ev.id,
+              sport: ev.sport,
             }).catch(() => {});
           }
         },
