@@ -194,10 +194,10 @@ function CommentRow({
 
   const isOwn = comment.authorId === currentUserId;
 
-  const nameClr  = isDark ? "rgba(255,255,255,0.92)" : "#1a0033";
-  const textClr  = isDark ? "rgba(255,255,255,0.82)" : "#2d0055";
-  const metaClr  = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.38)";
-  const replyClr = isDark ? "rgba(255,255,255,0.42)" : "rgba(109,40,217,0.55)";
+  const nameClr  = isDark ? "rgba(255,255,255,0.92)" : "#111111";
+  const textClr  = isDark ? "rgba(255,255,255,0.88)" : "#262626";
+  const metaClr  = isDark ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.45)";
+  const replyClr = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
   const actionBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(109,40,217,0.05)";
   const reactionBg = isDark ? "rgba(22,12,42,0.97)" : "rgba(255,255,255,0.98)";
   const reactionBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
@@ -513,24 +513,24 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
 
   const isImmersive = variant === "immersive";
 
-  // Theme
-  const sheetBg     = isDark ? (isImmersive ? "#121212" : "#0e0814") : "#ffffff";
+  // Theme — Instagram-clean, Surna tokens
+  const sheetBg     = isDark ? (isImmersive ? "#121212" : "#0a0a0a") : "#ffffff";
   const handleBg    = isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.12)";
-  const titleClr    = isDark ? "#ffffff" : "#1a0033";
-  const borderTop   = isDark ? "rgba(255,255,255,0.08)" : "rgba(109,40,217,0.1)";
-  const sortBg      = isDark ? "rgba(255,255,255,0.07)" : "rgba(109,40,217,0.06)";
-  const sortActiveClr = isDark ? "#ffffff" : "#5B21B6";
-  const sortInactiveClr = isDark ? "rgba(255,255,255,0.4)" : "rgba(109,40,217,0.45)";
-  const dividerClr  = isDark ? "rgba(255,255,255,0.06)" : "rgba(109,40,217,0.06)";
-  const inputBarBg  = isDark ? "rgba(8,4,16,0.97)" : "rgba(255,255,255,0.98)";
-  const inputBg     = isDark ? "rgba(255,255,255,0.08)" : "rgba(109,40,217,0.05)";
-  const inputBorder = isDark ? "rgba(167,139,250,0.2)" : "rgba(109,40,217,0.15)";
-  const inputClr    = isDark ? "rgba(255,255,255,0.9)" : "#1a0033";
-  const sendBg      = `linear-gradient(135deg, #3D1878 0%, #6B35D8 100%)`;
-  const mentionClr  = isDark ? "#C4B5FD" : "#6D28D9";
-  const emojiRowBg  = isDark ? "rgba(255,255,255,0.04)" : "rgba(109,40,217,0.03)";
-  const replyBg     = isDark ? "rgba(167,139,250,0.1)" : "rgba(109,40,217,0.06)";
-  const replyAccent = isDark ? "rgba(167,139,250,0.7)" : "rgba(109,40,217,0.6)";
+  const titleClr    = isDark ? "#ffffff" : "#111111";
+  const borderTop   = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const sortBg      = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)";
+  const sortActiveClr = isDark ? "#ffffff" : "#111111";
+  const sortInactiveClr = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
+  const dividerClr  = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const inputBarBg  = isDark ? "rgba(8,8,8,0.97)" : "rgba(255,255,255,0.98)";
+  const inputBg     = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)";
+  const inputBorder = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)";
+  const inputClr    = isDark ? "rgba(255,255,255,0.92)" : "#111111";
+  const sendBg      = isDark ? "#ffffff" : "#111111";
+  const mentionClr  = isDark ? "#60a5fa" : "#2563eb";
+  const emojiRowBg  = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const replyBg     = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
+  const replyAccent = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)";
 
   const entityCTAs = ENTITY_CTAS[entityType] || [];
 
@@ -788,16 +788,17 @@ export function CommentsSheet({ isOpen, onClose, postId, entityType = "person", 
                 style={{
                   width: 40, height: 40, borderRadius: "50%",
                   background: sendBg, border: "none",
+                  color: isDark ? "#111111" : "#ffffff",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   cursor: "pointer", flexShrink: 0,
-                  boxShadow: "0 2px 10px rgba(91,45,192,0.4)",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
                   transition: "transform 120ms ease",
                 }}
                 onPointerDown={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(0.92)"; }}
                 onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
                 data-testid="comment-send-button"
               >
-                <Send size={16} color="#ffffff" />
+                <Send size={16} color={isDark ? "#111111" : "#ffffff"} />
               </button>
             )}
           </div>

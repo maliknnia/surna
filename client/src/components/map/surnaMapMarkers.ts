@@ -89,7 +89,7 @@ export function createSurnaMarker(
   isFocused = false,
   _zoom = 15,
 ): L.DivIcon {
-  const iconSize = isFocused ? 44 : 40;
+  const iconSize = isFocused ? 48 : 44;
   const avatarUrl = resolveMapPinAvatarUrl(pin);
   const focusClass = isFocused ? "surna-spot-focused" : "";
   const activeClass = pin.presence === "active" ? "surna-spot-active" : "";

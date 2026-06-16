@@ -238,9 +238,6 @@ function authorInitials(v: VideoPost) {
   return (f + l).toUpperCase() || "U";
 }
 
-const REELS_TABS = ["For You", "Nearby", "Following"] as const;
-type ReelsTab = (typeof REELS_TABS)[number];
-
 /* ─── Single video slide ────────────────────────────────────────────────────── */
 
 function VideoSlide({
@@ -628,7 +625,6 @@ export function FeedVideoViewer({
   const [, setLocation] = useLocation();
   const resolvedVideos = filterVideosByMode(videos, mode);
   const initialVideoIdx = Math.max(0, Math.min(initialIndex, Math.max(0, resolvedVideos.length - 1)));
-  const [activeProgress, setActiveProgress] = useState(0);
   const { data: myProfile } = useQuery<any>({
     queryKey: ["/api/profile", (user as any)?.id],
     enabled: !!(user as any)?.id,
@@ -643,7 +639,6 @@ export function FeedVideoViewer({
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharePostId, setSharePostId] = useState<string>("");
   const [toast, setToast]             = useState<string | null>(null);
-  const [reelsTab, setReelsTab]       = useState<ReelsTab>("For You");
   const [showOptions, setShowOptions] = useState(false);
   const [hiddenIds, setHiddenIds]     = useState<Set<string>>(new Set());
   const [followPending, setFollowPending] = useState(false);
@@ -663,17 +658,7 @@ export function FeedVideoViewer({
     setLikedSet(new Set(videos.filter((v) => v.likedByMe).map((v) => v.id)));
     setSavedSet(new Set(videos.filter((v) => v.savedByMe).map((v) => v.id)));
   }, [videos]);
-  const filteredVideos = resolvedVideos.filter((v) => {
-    if (hiddenIds.has(v.id)) return false;
-    if (mode === "videos") return true;
-    if (reelsTab === "For You") return true;
-    if (reelsTab === "Nearby") {
-      const fromDistance = Number(String(v.distance || "").replace(/[^\d.]/g, ""));
-      if (!Number.isNaN(fromDistance) && fromDistance <= 10) return true;
-      return (v.context || "").toLowerCase() === "nearby";
-    }
-    return followingIds.has(v.author.id) || (v.context || "").toLowerCase() === "following";
-  });
+  const filteredVideos = resolvedVideos.filter((v) => !hiddenIds.has(v.id));
   const safeVideos = filteredVideos.length > 0 ? filteredVideos : resolvedVideos;
 
   // Vertical swipe
@@ -863,58 +848,25 @@ export function FeedVideoViewer({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Story-like top progress lines — reels only */}
-          {mode === "reels" && (
-          <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
-            {safeVideos.map((_, idx) => (
-              <div key={`line-${idx}`} style={{ flex: 1, height: 2, borderRadius: 99, background: "rgba(255,255,255,0.25)", overflow: "hidden" }}>
-                <div
-                  style={{
-                    height: "100%",
-                    width: idx < currentIdx ? "100%" : idx === currentIdx ? `${Math.max(0, Math.min(100, activeProgress * 100))}%` : "0%",
-                    background: "rgba(255,255,255,0.95)",
-                    transition: "width 0.18s linear",
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-          )}
-
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <button
               onClick={handleClose}
-              style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               data-testid="video-back-button"
             >
               <ArrowLeft size={18} color="white" />
             </button>
 
-            {mode === "reels" ? (
-            <div style={{ display: "flex", gap: 6 }}>
-              {REELS_TABS.map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setReelsTab(tab)}
-                  style={{
-                    padding: "5px 13px", borderRadius: 99,
-                    fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer",
-                    background: reelsTab === tab ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.14)",
-                    color: reelsTab === tab ? "#000" : "rgba(255,255,255,0.75)",
-                    backdropFilter: "blur(10px)",
-                    transition: "all 0.18s ease",
-                  }}
-                >
-                  {tab}
-                </button>
-              ))}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: IMMERSIVE.icon, fontWeight: 800, fontSize: 15 }}>
+              {mode === "videos" ? (
+                <>
+                  <Play size={16} fill={IMMERSIVE.icon} color={IMMERSIVE.icon} />
+                  <span>{contextLabel || "Videos"}</span>
+                </>
+              ) : (
+                <span>{contextLabel || "Reels"}</span>
+              )}
             </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: IMMERSIVE.icon, fontWeight: 800, fontSize: 15 }}>
-                <Play size={16} fill={IMMERSIVE.icon} color={IMMERSIVE.icon} />
-                <span>{contextLabel || "Videos"}</span>
-              </div>
-            )}
 
             <div style={{ width: 38 }} />
           </div>
@@ -950,7 +902,7 @@ export function FeedVideoViewer({
                   savedSet={savedSet} onSave={handleSave}
                   onComment={() => setShowComments(true)}
                   onShare={handleShare}
-                  onProgress={setActiveProgress}
+                  onProgress={() => {}}
                   onOpenAuthor={(authorId) => setLocation(`/person/${authorId}`)}
                   onOpenOptions={() => setShowOptions(true)}
                   followingIds={followingIds}

@@ -243,6 +243,27 @@
     min-height: 100dvh;
     overscroll-behavior: none;
     background-color: var(--surna-nav-bar-bg);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #root::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 
   /* Plus Jakarta Sans Bold — titles, section headers, logo, stat figures */
@@ -1991,6 +2012,21 @@
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
   border: 2.5px solid rgba(255, 255, 255, 0.92);
   position: relative;
+}
+
+.surna-spot-avatar--square {
+  border-radius: 10px;
+  border-width: 2px;
+}
+
+.surna-snap-avatar--square .surna-snap-avatar-ring {
+  border-radius: 12px;
+}
+
+.map-tool-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
 }
 
 .surna-spot-avatar-ring-event,

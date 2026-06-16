@@ -191,7 +191,7 @@ export function FeedPostCard({
   });
 
   return (
-    <article className="border-b border-border bg-background" data-testid={`feed-post-${post.id}`}>
+    <article className="bg-background pb-3" data-testid={`feed-post-${post.id}`}>
       {/* Header */}
       <div className="flex items-center gap-3 px-3 py-2.5">
         <button
@@ -277,48 +277,50 @@ export function FeedPostCard({
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-3 px-3 py-2">
+      <div className="flex items-center gap-1 px-3 py-2.5">
         <button
           type="button"
           onClick={() => onLike(post.id, isLiked)}
-          className="p-1 transition-transform active:scale-95"
+          className="p-2 transition-transform active:scale-95"
           aria-label={isLiked ? "Unlike" : "Like"}
           data-testid={`like-post-${post.id}`}
         >
           <Heart
-            className={cn("h-6 w-6", isLiked ? "fill-red-500 text-red-500" : "text-foreground")}
+            className={cn("h-[26px] w-[26px]", isLiked ? "fill-red-500 text-red-500" : "")}
+            style={!isLiked ? { color: "var(--surna-text)" } : undefined}
             strokeWidth={isLiked ? 0 : 2}
           />
         </button>
         <button
           type="button"
           onClick={() => onComment(post.id)}
-          className="p-1 transition-transform active:scale-95"
+          className="p-2 transition-transform active:scale-95"
           aria-label="Comment"
           data-testid={`comment-post-${post.id}`}
         >
-          <MessageCircle className="h-6 w-6 text-foreground" strokeWidth={1.75} />
+          <MessageCircle className="h-[26px] w-[26px]" style={{ color: "var(--surna-text)" }} strokeWidth={2} />
         </button>
         <button
           type="button"
           onClick={() => onShare(post.id)}
-          className="p-1 transition-transform active:scale-95"
+          className="p-2 transition-transform active:scale-95"
           aria-label="Share"
           data-testid={`share-post-${post.id}`}
         >
-          <Send className="h-6 w-6 text-foreground -rotate-12" strokeWidth={1.75} />
+          <Send className="h-[26px] w-[26px] -rotate-12" style={{ color: "var(--surna-text)" }} strokeWidth={2} />
         </button>
         <div className="flex-1" />
         <button
           type="button"
           onClick={() => onSave(post.id, isSaved)}
-          className="p-1 transition-transform active:scale-95"
+          className="p-2 transition-transform active:scale-95"
           aria-label={isSaved ? "Unsave" : "Save"}
           data-testid={`save-post-${post.id}`}
         >
           <Bookmark
-            className={cn("h-6 w-6", isSaved ? "fill-foreground text-foreground" : "text-foreground")}
-            strokeWidth={isSaved ? 0 : 1.75}
+            className={cn("h-[26px] w-[26px]", isSaved ? "fill-[var(--surna-text)]" : "")}
+            style={{ color: "var(--surna-text)" }}
+            strokeWidth={isSaved ? 0 : 2}
           />
         </button>
       </div>

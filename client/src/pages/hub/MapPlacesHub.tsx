@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import VenueCard from "@/components/VenueCard";
 import InteractiveMap from "@/components/map/InteractiveMap";
 import PinSheet from "@/components/map/PinSheet";
-import { MapModeBar } from "@/components/map/MapModeBar";
 import { MapFilterSheet } from "@/components/map/MapFilterSheet";
 import { MapSearchSheet } from "@/components/map/MapSearchSheet";
+import { generateDemoPins, enrichMapPinPhotos } from "@/lib/demoMapPins";
+import { flags } from "@/config/flags";
 import { calculateDistance, type Coordinates } from "@/lib/geo";
 import { getMapOverlayTheme } from "@/lib/panelTheme";
 import {
@@ -228,6 +229,14 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
     return allPins;
   }, [mapData, filterType, sportFilter, distanceFilter, searchQuery, enabledLayers, effectiveLocation]);
 
+  const displayPins = useMemo(() => {
+    let list = pins.map((p) => enrichMapPinPhotos(p));
+    if (flags.mapDemoPins && list.length === 0) {
+      list = generateDemoPins(effectiveLocation);
+    }
+    return list;
+  }, [pins, effectiveLocation]);
+
   const activeFilterCount = activeMapFilterCount({
     filterType,
     timeFilter,
@@ -266,25 +275,10 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
     <div className="h-full w-full bg-background text-token-text relative overflow-hidden">
       {currentViewMode === 'map' ? (
         <div className="h-full relative">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin w-6 h-6 border-2 border-border border-t-white rounded-full mx-auto mb-2" />
-                <p className="text-token-text-secondary text-sm">Loading map...</p>
-              </div>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-token-text mb-2">Failed to load map data</p>
-                <Button onClick={() => window.location.reload()} size="sm">Retry</Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <InteractiveMap center={effectiveLocation} pins={pins} onPinClick={handlePinClick} className="h-full" />
+          <>
+              <InteractiveMap center={effectiveLocation} pins={displayPins} onPinClick={handlePinClick} className="h-full" />
 
-              {pins.length === 0 && (
+              {displayPins.length === 0 && !isLoading && (
                 <div className="absolute left-1/2 top-1/2 z-[500] -translate-x-1/2 -translate-y-1/2 px-5 py-4 rounded-2xl text-center max-w-[260px] bg-card border border-border shadow-lg">
                   <p className="text-sm font-semibold text-token-text mb-1">No locations on map</p>
                   <p className="text-xs text-token-text-muted">Adjust filters or try list view.</p>
@@ -293,44 +287,33 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
 
               {!selectedPin && (
                 <>
-                  <div className="absolute top-3 left-3 right-3 z-[1000] pointer-events-none flex flex-col items-end gap-2">
-                    <MapModeBar
-                      value={filterType}
-                      onChange={setFilterType}
-                      surfaceBg={mt.surfaceBg}
-                      surfaceBorder={mt.surfaceBorder}
-                      activeBg={mt.chipActiveBg}
-                      activeText={mt.chipActiveText}
-                      mutedText={mt.iconMuted}
-                    />
-                    <div className="pointer-events-auto flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowSearchSheet(true)}
-                        className="w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-xl"
-                        style={{ background: mt.surfaceBg, border: mt.surfaceBorder }}
-                        aria-label="Search"
-                      >
-                        <Search size={17} style={{ color: mt.iconColor }} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowFilterSheet(true)}
-                        className="relative w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-xl"
-                        style={{ background: mt.surfaceBg, border: mt.surfaceBorder }}
-                        aria-label="Filters"
-                      >
-                        <SlidersHorizontal size={17} style={{ color: mt.iconColor }} />
-                        {activeFilterCount > 0 && (
-                          <span
-                            className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full text-[9px] font-bold flex items-center justify-center px-1"
-                            style={{ background: mt.chipActiveBg, color: mt.chipActiveText }}
-                          >
-                            {activeFilterCount}
-                          </span>
-                        )}
-                      </button>
-                    </div>
+                  <div className="absolute top-3 right-3 z-[1000] pointer-events-auto flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowSearchSheet(true)}
+                      className="map-tool-btn flex items-center justify-center backdrop-blur-xl"
+                      style={{ background: mt.surfaceBgStrong, border: mt.surfaceBorder }}
+                      aria-label="Search"
+                    >
+                      <Search size={22} strokeWidth={2.25} style={{ color: mt.textPrimary }} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowFilterSheet(true)}
+                      className="relative map-tool-btn flex items-center justify-center backdrop-blur-xl"
+                      style={{ background: mt.surfaceBgStrong, border: mt.surfaceBorder }}
+                      aria-label="Filters"
+                    >
+                      <SlidersHorizontal size={22} strokeWidth={2.25} style={{ color: mt.textPrimary }} />
+                      {activeFilterCount > 0 && (
+                        <span
+                          className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full text-[9px] font-bold flex items-center justify-center px-1"
+                          style={{ background: mt.chipActiveBg, color: mt.chipActiveText }}
+                        >
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </button>
                   </div>
 
                   <div
@@ -417,7 +400,6 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
                 }}
               />
             </>
-          )}
         </div>
       ) : (
         <div className="h-full overflow-y-auto pb-24">

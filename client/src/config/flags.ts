@@ -18,6 +18,6 @@ export const flags = {
   videoContent: true,  // Phase 3: Video uploads and playback
   liveStreaming: true,  // Phase 4: Live streaming capability
   aiRecommendations: true,  // Phase 5: AI-powered suggestions
-  /** Supplement empty viewport with demo pins — dev only by default */
-  mapDemoPins: import.meta.env.DEV,
+  /** Supplement empty viewport with demo pins so the map always looks alive in dev and prod previews */
+  mapDemoPins: true,
 } as const;

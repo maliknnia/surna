@@ -135,10 +135,10 @@ export function ProfileInstagramView({
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Top row: avatar + stats (Instagram layout) */}
-      <div className="flex items-center gap-5">
-        <Avatar className="w-[86px] h-[86px] ring-2 ring-white/10 shrink-0">
+    <div className="space-y-5 pb-2">
+      {/* Top row: avatar + stats */}
+      <div className="flex items-center gap-6 px-1">
+        <Avatar className="w-[96px] h-[96px] shrink-0 ring-1 ring-white/10">
           <AvatarImage src={avatarUrl} alt={displayName} />
           <AvatarFallback
             className="text-2xl font-semibold"
@@ -198,14 +198,14 @@ export function ProfileInstagramView({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 px-1">
         {isOwnProfile ? (
           <>
             <Link href={ROUTES.profileEdit} className="flex-1">
               <Button
                 variant="outline"
-                className="w-full rounded-lg h-9 text-[13px] font-semibold border-border"
-                style={{ background: "var(--surna-elevated)", color: "var(--surna-text)" }}
+                className="w-full rounded-lg h-10 text-[13px] font-semibold"
+                style={{ background: "var(--surna-elevated)", color: "var(--surna-text)", borderColor: "var(--surna-border)" }}
               >
                 Edit profile
               </Button>
@@ -214,8 +214,8 @@ export function ProfileInstagramView({
               <Button
                 variant="outline"
                 size="icon"
-                className="rounded-lg h-9 w-9 border-border shrink-0"
-                style={{ background: "var(--surna-elevated)" }}
+                className="rounded-lg h-10 w-10 shrink-0"
+                style={{ background: "var(--surna-elevated)", borderColor: "var(--surna-border)" }}
                 aria-label="My Hub"
               >
                 <LayoutGrid className="w-4 h-4" style={{ color: "var(--surna-text)" }} />
@@ -228,9 +228,10 @@ export function ProfileInstagramView({
               onClick={onFollowToggle}
               disabled={socialLoading}
               className={cn(
-                "flex-1 rounded-lg h-9 text-[13px] font-semibold",
-                user.isFollowing ? "border border-border bg-transparent" : "bg-foreground text-background",
+                "flex-1 rounded-lg h-10 text-[13px] font-semibold",
+                user.isFollowing ? "bg-transparent" : "bg-primary text-primary-foreground",
               )}
+              style={user.isFollowing ? { border: "1px solid var(--surna-border)", color: "var(--surna-text)" } : undefined}
             >
               {socialLoading ? (
                 <div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin mx-auto" />
@@ -249,8 +250,8 @@ export function ProfileInstagramView({
             <Button
               onClick={onMessage}
               variant="outline"
-              className="flex-1 rounded-lg h-9 text-[13px] font-semibold border-border"
-              style={{ background: "var(--surna-elevated)", color: "var(--surna-text)" }}
+              className="flex-1 rounded-lg h-10 text-[13px] font-semibold"
+              style={{ background: "var(--surna-elevated)", color: "var(--surna-text)", borderColor: "var(--surna-border)" }}
             >
               <MessageCircle className="w-4 h-4 mr-1.5 inline" />
               Message
@@ -319,7 +320,7 @@ export function ProfileInstagramView({
 
       {/* Tab bar */}
       <div
-        className="flex border-t border-b"
+        className="flex border-t"
         style={{ borderColor: "var(--surna-border)" }}
       >
         {(
@@ -334,8 +335,8 @@ export function ProfileInstagramView({
             type="button"
             onClick={() => setTab(id)}
             className={cn(
-              "flex-1 flex items-center justify-center py-2.5 border-b-2 transition-colors",
-              tab === id ? "border-foreground" : "border-transparent opacity-50",
+              "flex-1 flex items-center justify-center py-3 border-b-[2px] transition-colors",
+              tab === id ? "border-[var(--surna-text)] opacity-100" : "border-transparent opacity-40",
             )}
           >
             <Icon className="w-5 h-5" style={{ color: "var(--surna-text)" }} />

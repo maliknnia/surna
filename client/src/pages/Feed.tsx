@@ -650,7 +650,7 @@ export default function Feed() {
                       </div>
                     )}
 
-                    <div ref={containerRef} className="space-y-0" style={{ minHeight: "50vh" }}>
+                    <div ref={containerRef} className="divide-y divide-border/40" style={{ minHeight: "50vh" }}>
                       {isLoading && feedEntries.length === 0 ? (
                         <div data-testid="posts-loading">
                           <PostSkeleton /><PostSkeleton /><PostSkeleton />

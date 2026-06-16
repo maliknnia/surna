@@ -97,11 +97,14 @@ export function mapSnapAvatarMarkup(opts: {
         `</span>`,
       ].join("");
 
+  const isPerson = opts.type === "person" || opts.type === "player";
+  const shapeClass = isPerson ? "" : " surna-spot-avatar--square";
+
   return [
-    `<div class="surna-snap-avatar surna-snap-type-${opts.type} ${story} ${opts.focused ? "surna-snap-avatar--focused" : ""}">`,
+    `<div class="surna-snap-avatar surna-snap-type-${opts.type}${isPerson ? "" : " surna-snap-avatar--square"} ${story} ${opts.focused ? "surna-snap-avatar--focused" : ""}">`,
     `<div class="surna-snap-avatar-shadow" aria-hidden="true"></div>`,
     `<div class="surna-snap-avatar-ring">`,
-    `<div class="surna-spot-avatar" style="width:${size}px;height:${size}px">`,
+    `<div class="surna-spot-avatar${shapeClass}" style="width:${size}px;height:${size}px">`,
     inner,
     presence,
     `</div>`,
