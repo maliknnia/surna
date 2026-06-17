@@ -279,8 +279,8 @@ export function FeedPostCard({
             key={`tag-${idx}`}
             type="button"
             onClick={() => setLocation(`/search?hashtag=${encodeURIComponent(tag)}`)}
-            className="text-primary hover:underline"
-            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+            className="font-semibold active:opacity-70"
+            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--surna-text-secondary)" }}
           >
             {part}
           </button>
@@ -315,8 +315,12 @@ export function FeedPostCard({
 
   return (
     <article
-      className="mb-3"
-      style={{ background: "var(--surna-base)", color: "var(--surna-text)" }}
+      className="mx-3 mb-3 rounded-2xl overflow-hidden"
+      style={{
+        background: "var(--surna-surface)",
+        border: "1px solid var(--surna-border)",
+        color: "var(--surna-text)",
+      }}
       data-testid={`feed-post-${post.id}`}
     >
       {/* Header — photos/text only (videos use overlay) */}
@@ -462,7 +466,8 @@ export function FeedPostCard({
       {post.postType === "event" && (post as { eventData?: { title?: string; id?: string; sport?: string } }).eventData && (
         <button
           type="button"
-          className="mx-3 mb-1 text-left text-sm font-semibold text-primary hover:underline"
+          className="mx-3 mb-2 text-left text-sm font-semibold active:opacity-80"
+          style={{ color: "var(--surna-text)" }}
           onClick={() => {
             const eventData = (post as { eventData?: { id?: string; sport?: string } }).eventData;
             const eventId = eventData?.id ?? (post as { eventId?: string }).eventId;
@@ -481,7 +486,8 @@ export function FeedPostCard({
       {links.primary && post.postType !== "event" && (
         <button
           type="button"
-          className="mx-3 mb-1 text-sm font-semibold text-primary hover:underline"
+          className="mx-3 mb-2 text-sm font-semibold active:opacity-80"
+          style={{ color: "var(--surna-text-secondary)" }}
           onClick={() => setLocation(links.primary!)}
         >
           {(post as { postType?: string }).postType === "place" ? "View venue" : "View details"}

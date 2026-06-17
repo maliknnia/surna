@@ -1,6 +1,7 @@
 /**
  * Demo events with fake attendee counts for home / events list when API is sparse.
  */
+import { resolveDemoCreatorId } from "@/lib/demoProfiles";
 
 export type DemoEvent = {
   id: string;
@@ -178,7 +179,7 @@ export function demoEventToApiRow(demo: DemoEvent) {
   const end = new Date(new Date(demo.starts_at).getTime() + 2 * 3600_000).toISOString();
   return {
     id: demo.id,
-    creator_id: "demo-creator",
+    creator_id: resolveDemoCreatorId(demo),
     title: demo.title,
     description: demo.description,
     starts_at: demo.starts_at,

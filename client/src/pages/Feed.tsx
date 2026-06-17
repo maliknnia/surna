@@ -31,8 +31,6 @@ import { flags } from "@/config/flags";
 import { StoriesBar } from "@/components/stories/StoriesBar";
 import { StoryViewer } from "@/components/stories/StoryViewer";
 import { AddStoryModal } from "@/components/stories/AddStoryModal";
-import { GoLiveModal } from "@/components/live/GoLiveModal";
-import { LiveStreamViewer } from "@/components/live/LiveStreamViewer";
 import { ShareModal } from "@/components/ShareModal";
 import { CommentsSheet } from "@/components/comments/CommentsSheet";
 import { cn } from "@/lib/utils";
@@ -44,6 +42,7 @@ import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
 import { usePostEngagement } from "@/hooks/usePostEngagement";
 import { useVideoViewer } from "@/hooks/useVideoViewer";
 import { mapPostToVideoPost } from "@/lib/mapPostToVideoPost";
+import { DEMO_FEED_VIDEOS, DEMO_REELS } from "@/components/video/FeedVideoViewer";
 
 /** Neutral media placeholder for non-tinted surfaces (e.g. video rail) */
 const FEED_MEDIA_BG = "var(--surna-elevated)";
@@ -83,7 +82,11 @@ const STALE_TIME = 1000 * 60 * 2; // 2 minutes stale time
 // Post Skeleton Loader Component
 function PostSkeleton() {
   return (
-    <div className="border-b border-border bg-background" data-testid="post-skeleton">
+    <div
+      className="mx-3 mb-3 rounded-2xl overflow-hidden"
+      style={{ background: "var(--surna-surface)", border: "1px solid var(--surna-border)" }}
+      data-testid="post-skeleton"
+    >
       <div className="flex items-center gap-3 px-3 py-2.5">
         <Skeleton className="h-9 w-9 rounded-full bg-token-text/10" />
         <div className="space-y-1">
@@ -219,9 +222,7 @@ export default function Feed() {
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStory, setSelectedStory] = useState<{ userId: string; storyIndex: number } | null>(null);
   const [showAddStory, setShowAddStory] = useState(false);
-  const [showGoLive, setShowGoLive] = useState(false);
   const [showNotifPeek, setShowNotifPeek] = useState(false);
-  const [viewingStream, setViewingStream] = useState<{ streamId: string; isStreamer: boolean } | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharePostId, setSharePostId] = useState<string>("");
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
@@ -387,9 +388,11 @@ export default function Feed() {
   );
 
   const videoPostsFromFeed = useMemo(() => {
-    return posts
+    const fromFeed = posts
       .filter((p: any) => p.videoUrl)
       .map((p: any) => mapPostToVideoPost(p));
+    if (fromFeed.length > 0) return fromFeed;
+    return [...DEMO_REELS, ...DEMO_FEED_VIDEOS];
   }, [posts]);
 
   const handleFollowUser = useCallback(async (userId: string) => {
@@ -541,19 +544,6 @@ export default function Feed() {
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => setShowGoLive(true)}
-            className="mr-0.5 flex h-7 items-center gap-1 rounded-full px-2 active:scale-95 transition-transform"
-            style={{
-              border: "1px solid rgba(255, 59, 48, 0.35)",
-              background: "rgba(255, 59, 48, 0.12)",
-            }}
-            aria-label="Go live"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-surna-ios-red" />
-            <span className="text-[10px] font-bold uppercase tracking-wide text-surna-coral">Live</span>
-          </button>
           <button
             type="button"
             onClick={() => setShowNotifPeek(true)}
@@ -883,24 +873,6 @@ export default function Feed() {
         onClose={() => setDetailPostId(null)}
         onVideoClick={handleVideoClick}
       />
-
-      {/* Go Live Modal */}
-      <GoLiveModal
-        open={showGoLive}
-        onClose={() => setShowGoLive(false)}
-        onStreamStarted={(streamId) => {
-          setViewingStream({ streamId, isStreamer: true });
-        }}
-      />
-
-      {/* Live Stream Viewer */}
-      {viewingStream && (
-        <LiveStreamViewer
-          streamId={viewingStream.streamId}
-          isStreamer={viewingStream.isStreamer}
-          onClose={() => setViewingStream(null)}
-        />
-      )}
 
     </div>
   );

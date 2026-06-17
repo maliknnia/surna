@@ -140,9 +140,11 @@ export default function PlacePostCard({ post, onShare }: PlacePostCardProps) {
   };
 
   return (
-    <div className="relative p-4 bg-background" data-testid={`place-post-${post.id}`}>
-      <div className="absolute bottom-0 left-4 right-4 h-px bg-surna-outline"></div>
-      
+    <div
+      className="mx-3 mb-3 rounded-2xl p-4"
+      style={{ background: "var(--surna-surface)", border: "1px solid var(--surna-border)" }}
+      data-testid={`place-post-${post.id}`}
+    >
       <div className="flex items-start space-x-3">
         {/* Place Avatar */}
         <Avatar 

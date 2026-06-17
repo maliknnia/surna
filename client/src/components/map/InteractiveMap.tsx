@@ -164,11 +164,11 @@ function applyDarkGreenery(map: maplibregl.Map) {
 function applySurnaPoiTraffic(map: maplibregl.Map, dark: boolean) {
   const poiIconColors: Record<string, string> = dark
     ? {
-        Park: "hsl(98, 22%, 58%)",
-        Sport: "hsl(108, 28%, 62%)",
-        Food: "hsl(28, 28%, 72%)",
-        Tourism: "hsl(278, 28%, 72%)",
-        Culture: "hsl(310, 26%, 74%)",
+        Park: "#ffffff",
+        Sport: "#ffffff",
+        Food: "#ffffff",
+        Tourism: "#ffffff",
+        Culture: "#ffffff",
       }
     : {
         Park: "hsl(98, 32%, 42%)",
@@ -825,6 +825,16 @@ export default function InteractiveMap({
     useDarkTilesRef.current = isMapDarkTheme;
     tileStyleRef.current = tileStyle;
   }, [tileStyleMode, isMapDarkTheme, tileStyle]);
+
+  /** Keep map tiles aligned with app theme (Map page passes mapStyle). */
+  useEffect(() => {
+    if (mapStyle === undefined) return;
+    const next: MapTileStyle = mapStyle === "dark" ? "dark" : "light";
+    if (tileStyleModeRef.current === next) return;
+    if (next === "dark") extrusionDarkRef.current = true;
+    if (next === "light") extrusionDarkRef.current = false;
+    setTileStyleMode(next);
+  }, [mapStyle]);
 
   const selectMapTileStyle = (mode: MapTileStyle) => {
     if (mode === "dark") extrusionDarkRef.current = true;

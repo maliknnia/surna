@@ -11,6 +11,7 @@ import {
 } from "next-themes";
 import { Icon } from "@/components/Icon";
 import { applySystemChromeTheme } from "@/lib/systemChromeTheme";
+import { writeMapTileStyle } from "@/lib/mapTileStyle";
 
 export type Theme = "dark" | "light" | "system";
 
@@ -31,6 +32,7 @@ function ThemeBridge({ children }: { children: ReactNode }) {
     const resolved = (resolvedTheme === "light" ? "light" : "dark") as "dark" | "light";
     document.body.className = resolved === "dark" ? "dark-theme" : "light-theme";
     applySystemChromeTheme(resolved);
+    writeMapTileStyle(resolved);
   }, [resolvedTheme]);
 
   const normalizedTheme: Theme =

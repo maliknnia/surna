@@ -69,7 +69,7 @@ export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubP
 
   return (
     <div className="animate-in fade-in duration-200 pb-4">
-      {/* Search + filter row — IG explore */}
+      {/* Search + filter row */}
       <div className="px-3 pt-2 pb-2 flex items-center gap-2">
         <div
           className="flex-1 flex items-center gap-2 h-10 px-3 rounded-xl"
@@ -101,26 +101,33 @@ export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubP
         </button>
       </div>
 
+      {/* Reels / full videos — always visible, neutral pills like events/home */}
+      <div className="px-3 pb-2">
+        <div
+          className="flex gap-1.5 p-1 rounded-xl"
+          style={{ background: "var(--surna-elevated)", border: "1px solid var(--surna-border)" }}
+        >
+          {(["reels", "videos"] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSegment(key)}
+              className={cn("flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all")}
+              style={
+                segment === key
+                  ? { background: "var(--surna-bg-press)", color: "var(--surna-text)" }
+                  : { color: "var(--surna-text-muted)" }
+              }
+              data-testid={`videos-segment-${key}`}
+            >
+              {key === "reels" ? "Reels" : "Full videos"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {filterOpen && (
         <div className="px-3 pb-3 space-y-2">
-          <div className="flex gap-1.5 p-1 rounded-xl" style={{ background: "var(--surna-elevated)" }}>
-            {(["reels", "videos"] as const).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSegment(key)}
-                className={cn("flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all")}
-                style={
-                  segment === key
-                    ? { background: "var(--surna-bg-press)", color: "var(--surna-text)" }
-                    : { color: "var(--surna-text-muted)" }
-                }
-                data-testid={`videos-segment-${key}`}
-              >
-                {key === "reels" ? "Reels" : "Full videos"}
-              </button>
-            ))}
-          </div>
           {sports.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
               <button
@@ -129,8 +136,8 @@ export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubP
                 className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
                 style={
                   sportFilter === null
-                    ? { background: "var(--surna-text)", color: "var(--surna-base)" }
-                    : { background: "var(--surna-elevated)", color: "var(--surna-text-secondary)" }
+                    ? { background: "var(--surna-bg-press)", color: "var(--surna-text)", border: "1px solid var(--surna-border)" }
+                    : { background: "var(--surna-elevated)", color: "var(--surna-text-secondary)", border: "1px solid var(--surna-border)" }
                 }
               >
                 All
@@ -143,8 +150,8 @@ export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubP
                   className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
                   style={
                     sportFilter === sport
-                      ? { background: "var(--surna-text)", color: "var(--surna-base)" }
-                      : { background: "var(--surna-elevated)", color: "var(--surna-text-secondary)" }
+                      ? { background: "var(--surna-bg-press)", color: "var(--surna-text)", border: "1px solid var(--surna-border)" }
+                      : { background: "var(--surna-elevated)", color: "var(--surna-text-secondary)", border: "1px solid var(--surna-border)" }
                   }
                 >
                   {sport}
@@ -156,7 +163,11 @@ export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubP
             type="button"
             onClick={() => onCreate(segment === "reels" ? "reel" : "post")}
             className="w-full py-2 text-[13px] font-semibold rounded-lg active:opacity-80"
-            style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+            style={{
+              background: "var(--surna-bg-press)",
+              color: "var(--surna-text)",
+              border: "1px solid var(--surna-border)",
+            }}
             data-testid="videos-create"
           >
             Create {segment === "reels" ? "reel" : "video"}

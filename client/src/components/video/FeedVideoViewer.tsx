@@ -73,8 +73,6 @@ export function formatForViewerMode(mode: FeedViewerMode): VideoFormat {
 export function demoPoolForMode(mode: FeedViewerMode): VideoPost[] {
   return mode === "videos" ? DEMO_FEED_VIDEOS : DEMO_REELS;
 }
-
-/** Only items matching the opened viewer mode (reels chain or videos chain). */
 export function filterVideosByMode(videos: VideoPost[], mode: FeedViewerMode): VideoPost[] {
   const target = formatForViewerMode(mode);
   const filtered = videos.filter((v) => inferVideoFormat(v) === target);
@@ -94,15 +92,22 @@ interface FeedVideoViewerProps {
 
 /* ─── Demo videos ─────────────────────────────────────────────────────────── */
 
-const DEMO_GRADIENTS = [
-  "linear-gradient(180deg,#1a0a3d 0%,#2d1165 45%,#0e0514 100%)",
-  "linear-gradient(180deg,#0a1a2d 0%,#0f3460 45%,#050d14 100%)",
-  "linear-gradient(180deg,#1a0d0a 0%,#4a1800 45%,#100800 100%)",
-  "linear-gradient(180deg,#0a1a0d 0%,#0d4018 45%,#040d06 100%)",
-  "linear-gradient(180deg,#1a1000 0%,#3d2800 45%,#0d0900 100%)",
-  "linear-gradient(180deg,#12002d 0%,#280060 45%,#080012 100%)",
-  "linear-gradient(180deg,#1a0010 0%,#42001a 45%,#0d0008 100%)",
-];
+const DEMO_MEDIA_BG = "linear-gradient(180deg, #1c1c1e 0%, #121212 100%)";
+
+function demoVideoThumb(id: string, format: VideoFormat): string {
+  const size = format === "video" ? "800/450" : "400/700";
+  return `https://picsum.photos/seed/surna-${encodeURIComponent(id)}/${size}`;
+}
+
+function withDemoThumbs(videos: VideoPost[]): VideoPost[] {
+  return videos.map((v) => {
+    const format = inferVideoFormat(v);
+    return {
+      ...v,
+      imageUrl: v.imageUrl ?? demoVideoThumb(v.id, format),
+    };
+  });
+}
 
 const SPORT_EMOJIS: Record<string, string> = {
   Basketball: "🏀", Football: "⚽", Soccer: "⚽", Fitness: "🏋️",
@@ -110,7 +115,7 @@ const SPORT_EMOJIS: Record<string, string> = {
   CrossFit: "💪", MMA: "🥊", Rugby: "🏉", Volleyball: "🏐",
 };
 
-export const DEMO_REELS: VideoPost[] = [
+export const DEMO_REELS: VideoPost[] = withDemoThumbs([
   {
     id: "dv1", content: "Game day drill — our U17 squad running the new press break at full pace 🏀🔥",
     sport: "Basketball", sportEmoji: "🏀", format: "reel",
@@ -167,9 +172,9 @@ export const DEMO_REELS: VideoPost[] = [
     location: "Cork", distance: "1.4 km",
     author: { id: "u7", firstName: "Leila", lastName: "Musa", profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=leila` },
   },
-];
+]);
 
-export const DEMO_FEED_VIDEOS: VideoPost[] = [
+export const DEMO_FEED_VIDEOS: VideoPost[] = withDemoThumbs([
   {
     id: "fv1",
     content: "Full match highlights — U17 championship semifinal extended cut with coach breakdown",
@@ -215,7 +220,7 @@ export const DEMO_FEED_VIDEOS: VideoPost[] = [
     location: "Cork", distance: "4 km", eventName: "Ridge ultra",
     author: { id: "u6", firstName: "Dylan", lastName: "Healy", profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=dylan` },
   },
-];
+]);
 
 export const DEMO_VIDEOS = DEMO_REELS;
 
@@ -277,7 +282,7 @@ function VideoSlide({
   const isLiked = likedSet.has(video.id);
   const isSaved = savedSet.has(video.id);
   const isFollowing = followingIds.has(video.author.id);
-  const gradient = DEMO_GRADIENTS[index % DEMO_GRADIENTS.length];
+  const gradient = DEMO_MEDIA_BG;
   const isReel = viewerMode === "reels";
   const durationLabel = fmtDuration(video.durationSec);
 

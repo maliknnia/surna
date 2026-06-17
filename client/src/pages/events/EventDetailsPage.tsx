@@ -6,6 +6,8 @@ import { useEvent, useRSVP, useMyRSVPs } from "@/hooks/useEvents";
 import { useSmartBack } from "@/lib/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { isRouteSport } from "@/lib/eventRoutes";
+import { isDemoEventId } from "@/lib/demoEvents";
+import { fetchEventPeople, type ActivityPerson } from "@/lib/activityPeople";
 import { ROUTES } from "@/navigation";
 import {
   ArrowLeft,
@@ -21,7 +23,6 @@ import {
 } from "lucide-react";
 import QRCode from "qrcode";
 import { getSportConfig } from "@/components/TeamCard";
-import type { ActivityPerson } from "@/lib/activityPeople";
 import { AvatarStack } from "@/components/people/AvatarStack";
 import { EntityShareSheet } from "@/components/teams/EntityShareSheet";
 import { EventHighlights } from "@/components/events/EventHighlights";
@@ -173,7 +174,22 @@ export default function EventDetailsPage() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [eventQrUrl, setEventQrUrl] = useState("");
   const [activeTab, setActiveTab] = useState<TabType>("about");
+  const [demoAttendees, setDemoAttendees] = useState<ActivityPerson[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!id || !isDemoEventId(id)) {
+      setDemoAttendees([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchEventPeople(id).then((list) => {
+      if (!cancelled) setDemoAttendees(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
@@ -336,7 +352,7 @@ export default function EventDetailsPage() {
   const accentColor = eventAccentColor(extractedColor, sport);
   const creatorName = ev.creator_first_name || ev.creator_username || "Organizer";
   const realAttendees: ActivityPerson[] = useMemo(() => {
-    const list = (ev.attendees ?? []) as Array<{
+    const list = (ev?.attendees ?? []) as Array<{
       user_id?: string;
       status?: string;
       username?: string;
@@ -344,7 +360,7 @@ export default function EventDetailsPage() {
       last_name?: string;
       profile_image_url?: string;
     }>;
-    return list
+    const fromApi = list
       .filter((a) => a.status === "going" || a.status === "interested")
       .map((a) => ({
         id: String(a.user_id ?? a.username ?? Math.random()),
@@ -352,7 +368,8 @@ export default function EventDetailsPage() {
         username: a.username,
         avatarUrl: a.profile_image_url || undefined,
       }));
-  }, [ev.attendees]);
+    return fromApi.length > 0 ? fromApi : demoAttendees;
+  }, [ev?.attendees, demoAttendees]);
   const attendeePreview = realAttendees.slice(0, 8);
   const galleryPhotos = useMemo(() => {
     const fromApi = eventPhotos.map((p) => ({ url: p.image_url, type: "image" as const }));

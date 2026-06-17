@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import ProfileHeader from './components/ProfileHeader';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { OWNER_PROFILE_AVATAR } from '@/lib/ownerAvatar';
+import { OWNER_PROFILE_AVATAR, SURNA_COVER_URL } from '@/lib/ownerAvatar';
 import { normalizeUserProfile } from '@/lib/normalizeUserProfile';
+import { buildDemoUserProfile, isDemoProfileUserId } from '@/lib/demoProfiles';
 
 // Package #5: Lazy-loaded tab sections
 const Overview = lazy(() => import('./sections/Overview'));
@@ -30,7 +31,9 @@ export default function PersonProfile({ context = 'sports' }: { context?: Profil
   const isOwnProfile = !!user && (user as any).id === userId;
   const [activeTab, setActiveTab] = useState<TabType>('activity');
 
-  const { data: profile, isLoading, error } = useQuery<any>({
+  const demoProfile = userId && isDemoProfileUserId(userId) ? buildDemoUserProfile(userId) : null;
+
+  const { data: apiProfile, isLoading, error } = useQuery<any>({
     queryKey: ['/api/users', userId],
     queryFn: async () => {
       const res = await fetch(`/api/users/${userId}`, { credentials: 'include' });
@@ -38,10 +41,12 @@ export default function PersonProfile({ context = 'sports' }: { context?: Profil
       const user = await res.json();
       return normalizeUserProfile(user);
     },
-    enabled: !!userId,
+    enabled: !!userId && !demoProfile,
   });
 
-  if (isLoading) {
+  const profile = demoProfile ?? apiProfile;
+
+  if (!demoProfile && isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-token-text animate-spin" />
@@ -86,7 +91,13 @@ export default function PersonProfile({ context = 'sports' }: { context?: Profil
           ];
 
   const headerProfile = isOwnProfile
-    ? { ...profile, avatar: OWNER_PROFILE_AVATAR, profileImageUrl: OWNER_PROFILE_AVATAR, photo: OWNER_PROFILE_AVATAR }
+    ? {
+        ...profile,
+        avatar: OWNER_PROFILE_AVATAR,
+        profileImageUrl: OWNER_PROFILE_AVATAR,
+        photo: OWNER_PROFILE_AVATAR,
+        cover: SURNA_COVER_URL,
+      }
     : profile;
 
   return (

@@ -2243,9 +2243,13 @@
 }
 .surna-map-dark .surna-spot-graphic--stroke .surna-spot-icon,
 .surna-map-root:not(.surna-map-light) .surna-spot-graphic--stroke .surna-spot-icon {
-  background: #0a0a0a !important;
-  color: #f4f4f5;
+  background: rgba(10, 10, 10, 0.92) !important;
+  color: #ffffff !important;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+}
+.surna-map-dark .surna-map-pin-art,
+.surna-map-root:not(.surna-map-light) .surna-map-pin-art {
+  color: #ffffff !important;
 }
 .surna-map-pin-stroke,
 .surna-map-pin-stroke * {
