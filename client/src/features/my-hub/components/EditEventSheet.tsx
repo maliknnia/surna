@@ -31,6 +31,8 @@ export function EditEventSheet({ event, open, onOpenChange }: Props) {
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [location, setLocation] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "private" | "unlisted">("public");
 
   useEffect(() => {
     if (event) {
@@ -39,6 +41,8 @@ export function EditEventSheet({ event, open, onOpenChange }: Props) {
       setStartsAt(toLocalInput(event.starts_at));
       setEndsAt(toLocalInput(event.ends_at));
       setLocation(event.location ?? "");
+      setCapacity(event.capacity != null ? String(event.capacity) : "");
+      setVisibility((event.visibility as "public" | "private" | "unlisted") || "public");
     }
   }, [event]);
 
@@ -55,6 +59,9 @@ export function EditEventSheet({ event, open, onOpenChange }: Props) {
         body.endsAt = new Date(endsAt).toISOString();
       }
       if (location !== (event.location ?? "")) body.location = location;
+      const cap = capacity.trim() ? parseInt(capacity, 10) : null;
+      if (cap !== (event.capacity ?? null)) body.capacity = cap && cap > 0 ? cap : undefined;
+      if (visibility !== (event.visibility ?? "public")) body.visibility = visibility;
       const res = await apiRequest("PATCH", `/api/events/${event.id}`, body);
       return res.json();
     },
@@ -124,6 +131,33 @@ export function EditEventSheet({ event, open, onOpenChange }: Props) {
               onChange={(e) => setLocation(e.target.value)}
               data-testid="edit-event-location"
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ev-capacity" style={{ color: "var(--surna-text)" }}>Capacity (optional)</Label>
+            <Input
+              id="ev-capacity"
+              type="number"
+              min={1}
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              placeholder="Unlimited"
+              data-testid="edit-event-capacity"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ev-visibility" style={{ color: "var(--surna-text)" }}>Visibility</Label>
+            <select
+              id="ev-visibility"
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as typeof visibility)}
+              className="w-full h-10 rounded-md border px-3 text-sm"
+              style={{ background: "var(--surna-base)", borderColor: "var(--surna-border)", color: "var(--surna-text)" }}
+              data-testid="edit-event-visibility"
+            >
+              <option value="public">Public</option>
+              <option value="unlisted">Unlisted</option>
+              <option value="private">Private</option>
+            </select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="ev-desc" style={{ color: "var(--surna-text)" }}>Description</Label>

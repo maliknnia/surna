@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useEvent, useRSVP } from "@/hooks/useEvents";
+import { useEvent, useRSVP, useMyRSVPs } from "@/hooks/useEvents";
 import { useSmartBack } from "@/lib/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { isRouteSport } from "@/lib/eventRoutes";
@@ -13,14 +14,18 @@ import {
   Flag,
   Image as ImageIcon,
   MapPin,
+  MessageCircle,
   Share2,
   Users,
   X,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { getSportConfig } from "@/components/TeamCard";
-import { demoPeopleForEntity } from "@/lib/activityPeople";
+import type { ActivityPerson } from "@/lib/activityPeople";
 import { AvatarStack } from "@/components/people/AvatarStack";
+import { EntityShareSheet } from "@/components/teams/EntityShareSheet";
+import { EventHighlights } from "@/components/events/EventHighlights";
+import { EventFeedSection } from "@/components/events/EventFeedSection";
 import { AddToCalendarSheet } from "@/components/calendar/AddToCalendarSheet";
 import { calendarInputFromApiEvent } from "@/lib/eventCalendar";
 import { mapPath } from "@/lib/mapNavigation";
@@ -28,7 +33,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { extractDominantColor, getCachedColor } from "@/lib/extractColor";
 import EventHeader, { eventAccentColor } from "./components/EventHeader";
 
-type TabType = "about" | "people" | "location" | "photos" | "ticket";
+type TabType = "about" | "people" | "location" | "photos" | "feed" | "ticket";
 
 function formatShortWhen(dateStr: string, endStr?: string) {
   const d = new Date(dateStr);
@@ -159,11 +164,13 @@ export default function EventDetailsPage() {
   const { data: evData, isLoading: loading } = useEvent(id);
   const ev = evData as any;
   const rsvpMutation = useRSVP(id || "");
+  const { data: myRsvpsData } = useMyRSVPs();
   const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
   const [ticketCode, setTicketCode] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCalendarSheet, setShowCalendarSheet] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
   const [eventQrUrl, setEventQrUrl] = useState("");
   const [activeTab, setActiveTab] = useState<TabType>("about");
   const { toast } = useToast();
@@ -206,6 +213,21 @@ export default function EventDetailsPage() {
   }, [coverUrl]);
 
   useEffect(() => {
+    if (!id || !myRsvpsData?.items) return;
+    const mine = myRsvpsData.items.find((r: { event_id?: string }) => r.event_id === id);
+    if (mine?.status) setRsvpStatus(mine.status);
+  }, [id, myRsvpsData]);
+
+  useEffect(() => {
+    if (window.location.hash === "#attendees") setActiveTab("people");
+  }, []);
+
+  const { data: eventPhotos = [] } = useQuery<Array<{ id: string; image_url: string; caption?: string | null }>>({
+    queryKey: ["/api/events", id, "photos"],
+    enabled: !!id,
+  });
+
+  useEffect(() => {
     if (!showQrModal || !ev?.id) return;
     const url = `${window.location.origin}/events/${ev.id}`;
     QRCode.toDataURL(url, { width: 280, margin: 1 })
@@ -224,20 +246,15 @@ export default function EventDetailsPage() {
   const btnBg = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)";
   const btnIcon = isDark ? "#ffffff" : "#111111";
 
-  const handleShare = async () => {
-    if (!ev) return;
-    const url = `${window.location.origin}/events/${ev.id}`;
-    const text = `${ev.title}${ev.location ? ` · ${ev.location}` : ""}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: ev.title, text, url });
-        return;
-      }
-      await navigator.clipboard.writeText(url);
-      toast({ title: "Link copied", description: "Share this link with friends." });
-    } catch {
-      toast({ title: "Could not share", variant: "destructive" });
+  const handleShare = () => setShowShareSheet(true);
+
+  const openEventChat = () => {
+    const chatGroupId = ev?.chat_group_id || ev?.chatGroupId;
+    if (chatGroupId) {
+      setLocation(`/messages?groupId=${encodeURIComponent(chatGroupId)}`);
+      return;
     }
+    toast({ title: "Chat not ready", description: "Event chat is still being set up.", variant: "destructive" });
   };
 
   const handleRsvp = (status: "going" | "interested" | "waitlist", issueTicket = false) => {
@@ -318,8 +335,30 @@ export default function EventDetailsPage() {
   const sportConfig = getSportConfig(sport);
   const accentColor = eventAccentColor(extractedColor, sport);
   const creatorName = ev.creator_first_name || ev.creator_username || "Organizer";
-  const attendeePreview = demoPeopleForEntity(String(ev.id), goingCount > 0 ? goingCount : undefined);
-  const mediaItems = getEventMedia(ev, coverUrl);
+  const realAttendees: ActivityPerson[] = useMemo(() => {
+    const list = (ev.attendees ?? []) as Array<{
+      user_id?: string;
+      status?: string;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+      profile_image_url?: string;
+    }>;
+    return list
+      .filter((a) => a.status === "going" || a.status === "interested")
+      .map((a) => ({
+        id: String(a.user_id ?? a.username ?? Math.random()),
+        name: `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim() || a.username || "Athlete",
+        username: a.username,
+        avatarUrl: a.profile_image_url || undefined,
+      }));
+  }, [ev.attendees]);
+  const attendeePreview = realAttendees.slice(0, 8);
+  const galleryPhotos = useMemo(() => {
+    const fromApi = eventPhotos.map((p) => ({ url: p.image_url, type: "image" as const }));
+    if (fromApi.length > 0) return fromApi;
+    return getEventMedia(ev, coverUrl);
+  }, [eventPhotos, ev, coverUrl]);
   const rsvpLoading = rsvpMutation.isPending;
   const bgOpacity = Math.max(0, 1 - scrollY / 400);
   const hasTicket = rsvpStatus === "going" && !!ticketCode;
@@ -344,6 +383,7 @@ export default function EventDetailsPage() {
   const tabs: { id: TabType; label: string }[] = [
     { id: "about", label: "About" },
     { id: "people", label: `People (${goingCount})` },
+    { id: "feed", label: "Moments" },
     { id: "location", label: "Location" },
     { id: "photos", label: "Photos" },
     ...(hasTicket ? [{ id: "ticket" as TabType, label: "Ticket" }] : []),
@@ -403,6 +443,15 @@ export default function EventDetailsPage() {
         <div className="flex items-center gap-2 ml-auto">
           <button
             type="button"
+            onClick={openEventChat}
+            className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm"
+            style={{ background: btnBg }}
+            aria-label="Event chat"
+          >
+            <MessageCircle size={16} color={btnIcon} />
+          </button>
+          <button
+            type="button"
             onClick={handleShare}
             className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm"
             style={{ background: btnBg }}
@@ -456,6 +505,8 @@ export default function EventDetailsPage() {
           onMap={openSurnaMap}
           onQr={() => setShowQrModal(true)}
         />
+
+        <EventHighlights eventId={ev.id} eventTitle={ev.title} />
 
         <nav
           className="sticky top-0 z-20 backdrop-blur-xl"
@@ -553,14 +604,16 @@ export default function EventDetailsPage() {
           )}
 
           {activeTab === "people" && (
-            <div className="p-4 rounded-2xl" style={{ background: cardBg }}>
+            <div className="p-4 rounded-2xl" style={{ background: cardBg }} id="attendees">
               <h3 className="text-[13px] font-semibold uppercase tracking-wider mb-4" style={{ color: textTertiary }}>
                 <Users size={13} className="inline mr-1.5" />
                 Who&apos;s going
               </h3>
               <div className="flex flex-col items-center gap-4 py-2">
-                <AvatarStack people={attendeePreview} max={8} size={40} overlap={12} />
-                <div className="text-center">
+                {attendeePreview.length > 0 ? (
+                  <AvatarStack people={attendeePreview} max={8} size={40} overlap={12} />
+                ) : null}
+                <div className="text-center w-full">
                   <p className="text-[17px] font-bold" style={{ color: textPrimary }}>
                     {goingCount} going
                     {interestedCount > 0 && (
@@ -570,6 +623,28 @@ export default function EventDetailsPage() {
                       </span>
                     )}
                   </p>
+                  {realAttendees.length > 0 && (
+                    <div className="mt-4 space-y-2 text-left max-w-sm mx-auto">
+                      {realAttendees.map((person) => (
+                        <button
+                          key={person.id}
+                          type="button"
+                          onClick={() => setLocation(`/person/${person.id}`)}
+                          className="w-full flex items-center gap-3 p-2 rounded-xl active:opacity-80"
+                          style={{ background: btnBg }}
+                        >
+                          {person.avatarUrl ? (
+                            <img src={person.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-muted/40" />
+                          )}
+                          <span className="text-[14px] font-medium" style={{ color: textPrimary }}>
+                            {person.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {capacity > 0 && (
                     <>
                       <p className="text-[13px] mt-1" style={{ color: textTertiary }}>
@@ -637,9 +712,11 @@ export default function EventDetailsPage() {
             </>
           )}
 
+          {activeTab === "feed" && id ? <EventFeedSection eventId={id} /> : null}
+
           {activeTab === "photos" && (
             <>
-              {mediaItems.length === 0 ? (
+              {galleryPhotos.length === 0 ? (
                 <div className="text-center py-12">
                   <ImageIcon size={32} className="mx-auto mb-3" style={{ color: textTertiary }} />
                   <p className="text-[14px]" style={{ color: textTertiary }}>
@@ -647,22 +724,17 @@ export default function EventDetailsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {mediaItems.map((item, i) => (
+                <div className="grid grid-cols-3 gap-[2px]">
+                  {galleryPhotos.map((item, i) => (
                     <div
                       key={`${item.url}-${i}`}
-                      className="relative aspect-square rounded-2xl overflow-hidden"
+                      className="relative aspect-[4/5] overflow-hidden"
                       style={{ background: cardBg }}
                     >
                       {item.type === "video" ? (
                         <video src={item.url} className="w-full h-full object-cover" muted playsInline />
                       ) : (
                         <img src={item.url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                      )}
-                      {item.type === "video" && (
-                        <span className="absolute bottom-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/60 text-white">
-                          Video
-                        </span>
                       )}
                     </div>
                   ))}
@@ -747,6 +819,13 @@ export default function EventDetailsPage() {
           </div>
         </div>
       )}
+      <EntityShareSheet
+        open={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        title={ev.title}
+        path={`/events/${ev.id}`}
+        shareText={`${ev.title}${ev.location ? ` · ${ev.location}` : ""}`}
+      />
     </div>
   );
 }

@@ -19,9 +19,10 @@
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css" media="print" onload="this.media='all'" />
     
     <!-- System chrome (status bar + gesture bar) — updated by theme boot + ThemeContext -->
-    <meta id="surna-theme-color" name="theme-color" content="#121212" />
-    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
-    <meta name="background-color" content="#121212" />
+    <meta id="surna-theme-color" name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="background-color" content="#000000" />
     
     <!-- Apple PWA / Add to Home Screen -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -30,7 +31,7 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     
     <!-- Microsoft PWA Support -->
-    <meta name="msapplication-TileColor" content="#121212" />
+    <meta name="msapplication-TileColor" content="#000000" />
     
     <!-- SEO and Social Media -->
     <meta name="description" content="Connect with athletes, discover events, find coaches, and manage your sports journey with Surna - the premier sports social network." />
@@ -54,7 +55,7 @@
     <title>SURNA - Sports Social Network</title>
     <link rel="manifest" href="/manifest.json" />
     <script>
-      (function(){try{var s=localStorage.getItem("theme");var d=true;if(s==="light")d=false;else if(s==="dark")d=true;else if(s==="system")d=window.matchMedia("(prefers-color-scheme: dark)").matches;var c=d?"#121212":"#ffffff";var r=document.documentElement;if(d)r.classList.add("dark");else r.classList.remove("dark");r.style.colorScheme=d?"dark":"light";r.style.setProperty("--surna-nav-bar-bg",c);r.setAttribute("data-theme",d?"dark":"light");var m=document.getElementById("surna-theme-color");if(m)m.setAttribute("content",c);var a=document.getElementById("surna-apple-status-bar");if(a)a.setAttribute("content",d?"black":"default");}catch(e){}})();
+      (function(){try{var s=localStorage.getItem("theme");var d=true;if(s==="light")d=false;else if(s==="dark")d=true;else if(s==="system")d=window.matchMedia("(prefers-color-scheme: dark)").matches;var c=d?"#000000":"#ffffff";var r=document.documentElement;if(d)r.classList.add("dark");else r.classList.remove("dark");r.style.colorScheme=d?"dark":"light";r.style.backgroundColor=c;r.style.setProperty("--surna-nav-bar-bg",c);r.setAttribute("data-theme",d?"dark":"light");document.body.style.backgroundColor=c;var m=document.getElementById("surna-theme-color");if(m)m.setAttribute("content",c);var a=document.getElementById("surna-apple-status-bar");if(a)a.setAttribute("content",d?"black":"default");}catch(e){}})();
     </script>
     <script>
       (function(){
@@ -69,7 +70,7 @@
       })();
     </script>
   </head>
-  <body style="background-color:#121212;color:#ffffff">
+  <body style="background-color:#000000;color:#ffffff">
     <div id="root">
       <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif;padding:24px;text-align:center">
         <p style="margin:0;font-size:18px;font-weight:700;letter-spacing:0.04em">SURNA</p>

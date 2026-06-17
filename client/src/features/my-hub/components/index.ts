@@ -8,6 +8,7 @@ export { StatusPill } from "./StatusPill";
 export { LockedAction } from "./LockedAction";
 export { MyHubEventCard, type MyHubEvent } from "./MyHubEventCard";
 export { EditEventSheet } from "./EditEventSheet";
+export { ManageEventHighlightsSheet } from "./ManageEventHighlightsSheet";
 export { MyHubTeamCard, type MyHubTeam } from "./MyHubTeamCard";
 export { EditTeamSheet } from "./EditTeamSheet";
 export { PostTeamUpdateSheet } from "./PostTeamUpdateSheet";

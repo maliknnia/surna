@@ -33,6 +33,8 @@ export interface MyHubEvent {
   cover_thumb_url?: string | null;
   going_count?: number;
   interested_count?: number;
+  chat_group_id?: string | null;
+  featured_highlight_ids?: string[];
 }
 
 interface Props {
@@ -41,6 +43,7 @@ interface Props {
   onEdit: (ev: MyHubEvent) => void;
   onCancel: (ev: MyHubEvent) => void;
   onShare: (ev: MyHubEvent) => void;
+  onManageHighlights?: (ev: MyHubEvent) => void;
 }
 
 function formatDateTime(iso: string) {
@@ -55,7 +58,7 @@ function formatDateTime(iso: string) {
   });
 }
 
-export function MyHubEventCard({ ev, variant, onEdit, onCancel, onShare }: Props) {
+export function MyHubEventCard({ ev, variant, onEdit, onCancel, onShare, onManageHighlights }: Props) {
   const [proOpen, setProOpen] = useState(false);
   const cover = ev.cover_thumb_url || ev.cover_url || null;
   const going = ev.going_count ?? 0;
@@ -176,9 +179,17 @@ export function MyHubEventCard({ ev, variant, onEdit, onCancel, onShare }: Props
           onClick={() => onShare(ev)}
           testId={`event-share-${ev.id}`}
         />
-        <Link href={`/messages?context=event&id=${ev.id}`}>
+        <Link href={ev.chat_group_id ? `/messages?groupId=${encodeURIComponent(ev.chat_group_id)}` : `/events/${ev.id}`}>
           <ActionChip icon={MessageCircle} label="Chat" testId={`event-chat-${ev.id}`} />
         </Link>
+        {!isPast && !isCancelled && onManageHighlights && (
+          <ActionChip
+            icon={Megaphone}
+            label="Highlights"
+            onClick={() => onManageHighlights(ev)}
+            testId={`event-highlights-${ev.id}`}
+          />
+        )}
         {!isPast && !isCancelled && (
           <ActionChip
             icon={XCircle}

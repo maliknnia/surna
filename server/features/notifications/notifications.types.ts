@@ -5,6 +5,7 @@
   | "system"
   | "event_reminder"
   | "event_rsvp"
+  | "event_cancelled"
   | "team_join_request"
   | "team_join_approved"
   | "team_join_rejected"

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { Camera, Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { filterVideosByMode } from "@/components/video/FeedVideoViewer";
 import type { FeedViewerMode, VideoPost } from "@/components/video/FeedVideoViewer";
 import { VideoGridCard } from "@/components/video/VideoGridCard";
@@ -14,16 +13,12 @@ type FeedVideosHubProps = {
   onCreate: (mode: "reel" | "post") => void;
 };
 
-function segmentActiveStyle(active: boolean) {
-  return active
-    ? { background: "var(--surna-bg-press)", color: "var(--surna-text)", border: "1px solid var(--surna-border)" }
-    : { background: "transparent", color: "var(--surna-text-muted)", border: "1px solid transparent" };
-}
-
-/** Videos bottom-tab hub — reels / full-video discovery with sport filters. */
+/** Videos bottom-tab hub — Instagram explore-style reel grid. */
 export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubProps) {
   const [segment, setSegment] = useState<HubSegment>("reels");
   const [sportFilter, setSportFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const reelVideos = useMemo(() => filterVideosByMode(videos, "reels"), [videos]);
   const fullVideos = useMemo(() => filterVideosByMode(videos, "videos"), [videos]);
@@ -36,14 +31,33 @@ export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubP
     return Array.from(set).sort();
   }, [reelVideos, fullVideos]);
 
-  const filteredReels = useMemo(
-    () => (sportFilter ? reelVideos.filter((v) => v.sport === sportFilter) : reelVideos),
-    [reelVideos, sportFilter],
-  );
-  const filteredFull = useMemo(
-    () => (sportFilter ? fullVideos.filter((v) => v.sport === sportFilter) : fullVideos),
-    [fullVideos, sportFilter],
-  );
+  const filteredReels = useMemo(() => {
+    let list = sportFilter ? reelVideos.filter((v) => v.sport === sportFilter) : reelVideos;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (v) =>
+          v.content?.toLowerCase().includes(q) ||
+          v.sport?.toLowerCase().includes(q) ||
+          `${v.author.firstName ?? ""} ${v.author.lastName ?? ""}`.toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [reelVideos, sportFilter, searchQuery]);
+
+  const filteredFull = useMemo(() => {
+    let list = sportFilter ? fullVideos.filter((v) => v.sport === sportFilter) : fullVideos;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (v) =>
+          v.content?.toLowerCase().includes(q) ||
+          v.sport?.toLowerCase().includes(q) ||
+          `${v.author.firstName ?? ""} ${v.author.lastName ?? ""}`.toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [fullVideos, sportFilter, searchQuery]);
 
   const activeList = segment === "reels" ? filteredReels : filteredFull;
   const viewerMode: FeedViewerMode = segment === "reels" ? "reels" : "videos";
@@ -55,89 +69,107 @@ export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubP
 
   return (
     <div className="animate-in fade-in duration-200 pb-4">
-      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Play className="h-5 w-5" style={{ color: "var(--surna-text)" }} fill="currentColor" />
-            <h3 className="text-base font-bold" style={{ color: "var(--surna-text)" }}>
-              Videos
-            </h3>
-          </div>
-          <p className="text-xs mt-0.5" style={{ color: "var(--surna-text-muted)" }}>
-            Sport clips & full sessions · swipe up in viewer
-          </p>
-        </div>
-        <Button
-          size="sm"
-          className="rounded-full shrink-0 bg-primary text-primary-foreground border-0"
-          onClick={() => onCreate(segment === "reels" ? "reel" : "post")}
-          data-testid="videos-create"
-        >
-          <Camera className="h-4 w-4 mr-1.5" />
-          Create
-        </Button>
-      </div>
-
-      {/* Reels | Full videos */}
-      <div className="px-4 mb-3 flex gap-1.5 p-1 rounded-xl" style={{ background: "var(--surna-elevated)" }}>
-        {(["reels", "videos"] as const).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setSegment(key)}
-            className={cn("flex-1 py-2 rounded-lg text-sm font-bold transition-all")}
-            style={segmentActiveStyle(segment === key)}
-            data-testid={`videos-segment-${key}`}
-          >
-            {key === "reels" ? "Reels" : "Full videos"}
-          </button>
-        ))}
-      </div>
-
-      {/* Sport chips — Surna filter row */}
-      {sports.length > 0 && (
+      {/* Search + filter row — IG explore */}
+      <div className="px-3 pt-2 pb-2 flex items-center gap-2">
         <div
-          className="px-4 mb-3 flex gap-2 overflow-x-auto"
-          style={{ scrollbarWidth: "none" }}
+          className="flex-1 flex items-center gap-2 h-10 px-3 rounded-xl"
+          style={{ background: "var(--surna-elevated)", border: "1px solid var(--surna-border)" }}
         >
+          <Search className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--surna-text-muted)" }} />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search"
+            className="flex-1 min-w-0 bg-transparent text-[14px] outline-none"
+            style={{ color: "var(--surna-text)" }}
+            data-testid="videos-search"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setFilterOpen((o) => !o)}
+          className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl active:opacity-70"
+          style={{
+            background: filterOpen || sportFilter || segment === "videos" ? "var(--surna-bg-press)" : "var(--surna-elevated)",
+            border: "1px solid var(--surna-border)",
+          }}
+          aria-label="Filters"
+          data-testid="videos-filter-toggle"
+        >
+          <SlidersHorizontal className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
+        </button>
+      </div>
+
+      {filterOpen && (
+        <div className="px-3 pb-3 space-y-2">
+          <div className="flex gap-1.5 p-1 rounded-xl" style={{ background: "var(--surna-elevated)" }}>
+            {(["reels", "videos"] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSegment(key)}
+                className={cn("flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all")}
+                style={
+                  segment === key
+                    ? { background: "var(--surna-bg-press)", color: "var(--surna-text)" }
+                    : { color: "var(--surna-text-muted)" }
+                }
+                data-testid={`videos-segment-${key}`}
+              >
+                {key === "reels" ? "Reels" : "Full videos"}
+              </button>
+            ))}
+          </div>
+          {sports.length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setSportFilter(null)}
+                className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
+                style={
+                  sportFilter === null
+                    ? { background: "var(--surna-text)", color: "var(--surna-base)" }
+                    : { background: "var(--surna-elevated)", color: "var(--surna-text-secondary)" }
+                }
+              >
+                All
+              </button>
+              {sports.map((sport) => (
+                <button
+                  key={sport}
+                  type="button"
+                  onClick={() => setSportFilter(sportFilter === sport ? null : sport)}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={
+                    sportFilter === sport
+                      ? { background: "var(--surna-text)", color: "var(--surna-base)" }
+                      : { background: "var(--surna-elevated)", color: "var(--surna-text-secondary)" }
+                  }
+                >
+                  {sport}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
-            onClick={() => setSportFilter(null)}
-            className="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
-            style={
-              sportFilter === null
-                ? { background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
-                : { background: "var(--surna-elevated)", color: "var(--surna-text-muted)" }
-            }
+            onClick={() => onCreate(segment === "reels" ? "reel" : "post")}
+            className="w-full py-2 text-[13px] font-semibold rounded-lg active:opacity-80"
+            style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+            data-testid="videos-create"
           >
-            All sports
+            Create {segment === "reels" ? "reel" : "video"}
           </button>
-          {sports.map((sport) => (
-            <button
-              key={sport}
-              type="button"
-              onClick={() => setSportFilter(sportFilter === sport ? null : sport)}
-              className="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
-              style={
-                sportFilter === sport
-                  ? { background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }
-                  : { background: "var(--surna-elevated)", color: "var(--surna-text-muted)" }
-              }
-            >
-              {sport}
-            </button>
-          ))}
         </div>
       )}
 
       {activeList.length === 0 ? (
-        <p className="px-4 py-10 text-center text-sm" style={{ color: "var(--surna-text-muted)" }}>
-          {segment === "reels"
-            ? "No reels yet — capture a reel from the camera."
-            : "No full videos yet — share a longer session from the feed."}
+        <p className="px-4 py-16 text-center text-sm" style={{ color: "var(--surna-text-muted)" }}>
+          {segment === "reels" ? "No reels yet — capture one from the camera." : "No full videos yet."}
         </p>
       ) : segment === "reels" ? (
-        <div className="grid grid-cols-2 gap-1.5 px-2">
+        <div className="-mx-0 grid grid-cols-3 gap-[1px]">
           {filteredReels.map((video, idx) => (
             <VideoGridCard
               key={`reel-${video.id}`}
@@ -149,7 +181,7 @@ export function FeedVideosHub({ videos, onOpenViewer, onCreate }: FeedVideosHubP
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2 px-2">
+        <div className="grid grid-cols-1 gap-[1px] px-0">
           {filteredFull.map((video, idx) => (
             <VideoGridCard
               key={`video-${video.id}`}

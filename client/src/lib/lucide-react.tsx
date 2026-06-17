@@ -53,6 +53,10 @@ import {
   VoiceIcon as SurnaVoice,
   UploadIcon as SurnaUpload,
   PrivacyIcon as SurnaPrivacy,
+  LayersIcon as SurnaLayers,
+  SlidersIcon as SurnaSliders,
+  LocateIcon as SurnaLocate,
+  FilmStripIcon as SurnaFilm,
 } from "@/components/icons/SurnaIcons";
 
 /** Lucide export name → SURNA custom SVG component */
@@ -100,6 +104,14 @@ const SURNA_ICON_MAP: Record<string, SurnaIconComponent> = {
   Building2: SurnaPlaces,
   Store: SurnaPlaces,
   Zap: SurnaInstantJoin,
+  Layers: SurnaLayers,
+  SlidersHorizontal: SurnaSliders,
+  Filter: SurnaSliders,
+  Navigation: SurnaLocate,
+  LocateFixed: SurnaLocate,
+  Crosshair: SurnaLocate,
+  Film: SurnaFilm,
+  Clapperboard: SurnaFilm,
 };
 
 function wrapSurnaAsLucide(SurnaComponent: SurnaIconComponent, lucideName: string): LucideIcon {

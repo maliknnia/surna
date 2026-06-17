@@ -363,3 +363,44 @@ export const PrivacyIcon = createSurnaIcon("PrivacyIcon", (color) => (
     <circle cx="12" cy="16" r="1.5" fill={color} stroke="none" />
   </>
 ));
+
+/** Map style — stacked layers */
+export const LayersIcon = createSurnaIcon("LayersIcon", () => (
+  <>
+    <path d="M12 2L3 7L12 12L21 7L12 2Z" />
+    <path d="M3 12L12 17L21 12" />
+    <path d="M3 17L12 22L21 17" />
+  </>
+));
+
+/** Map filters — horizontal sliders */
+export const SlidersIcon = createSurnaIcon("SlidersIcon", (color) => (
+  <>
+    <path d="M4 21V14" />
+    <path d="M4 10V3" />
+    <path d="M12 21V12" />
+    <path d="M12 8V3" />
+    <path d="M20 21V16" />
+    <path d="M20 12V3" />
+    <circle cx="4" cy="12" r="2" fill={color} stroke="none" />
+    <circle cx="12" cy="10" r="2" fill={color} stroke="none" />
+    <circle cx="20" cy="14" r="2" fill={color} stroke="none" />
+  </>
+));
+
+/** Recenter / my location — crosshair target */
+export const LocateIcon = createSurnaIcon("LocateIcon", (color) => (
+  <>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2V5M12 19V22M2 12H5M19 12H22" />
+    <circle cx="12" cy="12" r="7" strokeWidth={1.5} />
+  </>
+));
+
+/** Reels / film strip tab */
+export const FilmStripIcon = createSurnaIcon("FilmStripIcon", () => (
+  <>
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="M2 8H22M2 16H22M6 4V8M6 16V20M18 4V8M18 16V20" />
+  </>
+));

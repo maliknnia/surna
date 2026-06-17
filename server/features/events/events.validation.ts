@@ -25,6 +25,7 @@ export const CreateEvent = z.object({
 });
 
 export const UpdateEvent = CreateEvent.partial().extend({
+  featuredHighlightIds: z.array(z.string()).max(12).optional(),
   // Soft-cancel + draft lifecycle. Backed by `events.status` /
   // `events.cancelled_at` columns added by the My Hub migration. Reusing
   // the existing PATCH /api/events/:id flow keeps cancellation in the

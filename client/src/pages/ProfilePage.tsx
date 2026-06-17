@@ -135,10 +135,9 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen pb-32" style={{ background: "var(--surna-base)", color: "var(--surna-text)" }}>
       <header
-        className="sticky top-0 z-40"
+        className="surna-header sticky top-0 z-40"
         style={{
           background: "var(--surna-base)",
-          borderBottom: "0.5px solid var(--surna-border)",
           paddingTop: "max(8px, env(safe-area-inset-top))",
         }}
       >

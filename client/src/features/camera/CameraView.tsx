@@ -14,6 +14,11 @@ import { useSurnaCamera } from "./SurnaCameraContext";
 import { useCameraEmbed } from "./SurnaCameraContent";
 import FilterPickerSheet from "./FilterPickerSheet";
 import { pickMediaFromGallery } from "@/lib/capacitor/camera";
+import {
+  describeMediaError,
+  ensureNativeCameraPermissions,
+  openAppSettings,
+} from "@/lib/mediaPermissions";
 
 const HOLD_MS = 400;
 
@@ -49,6 +54,7 @@ export default function CameraView({ initialMode = "post", onCaptured }: Props) 
   const [recording, setRecording] = useState(false);
   const [recordMs, setRecordMs] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   const maxVideoMs = MODE_LIMITS[mode].maxMs;
   const filters = getFiltersForCategory(filterCategory);
@@ -63,8 +69,15 @@ export default function CameraView({ initialMode = "post", onCaptured }: Props) 
   const startCamera = useCallback(async () => {
     try {
       setCameraError(null);
+      setPermissionDenied(false);
       if (!navigator.mediaDevices?.getUserMedia) {
         setCameraError("Camera is not available in this browser.");
+        return;
+      }
+      const nativeOk = await ensureNativeCameraPermissions();
+      if (!nativeOk) {
+        setPermissionDenied(true);
+        setCameraError("Allow camera access in Settings, then tap Open Settings or Try again.");
         return;
       }
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -79,7 +92,9 @@ export default function CameraView({ initialMode = "post", onCaptured }: Props) 
       }
     } catch (e) {
       console.error("Camera access failed", e);
-      setCameraError("Allow camera access in your browser settings, then tap Try again.");
+      const info = describeMediaError(e);
+      setPermissionDenied(info.denied);
+      setCameraError(info.message);
     }
   }, [facing]);
 
@@ -215,9 +230,16 @@ export default function CameraView({ initialMode = "post", onCaptured }: Props) 
         {cameraError ? (
           <div style={errorWrap}>
             <p style={{ color: CAMERA_TEXT, fontSize: 15, fontWeight: 500, lineHeight: 1.45, maxWidth: 280 }}>{cameraError}</p>
-            <button type="button" onClick={() => void startCamera()} style={retryBtn}>
-              Try again
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16, width: "100%", maxWidth: 280 }}>
+              {permissionDenied ? (
+                <button type="button" onClick={() => void openAppSettings()} style={retryBtn}>
+                  Open Settings
+                </button>
+              ) : null}
+              <button type="button" onClick={() => void startCamera()} style={{ ...retryBtn, background: permissionDenied ? "transparent" : retryBtn.background, border: permissionDenied ? "1px solid rgba(255,255,255,0.35)" : undefined }}>
+                Try again
+              </button>
+            </div>
           </div>
         ) : null}
 

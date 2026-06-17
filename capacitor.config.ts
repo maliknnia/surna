@@ -22,6 +22,9 @@ const config: CapacitorConfig = {
     Camera: {
       permissions: ['camera', 'photos'],
     },
+    StatusBar: {
+      overlaysWebView: false,
+    },
     Geolocation: {
       permissions: ['location'],
     },

@@ -2060,6 +2060,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   //   }
   // });
 
+  // Legacy join — use POST /api/events/:id/rsvp (canonical events.router.ts)
+  /*
   app.post('/api/events/:eventId/join', isAuthenticated, requireEmailVerified, async (req: any, res) => {
     try {
       const userId = sessionUserId(req);
@@ -2081,6 +2083,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       res.status(500).json({ message: "Failed to join event" });
     }
   });
+  */
 
   // Phase 4: Live Streaming routes
   app.post('/api/streams/create', isAuthenticated, async (req: any, res) => {
@@ -2897,7 +2900,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  // RSVP to event with waitlist support
+  // Legacy RSVP — superseded by server/features/events/events.router.ts
+  /*
   app.post("/api/events/:id/rsvp", isAuthenticated, async (req: any, res) => {
     try {
       const { status, notes } = req.body; // 'attending', 'not_attending', 'maybe'
@@ -2919,6 +2923,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       res.status(400).json({ message: errMsg(error) });
     }
   });
+  */
 
   // Create event with recurring pattern
   app.post("/api/events/recurring", isAuthenticated, async (req: any, res) => {

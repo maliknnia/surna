@@ -7,9 +7,10 @@ import {
   MapPin,
   UserPlus,
   CheckCircle2,
-  BarChart3,
   Share2,
   Play,
+  Film,
+  MessageCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LazyImage } from "@/components/ui/lazy-image";
@@ -19,7 +20,7 @@ import { ROUTES } from "@/navigation";
 import type { UserHighlight } from "@shared/userProfile";
 import { cn } from "@/lib/utils";
 
-type ProfileTab = "posts" | "photos" | "stats";
+type ProfileTab = "posts" | "reels" | "photos";
 
 type UserPhoto = {
   id: string;
@@ -33,13 +34,6 @@ type ProfilePost = {
   imageUrl?: string | null;
   videoUrl?: string | null;
   likesCount?: number;
-};
-
-type PerformanceSummary = {
-  weeklyActivity?: number[];
-  recentMatches?: Array<{ opponent: string; result?: string }>;
-  monthlyGoals?: { completed?: number; total?: number };
-  consistency?: string | number;
 };
 
 export type ProfileInstagramUser = {
@@ -120,14 +114,9 @@ export function ProfileInstagramView({
     enabled: !!userId,
   });
 
-  const { data: performance } = useQuery<PerformanceSummary>({
-    queryKey: ["/api/profile", userId, "performance"],
-    enabled: !!userId && tab === "stats",
-  });
-
   const posts = feedData?.posts ?? [];
-  const wins = performance?.recentMatches?.filter((m) => m.result === "win").length ?? 0;
-  const activityTotal = performance?.weeklyActivity?.reduce((a, b) => a + b, 0) ?? 0;
+  const imagePosts = posts.filter((p) => !p.videoUrl);
+  const reelPosts = posts.filter((p) => p.videoUrl);
 
   const stats = [
     { value: user.postsCount ?? posts.length, label: "posts" },
@@ -255,9 +244,10 @@ export function ProfileInstagramView({
             <button
               type="button"
               onClick={onMessage}
-              className={igBtn}
+              className={cn(igBtn, "gap-1.5")}
               style={btnSurface}
             >
+              <MessageCircle className="w-4 h-4" strokeWidth={2} style={{ color: "var(--surna-text)" }} />
               Message
             </button>
           </>
@@ -302,8 +292,8 @@ export function ProfileInstagramView({
         {(
           [
             { id: "posts" as const, icon: LayoutGrid },
+            { id: "reels" as const, icon: Film },
             { id: "photos" as const, icon: ImageIcon },
-            { id: "stats" as const, icon: BarChart3 },
           ] as const
         ).map(({ id, icon: TabIcon }) => (
           <button
@@ -330,7 +320,7 @@ export function ProfileInstagramView({
                 <div key={i} className="aspect-square animate-pulse" style={{ background: "var(--surna-elevated)" }} />
               ))}
             </div>
-          ) : posts.length === 0 ? (
+          ) : imagePosts.length === 0 ? (
             <div className="py-20 text-center px-6">
               <LayoutGrid className="w-12 h-12 mx-auto mb-3 opacity-25" style={{ color: "var(--surna-text)" }} />
               <p className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
@@ -346,7 +336,7 @@ export function ProfileInstagramView({
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-[1px]">
-              {posts.map((post) => (
+              {imagePosts.map((post) => (
                 <button
                   key={post.id}
                   type="button"
@@ -364,12 +354,6 @@ export function ProfileInstagramView({
                       wrapperClassName="block w-full h-full"
                       className="w-full h-full object-cover"
                     />
-                  ) : post.videoUrl ? (
-                    <>
-                      <div className="w-full h-full flex items-center justify-center text-xs" style={{ background: "var(--surna-elevated)" }}>
-                        <Play className="w-8 h-8 opacity-80" fill="currentColor" style={{ color: "var(--surna-text)" }} />
-                      </div>
-                    </>
                   ) : (
                     <div
                       className="w-full h-full p-2 flex items-center justify-center text-center text-[10px] leading-tight line-clamp-4"
@@ -378,6 +362,51 @@ export function ProfileInstagramView({
                       {post.content?.slice(0, 80) || "Post"}
                     </div>
                   )}
+                </button>
+              ))}
+            </div>
+          )
+        ) : null}
+
+        {tab === "reels" ? (
+          postsLoading ? (
+            <div className="grid grid-cols-3 gap-[1px]">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="aspect-[9/16] animate-pulse" style={{ background: "var(--surna-elevated)" }} />
+              ))}
+            </div>
+          ) : reelPosts.length === 0 ? (
+            <div className="py-20 text-center px-6">
+              <Film className="w-12 h-12 mx-auto mb-3 opacity-25" style={{ color: "var(--surna-text)" }} />
+              <p className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
+                No reels yet
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-[1px]">
+              {reelPosts.map((post) => (
+                <button
+                  key={post.id}
+                  type="button"
+                  className="aspect-[9/16] relative overflow-hidden active:opacity-90 bg-black"
+                  onClick={() => onPostClick?.(post.id)}
+                  data-testid={`profile-reel-${post.id}`}
+                >
+                  {post.imageUrl ? (
+                    <LazyImage
+                      src={post.imageUrl}
+                      alt=""
+                      sources={deriveModernSources(post.imageUrl)}
+                      placeholder={deriveLqipPlaceholder(post.imageUrl)}
+                      wrapperClassName="block w-full h-full"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full" style={{ background: "var(--surna-elevated)" }} />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <Play className="w-7 h-7 text-white/90 drop-shadow-md" fill="currentColor" strokeWidth={0} />
+                  </div>
                 </button>
               ))}
             </div>
@@ -419,43 +448,6 @@ export function ProfileInstagramView({
               ))}
             </div>
           )
-        ) : null}
-
-        {tab === "stats" ? (
-          <div className="px-4 py-6 space-y-4">
-            <div className="grid grid-cols-3 gap-6 text-center">
-              {[
-                { label: "Wins", value: wins || "—" },
-                { label: "This week", value: activityTotal || "—" },
-                {
-                  label: "Goals",
-                  value:
-                    performance?.monthlyGoals?.total != null
-                      ? `${performance.monthlyGoals.completed ?? 0}/${performance.monthlyGoals.total}`
-                      : "—",
-                },
-              ].map((s) => (
-                <div key={s.label}>
-                  <p className="text-[22px] font-semibold leading-none" style={{ color: "var(--surna-text)" }}>
-                    {s.value}
-                  </p>
-                  <p className="text-[13px] mt-1" style={{ color: "var(--surna-text-secondary)" }}>
-                    {s.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-            {performance?.consistency ? (
-              <p className="text-[13px] text-center" style={{ color: "var(--surna-text-secondary)" }}>
-                Activity: {performance.consistency}
-              </p>
-            ) : null}
-            {!performance && (
-              <p className="text-[13px] text-center py-6" style={{ color: "var(--surna-text-muted)" }}>
-                Play games and join events to build your stats.
-              </p>
-            )}
-          </div>
         ) : null}
       </div>
     </div>

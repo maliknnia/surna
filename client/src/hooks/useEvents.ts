@@ -23,8 +23,18 @@ type EventRow = {
   creator_avatar?: string | null;
   going_count?: number;
   interested_count?: number;
+  chat_group_id?: string | null;
+  featured_highlight_ids?: string[];
+  status?: string;
   total_rsvps?: number;
-  attendees?: any[];
+  attendees?: Array<{
+    status?: string;
+    user_id?: string;
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+    profile_image_url?: string;
+  }>;
 };
 
 type EventsPage = {
@@ -105,6 +115,7 @@ export function useRSVP(eventId: string) {
       qc.invalidateQueries({ queryKey: ["event", eventId] });
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["my-rsvps"] });
+      qc.invalidateQueries({ queryKey: ["/api/events/me/mine"] });
     },
   });
 }

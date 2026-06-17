@@ -38,6 +38,7 @@
     "@capacitor/geolocation": "^8.2.0",
     "@capacitor/ios": "^8.4.0",
     "@capacitor/push-notifications": "^8.1.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/plus-jakarta-sans": "^5.2.8",
     "@google-cloud/storage": "^7.17.0",

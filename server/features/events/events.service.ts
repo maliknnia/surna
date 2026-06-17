@@ -45,6 +45,7 @@ export async function createEvent(creatorId: string, e: any) {
       description: `Event chat · ${eventId}`,
       eventId,
     });
+    await repo.setEventChatGroupId(eventId, group.id);
     return { ...ev, chat_group_id: group.id, chatGroupId: group.id, recommendations };
   } catch (err) {
     console.error("[Events] Failed to create event group chat:", err);
@@ -54,7 +55,17 @@ export async function createEvent(creatorId: string, e: any) {
 
 export async function editEvent(creatorId: string, id: string, e: any) {
   if (e.startsAt && e.endsAt && new Date(e.endsAt) <= new Date(e.startsAt)) throw new Error("END_BEFORE_START");
-  return await repo.updateEvent(creatorId, id, e);
+  const prev = await repo.getEvent(id);
+  const ev = await repo.updateEvent(creatorId, id, e);
+  if (ev && e.status === "cancelled" && (prev as { status?: string })?.status !== "cancelled") {
+    try {
+      const { notifyEventCancelled } = await import("../../services/eventNotificationService");
+      await notifyEventCancelled(id);
+    } catch (err) {
+      console.warn("[Events] Cancel notification skipped:", err);
+    }
+  }
+  return ev;
 }
 
 export async function rsvp(
@@ -102,6 +113,21 @@ export async function rsvp(
     const promoted = await repo.promoteNextWaitlisted(eventId);
     if (promoted) {
       console.log("[Phase3-6] Waitlist promoted to going:", promoted, eventId);
+      try {
+        const { notifyWaitlistPromoted } = await import("../../services/eventNotificationService");
+        await notifyWaitlistPromoted(eventId, promoted);
+      } catch (err) {
+        console.warn("[Events] Waitlist promotion notification skipped:", err);
+      }
+    }
+  }
+
+  if (status === "going" || status === "interested" || status === "waitlist") {
+    try {
+      const { notifyOrganizerOfRsvp } = await import("../../services/eventNotificationService");
+      await notifyOrganizerOfRsvp(eventId, userId, status);
+    } catch (err) {
+      console.warn("[Events] RSVP notification skipped:", err);
     }
   }
 

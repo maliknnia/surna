@@ -20,6 +20,20 @@ export function ensureEventsCompatTables(): Promise<void> {
       ALTER TABLE events ADD COLUMN IF NOT EXISTS location_detail jsonb;
       ALTER TABLE events ADD COLUMN IF NOT EXISTS route_coordinates jsonb;
       ALTER TABLE events ADD COLUMN IF NOT EXISTS chat_group_id text;
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS featured_highlight_ids text[] DEFAULT ARRAY[]::text[];
+
+      CREATE TABLE IF NOT EXISTS event_photos (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id varchar NOT NULL,
+        uploader_id varchar NOT NULL,
+        image_url varchar NOT NULL,
+        caption text,
+        width integer,
+        height integer,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_event_photos_event_id ON event_photos(event_id, created_at DESC);
 
       CREATE TABLE IF NOT EXISTS event_rsvps (
         event_id varchar NOT NULL,
@@ -77,6 +91,8 @@ export async function setEventChatGroupId(eventId: string, chatGroupId: string) 
 
 export async function updateEvent(creatorId: string, id: string, e: any) {
   const status = e.status ?? null;
+  const featuredIds =
+    e.featuredHighlightIds !== undefined ? e.featuredHighlightIds : undefined;
   // When transitioning to cancelled, stamp cancelled_at; when reverting
   // to active, clear it. Otherwise leave it untouched.
   const cancelledAtClause =
@@ -99,6 +115,7 @@ export async function updateEvent(creatorId: string, id: string, e: any) {
       visibility = COALESCE(${e.visibility}, visibility),
       capacity = COALESCE(${e.capacity}, capacity),
       cover_media_id = COALESCE(${e.coverMediaId}, cover_media_id),
+      featured_highlight_ids = COALESCE(${featuredIds ?? null}, featured_highlight_ids),
       status = COALESCE(${status}, status),
       cancelled_at = ${cancelledAtClause}
     WHERE id=${id} AND creator_id=${creatorId}
@@ -234,6 +251,7 @@ export async function listOrganizedByUser(userId: string) {
   const q = await dbRead.execute(sql`
     SELECT e.id, e.title, e.description, e.starts_at, e.ends_at,
            e.location, e.visibility, e.capacity, e.creator_id,
+           e.chat_group_id, e.featured_highlight_ids,
            COALESCE(e.status, 'active') AS status,
            e.cancelled_at,
            m.original_url AS cover_url,
@@ -381,6 +399,100 @@ export async function listUserPast(userId: string, limit = 50) {
     LIMIT ${limit};
   `);
   return q.rows;
+}
+
+export async function listMineForStrip(userId: string) {
+  const [going, organizing] = await Promise.all([
+    dbRead.execute(sql`
+      SELECT e.id, e.title, e.starts_at, e.location,
+             m.thumb_url AS cover_thumb_url, m.medium_url AS cover_medium_url,
+             r.status AS my_status, 'going' AS strip_role
+      FROM event_rsvps r
+      JOIN events e ON e.id = r.event_id
+      LEFT JOIN media m ON m.id::text = e.cover_media_id
+      WHERE r.user_id = ${userId}
+        AND r.status IN ('going', 'interested', 'waitlist')
+        AND e.starts_at >= NOW()
+        AND COALESCE(e.status, 'active') = 'active'
+      ORDER BY e.starts_at ASC
+      LIMIT 12
+    `),
+    dbRead.execute(sql`
+      SELECT e.id, e.title, e.starts_at, e.location,
+             m.thumb_url AS cover_thumb_url, m.medium_url AS cover_medium_url,
+             'organizer' AS my_status, 'organizing' AS strip_role
+      FROM events e
+      LEFT JOIN media m ON m.id::text = e.cover_media_id
+      WHERE e.creator_id = ${userId}
+        AND e.starts_at >= NOW()
+        AND COALESCE(e.status, 'active') = 'active'
+      ORDER BY e.starts_at ASC
+      LIMIT 12
+    `),
+  ]);
+  return { going: going.rows ?? [], organizing: organizing.rows ?? [] };
+}
+
+export async function getEventAttendeeUserIds(eventId: string): Promise<string[]> {
+  const q = await dbRead.execute(sql`
+    SELECT DISTINCT user_id FROM event_rsvps
+    WHERE event_id = ${eventId} AND status IN ('going', 'interested')
+  `);
+  const ev = await getEvent(eventId);
+  const ids = new Set<string>(
+    (q.rows ?? []).map((r: Record<string, unknown>) => String(r.user_id)).filter(Boolean),
+  );
+  const creator = (ev as { creator_id?: string } | null)?.creator_id;
+  if (creator) ids.add(creator);
+  return [...ids];
+}
+
+export async function getEventPhotos(eventId: string) {
+  await ensureEventsCompatTables();
+  const q = await dbRead.execute(sql`
+    SELECT * FROM event_photos WHERE event_id = ${eventId}
+    ORDER BY created_at DESC
+  `);
+  return q.rows ?? [];
+}
+
+export async function addEventPhoto(data: {
+  eventId: string;
+  uploaderId: string;
+  imageUrl: string;
+  caption?: string;
+  width?: number;
+  height?: number;
+}) {
+  await ensureEventsCompatTables();
+  const q = await db.execute(sql`
+    INSERT INTO event_photos (event_id, uploader_id, image_url, caption, width, height)
+    VALUES (${data.eventId}, ${data.uploaderId}, ${data.imageUrl}, ${data.caption ?? null}, ${data.width ?? null}, ${data.height ?? null})
+    RETURNING *
+  `);
+  return q.rows[0];
+}
+
+export async function deleteEventPhoto(photoId: string, userId: string): Promise<boolean> {
+  await ensureEventsCompatTables();
+  const q = await dbRead.execute(sql`
+    SELECT p.*, e.creator_id FROM event_photos p
+    JOIN events e ON e.id = p.event_id
+    WHERE p.id = ${photoId}
+    LIMIT 1
+  `);
+  const row = q.rows[0] as { uploader_id?: string; creator_id?: string } | undefined;
+  if (!row) return false;
+  if (row.uploader_id !== userId && row.creator_id !== userId) return false;
+  await db.execute(sql`DELETE FROM event_photos WHERE id = ${photoId}`);
+  return true;
+}
+
+export async function isEventAttendee(eventId: string, userId: string): Promise<boolean> {
+  const ev = await getEvent(eventId);
+  if ((ev as { creator_id?: string } | null)?.creator_id === userId) return true;
+  const rsvp = await getUserRSVP(eventId, userId);
+  return rsvp?.status === "going" || rsvp?.status === "interested";
 }
 
 export async function getEventTicket(eventId: string, userId: string) {

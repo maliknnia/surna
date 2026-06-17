@@ -9,6 +9,7 @@ import {
   UpgradePromptCard,
   MyHubEventCard,
   EditEventSheet,
+  ManageEventHighlightsSheet,
   type MyHubEvent,
 } from "@/features/my-hub/components";
 import { HubSubpageHeader } from "@/components/create/HubSubpageHeader";
@@ -26,6 +27,8 @@ export default function MyHubEventsPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<MyHubEvent | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [highlightsEvent, setHighlightsEvent] = useState<MyHubEvent | null>(null);
+  const [highlightsOpen, setHighlightsOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery<EventsResponse>({
     queryKey: ["/api/events/me/organized"],
@@ -153,6 +156,10 @@ export default function MyHubEventsPage() {
                       onEdit={handleEdit}
                       onCancel={handleCancel}
                       onShare={handleShare}
+                      onManageHighlights={(ev) => {
+                        setHighlightsEvent(ev);
+                        setHighlightsOpen(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -171,6 +178,10 @@ export default function MyHubEventsPage() {
                       onEdit={handleEdit}
                       onCancel={handleCancel}
                       onShare={handleShare}
+                      onManageHighlights={(ev) => {
+                        setHighlightsEvent(ev);
+                        setHighlightsOpen(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -189,6 +200,10 @@ export default function MyHubEventsPage() {
                       onEdit={handleEdit}
                       onCancel={handleCancel}
                       onShare={handleShare}
+                      onManageHighlights={(ev) => {
+                        setHighlightsEvent(ev);
+                        setHighlightsOpen(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -207,6 +222,10 @@ export default function MyHubEventsPage() {
                       onEdit={handleEdit}
                       onCancel={handleCancel}
                       onShare={handleShare}
+                      onManageHighlights={(ev) => {
+                        setHighlightsEvent(ev);
+                        setHighlightsOpen(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -229,6 +248,14 @@ export default function MyHubEventsPage() {
         onOpenChange={(o) => {
           setEditOpen(o);
           if (!o) setEditing(null);
+        }}
+      />
+      <ManageEventHighlightsSheet
+        event={highlightsEvent}
+        open={highlightsOpen}
+        onOpenChange={(o) => {
+          setHighlightsOpen(o);
+          if (!o) setHighlightsEvent(null);
         }}
       />
     </div>

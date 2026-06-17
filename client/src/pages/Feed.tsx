@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
 import NotificationPeekSheet from "@/components/notifications/NotificationPeekSheet";
-import { Heart, MessageCircle, Share2, Users, Zap, TrendingUp, UserPlus, Camera, Play, Trophy, ArrowLeft, Bell, User as UserProfile, Loader2, MoreVertical, Calendar, MapPin, RefreshCw, Bookmark } from "lucide-react";
+import { Heart, MessageCircle, Share2, Users, Zap, TrendingUp, UserPlus, Camera, Play, Trophy, ArrowLeft, Bell, User as UserProfile, Loader2, Plus, Calendar, MapPin, RefreshCw, Bookmark } from "lucide-react";
 import { NavHomeIcon } from "@/components/icons/NavHomeIcon";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,11 @@ import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-quer
 import { useInView } from "react-intersection-observer";
 import type { PostWithAuthorEnhanced, PostWithAuthor, User, Hashtag } from "@shared/schema";
 import PlacePostCard from "@/components/PlacePostCard";
-import { FeedShareMoment, useSurnaCamera } from "@/features/camera";
+import { useSurnaCamera } from "@/features/camera";
 import { FeedPostCard } from "@/components/feed/FeedPostCard";
+import { FeedDiscoverPeople } from "@/components/feed/FeedDiscoverPeople";
+import { PostComposerSheet } from "@/components/feed/PostComposerSheet";
 import { PostDetailSheet } from "@/components/feed/PostDetailSheet";
-import { FeedMenuSheet } from "@/components/feed/FeedMenuSheet";
 import { eventDetailPath } from "@/lib/eventRoutes";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -214,7 +215,7 @@ export default function Feed() {
   const feedCameraOpen = cameraOpen && cameraOptions.source === "feed";
   const { user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState("home");
-  const [feedMenuOpen, setFeedMenuOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStory, setSelectedStory] = useState<{ userId: string; storyIndex: number } | null>(null);
   const [showAddStory, setShowAddStory] = useState(false);
@@ -235,7 +236,6 @@ export default function Feed() {
   const scrollPositionRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const feedScrollRef = useRef<HTMLDivElement>(null);
-  const createPostRef = useRef<HTMLDivElement>(null);
 
   // Intersection observer for infinite scroll
   const { ref: loadMoreRef, inView } = useInView({
@@ -362,6 +362,8 @@ export default function Feed() {
     return new Set(followingList.map((f) => f.id).filter(Boolean));
   }, [followingList]);
 
+  const needsDiscover = followingIds.size < 5;
+
   const filteredPosts = useMemo(() => {
     if (feedTab === "Following") {
       return posts.filter((post: any) => followingIds.has(post?.author?.id));
@@ -394,7 +396,9 @@ export default function Feed() {
     try {
       await apiRequest("POST", `/api/users/${userId}/follow`);
       queryClient.invalidateQueries({ queryKey: ["/api/users/suggested"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "following"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/feed-keyset"] });
       toast({ title: "Following!", description: "You'll see more from them in your feed." });
     } catch {
       toast({
@@ -440,16 +444,6 @@ export default function Feed() {
     }
     scrollFeedToTop();
   }, [feedBottomTab, scrollFeedToTop]);
-
-  useEffect(() => {
-    const el = feedScrollRef.current;
-    if (!el) return;
-    if (feedMenuOpen) {
-      el.style.overflow = "hidden";
-    } else {
-      el.style.overflow = "auto";
-    }
-  }, [feedMenuOpen]);
 
   /** Facebook-style: every Home tap → scroll to top + refresh */
   const handleHomePress = useCallback(() => {
@@ -586,11 +580,12 @@ export default function Feed() {
           </button>
           <button
             type="button"
-            onClick={() => setFeedMenuOpen(true)}
+            onClick={() => setComposerOpen(true)}
             className="flex h-9 w-9 items-center justify-center active:opacity-60 transition-opacity"
-            aria-label="Menu"
+            aria-label="Create post"
+            data-testid="feed-create-post"
           >
-            <MoreVertical className="h-[22px] w-[22px]" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
+            <Plus className="h-[24px] w-[24px]" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
           </button>
         </div>
       </header>
@@ -614,9 +609,14 @@ export default function Feed() {
                       onAddStory={openStoryCamera}
                     />
 
-                    <div ref={createPostRef}>
-                      <FeedShareMoment isDark={isDark} />
-                    </div>
+                    {needsDiscover && (
+                      <FeedDiscoverPeople
+                        suggestedUsers={suggestedUsers}
+                        followingIds={followingIds}
+                        onFollowUser={handleFollowUser}
+                        onUserClick={(userId) => setLocation(`/person/${userId}`)}
+                      />
+                    )}
 
                     {/* ── Content tabs: For You / Following / Events / Nearby ── */}
                     <div style={{ overflowX: "auto", scrollbarWidth: "none", display: "flex", padding: "8px 16px 4px", gap: 6 }}>
@@ -683,12 +683,23 @@ export default function Feed() {
                         </div>
                       )}
                       {!isLoading && feedEntries.length === 0 && (
-                        <div className="py-10 px-6 text-center text-token-text-muted space-y-3">
+                        <div className="py-6 px-3 space-y-4">
                           {feedTab === "Following" && (
-                            <p>Follow players and teams to see their posts here.</p>
+                            <>
+                              <p className="text-center text-sm" style={{ color: "var(--surna-text-secondary)" }}>
+                                Follow athletes to see their posts here first.
+                              </p>
+                              <FeedDiscoverPeople
+                                suggestedUsers={suggestedUsers}
+                                followingIds={followingIds}
+                                onFollowUser={handleFollowUser}
+                                onUserClick={(userId) => setLocation(`/person/${userId}`)}
+                                compact
+                              />
+                            </>
                           )}
                           {feedTab === "Events" && (
-                            <>
+                            <div className="py-4 px-3 text-center text-token-text-muted space-y-3">
                               <p>No event posts in your feed yet.</p>
                               <Button
                                 type="button"
@@ -698,10 +709,10 @@ export default function Feed() {
                               >
                                 Browse events
                               </Button>
-                            </>
+                            </div>
                           )}
                           {feedTab === "Nearby" && (
-                            <>
+                            <div className="py-4 px-3 text-center text-token-text-muted space-y-3">
                               <p>No nearby posts right now. Check the map for places and games around you.</p>
                               <Button
                                 type="button"
@@ -711,10 +722,25 @@ export default function Feed() {
                               >
                                 Open map
                               </Button>
-                            </>
+                            </div>
                           )}
                           {feedTab === "For You" && (
-                            <p>Nothing here yet — pull down to refresh or share a moment above.</p>
+                            <div className="py-4 px-3 text-center space-y-3">
+                              <p className="text-sm" style={{ color: "var(--surna-text-secondary)" }}>
+                                {needsDiscover
+                                  ? "Follow a few athletes below — your For You feed ranks posts from people you follow and your sports."
+                                  : "Nothing here yet — pull down to refresh."}
+                              </p>
+                              {!needsDiscover && (
+                                <Button
+                                  type="button"
+                                  className="rounded-full"
+                                  onClick={() => setComposerOpen(true)}
+                                >
+                                  Create a post
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
@@ -796,11 +822,7 @@ export default function Feed() {
         </button>
       </nav>
 
-      <FeedMenuSheet
-        open={feedMenuOpen}
-        onClose={() => setFeedMenuOpen(false)}
-        onNavigate={navigateFromFeed}
-      />
+      <PostComposerSheet open={composerOpen} onOpenChange={setComposerOpen} />
 
       {/* Story Viewer */}
       {showStoryViewer && selectedStory && (

@@ -73,7 +73,7 @@ export default function EventHeader({
   return (
     <div className="spotify-hero-inner">
       <div
-        className="w-28 h-28 rounded-3xl overflow-hidden mb-5 shadow-2xl relative"
+        className="w-40 h-40 rounded-3xl overflow-hidden mb-5 shadow-2xl relative"
         style={{ boxShadow: `0 16px 48px ${accentColor}44` }}
       >
         {coverUrl ? (

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Navigation, Search, SlidersHorizontal } from "lucide-react";
+import { MapPin, Navigation, Search, SlidersHorizontal, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import VenueCard from "@/components/VenueCard";
 import InteractiveMap from "@/components/map/InteractiveMap";
@@ -16,6 +16,8 @@ import {
   type MapCategoryFilter,
 } from "@/lib/mapFilters";
 import { ROUTES } from "@/navigation";
+import { useTheme } from "@/contexts/ThemeContext";
+import { toggleMapTileStyleMenu } from "@/lib/mapTileStyle";
 
 interface MapData {
   events: any[];
@@ -75,8 +77,9 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showSearchSheet, setShowSearchSheet] = useState(false);
 
-  const mt = getMapOverlayTheme(true);
-  const mapCtrlIconColor = "#ffffff";
+  const { isDark } = useTheme();
+  const mt = getMapOverlayTheme(isDark);
+  const mapCtrlIconColor = isDark ? "#ffffff" : "#111111";
 
   const [enabledLayers] = useState<EnabledLayers>({
     events: true,
@@ -291,19 +294,31 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
                   <div className="absolute top-3 right-2 z-[1000] pointer-events-auto flex flex-col items-center gap-0.5">
                     <button
                       type="button"
+                      onClick={() => toggleMapTileStyleMenu()}
+                      className="map-ctrl-icon active:scale-90 transition-transform"
+                      data-testid="button-map-style-toolbar"
+                      data-map-style-trigger
+                      aria-label="Map style — dark, light, or satellite"
+                      title="Map style"
+                    >
+                      <Layers size={26} strokeWidth={2} color={mapCtrlIconColor} />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setShowSearchSheet(true)}
                       className="map-ctrl-icon active:scale-90 transition-transform"
                       aria-label="Search"
                     >
-                      <Search size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                      <Search size={26} strokeWidth={2} color={mapCtrlIconColor} />
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowFilterSheet(true)}
                       className="map-ctrl-icon active:scale-90 transition-transform relative"
                       aria-label="Filters"
+                      data-testid="button-open-filters"
                     >
-                      <SlidersHorizontal size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                      <SlidersHorizontal size={26} strokeWidth={2} color={mapCtrlIconColor} />
                       {activeFilterCount > 0 && (
                         <span
                           className="absolute top-0 right-0 min-w-[16px] h-4 rounded-full text-[9px] font-bold flex items-center justify-center px-1"
@@ -313,16 +328,14 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
                         </span>
                       )}
                     </button>
-                  </div>
-
-                  <div className="absolute bottom-24 right-2 z-[999] pointer-events-auto">
                     <button
                       type="button"
                       className="map-ctrl-icon active:scale-90 transition-transform"
                       onClick={handleRecenter}
                       aria-label="Center on my location"
+                      data-testid="button-recenter"
                     >
-                      <Navigation size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                      <Navigation size={26} strokeWidth={2} color={mapCtrlIconColor} />
                     </button>
                   </div>
 

@@ -38,6 +38,7 @@ import {
   pinMatchesLayer,
 } from "@/lib/mapSettings";
 import { toggleMapTileStyleMenu } from "@/lib/mapTileStyle";
+import { applyPageChromeColor, applySystemChromeTheme } from "@/lib/systemChromeTheme";
 import { eventDetailPath, isRouteSport, consumeMapRouteFocus } from "@/lib/eventRoutes";
 import "leaflet/dist/leaflet.css";
 
@@ -599,8 +600,19 @@ export default function MapPage({
   const effectiveMapStyle = isDark ? "dark" : "standard";
   const mapCtrlIconColor = isDark ? "#ffffff" : "#111111";
 
+  useEffect(() => {
+    if (embedded) return;
+    applyPageChromeColor(pageBg, { immersive: true });
+    return () => {
+      applySystemChromeTheme(isDark ? "dark" : "light");
+    };
+  }, [embedded, pageBg, isDark]);
+
   return (
-    <div className={`relative overflow-hidden ${embedded ? 'h-full w-full' : 'h-screen w-screen'}`} style={{ background: pageBg }}>
+    <div
+      className={`relative overflow-hidden ${embedded ? "h-full w-full" : "fixed inset-0 z-0"}`}
+      style={{ background: pageBg }}
+    >
       <div className="absolute inset-0">
         <>
             <InteractiveMap
@@ -744,7 +756,7 @@ export default function MapPage({
                 aria-label="Map style — dark, light, or satellite"
                 title="Map style"
               >
-                <Layers size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                <Layers size={26} strokeWidth={2} color={mapCtrlIconColor} />
               </button>
 
               <button
@@ -753,7 +765,7 @@ export default function MapPage({
                 data-testid="button-map-settings"
                 aria-label="Map settings"
               >
-                <Settings size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                <Settings size={26} strokeWidth={2} color={mapCtrlIconColor} />
               </button>
 
               <button
@@ -762,7 +774,7 @@ export default function MapPage({
                 aria-label="Search map"
                 data-testid="button-map-search"
               >
-                <Search size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                <Search size={26} strokeWidth={2} color={mapCtrlIconColor} />
               </button>
 
               <button
@@ -771,7 +783,7 @@ export default function MapPage({
                 data-testid="button-open-filters"
                 aria-label="Filters"
               >
-                <SlidersHorizontal size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                <SlidersHorizontal size={26} strokeWidth={2} color={mapCtrlIconColor} />
                 {activeFilterCount > 0 && (
                   <span
                     className="absolute top-0 right-0 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[9px] font-bold px-1"
@@ -788,16 +800,17 @@ export default function MapPage({
                 data-testid="button-find-players"
                 aria-label="Find Players Nearby"
               >
-                <UserPlus size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                <UserPlus size={26} strokeWidth={2} color={mapCtrlIconColor} />
               </button>
 
               <button
                 className="map-ctrl-icon active:scale-90 transition-transform"
                 onClick={handleRecenter}
                 data-testid="button-recenter"
-                aria-label="Recenter"
+                aria-label="Center on my location"
+                title="My location"
               >
-                <Navigation size={26} strokeWidth={2.5} color={mapCtrlIconColor} />
+                <Navigation size={26} strokeWidth={2} color={mapCtrlIconColor} />
               </button>
             </div>
             )}
@@ -806,7 +819,10 @@ export default function MapPage({
       </div>
 
       {!embedded && !mapChromeHidden && (
-        <div className="absolute top-0 left-0 z-[1001] p-3">
+        <div
+          className="absolute top-0 left-0 z-[1001]"
+          style={{ paddingTop: "max(8px, env(safe-area-inset-top))", paddingLeft: 12 }}
+        >
           <button
             onClick={() => (window.history.length > 1 ? window.history.back() : navigate("/"))}
             className="w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-xl active:scale-90 transition-transform"

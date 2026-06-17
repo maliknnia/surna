@@ -1043,7 +1043,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSuggestedUsers(userId: string, limit = 10): Promise<User[]> {
-    // Get users that the current user is not following and exclude themselves
+    const [viewer] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const viewerSport = String(viewer?.sport || viewer?.primarySport || "").toLowerCase();
+
     const suggested = await db
       .select()
       .from(users)
@@ -1057,7 +1059,11 @@ export class DatabaseStorage implements IStorage {
           )`
         )
       )
-      .orderBy(sql`RANDOM()`)
+      .orderBy(
+        viewerSport
+          ? sql`CASE WHEN lower(coalesce(${users.sport}, ${users.primarySport}, '')) = ${viewerSport} THEN 0 ELSE 1 END, RANDOM()`
+          : sql`RANDOM()`,
+      )
       .limit(limit);
     
     return suggested;

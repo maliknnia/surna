@@ -3196,6 +3196,21 @@ export const dmSharedNotes = pgTable("dm_shared_notes", {
 
 export type DmSharedNote = typeof dmSharedNotes.$inferSelect;
 
+export const eventPhotos = pgTable("event_photos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").notNull(),
+  uploaderId: varchar("uploader_id").notNull().references(() => users.id),
+  imageUrl: varchar("image_url").notNull(),
+  caption: text("caption"),
+  width: integer("width"),
+  height: integer("height"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type EventPhoto = typeof eventPhotos.$inferSelect;
+export type InsertEventPhoto = typeof eventPhotos.$inferInsert;
+export const insertEventPhotoSchema = createInsertSchema(eventPhotos).omit({ id: true, createdAt: true });
+
 export const teamPhotos = pgTable("team_photos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: 'cascade' }),

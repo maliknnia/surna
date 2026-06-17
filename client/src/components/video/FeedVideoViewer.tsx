@@ -418,8 +418,48 @@ function VideoSlide({
       {/* Top progress bar */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2.5, background: "rgba(255,255,255,0.14)", zIndex: 22, pointerEvents: "none" }} />
 
-      {/* Mute + options — icon only */}
-      <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 16, zIndex: 15 }}>
+      {/* Top-left: author on video */}
+      <div style={{ position: "absolute", top: 12, left: 12, right: 88, display: "flex", alignItems: "center", gap: 8, zIndex: 16 }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpenAuthor(video.author.id); }}
+          style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+        >
+          <span style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.35)", display: "block" }}>
+            {video.author.profileImageUrl ? (
+              <img src={video.author.profileImageUrl} alt={authorName(video)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <span style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", fontSize: 11, fontWeight: 700, color: "#fff" }}>{authorInitials(video)}</span>
+            )}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: IMMERSIVE.icon, textShadow: "0 1px 3px rgba(0,0,0,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{authorName(video)}</span>
+        </button>
+        {video.author.id && (
+          <button
+            type="button"
+            disabled={followPending}
+            onClick={(e) => { e.stopPropagation(); onFollow(video.author.id); }}
+            style={{
+              flexShrink: 0,
+              height: 28,
+              paddingLeft: 10,
+              paddingRight: 10,
+              borderRadius: 8,
+              background: isFollowing ? "transparent" : "rgba(255,255,255,0.2)",
+              border: isFollowing ? "1px solid rgba(255,255,255,0.25)" : "none",
+              fontSize: 12,
+              fontWeight: 700,
+              color: isFollowing ? IMMERSIVE.meta : IMMERSIVE.icon,
+              cursor: followPending ? "wait" : "pointer",
+            }}
+          >
+            {isFollowing ? "Following" : "Follow"}
+          </button>
+        )}
+      </div>
+
+      {/* Mute + options — top right */}
+      <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 16, zIndex: 16 }}>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onOpenOptions(); }}
@@ -454,56 +494,8 @@ function VideoSlide({
         <ImmersiveActionIcon icon={Bookmark} active={isSaved} activeColor={IMMERSIVE.saveActive} onClick={() => onSave(video.id)} testId={`save-${video.id}`} />
       </div>
 
-      {/* Bottom info */}
+      {/* Bottom info — caption only (author moved to top) */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 56, padding: "0 14px max(20px, env(safe-area-inset-bottom))", zIndex: 15 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onOpenAuthor(video.author.id); }}
-            style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.35)", padding: 0, background: "transparent", cursor: "pointer" }}
-          >
-            {video.author.profileImageUrl ? (
-              <img src={video.author.profileImageUrl} alt={authorName(video)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <div style={{ width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>{authorInitials(video)}</div>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onOpenAuthor(video.author.id); }}
-            style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
-          >
-            <span style={{ fontSize: 14, fontWeight: 700, color: IMMERSIVE.icon, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{authorName(video)}</span>
-            {(video.sport || video.location) && (
-              <div style={{ fontSize: 11, color: IMMERSIVE.meta, marginTop: 1, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>
-                {[video.sportEmoji, video.sport, video.location].filter(Boolean).join(" · ")}
-              </div>
-            )}
-          </button>
-          {video.author.id && (
-            <button
-              type="button"
-              disabled={followPending}
-              onClick={(e) => { e.stopPropagation(); onFollow(video.author.id); }}
-              style={{
-                flexShrink: 0,
-                height: 28,
-                paddingLeft: 12,
-                paddingRight: 12,
-                borderRadius: 8,
-                background: isFollowing ? "transparent" : "rgba(255,255,255,0.2)",
-                border: isFollowing ? "1px solid rgba(255,255,255,0.25)" : "none",
-                fontSize: 12,
-                fontWeight: 700,
-                color: isFollowing ? IMMERSIVE.meta : IMMERSIVE.icon,
-                cursor: followPending ? "wait" : "pointer",
-              }}
-            >
-              {isFollowing ? "Following" : "Follow"}
-            </button>
-          )}
-        </div>
-
         <PrimaryEntityLink video={video} />
         {video.content && <ImmersiveCaption text={video.content} />}
       </div>

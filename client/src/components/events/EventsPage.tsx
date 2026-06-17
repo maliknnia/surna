@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import EventList from "./EventList";
+import { YourEventsStrip, EventDiscoveryCircles } from "./YourEventsStrip";
+import { useEventsList } from "@/hooks/useEvents";
 import { createHubPath } from "@/lib/createHub";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -181,6 +183,11 @@ export default function EventsPage({
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { data: discoverData } = useEventsList({ limit: 12 });
+  const discoverEvents = discoverData?.pages?.flatMap((p) => p.items) ?? [];
+  const userSport = (user as { sport?: string; primarySport?: string })?.sport
+    ?? (user as { primarySport?: string })?.primarySport
+    ?? null;
 
   const createStreamMutation = useMutation({
     mutationFn: async (data: { title: string; description: string; streamUrl: string }) => {
@@ -338,6 +345,7 @@ export default function EventsPage({
           )}
         </div>
         <div className="px-4 pt-3">
+          <YourEventsStrip onEventClick={(eventId) => setLocation(`/events/${eventId}`)} />
           <EventList
             key={`events-compact-${eventsRefreshKey}`}
             maxItems={maxEvents}
@@ -479,6 +487,13 @@ export default function EventsPage({
       </div>
 
       <div className="px-4 pt-4">
+        <YourEventsStrip onEventClick={(eventId) => setLocation(`/events/${eventId}`)} />
+        <EventDiscoveryCircles
+          events={discoverEvents}
+          userSport={userSport}
+          onEventClick={(eventId) => setLocation(`/events/${eventId}`)}
+          onBrowse={() => setSearchOpen(true)}
+        />
         <FeaturedEventBanner isDark={isDark} />
         <EventList
           key={`events-list-${eventsRefreshKey}`}
