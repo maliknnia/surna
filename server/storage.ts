@@ -31,6 +31,8 @@ import {
   placeReviews,
   placeBookings,
   placePosts,
+  placePostLikes,
+  placePostComments,
   userPhotos,
   userReviews,
   teamPhotos,
@@ -275,6 +277,10 @@ export interface IStorage {
   // Place posts operations
   createPlacePost(placeId: string, authorId: string, postData: InsertPlacePost): Promise<PlacePost>;
   getPlacePosts(placeId: string, limit?: number, offset?: number): Promise<PlacePost[]>;
+  likePlacePost(userId: string, placePostId: string): Promise<boolean>;
+  unlikePlacePost(userId: string, placePostId: string): Promise<boolean>;
+  isPlacePostLiked(userId: string, placePostId: string): Promise<boolean>;
+  addPlacePostComment(placePostId: string, authorId: string, content: string): Promise<{ id: string; content: string; createdAt: Date | null }>;
   
   // Instant Teams operations
   createInstantTeam(creatorId: string, data: any): Promise<InstantTeam>;
@@ -594,19 +600,25 @@ export class DatabaseStorage implements IStorage {
     );
 
     // Format place posts
-    const formattedPlacePosts = feedPlacePosts.map(({ post, place }) => ({
-      ...post,
-      ...mergeImageVariants(post.imageUrl),
-      place: {
-        id: place.id,
-        name: place.name,
-        profileImageUrl: place.profileImageUrl,
-        isVerified: place.isVerified,
-        category: place.category,
-      },
-      postType: 'place',
-      likedByMe: false, // TODO: Implement place post likes tracking
-    }));
+    const formattedPlacePosts = await Promise.all(
+      feedPlacePosts.map(async ({ post, place }) => {
+        const isLiked = await this.isPlacePostLiked(userId, post.id);
+        return {
+          ...post,
+          ...mergeImageVariants(post.imageUrl),
+          place: {
+            id: place.id,
+            name: place.name,
+            profileImageUrl: place.profileImageUrl,
+            isVerified: place.isVerified,
+            category: place.category,
+          },
+          postType: "place",
+          isLiked,
+          likedByMe: isLiked,
+        };
+      }),
+    );
 
     // Merge — followed authors weighted 3x; onboarding sports/location boost 2x
     const scoreItem = (item: Record<string, unknown>) => {
@@ -2287,6 +2299,60 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(placePosts.createdAt))
       .limit(limit)
       .offset(offset);
+  }
+
+  async likePlacePost(userId: string, placePostId: string): Promise<boolean> {
+    return await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(placePostLikes)
+        .values({ placePostId, userId })
+        .onConflictDoNothing()
+        .returning();
+      if (inserted.length === 0) return false;
+      await tx
+        .update(placePosts)
+        .set({ likesCount: sql`${placePosts.likesCount} + 1` })
+        .where(eq(placePosts.id, placePostId));
+      return true;
+    });
+  }
+
+  async unlikePlacePost(userId: string, placePostId: string): Promise<boolean> {
+    return await db.transaction(async (tx) => {
+      const deleted = await tx
+        .delete(placePostLikes)
+        .where(and(eq(placePostLikes.userId, userId), eq(placePostLikes.placePostId, placePostId)))
+        .returning();
+      if (deleted.length === 0) return false;
+      await tx
+        .update(placePosts)
+        .set({ likesCount: sql`GREATEST(${placePosts.likesCount} - 1, 0)` })
+        .where(eq(placePosts.id, placePostId));
+      return true;
+    });
+  }
+
+  async isPlacePostLiked(userId: string, placePostId: string): Promise<boolean> {
+    const [like] = await db
+      .select()
+      .from(placePostLikes)
+      .where(and(eq(placePostLikes.userId, userId), eq(placePostLikes.placePostId, placePostId)));
+    return !!like;
+  }
+
+  async addPlacePostComment(placePostId: string, authorId: string, content: string) {
+    const [comment] = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(placePostComments)
+        .values({ placePostId, authorId, content })
+        .returning();
+      await tx
+        .update(placePosts)
+        .set({ commentsCount: sql`${placePosts.commentsCount} + 1` })
+        .where(eq(placePosts.id, placePostId));
+      return [inserted];
+    });
+    return comment;
   }
 
   // Instant Teams

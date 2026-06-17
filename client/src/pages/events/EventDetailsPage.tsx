@@ -240,8 +240,35 @@ export default function EventDetailsPage() {
 
   const { data: eventPhotos = [] } = useQuery<Array<{ id: string; image_url: string; caption?: string | null }>>({
     queryKey: ["/api/events", id, "photos"],
-    enabled: !!id,
+    enabled: !!id && !isDemoEventId(id),
   });
+
+  const realAttendees: ActivityPerson[] = useMemo(() => {
+    const list = (ev?.attendees ?? []) as Array<{
+      user_id?: string;
+      status?: string;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+      profile_image_url?: string;
+    }>;
+    const fromApi = list
+      .filter((a) => a.status === "going" || a.status === "interested")
+      .map((a) => ({
+        id: String(a.user_id ?? a.username ?? Math.random()),
+        name: `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim() || a.username || "Athlete",
+        username: a.username,
+        avatarUrl: a.profile_image_url || undefined,
+      }));
+    return fromApi.length > 0 ? fromApi : demoAttendees;
+  }, [ev?.attendees, demoAttendees]);
+
+  const galleryPhotos = useMemo(() => {
+    if (!ev) return [];
+    const fromApi = eventPhotos.map((p) => ({ url: p.image_url, type: "image" as const }));
+    if (fromApi.length > 0) return fromApi;
+    return getEventMedia(ev, coverUrl);
+  }, [eventPhotos, ev, coverUrl]);
 
   useEffect(() => {
     if (!showQrModal || !ev?.id) return;
@@ -282,7 +309,7 @@ export default function EventDetailsPage() {
         onSuccess: (data: any) => {
           setRsvpStatus(status);
           if (data?.ticket?.code) setTicketCode(data.ticket.code);
-          if (status === "going") {
+          if (status === "going" && ev?.id && !isDemoEventId(String(ev.id))) {
             apiRequest("POST", "/api/posts", {
               content: `Attending ${ev.title}${ev.location ? ` at ${ev.location}` : ""}.`,
               eventId: ev.id,
@@ -350,32 +377,8 @@ export default function EventDetailsPage() {
   const sport = ev.sport || null;
   const sportConfig = getSportConfig(sport);
   const accentColor = eventAccentColor(extractedColor, sport);
-  const creatorName = ev.creator_first_name || ev.creator_username || "Organizer";
-  const realAttendees: ActivityPerson[] = useMemo(() => {
-    const list = (ev?.attendees ?? []) as Array<{
-      user_id?: string;
-      status?: string;
-      username?: string;
-      first_name?: string;
-      last_name?: string;
-      profile_image_url?: string;
-    }>;
-    const fromApi = list
-      .filter((a) => a.status === "going" || a.status === "interested")
-      .map((a) => ({
-        id: String(a.user_id ?? a.username ?? Math.random()),
-        name: `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim() || a.username || "Athlete",
-        username: a.username,
-        avatarUrl: a.profile_image_url || undefined,
-      }));
-    return fromApi.length > 0 ? fromApi : demoAttendees;
-  }, [ev?.attendees, demoAttendees]);
+  const creatorName = ev?.creator_first_name || ev?.creator_username || "Organizer";
   const attendeePreview = realAttendees.slice(0, 8);
-  const galleryPhotos = useMemo(() => {
-    const fromApi = eventPhotos.map((p) => ({ url: p.image_url, type: "image" as const }));
-    if (fromApi.length > 0) return fromApi;
-    return getEventMedia(ev, coverUrl);
-  }, [eventPhotos, ev, coverUrl]);
   const rsvpLoading = rsvpMutation.isPending;
   const bgOpacity = Math.max(0, 1 - scrollY / 400);
   const hasTicket = rsvpStatus === "going" && !!ticketCode;

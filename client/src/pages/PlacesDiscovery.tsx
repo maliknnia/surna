@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +23,8 @@ import DiscoveryCircleStrip from "@/components/cards/DiscoveryCircleStrip";
 import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/cards/DiscoverySectionHeading";
 import type { Place } from "@shared/schema";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { mergeWithDemoPlaces } from "@/lib/demoPlaces";
+import { mapPath } from "@/lib/mapNavigation";
 
 const CATEGORIES: { key: string; label: string; emoji: string }[] = [
   { key: "All", label: "All", emoji: "📍" },
@@ -86,7 +88,33 @@ export default function PlacesDiscovery({
     initialPageParam: 0,
   });
 
-  const places = data?.pages.flatMap((page) => page.items) || [];
+  const apiPlaces = data?.pages.flatMap((page) => page.items) || [];
+  const hasActiveFilter = selectedCategory !== "All";
+  const hasActiveSearch = searchQuery.length > 0;
+  const hasActiveFilters = hasActiveFilter || hasActiveSearch;
+
+  const places = useMemo(() => {
+    let list = mergeWithDemoPlaces(apiPlaces, {
+      skipDemo: hasActiveFilters,
+      mixDemos: !hasActiveFilters,
+    });
+    if (selectedCategory !== "All") {
+      const cat = selectedCategory.toLowerCase();
+      list = list.filter((p) => (p.category || "").toLowerCase() === cat);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.city?.toLowerCase().includes(q) ||
+          p.address?.toLowerCase().includes(q) ||
+          (p.sports || []).some((s: string) => s.toLowerCase().includes(q)),
+      );
+    }
+    return list;
+  }, [apiPlaces, hasActiveFilters, selectedCategory, searchQuery]);
+
   if (inView && hasNextPage && !isFetchingNextPage) fetchNextPage();
   const handleRefresh = async () => {
     await refetch();
@@ -122,8 +150,6 @@ export default function PlacesDiscovery({
     filterOpen,
   );
   usePanelToolsLifecycle(panelActive, setSearchOpen, setFilterOpen);
-  const hasActiveFilter = selectedCategory !== "All";
-  const hasActiveSearch = searchQuery.length > 0;
 
   const venueCircleItems = places.slice(0, 18).map((place) => {
     const cat = (place.category || "other").toLowerCase();
@@ -277,6 +303,7 @@ export default function PlacesDiscovery({
                     markNavReturn(embedded ? mobilePanelReturnPath("venues") : "/places");
                     setLocation(`/places/${place.id}`);
                   }}
+                  onNavigate={() => setLocation(mapPath({ type: "place", id: place.id }))}
                 />,
               );
               if (i === 1 && !circlesInserted && venueCircleItems.length > 0) {

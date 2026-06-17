@@ -2054,6 +2054,26 @@ export const placePosts = pgTable("place_posts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const placePostLikes = pgTable("place_post_likes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  placePostId: varchar("place_post_id").notNull().references(() => placePosts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  postUserIdx: index("place_post_likes_post_user_idx").on(table.placePostId, table.userId),
+  postUserUnique: uniqueIndex("place_post_likes_post_user_unique").on(table.placePostId, table.userId),
+}));
+
+export const placePostComments = pgTable("place_post_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  placePostId: varchar("place_post_id").notNull().references(() => placePosts.id, { onDelete: "cascade" }),
+  authorId: varchar("author_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  postCreatedIdx: index("place_post_comments_post_created_idx").on(table.placePostId, table.createdAt),
+}));
+
 // Places ecosystem types
 export type Place = typeof places.$inferSelect;
 export type InsertPlace = typeof places.$inferInsert;

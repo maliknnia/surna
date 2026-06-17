@@ -6,7 +6,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Settings } from "lucide-react";
-import { OWNER_PROFILE_AVATAR, SURNA_COVER_URL } from "@/lib/ownerAvatar";
+import { OWNER_PROFILE_AVATAR, OWNER_COVER_URL } from "@/lib/ownerAvatar";
 import type { UserWithProfile } from "@/lib/userProfileApi";
 import { ProfileInstagramView } from "@/components/profile/ProfileInstagramView";
 import { PostDetailSheet } from "@/components/feed/PostDetailSheet";
@@ -170,6 +170,7 @@ export default function ProfilePage() {
             isFollowing,
           }}
           avatarUrl={avatarUrl}
+          coverPhotoUrl={isOwnProfile ? OWNER_COVER_URL : undefined}
           isOwnProfile={isOwnProfile}
           socialLoading={socialLoading}
           onFollowToggle={handleFollowToggle}

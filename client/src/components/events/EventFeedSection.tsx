@@ -6,13 +6,14 @@ import type { PostWithAuthor } from "@shared/schema";
 import { PostDetailSheet } from "@/components/feed/PostDetailSheet";
 import { FeedVideoViewer } from "@/components/video/FeedVideoViewer";
 import { useVideoViewer } from "@/hooks/useVideoViewer";
+import { isDemoEventId } from "@/lib/demoEvents";
 
 export function EventFeedSection({ eventId }: { eventId: string }) {
   const [detailPostId, setDetailPostId] = useState<string | null>(null);
   const { videoViewer, openFromPost, close } = useVideoViewer();
   const { data, isLoading } = useQuery({
     queryKey: ["/api/events", eventId, "feed"],
-    enabled: !!eventId,
+    enabled: !!eventId && !isDemoEventId(eventId),
   });
 
   const posts = (data as { posts?: PostWithAuthor[] })?.posts ?? [];

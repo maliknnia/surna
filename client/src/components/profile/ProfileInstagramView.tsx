@@ -61,6 +61,7 @@ export type ProfileInstagramUser = {
 type ProfileInstagramViewProps = {
   user: ProfileInstagramUser;
   avatarUrl: string;
+  coverPhotoUrl?: string | null;
   isOwnProfile: boolean;
   socialLoading?: boolean;
   onFollowToggle?: () => void;
@@ -83,6 +84,7 @@ const igBtn =
 export function ProfileInstagramView({
   user,
   avatarUrl,
+  coverPhotoUrl,
   isOwnProfile,
   socialLoading,
   onFollowToggle,
@@ -140,6 +142,15 @@ export function ProfileInstagramView({
 
   return (
     <div className="pb-2">
+      {coverPhotoUrl ? (
+        <div
+          className="-mx-4 mb-4 h-36 sm:h-40 overflow-hidden"
+          style={{ borderBottom: "1px solid var(--surna-border)" }}
+        >
+          <img src={coverPhotoUrl} alt="" className="h-full w-full object-cover object-top" />
+        </div>
+      ) : null}
+
       {/* Avatar + stats — Instagram layout */}
       <div className="flex items-center gap-5 mb-3">
         <Avatar className="w-[86px] h-[86px] shrink-0">

@@ -3,6 +3,7 @@ import type { Coordinates } from "@/lib/geo";
 import { flags } from "@/config/flags";
 import { getEventCoverUrl } from "@/lib/eventCover";
 import { getDemoEvent } from "@/lib/demoEvents";
+import { DEMO_PLACES, normalizeDemoPlaceId } from "@/lib/demoPlaces";
 
 function seededRandom(seed: number) {
   const x = Math.sin(seed) * 10000;
@@ -69,25 +70,25 @@ export function generateDemoPins(center: Coordinates): MapPin[] {
     });
   });
 
-  const demoPlaces = [
-    { name: "Iron Forge Gym", kind: "Gym", sports: ["CrossFit", "Weights"], rating: 4.8 },
-    { name: "Greenfield Courts", kind: "Outdoor Courts", sports: ["Basketball", "Tennis"], rating: 4.5 },
-    { name: "Riverside Sports Complex", kind: "Stadium", sports: ["Soccer", "Track"], rating: 4.7 },
-    { name: "Thunder MMA Academy", kind: "Martial Arts", sports: ["MMA", "Boxing", "BJJ"], rating: 4.9 },
-    { name: "Aquatic Center", kind: "Pool", sports: ["Swimming"], rating: 4.3 },
-    { name: "Westside Tennis Club", kind: "Tennis Club", sports: ["Tennis"], rating: 4.6 },
-    { name: "Peak Performance", kind: "Gym", sports: ["Fitness", "Yoga"], rating: 4.4 },
-  ];
-  demoPlaces.forEach((p, i) => {
+  DEMO_PLACES.forEach((p, i) => {
+    const latCoord = p.latitude ?? jitter(lat, 0.006 + i * 0.001);
+    const lngCoord = p.longitude ?? jitter(lng, 0.006 + i * 0.001);
     pins.push({
-      id: `dp${i}`,
+      id: p.id,
       type: "place",
       title: p.name,
-      subtitle: p.kind,
-      coords: { lat: jitter(lat, 0.006 + i * 0.001), lng: jitter(lng, 0.006 + i * 0.001) },
-      data: { kind: p.kind, sports: p.sports, rating: p.rating, description: `${p.name} — ${p.sports.join(", ")}`, address: "Cork city centre", hourlyRate: 12 + i },
-      coverUrl: demoPhoto(`place-${i}`, 800, 480),
-      iconUrl: demoPhoto(`place-av-${i}`, 200, 200),
+      subtitle: p.category,
+      coords: { lat: latCoord, lng: lngCoord },
+      data: {
+        kind: p.category,
+        sports: p.sports,
+        rating: p.averageRating ? parseFloat(p.averageRating) : 4.5,
+        description: p.description || p.bio,
+        address: p.address || "Cork city centre",
+        hourlyRate: 12 + i,
+      },
+      coverUrl: p.coverImageUrl || demoPhoto(`place-${i}`, 800, 480),
+      iconUrl: p.profileImageUrl || demoPhoto(`place-av-${i}`, 200, 200),
       hasStory: i === 0,
       storyState: i === 0 ? "new" : "none",
     });
@@ -252,7 +253,7 @@ export function findDemoMapPin(
   if (exact) return exact;
   const byId = pins.find((p) => p.id === id);
   if (byId) return byId;
-  if (type === "event" && id.startsWith("demo-ev-")) {
+  if (type === "event" && (id.startsWith("demo-ev-") || id.startsWith("demo-route-"))) {
     const ev = getDemoEvent(id);
     if (ev) {
       const byTitle = pins.find(
@@ -260,6 +261,11 @@ export function findDemoMapPin(
       );
       if (byTitle) return { ...byTitle, id, title: ev.title, data: { ...byTitle.data, ...ev } };
     }
+  }
+  if (type === "place") {
+    const normalized = normalizeDemoPlaceId(id);
+    const byPlaceId = pins.find((p) => p.type === "place" && p.id === normalized);
+    if (byPlaceId) return { ...byPlaceId, id: normalized };
   }
   return undefined;
 }

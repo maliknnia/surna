@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import ProfileHeader from './components/ProfileHeader';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { OWNER_PROFILE_AVATAR, SURNA_COVER_URL } from '@/lib/ownerAvatar';
+import { OWNER_PROFILE_AVATAR, OWNER_COVER_URL } from '@/lib/ownerAvatar';
 import { normalizeUserProfile } from '@/lib/normalizeUserProfile';
 import { buildDemoUserProfile, isDemoProfileUserId } from '@/lib/demoProfiles';
 
@@ -96,7 +96,7 @@ export default function PersonProfile({ context = 'sports' }: { context?: Profil
         avatar: OWNER_PROFILE_AVATAR,
         profileImageUrl: OWNER_PROFILE_AVATAR,
         photo: OWNER_PROFILE_AVATAR,
-        cover: SURNA_COVER_URL,
+        cover: OWNER_COVER_URL,
       }
     : profile;
 

@@ -914,6 +914,39 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
+  app.post("/api/place-posts/:id/like", isAuthenticated, likeLimiter, csrfProtection, async (req: any, res) => {
+    try {
+      const userId = sessionUserId(req);
+      if (!userId) return res.status(401).json({ message: "User not authenticated" });
+      const placePostId = req.params.id;
+      const alreadyLiked = await storage.isPlacePostLiked(userId, placePostId);
+      if (alreadyLiked) {
+        await storage.unlikePlacePost(userId, placePostId);
+        res.json({ liked: false });
+      } else {
+        await storage.likePlacePost(userId, placePostId);
+        res.json({ liked: true });
+      }
+    } catch (error: unknown) {
+      console.error("Error liking place post:", error);
+      res.status(500).json({ message: "Failed to like place post" });
+    }
+  });
+
+  app.post("/api/place-posts/:id/comment", isAuthenticated, csrfProtection, async (req: any, res) => {
+    try {
+      const userId = sessionUserId(req);
+      if (!userId) return res.status(401).json({ message: "User not authenticated" });
+      const content = String(req.body?.content || "").trim();
+      if (!content) return res.status(400).json({ message: "content is required" });
+      const comment = await storage.addPlacePostComment(req.params.id, userId, content);
+      res.status(201).json(comment);
+    } catch (error: unknown) {
+      console.error("Error commenting on place post:", error);
+      res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+
   console.log("âœ… Places routes registered successfully");
 
   // Stage 16: Security & Privacy routes

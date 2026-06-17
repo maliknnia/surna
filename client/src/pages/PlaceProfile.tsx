@@ -17,9 +17,14 @@ import {
   ThumbsUp, CheckCircle2, Download, X,
 } from "lucide-react";
 import type { Place, PlaceReview, PlacePhoto, PlaceBooking } from "@shared/schema";
+import { usePlace } from "@/hooks/usePlaces";
+import { isDemoPlaceId, normalizeDemoPlaceId } from "@/lib/demoPlaces";
+import { PlaceFeedSection } from "@/components/places/PlaceFeedSection";
+import { mapPath } from "@/lib/mapNavigation";
+
 import { useSmartBack } from "@/lib/navigation";
 
-type TabType = 'about' | 'reviews' | 'photos' | 'book';
+type TabType = 'feed' | 'about' | 'reviews' | 'photos' | 'book';
 
 export default function PlaceProfile() {
   const [, params] = useRoute("/places/:id");
@@ -30,9 +35,10 @@ export default function PlaceProfile() {
   const isDark = theme === "dark";
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const placeId = params?.id;
+  const placeId = params?.id ? normalizeDemoPlaceId(params.id) : undefined;
+  const isDemo = placeId ? isDemoPlaceId(placeId) : false;
 
-  const [activeTab, setActiveTab] = useState<TabType>("about");
+  const [activeTab, setActiveTab] = useState<TabType>("feed");
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewData, setReviewData] = useState({ rating: 5, content: "" });
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -62,19 +68,16 @@ export default function PlaceProfile() {
     }
   }, [handleScroll]);
 
-  const { data: place, isLoading } = useQuery<Place>({
-    queryKey: ["/api/places", placeId],
-    enabled: !!placeId,
-  });
+  const { data: place, isLoading } = usePlace(placeId);
 
   const { data: reviews = [] } = useQuery<PlaceReview[]>({
     queryKey: ["/api/places", placeId, "reviews"],
-    enabled: !!placeId && activeTab === "reviews",
+    enabled: !!placeId && !isDemo && activeTab === "reviews",
   });
 
   const { data: photos = [] } = useQuery<PlacePhoto[]>({
     queryKey: ["/api/places", placeId, "photos"],
-    enabled: !!placeId && activeTab === "photos",
+    enabled: !!placeId && !isDemo && activeTab === "photos",
   });
 
   // Place profile is a detail surface — prefer the larger `_medium` cover/
@@ -130,17 +133,23 @@ export default function PlaceProfile() {
 
   const followMutation = useMutation({
     mutationFn: async () => {
+      if (isDemo) return { following: true };
       const response = await apiRequest("POST", `/api/places/${placeId}/follow`, {});
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/places", placeId] });
+      if (isDemo) {
+        toast({ title: "Following!", description: "You'll see updates from this venue" });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
       toast({ title: "Updated!", description: "Follow status updated" });
     },
   });
 
   const reviewMutation = useMutation({
     mutationFn: async (data: any) => {
+      if (isDemo) return { ok: true };
       const response = await apiRequest("POST", `/api/places/${placeId}/reviews`, data);
       return response.json();
     },
@@ -155,6 +164,16 @@ export default function PlaceProfile() {
 
   const bookingMutation = useMutation({
     mutationFn: async (data: any) => {
+      if (isDemo) {
+        return {
+          id: "demo-booking",
+          placeId,
+          title: data.title || "Session",
+          startTime: data.startTime,
+          endTime: data.endTime,
+          status: "pending",
+        } as PlaceBooking;
+      }
       const response = await apiRequest("POST", `/api/places/${placeId}/bookings`, data);
       return response.json();
     },
@@ -202,11 +221,26 @@ export default function PlaceProfile() {
   const bgOpacity = Math.max(0, 1 - scrollY / 400);
 
   const tabs: { id: TabType; label: string }[] = [
+    { id: 'feed', label: 'Updates' },
     { id: 'about', label: 'About' },
     { id: 'reviews', label: `Reviews (${place.reviewsCount || 0})` },
     { id: 'photos', label: 'Photos' },
     { id: 'book', label: 'Book' },
   ];
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/places/${placeId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: place.name, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Link copied", description: "Venue link copied to clipboard" });
+      }
+    } catch {
+      /* user cancelled */
+    }
+  };
 
   return (
     <div className="place-profile-page" style={{ position: 'fixed', inset: 0, background: pageBg }}>
@@ -248,7 +282,8 @@ export default function PlaceProfile() {
         {headerCollapsed && (
           <h2 className="text-[15px] font-bold truncate flex-1 ml-3" style={{ color: textPrimary }}>{place.name}</h2>
         )}
-        <button className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm ml-auto"
+        <button onClick={handleShare}
+          className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm ml-auto"
           style={{ background: btnBg }}>
           <Share2 size={16} color={btnIcon} />
         </button>
@@ -351,6 +386,12 @@ export default function PlaceProfile() {
               }}>
               <Heart size={15} /> Follow
             </button>
+            <button onClick={() => setLocation(mapPath({ type: "place", id: placeId! }))}
+              className="h-12 w-12 rounded-full flex items-center justify-center transition-all active:scale-[0.96]"
+              style={{ background: chipBg, border: `1px solid ${borderColor}` }}
+              aria-label="View on map">
+              <MapPin size={16} style={{ color: textSecondary }} />
+            </button>
           </div>
 
           {place.sports && place.sports.length > 0 && (
@@ -382,6 +423,10 @@ export default function PlaceProfile() {
         </nav>
 
         <div className="px-4 py-5 pb-32 space-y-5">
+          {activeTab === 'feed' && placeId && (
+            <PlaceFeedSection placeId={placeId} />
+          )}
+
           {activeTab === 'about' && (
             <>
               {(place.bio || place.description) && (

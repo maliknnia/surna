@@ -167,7 +167,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
 ];
 
 export function isDemoEventId(id: string): boolean {
-  return id.startsWith("demo-ev-");
+  return id.startsWith("demo-ev-") || id.startsWith("demo-route-");
 }
 
 export function getDemoEvent(id: string): DemoEvent | undefined {
