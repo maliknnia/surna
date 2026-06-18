@@ -82,11 +82,7 @@ const STALE_TIME = 1000 * 60 * 2; // 2 minutes stale time
 // Post Skeleton Loader Component
 function PostSkeleton() {
   return (
-    <div
-      className="mx-3 mb-3 rounded-2xl overflow-hidden"
-      style={{ background: "var(--surna-surface)", border: "1px solid var(--surna-border)" }}
-      data-testid="post-skeleton"
-    >
+    <div className="border-b pb-4" style={{ borderColor: "var(--surna-border)" }} data-testid="post-skeleton">
       <div className="flex items-center gap-3 px-3 py-2.5">
         <Skeleton className="h-9 w-9 rounded-full bg-token-text/10" />
         <div className="space-y-1">
@@ -609,22 +605,27 @@ export default function Feed() {
                     )}
 
                     {/* ── Content tabs: For You / Following / Events / Nearby ── */}
-                    <div style={{ overflowX: "auto", scrollbarWidth: "none", display: "flex", padding: "8px 16px 4px", gap: 6 }}>
-                      {FEED_TABS.map(tab => (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => handleFeedTabClick(tab)}
-                          style={{
-                            flexShrink: 0, padding: "7px 16px", borderRadius: 99,
-                            fontSize: 13, fontWeight: 700, cursor: "pointer",
-                            transition: "all 0.18s ease",
-                            ...feedActiveTabStyle(isDark, feedTab === tab),
-                          }}
-                        >
-                          {tab}
-                        </button>
-                      ))}
+                    <div
+                      className="border-b"
+                      style={{ borderColor: "var(--surna-border)" }}
+                    >
+                      <div style={{ overflowX: "auto", scrollbarWidth: "none", display: "flex", padding: "10px 16px 12px", gap: 6 }}>
+                        {FEED_TABS.map(tab => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => handleFeedTabClick(tab)}
+                            style={{
+                              flexShrink: 0, padding: "7px 16px", borderRadius: 99,
+                              fontSize: 13, fontWeight: 700, cursor: "pointer",
+                              transition: "all 0.18s ease",
+                              ...feedActiveTabStyle(isDark, feedTab === tab),
+                            }}
+                          >
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {(pullDistance > 0 || isRefreshing) && (

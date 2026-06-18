@@ -315,10 +315,9 @@ export function FeedPostCard({
 
   return (
     <article
-      className="mx-3 mb-3 rounded-2xl overflow-hidden"
+      className="border-b pb-3 last:border-b-0"
       style={{
-        background: "var(--surna-surface)",
-        border: "1px solid var(--surna-border)",
+        borderColor: "var(--surna-border)",
         color: "var(--surna-text)",
       }}
       data-testid={`feed-post-${post.id}`}
