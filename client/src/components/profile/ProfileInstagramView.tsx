@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   LayoutGrid,
@@ -11,14 +11,23 @@ import {
   Play,
   Film,
   MessageCircle,
+  Star,
+  Plus,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { deriveLqipPlaceholder, deriveModernSources } from "@/lib/imageSources";
-import { getQueryFn } from "@/lib/queryClient";
+import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { ROUTES } from "@/navigation";
 import type { UserHighlight } from "@shared/userProfile";
 import { cn } from "@/lib/utils";
+import { mergeProfilePhotos, type DemoProfilePhoto } from "@/lib/demoProfileMedia";
+import type { ProfileExtras } from "@/hooks/useProfileExtras";
+import { ProfileSportsSection } from "@/components/profile/ProfileSportsSection";
+import { ProfileQuickStats } from "@/components/profile/ProfileQuickStats";
+import { ProfilePhotoLightbox, type LightboxPhoto } from "@/components/profile/ProfilePhotoLightbox";
+import { capturePhoto } from "@/lib/capacitor/camera";
+import { useToast } from "@/hooks/use-toast";
 
 type ProfileTab = "posts" | "reels" | "photos";
 
@@ -26,6 +35,7 @@ type UserPhoto = {
   id: string;
   imageUrl: string;
   caption?: string | null;
+  sport?: string;
 };
 
 type ProfilePost = {
@@ -34,6 +44,7 @@ type ProfilePost = {
   imageUrl?: string | null;
   videoUrl?: string | null;
   likesCount?: number;
+  sport?: string | null;
 };
 
 export type ProfileInstagramUser = {
@@ -62,12 +73,17 @@ type ProfileInstagramViewProps = {
   user: ProfileInstagramUser;
   avatarUrl: string;
   coverPhotoUrl?: string | null;
+  showCover?: boolean;
   isOwnProfile: boolean;
+  profileExtras: ProfileExtras;
   socialLoading?: boolean;
   onFollowToggle?: () => void;
   onMessage?: () => void;
   onStatClick?: (label: string) => void;
   onPostClick?: (postId: string) => void;
+  onWinRateClick?: () => void;
+  onLevelClick?: () => void;
+  onRatingClick?: () => void;
   headerExtra?: React.ReactNode;
 };
 
@@ -78,6 +94,29 @@ function formatCount(n: number): string {
   return String(n);
 }
 
+function matchesSport(text: string | null | undefined, sport: string): boolean {
+  if (!text) return false;
+  return text.toLowerCase().includes(sport.toLowerCase());
+}
+
+function renderStars(rating: number) {
+  const stars = [];
+  for (let i = 0; i < 5; i++) {
+    const filled = rating >= i + 1;
+    const half = !filled && rating >= i + 0.5;
+    stars.push(
+      <Star
+        key={i}
+        className="w-3.5 h-3.5"
+        style={{ color: "var(--surna-gold, #f5c518)" }}
+        fill={filled || half ? "currentColor" : "none"}
+        strokeWidth={1.5}
+      />,
+    );
+  }
+  return stars;
+}
+
 const igBtn =
   "flex-1 h-[34px] rounded-lg text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 active:opacity-70 transition-opacity";
 
@@ -85,15 +124,25 @@ export function ProfileInstagramView({
   user,
   avatarUrl,
   coverPhotoUrl,
+  showCover = false,
   isOwnProfile,
+  profileExtras,
   socialLoading,
   onFollowToggle,
   onMessage,
   onStatClick,
   onPostClick,
+  onWinRateClick,
+  onLevelClick,
+  onRatingClick,
   headerExtra,
 }: ProfileInstagramViewProps) {
+  const { toast } = useToast();
   const [tab, setTab] = useState<ProfileTab>("posts");
+  const [selectedSport, setSelectedSport] = useState<string | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<LightboxPhoto | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = user.id;
 
   const displayName =
@@ -105,11 +154,58 @@ export function ProfileInstagramView({
   const bioText = user.bio || user.profile?.tagline || "";
   const highlightsList = user.profile?.highlights ?? [];
 
-  const { data: photos = [], isLoading: photosLoading } = useQuery<UserPhoto[]>({
+  const { data: apiPhotos = [], isLoading: photosLoading } = useQuery<UserPhoto[]>({
     queryKey: ["/api/users", userId, "photos"],
     queryFn: getQueryFn({ on401: "returnNull" }) as () => Promise<UserPhoto[]>,
     enabled: !!userId,
   });
+
+  const photos = mergeProfilePhotos(apiPhotos, isOwnProfile) as (UserPhoto | DemoProfilePhoto)[];
+
+  const addPhoto = useMutation({
+    mutationFn: async (payload: { imageUrl: string; caption?: string; width?: number; height?: number }) =>
+      apiRequest("POST", `/api/users/${userId}/photos`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "photos"] });
+      toast({ title: "Photo added" });
+    },
+    onError: () => toast({ title: "Upload failed", variant: "destructive" }),
+  });
+
+  const deletePhoto = useMutation({
+    mutationFn: async (photoId: string) => apiRequest("DELETE", `/api/users/photos/${photoId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "photos"] });
+      setLightboxPhoto(null);
+      toast({ title: "Photo deleted" });
+    },
+  });
+
+  const processPhotoFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          addPhoto.mutate({ imageUrl: dataUrl, width: img.width, height: img.height });
+          setUploading(false);
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setUploading(false);
+      toast({ title: "Upload failed", variant: "destructive" });
+    }
+  };
+
+  const handleAddPhoto = async () => {
+    const file = await capturePhoto({ source: "gallery" });
+    if (file) await processPhotoFile(file);
+    else fileInputRef.current?.click();
+  };
 
   const { data: feedData, isLoading: postsLoading } = useQuery<{ posts: ProfilePost[] }>({
     queryKey: ["/api/profile", userId, "feed"],
@@ -117,13 +213,27 @@ export function ProfileInstagramView({
   });
 
   const posts = feedData?.posts ?? [];
-  const imagePosts = posts.filter((p) => !p.videoUrl);
-  const reelPosts = posts.filter((p) => p.videoUrl);
+  const filterBySport = <T extends { content?: string | null; caption?: string | null; sport?: string | null }>(
+    items: T[],
+  ) => {
+    if (!selectedSport) return items;
+    return items.filter(
+      (item) =>
+        item.sport === selectedSport ||
+        matchesSport(item.content, selectedSport) ||
+        matchesSport(item.caption, selectedSport),
+    );
+  };
+
+  const imagePosts = filterBySport(posts.filter((p) => !p.videoUrl));
+  const reelPosts = filterBySport(posts.filter((p) => p.videoUrl));
+  const filteredPhotos = filterBySport(photos);
 
   const stats = [
     { value: user.postsCount ?? posts.length, label: "posts" },
     { value: user.followersCount ?? 0, label: "followers" },
     { value: user.followingCount ?? 0, label: "following" },
+    { value: profileExtras.gamesCount, label: "games" },
   ];
 
   const btnSurface = {
@@ -142,18 +252,18 @@ export function ProfileInstagramView({
 
   return (
     <div className="pb-2">
-      {coverPhotoUrl ? (
+      {showCover && coverPhotoUrl ? (
         <div
-          className="-mx-4 mb-4 h-36 sm:h-40 overflow-hidden"
+          className="-mx-4 mb-4 h-28 sm:h-32 overflow-hidden"
           style={{ borderBottom: "1px solid var(--surna-border)" }}
         >
           <img src={coverPhotoUrl} alt="" className="h-full w-full object-cover object-top" />
         </div>
       ) : null}
 
-      {/* Avatar + stats — Instagram layout */}
-      <div className="flex items-center gap-5 mb-3">
-        <Avatar className="w-[86px] h-[86px] shrink-0">
+      {/* Centered avatar */}
+      <div className="flex flex-col items-center mb-3">
+        <Avatar className="w-[96px] h-[96px] shrink-0 mb-3">
           <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
           <AvatarFallback
             className="text-xl font-semibold"
@@ -163,46 +273,50 @@ export function ProfileInstagramView({
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 flex justify-around text-center">
-          {stats.map((stat) => (
-            <button
-              key={stat.label}
-              type="button"
-              onClick={() => onStatClick?.(stat.label)}
-              className="min-w-0 px-1 active:opacity-60 transition-opacity"
-            >
-              <span className="block text-[18px] font-semibold leading-none" style={{ color: "var(--surna-text)" }}>
-                {formatCount(typeof stat.value === "number" ? stat.value : 0)}
-              </span>
-              <span className="block text-[13px] mt-1" style={{ color: "var(--surna-text)" }}>
-                {stat.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Name, username, bio */}
-      <div className="mb-3 space-y-0.5">
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-[14px] font-semibold leading-tight" style={{ color: "var(--surna-text)" }}>
+        <div className="flex items-center gap-2 mb-0.5">
+          <h2 className="text-[18px] font-bold leading-tight" style={{ color: "var(--surna-text)" }}>
             {displayName}
           </h2>
           {user.verified ? (
-            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--surna-gold)" }} />
+            <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "var(--surna-gold, #f5c518)" }} fill="currentColor" />
           ) : null}
+          <span
+            className="px-2 py-0.5 rounded-full text-[12px] font-bold tabular-nums"
+            style={{ background: "var(--surna-gold, #f5c518)", color: "#111" }}
+          >
+            {profileExtras.level}
+          </span>
         </div>
-        <p className="text-[14px] leading-tight" style={{ color: "var(--surna-text-secondary)" }}>
+
+        <p className="text-[14px] mb-1" style={{ color: "var(--surna-text-secondary)" }}>
           @{username}
         </p>
+
+        {profileExtras.rating > 0 ? (
+          <button
+            type="button"
+            onClick={onRatingClick}
+            className="flex items-center gap-1.5 mb-2 active:opacity-70"
+          >
+            <span className="flex items-center gap-0.5">{renderStars(profileExtras.rating)}</span>
+            <span className="text-[14px] font-semibold tabular-nums" style={{ color: "var(--surna-gold, #f5c518)" }}>
+              {profileExtras.rating.toFixed(1)}
+            </span>
+          </button>
+        ) : null}
+
         {bioText ? (
-          <p className="text-[14px] pt-1 leading-snug whitespace-pre-wrap" style={{ color: "var(--surna-text)" }}>
+          <p
+            className="text-[14px] text-center leading-snug whitespace-pre-wrap max-w-sm px-2"
+            style={{ color: "var(--surna-text)" }}
+          >
             {bioText}
           </p>
         ) : null}
+
         {user.location ? (
-          <div className="flex items-center gap-1 pt-0.5">
-            <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--surna-text-secondary)" }} />
+          <div className="flex items-center gap-1 mt-1.5">
+            <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--surna-text-secondary)" }} />
             <span className="text-[13px]" style={{ color: "var(--surna-text-secondary)" }}>
               {user.location}
             </span>
@@ -210,7 +324,30 @@ export function ProfileInstagramView({
         ) : null}
       </div>
 
-      {/* Action row — IG Edit / Share or Follow / Message */}
+      {/* 4-stat row */}
+      <div className="flex justify-around text-center mb-4 px-1">
+        {stats.map((stat) => (
+          <button
+            key={stat.label}
+            type="button"
+            onClick={() => onStatClick?.(stat.label)}
+            className="min-w-0 flex-1 px-1 active:opacity-60 transition-opacity"
+            data-testid={`profile-stat-${stat.label}`}
+          >
+            <span className="block text-[17px] font-semibold leading-none tabular-nums" style={{ color: "var(--surna-text)" }}>
+              {formatCount(typeof stat.value === "number" ? stat.value : 0)}
+            </span>
+            <span
+              className="block text-[12px] mt-1 capitalize"
+              style={{ color: "var(--surna-text-secondary)" }}
+            >
+              {stat.label}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Action row */}
       <div className="flex gap-1.5 mb-4">
         {isOwnProfile ? (
           <>
@@ -235,10 +372,7 @@ export function ProfileInstagramView({
               type="button"
               onClick={onFollowToggle}
               disabled={socialLoading}
-              className={cn(
-                igBtn,
-                user.isFollowing ? "" : "bg-primary text-primary-foreground",
-              )}
+              className={cn(igBtn, user.isFollowing ? "" : "bg-primary text-primary-foreground")}
               style={user.isFollowing ? { ...btnSurface, border: "none" } : undefined}
             >
               {socialLoading ? (
@@ -252,12 +386,7 @@ export function ProfileInstagramView({
                 </>
               )}
             </button>
-            <button
-              type="button"
-              onClick={onMessage}
-              className={cn(igBtn, "gap-1.5")}
-              style={btnSurface}
-            >
+            <button type="button" onClick={onMessage} className={cn(igBtn, "gap-1.5")} style={btnSurface}>
               <MessageCircle className="w-4 h-4" strokeWidth={2} style={{ color: "var(--surna-text)" }} />
               Message
             </button>
@@ -266,6 +395,19 @@ export function ProfileInstagramView({
       </div>
 
       {headerExtra}
+
+      <ProfileSportsSection
+        sports={profileExtras.sports}
+        selectedSport={selectedSport}
+        onSelect={setSelectedSport}
+      />
+
+      <ProfileQuickStats
+        winRate={profileExtras.winRate}
+        level={profileExtras.level}
+        onWinRateClick={onWinRateClick}
+        onLevelClick={onLevelClick}
+      />
 
       {/* Highlights */}
       {highlightsList.length > 0 ? (
@@ -298,7 +440,7 @@ export function ProfileInstagramView({
         </div>
       ) : null}
 
-      {/* Tab bar — icon only, IG style */}
+      {/* Tab bar */}
       <div className="flex border-t border-b" style={{ borderColor: "var(--surna-border)" }}>
         {(
           [
@@ -316,13 +458,42 @@ export function ProfileInstagramView({
               tab === id ? "border-[var(--surna-text)] opacity-100" : "border-transparent opacity-50",
             )}
             aria-label={id}
+            data-testid={`profile-tab-${id}`}
           >
             <TabIcon className="w-6 h-6" strokeWidth={tab === id ? 2 : 1.5} style={{ color: "var(--surna-text)" }} />
           </button>
         ))}
       </div>
 
-      {/* Grid — edge to edge */}
+      {isOwnProfile && tab === "photos" ? (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void processPhotoFile(file);
+            }}
+          />
+          <div className="flex justify-end py-2 px-1">
+            <button
+              type="button"
+              onClick={() => void handleAddPhoto()}
+              disabled={uploading}
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold active:opacity-70"
+              style={{ color: "var(--surna-text)" }}
+              data-testid="button-add-profile-photo"
+            >
+              <Plus className="w-4 h-4" />
+              {uploading ? "Uploading…" : "Add photo"}
+            </button>
+          </div>
+        </>
+      ) : null}
+
+      {/* Grid */}
       <div className="-mx-4 mt-0">
         {tab === "posts" ? (
           postsLoading ? (
@@ -332,12 +503,12 @@ export function ProfileInstagramView({
               ))}
             </div>
           ) : imagePosts.length === 0 ? (
-            <div className="py-20 text-center px-6">
+            <div className="py-16 text-center px-6">
               <LayoutGrid className="w-12 h-12 mx-auto mb-3 opacity-25" style={{ color: "var(--surna-text)" }} />
               <p className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
-                No posts yet
+                {selectedSport ? `No ${selectedSport} posts yet` : "No posts yet"}
               </p>
-              {isOwnProfile ? (
+              {isOwnProfile && !selectedSport ? (
                 <Link href="/feed">
                   <p className="text-sm mt-2" style={{ color: "var(--surna-text-secondary)" }}>
                     When you share photos, they will appear here.
@@ -387,10 +558,10 @@ export function ProfileInstagramView({
               ))}
             </div>
           ) : reelPosts.length === 0 ? (
-            <div className="py-20 text-center px-6">
+            <div className="py-16 text-center px-6">
               <Film className="w-12 h-12 mx-auto mb-3 opacity-25" style={{ color: "var(--surna-text)" }} />
               <p className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
-                No reels yet
+                {selectedSport ? `No ${selectedSport} reels yet` : "No reels yet"}
               </p>
             </div>
           ) : (
@@ -431,21 +602,32 @@ export function ProfileInstagramView({
                 <div key={i} className="aspect-square animate-pulse" style={{ background: "var(--surna-elevated)" }} />
               ))}
             </div>
-          ) : photos.length === 0 ? (
-            <div className="py-20 text-center px-6">
+          ) : filteredPhotos.length === 0 ? (
+            <div className="py-16 text-center px-6">
               <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-25" style={{ color: "var(--surna-text)" }} />
               <p className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
-                No photos yet
+                {selectedSport ? `No ${selectedSport} photos yet` : "No photos yet"}
               </p>
+              {isOwnProfile ? (
+                <button
+                  type="button"
+                  onClick={() => void handleAddPhoto()}
+                  className="text-sm mt-3 font-medium underline-offset-2 hover:underline"
+                  style={{ color: "var(--surna-text-secondary)" }}
+                >
+                  Add your first photo
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-[1px]">
-              {photos.map((p) => (
+              {filteredPhotos.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   className="aspect-square overflow-hidden active:opacity-90"
-                  onClick={() => window.open(p.imageUrl, "_blank")}
+                  onClick={() => setLightboxPhoto(p)}
+                  data-testid={`profile-photo-${p.id}`}
                 >
                   <LazyImage
                     src={p.imageUrl}
@@ -461,6 +643,15 @@ export function ProfileInstagramView({
           )
         ) : null}
       </div>
+
+      {lightboxPhoto ? (
+        <ProfilePhotoLightbox
+          photo={lightboxPhoto}
+          isOwnProfile={isOwnProfile}
+          onClose={() => setLightboxPhoto(null)}
+          onDelete={(id) => deletePhoto.mutate(id)}
+        />
+      ) : null}
     </div>
   );
 }

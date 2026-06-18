@@ -14,6 +14,8 @@ import { FeedVideoViewer } from "@/components/video/FeedVideoViewer";
 import { useVideoViewer } from "@/hooks/useVideoViewer";
 import type { PostWithAuthor } from "@shared/schema";
 import { discoverPeoplePath } from "@/lib/socialPeopleApi";
+import { useProfileExtras } from "@/hooks/useProfileExtras";
+import { ROUTES } from "@/navigation";
 
 export default function ProfilePage() {
   const { user, isLoading } = useAuth();
@@ -86,16 +88,20 @@ export default function ProfilePage() {
     [profileFeedData?.posts, openFromPost],
   );
 
+  const profileExtras = useProfileExtras(viewingUserId, userStats || user, isOwnProfile);
+
   const handleStatClick = (label: string) => {
-    if (label === "posts") {
-      return;
-    }
+    if (label === "posts") return;
     if (label === "followers") {
       setLocation(discoverPeoplePath("followers", viewingUserId));
       return;
     }
     if (label === "following") {
       setLocation(discoverPeoplePath("following", viewingUserId));
+      return;
+    }
+    if (label === "games") {
+      setLocation(ROUTES.challenges);
     }
   };
 
@@ -148,7 +154,7 @@ export default function ProfilePage() {
             </button>
           </Link>
           <h1 className="text-[16px] font-semibold truncate max-w-[50%]" style={{ color: "var(--surna-text)" }}>
-            {username.replace(/^@+/, "")}
+            {isOwnProfile ? "Profile" : username.replace(/^@+/, "")}
           </h1>
           {isOwnProfile ? (
             <Link href="/settings">
@@ -171,12 +177,17 @@ export default function ProfilePage() {
           }}
           avatarUrl={avatarUrl}
           coverPhotoUrl={isOwnProfile ? OWNER_COVER_URL : undefined}
+          showCover={false}
           isOwnProfile={isOwnProfile}
+          profileExtras={profileExtras}
           socialLoading={socialLoading}
           onFollowToggle={handleFollowToggle}
           onMessage={handleSendMessage}
           onStatClick={handleStatClick}
           onPostClick={setDetailPostId}
+          onWinRateClick={() => setLocation(ROUTES.performance)}
+          onLevelClick={() => setLocation("/gamification")}
+          onRatingClick={() => setLocation(ROUTES.performance)}
         />
       </div>
 
