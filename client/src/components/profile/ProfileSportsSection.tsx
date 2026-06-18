@@ -4,16 +4,19 @@ type ProfileSportsSectionProps = {
   sports: string[];
   selectedSport: string | null;
   onSelect: (sport: string | null) => void;
+  hideTitle?: boolean;
 };
 
-export function ProfileSportsSection({ sports, selectedSport, onSelect }: ProfileSportsSectionProps) {
+export function ProfileSportsSection({ sports, selectedSport, onSelect, hideTitle }: ProfileSportsSectionProps) {
   if (sports.length === 0) return null;
 
   return (
-    <section className="mb-4" aria-label="Sports">
-      <h3 className="text-[15px] font-semibold mb-2.5" style={{ color: "var(--surna-text)" }}>
-        Sports
-      </h3>
+    <section className={hideTitle ? "" : "mb-4"} aria-label="Sports">
+      {!hideTitle ? (
+        <h3 className="text-[15px] font-semibold mb-2.5" style={{ color: "var(--surna-text)" }}>
+          Sports
+        </h3>
+      ) : null}
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
         {sports.map((sport) => {
           const active = selectedSport === sport;

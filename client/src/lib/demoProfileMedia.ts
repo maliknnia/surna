@@ -15,7 +15,68 @@ export const OWNER_DEMO_STATS = {
   gamesCount: 87,
   rating: 4.8,
   ratingCount: 24,
+  currentStreak: 5,
 } as const;
+
+export const OWNER_DEMO_ABOUT = {
+  bio: "Hooper & fitness junkie. Always looking for the next pickup game 🏀",
+  location: "Los Angeles, CA",
+  primarySport: "Basketball",
+  position: "Guard / Forward",
+  skillLevel: "Advanced",
+  availability: "Weekends & evenings",
+  lookingFor: "Pickup games, running partners, competitive sets",
+} as const;
+
+export type DemoProfileTeam = {
+  id: string;
+  name: string;
+  sport: string;
+  role: string;
+  joinedAt: string;
+};
+
+export type DemoProfileEvent = {
+  id: string;
+  title: string;
+  starts_at: string;
+  location?: string;
+  category?: string;
+};
+
+export const DEMO_OWNER_TEAMS: DemoProfileTeam[] = [
+  { id: "demo-team-pickup", name: "LA Pickup Crew", sport: "Basketball", role: "member", joinedAt: "2025-09-12" },
+  { id: "demo-team-run-club", name: "Sunset Run Club", sport: "Running", role: "member", joinedAt: "2025-11-03" },
+];
+
+export const DEMO_OWNER_EVENTS: DemoProfileEvent[] = [
+  {
+    id: "demo-ev-pickup-bball",
+    title: "Pickup Basketball — Open Run",
+    starts_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+    location: "Marina Courts",
+    category: "Basketball",
+  },
+  {
+    id: "demo-ev-trail-run",
+    title: "Trail Run — Griffith Loop",
+    starts_at: new Date(Date.now() - 21 * 86400000).toISOString(),
+    location: "Griffith Park",
+    category: "Running",
+  },
+];
+
+export function mergeProfileTeams<T extends { id: string }>(apiTeams: T[], isOwnProfile: boolean): (T | DemoProfileTeam)[] {
+  if (apiTeams.length > 0) return apiTeams;
+  if (!isOwnProfile) return [];
+  return DEMO_OWNER_TEAMS;
+}
+
+export function mergeProfileEvents<T extends { id: string }>(apiEvents: T[], isOwnProfile: boolean): (T | DemoProfileEvent)[] {
+  if (apiEvents.length > 0) return apiEvents;
+  if (!isOwnProfile) return [];
+  return DEMO_OWNER_EVENTS;
+}
 
 export const DEMO_OWNER_PHOTOS: DemoProfilePhoto[] = [
   {

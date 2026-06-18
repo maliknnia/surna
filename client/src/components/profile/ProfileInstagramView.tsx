@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Star,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LazyImage } from "@/components/ui/lazy-image";
@@ -23,13 +24,21 @@ import type { UserHighlight } from "@shared/userProfile";
 import { cn } from "@/lib/utils";
 import { mergeProfilePhotos, type DemoProfilePhoto } from "@/lib/demoProfileMedia";
 import type { ProfileExtras } from "@/hooks/useProfileExtras";
-import { ProfileSportsSection } from "@/components/profile/ProfileSportsSection";
 import { ProfileQuickStats } from "@/components/profile/ProfileQuickStats";
 import { ProfilePhotoLightbox, type LightboxPhoto } from "@/components/profile/ProfilePhotoLightbox";
 import { capturePhoto } from "@/lib/capacitor/camera";
 import { useToast } from "@/hooks/use-toast";
 
-type ProfileTab = "posts" | "reels" | "photos";
+import { ProfileAboutSection } from "@/components/profile/ProfileAboutSection";
+import { ProfileTeamsPanel } from "@/components/profile/ProfileTeamsPanel";
+import { ProfileEventsPanel } from "@/components/profile/ProfileEventsPanel";
+import {
+  ProfileStatsPanel,
+  ProfileGamesPanel,
+} from "@/components/profile/ProfileSectionPanels";
+
+type ProfileSection = "about" | "posts" | "photos" | "stats" | "teams" | "events" | "games";
+type PostsSubview = "posts" | "reels";
 
 type UserPhoto = {
   id: string;
@@ -66,7 +75,18 @@ export type ProfileInstagramUser = {
     tagline?: string;
     sports?: string[];
     highlights?: UserHighlight[];
+    primarySport?: string;
+    position?: string;
+    skillLevel?: string;
+    availability?: string;
+    lookingFor?: string;
   };
+  primarySport?: string;
+  position?: string;
+  skillLevel?: string;
+  availability?: string;
+  lookingFor?: string;
+  createdAt?: string | Date | null;
 };
 
 type ProfileInstagramViewProps = {
@@ -138,7 +158,8 @@ export function ProfileInstagramView({
   headerExtra,
 }: ProfileInstagramViewProps) {
   const { toast } = useToast();
-  const [tab, setTab] = useState<ProfileTab>("posts");
+  const [section, setSection] = useState<ProfileSection>("about");
+  const [postsView, setPostsView] = useState<PostsSubview>("posts");
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [lightboxPhoto, setLightboxPhoto] = useState<LightboxPhoto | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -153,6 +174,16 @@ export function ProfileInstagramView({
   const initials = `${(user.firstName || displayName[0] || "U")[0]}${(user.lastName || "")[0] || ""}`;
   const bioText = user.bio || user.profile?.tagline || "";
   const highlightsList = user.profile?.highlights ?? [];
+
+  const sectionTabs: { id: ProfileSection; label: string }[] = [
+    { id: "about", label: "About" },
+    { id: "posts", label: "Posts" },
+    { id: "photos", label: "Photos" },
+    { id: "stats", label: "Stats" },
+    { id: "teams", label: "Teams" },
+    { id: "events", label: "Events" },
+    { id: "games", label: "Games" },
+  ];
 
   const { data: apiPhotos = [], isLoading: photosLoading } = useQuery<UserPhoto[]>({
     queryKey: ["/api/users", userId, "photos"],
@@ -396,12 +427,6 @@ export function ProfileInstagramView({
 
       {headerExtra}
 
-      <ProfileSportsSection
-        sports={profileExtras.sports}
-        selectedSport={selectedSport}
-        onSelect={setSelectedSport}
-      />
-
       <ProfileQuickStats
         winRate={profileExtras.winRate}
         level={profileExtras.level}
@@ -409,63 +434,118 @@ export function ProfileInstagramView({
         onLevelClick={onLevelClick}
       />
 
-      {/* Highlights */}
-      {highlightsList.length > 0 ? (
-        <div className="overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
-          <div className="flex gap-4">
-            {highlightsList.map((h) => (
-              <div key={h.id} className="shrink-0 flex flex-col items-center w-[64px]">
+      {/* Section tabs — same flow as venues / teams */}
+      <nav
+        className="-mx-4 px-4 sticky top-11 z-30 backdrop-blur-md border-b mb-4"
+        style={{ background: "color-mix(in srgb, var(--surna-base) 92%, transparent)", borderColor: "var(--surna-border)" }}
+      >
+        <div className="flex gap-1 overflow-x-auto no-scrollbar">
+          {sectionTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setSection(tab.id)}
+              className="px-3.5 py-3 text-[13px] font-semibold whitespace-nowrap relative shrink-0 active:opacity-70"
+              style={{ color: section === tab.id ? "var(--surna-text)" : "var(--surna-text-secondary)" }}
+              data-testid={`profile-section-${tab.id}`}
+            >
+              {tab.label}
+              {section === tab.id ? (
                 <div
-                  className="w-[64px] h-[64px] rounded-full p-[2px]"
-                  style={{
-                    background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
-                  }}
-                >
-                  <div
-                    className="w-full h-full rounded-full flex items-center justify-center text-xl"
-                    style={{ background: "var(--surna-base)", border: "2px solid var(--surna-base)" }}
-                  >
-                    {h.emoji || "🏆"}
-                  </div>
-                </div>
-                <span
-                  className="text-[11px] mt-1.5 text-center leading-tight line-clamp-1 w-full"
-                  style={{ color: "var(--surna-text)" }}
-                >
-                  {h.title}
-                </span>
-              </div>
-            ))}
-          </div>
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-[2px] rounded-full"
+                  style={{ background: "var(--surna-gold, #f5c518)" }}
+                />
+              ) : null}
+            </button>
+          ))}
         </div>
+      </nav>
+
+      {section === "about" ? (
+        <ProfileAboutSection
+          bio={bioText}
+          location={user.location}
+          primarySport={user.primarySport ?? user.profile?.primarySport}
+          position={user.position ?? user.profile?.position}
+          skillLevel={user.skillLevel ?? user.profile?.skillLevel}
+          availability={user.availability ?? user.profile?.availability}
+          lookingFor={user.lookingFor ?? user.profile?.lookingFor}
+          createdAt={user.createdAt}
+          highlights={highlightsList}
+          profileExtras={profileExtras}
+          isOwnProfile={isOwnProfile}
+          selectedSport={selectedSport}
+          onSportSelect={setSelectedSport}
+          onWinRateClick={onWinRateClick}
+          onLevelClick={onLevelClick}
+        />
       ) : null}
 
-      {/* Tab bar */}
-      <div className="flex border-t border-b" style={{ borderColor: "var(--surna-border)" }}>
-        {(
-          [
-            { id: "posts" as const, icon: LayoutGrid },
-            { id: "reels" as const, icon: Film },
-            { id: "photos" as const, icon: ImageIcon },
-          ] as const
-        ).map(({ id, icon: TabIcon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={cn(
-              "flex-1 flex items-center justify-center py-3 border-b-[1.5px] -mb-px transition-opacity",
-              tab === id ? "border-[var(--surna-text)] opacity-100" : "border-transparent opacity-50",
-            )}
-            aria-label={id}
-            data-testid={`profile-tab-${id}`}
-          >
-            <TabIcon className="w-6 h-6" strokeWidth={tab === id ? 2 : 1.5} style={{ color: "var(--surna-text)" }} />
-          </button>
-        ))}
-      </div>
+      {section === "stats" ? (
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--surna-text-secondary)" }} />
+            </div>
+          }
+        >
+          <ProfileStatsPanel userId={userId} profileExtras={profileExtras} />
+        </Suspense>
+      ) : null}
 
-      {isOwnProfile && tab === "photos" ? (
+      {section === "teams" ? <ProfileTeamsPanel userId={userId} isOwnProfile={isOwnProfile} /> : null}
+
+      {section === "events" ? <ProfileEventsPanel userId={userId} isOwnProfile={isOwnProfile} /> : null}
+
+      {section === "games" ? (
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--surna-text-secondary)" }} />
+            </div>
+          }
+        >
+          <ProfileGamesPanel userId={userId} />
+        </Suspense>
+      ) : null}
+
+      {section === "posts" ? (
+        <>
+          <div className="flex gap-2 mb-3">
+            {(
+              [
+                { id: "posts" as const, label: "Posts", icon: LayoutGrid },
+                { id: "reels" as const, label: "Reels", icon: Film },
+              ] as const
+            ).map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setPostsView(id)}
+                className="flex-1 h-9 rounded-lg text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 active:opacity-80"
+                style={{
+                  background: postsView === id ? "var(--surna-text)" : "var(--surna-elevated)",
+                  color: postsView === id ? "var(--surna-base)" : "var(--surna-text)",
+                  border: postsView === id ? "none" : "1px solid var(--surna-border)",
+                }}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+          {selectedSport ? (
+            <p className="text-[12px] mb-2" style={{ color: "var(--surna-text-secondary)" }}>
+              Filtered by {selectedSport} ·{" "}
+              <button type="button" className="underline" onClick={() => setSelectedSport(null)}>
+                Clear
+              </button>
+            </p>
+          ) : null}
+        </>
+      ) : null}
+
+      {section === "photos" && isOwnProfile ? (
         <>
           <input
             ref={fileInputRef}
@@ -493,9 +573,19 @@ export function ProfileInstagramView({
         </>
       ) : null}
 
-      {/* Grid */}
-      <div className="-mx-4 mt-0">
-        {tab === "posts" ? (
+      {section === "photos" && selectedSport ? (
+        <p className="text-[12px] mb-2 px-1" style={{ color: "var(--surna-text-secondary)" }}>
+          Filtered by {selectedSport} ·{" "}
+          <button type="button" className="underline" onClick={() => setSelectedSport(null)}>
+            Clear
+          </button>
+        </p>
+      ) : null}
+
+      {/* Grid — posts & photos sections */}
+      {(section === "posts" || section === "photos") ? (
+      <div className={section === "photos" ? "-mx-4 mt-0" : "-mx-4"}>
+        {section === "posts" && postsView === "posts" ? (
           postsLoading ? (
             <div className="grid grid-cols-3 gap-[1px]">
               {Array.from({ length: 9 }).map((_, i) => (
@@ -550,7 +640,7 @@ export function ProfileInstagramView({
           )
         ) : null}
 
-        {tab === "reels" ? (
+        {section === "posts" && postsView === "reels" ? (
           postsLoading ? (
             <div className="grid grid-cols-3 gap-[1px]">
               {Array.from({ length: 9 }).map((_, i) => (
@@ -595,7 +685,7 @@ export function ProfileInstagramView({
           )
         ) : null}
 
-        {tab === "photos" ? (
+        {section === "photos" ? (
           photosLoading ? (
             <div className="grid grid-cols-3 gap-[1px]">
               {Array.from({ length: 9 }).map((_, i) => (
@@ -643,6 +733,7 @@ export function ProfileInstagramView({
           )
         ) : null}
       </div>
+      ) : null}
 
       {lightboxPhoto ? (
         <ProfilePhotoLightbox

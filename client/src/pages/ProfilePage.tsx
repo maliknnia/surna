@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Settings } from "lucide-react";
 import { OWNER_PROFILE_AVATAR, OWNER_COVER_URL } from "@/lib/ownerAvatar";
 import type { UserWithProfile } from "@/lib/userProfileApi";
-import { ProfileInstagramView } from "@/components/profile/ProfileInstagramView";
+import { ProfileInstagramView, type ProfileInstagramUser } from "@/components/profile/ProfileInstagramView";
 import { PostDetailSheet } from "@/components/feed/PostDetailSheet";
 import { FeedVideoViewer } from "@/components/video/FeedVideoViewer";
 import { useVideoViewer } from "@/hooks/useVideoViewer";
@@ -138,6 +138,16 @@ export default function ProfilePage() {
 
   if (!viewingUserId) return null;
 
+  const profileUser: ProfileInstagramUser = {
+    ...(userData as ProfileInstagramUser),
+    id: viewingUserId,
+    isFollowing,
+    lookingFor: Array.isArray(userData.lookingFor)
+      ? userData.lookingFor.join(", ")
+      : (userData.lookingFor as string | undefined),
+    createdAt: (userData as { createdAt?: string | Date | null }).createdAt ?? null,
+  };
+
   return (
     <div className="min-h-screen pb-32" style={{ background: "var(--surna-base)", color: "var(--surna-text)" }}>
       <header
@@ -170,11 +180,7 @@ export default function ProfilePage() {
 
       <div className="max-w-md mx-auto px-4 pt-3">
         <ProfileInstagramView
-          user={{
-            ...userData,
-            id: viewingUserId,
-            isFollowing,
-          }}
+          user={profileUser}
           avatarUrl={avatarUrl}
           coverPhotoUrl={isOwnProfile ? OWNER_COVER_URL : undefined}
           showCover={false}
