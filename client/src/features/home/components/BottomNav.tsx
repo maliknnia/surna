@@ -36,6 +36,7 @@ export function BottomNav({
           <button
             key={tab.id}
             type="button"
+            data-testid={`nav-${tab.id}`}
             onClick={() => {
               hapticLight();
               onNavClick?.(index);

@@ -276,7 +276,7 @@ export default function MobileHome() {
   }, [storyViewer]);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden text-foreground" style={{ background: 'var(--surna-base)' }}>
+    <div className="h-screen flex flex-col overflow-hidden text-foreground" data-testid="mobile-home" style={{ background: 'var(--surna-base)' }}>
       {!isMapPanel && !storyViewer && (
       <header className="sticky top-0 z-20 px-3 h-11 flex items-center justify-between surna-header">
         <div className="flex items-center gap-2.5">

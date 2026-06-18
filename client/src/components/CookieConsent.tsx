@@ -62,6 +62,7 @@ export default function CookieConsent() {
         </button>
         <button
           onClick={accept}
+          data-testid="button-cookie-accept"
           style={{
             border: "none",
             borderRadius: 999,
