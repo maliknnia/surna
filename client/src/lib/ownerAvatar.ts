@@ -1,7 +1,8 @@
 /** Brand + signed-in owner assets (local / dev). */
 export const SURNA_LOGO_URL = "/brand/surna-logo.png";
-/** Owner profile banner / app cover photo */
-export const OWNER_COVER_URL = "/avatars/me.png";
+/** Profile banner + app/social cover — runner logo mark */
+export const OWNER_COVER_URL = SURNA_LOGO_URL;
+/** Owner profile photo (separate from logo cover) */
 export const OWNER_PROFILE_AVATAR = "/avatars/me.png";
 
 export function withOwnerProfileAvatar<T extends { profileImageUrl?: string | null }>(
