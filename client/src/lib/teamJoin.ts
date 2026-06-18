@@ -1,9 +1,14 @@
+import { isDemoTeamId } from "@/lib/demoTeams";
+
 export type TeamJoinResult =
   | { status: "joined"; joined: true; currentMembers?: number }
   | { status: "pending"; joined: false };
 
 /** Unified join — server picks open vs approval from team joinPolicy. */
 export async function joinTeamUnified(teamId: string, message?: string): Promise<TeamJoinResult> {
+  if (isDemoTeamId(teamId)) {
+    return { status: "joined", joined: true };
+  }
   const res = await fetch(`/api/teams/${teamId}/join`, {
     method: "POST",
     credentials: "include",

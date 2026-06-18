@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 import { extractDominantColor, getCachedColor } from "@/lib/extractColor";
+import { sportCardBg } from "@/lib/sportColors";
 
 export const HOME_TEXT_SUBTITLE = "var(--surna-text-secondary)";
 export const HOME_TEXT_META = "var(--surna-text-muted)";
@@ -12,22 +14,24 @@ export const HOME_IMAGE_SCRIM =
 
 export type HomeCardKind = "event" | "team" | "challenge" | "instantJoin" | "marketplace" | "coach";
 
-function normalizeSport(sport?: string | null): string {
-  return (sport || "").toLowerCase().replace(/[\s\-\.]/g, "_");
+/** Solid sport-tinted background for cards without images. */
+export function resolveHomeSportBackground(
+  sport?: string | null,
+  mode: "light" | "dark" = "dark",
+): string {
+  return sportCardBg(sport, mode);
 }
 
-const HOME_CARD_BG = "#121212";
-
-/** Solid background for cards without images. */
-export function resolveHomeSportBackground(_sport?: string | null): string {
-  return HOME_CARD_BG;
-}
-
-export function resolveHomeCardBackground(_opts: {
-  sport?: string | null;
-  cardKind?: HomeCardKind;
-}): string {
-  return HOME_CARD_BG;
+export function resolveHomeCardBackground(
+  opts: {
+    sport?: string | null;
+    cardKind?: HomeCardKind;
+  },
+  mode: "light" | "dark" = "dark",
+): string {
+  if (opts.cardKind === "marketplace") return sportCardBg("fitness", mode);
+  if (opts.cardKind === "coach") return sportCardBg(opts.sport ?? "fitness", mode);
+  return sportCardBg(opts.sport, mode);
 }
 
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -52,9 +56,11 @@ export function useHomeCardSurface(opts: {
   cardKind?: HomeCardKind;
 }) {
   const { imageUrl, sport, cardKind } = opts;
+  const { theme } = useTheme();
+  const mode = theme === "light" ? "light" : "dark";
   const fallbackBg = useMemo(
-    () => resolveHomeCardBackground({ sport, cardKind }),
-    [sport, cardKind],
+    () => resolveHomeCardBackground({ sport, cardKind }, mode),
+    [sport, cardKind, mode],
   );
   const hasImage = Boolean(imageUrl?.trim());
 
@@ -100,12 +106,12 @@ export function useHomeCardSurface(opts: {
     };
   }, [hasImage, imageUrl, fallbackBg]);
 
-  const cardBackground = HOME_CARD_BG;
+  const cardBackground = hasImage ? containerTint : fallbackBg;
 
   return {
     hasImage,
-    solidBackground: HOME_CARD_BG,
-    surfaceBackground: HOME_CARD_BG,
+    solidBackground: fallbackBg,
+    surfaceBackground: hasImage ? containerTint : fallbackBg,
     cardBackground,
     dominantColor,
     imageScrim: hasImage ? HOME_IMAGE_SCRIM : null,

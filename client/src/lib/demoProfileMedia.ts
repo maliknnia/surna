@@ -45,8 +45,8 @@ export type DemoProfileEvent = {
 };
 
 export const DEMO_OWNER_TEAMS: DemoProfileTeam[] = [
-  { id: "demo-team-pickup", name: "LA Pickup Crew", sport: "Basketball", role: "member", joinedAt: "2025-09-12" },
-  { id: "demo-team-run-club", name: "Sunset Run Club", sport: "Running", role: "member", joinedAt: "2025-11-03" },
+  { id: "demo-team-la-pickup", name: "LA Pickup Crew", sport: "Basketball", role: "member", joinedAt: "2025-09-12" },
+  { id: "demo-team-sunset-run", name: "Sunset Run Club", sport: "Running", role: "member", joinedAt: "2025-11-03" },
 ];
 
 export const DEMO_OWNER_EVENTS: DemoProfileEvent[] = [

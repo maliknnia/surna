@@ -4,6 +4,7 @@ import { flags } from "@/config/flags";
 import { getEventCoverUrl } from "@/lib/eventCover";
 import { getDemoEvent } from "@/lib/demoEvents";
 import { DEMO_PLACES, normalizeDemoPlaceId } from "@/lib/demoPlaces";
+import { DEMO_TEAMS } from "@/lib/demoTeams";
 
 function seededRandom(seed: number) {
   const x = Math.sin(seed) * 10000;
@@ -94,23 +95,22 @@ export function generateDemoPins(center: Coordinates): MapPin[] {
     });
   });
 
-  const demoTeams = [
-    { name: "Cork FC United", sport: "Soccer", members: 18 },
-    { name: "Rebel Athletic", sport: "Basketball", members: 12 },
-    { name: "Leeside United", sport: "Running", members: 25 },
-    { name: "Munster Rugby Club", sport: "Rugby", members: 20 },
-    { name: "Shandon CrossFit Crew", sport: "CrossFit", members: 8 },
-  ];
-  demoTeams.forEach((t, i) => {
+  DEMO_TEAMS.slice(0, 5).forEach((t, i) => {
+    const latCoord = t.latitude ?? jitter(lat, 0.009 + i * 0.001);
+    const lngCoord = t.longitude ?? jitter(lng, 0.009 + i * 0.001);
     pins.push({
-      id: `dt${i}`,
+      id: t.id,
       type: "team",
       title: t.name,
       subtitle: t.sport,
-      coords: { lat: jitter(lat, 0.009 + i * 0.001), lng: jitter(lng, 0.009 + i * 0.001) },
-      data: { sport: t.sport, memberCount: t.members, description: `${t.name} — competitive ${t.sport.toLowerCase()} squad` },
-      coverUrl: demoPhoto(`team-${i}`, 800, 480),
-      iconUrl: demoPhoto(`team-av-${i}`, 200, 200),
+      coords: { lat: latCoord, lng: lngCoord },
+      data: {
+        sport: t.sport,
+        memberCount: t.currentMembers,
+        description: t.description || `${t.name} — competitive ${t.sport.toLowerCase()} squad`,
+      },
+      coverUrl: t.cover || demoPhoto(`team-${i}`, 800, 480),
+      iconUrl: t.logo || demoPhoto(`team-av-${i}`, 200, 200),
       hasStory: i < 2,
       storyState: i === 0 ? "new" : i === 1 ? "seen" : "none",
     });

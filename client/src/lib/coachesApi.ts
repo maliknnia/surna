@@ -1,6 +1,7 @@
 import type { CoachWithProfile } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { normalizeCoachList, normalizeCoachRow } from "@/lib/normalizeCoach";
+import { DEMO_COACH_PROFILES } from "@/lib/demoCoaches";
 
 export async function fetchCoaches(options?: {
   limit?: number;
@@ -19,7 +20,7 @@ export async function fetchCoaches(options?: {
   if (!res.ok) throw new Error(`${res.status}: Failed to load coaches`);
   const rows = await res.json();
   const list = normalizeCoachList(Array.isArray(rows) ? rows : []);
-  console.log("[Fix 8] Coaches loaded from API:", list.length);
+  if (list.length === 0) return DEMO_COACH_PROFILES;
   return list;
 }
 

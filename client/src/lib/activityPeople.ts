@@ -1,4 +1,5 @@
 import { getDemoEvent, isDemoEventId } from "@/lib/demoEvents";
+import { getDemoTeamMembers, isDemoTeamId, normalizeDemoTeamId } from "@/lib/demoTeams";
 import { pickStoryUsers } from "@/lib/personalizedDemoFeed";
 
 export type ActivityPerson = {
@@ -99,7 +100,11 @@ export function mapEventParticipants(participants: unknown[]): ActivityPerson[] 
 }
 
 export async function fetchTeamPeople(teamId: string): Promise<ActivityPerson[]> {
-  const endpoints = [`/api/teams/${teamId}/details`, `/api/teams/${teamId}`];
+  const normalizedId = normalizeDemoTeamId(teamId);
+  if (isDemoTeamId(normalizedId)) {
+    return mapTeamMembers(getDemoTeamMembers(normalizedId));
+  }
+  const endpoints = [`/api/teams/${normalizedId}/details`, `/api/teams/${normalizedId}`];
   for (const url of endpoints) {
     try {
       const res = await fetch(url, { credentials: "include" });

@@ -8,6 +8,7 @@ import { getQueryFn } from "@/lib/queryClient";
 import { fetchCoaches } from "@/lib/coachesApi";
 import { fetchChallengesList } from "@/lib/challengesApi";
 import { mergeWithDemoChallenges } from "@/lib/demoChallenges";
+import { mergeWithDemoTeams } from "@/lib/demoTeams";
 import { formatEventWhenShort, getEventCoverUrl } from "@/lib/eventCover";
 import {
   HOME_QUERY_KEYS,
@@ -179,7 +180,10 @@ function useHomeData() {
     () => (Array.isArray(eventsQuery.data) ? eventsQuery.data : eventsQuery.data?.items || []),
     [eventsQuery.data],
   );
-  const teams = teamsQuery.data || [];
+  const teams = useMemo(
+    () => mergeWithDemoTeams(teamsQuery.data || [], { mixDemos: true }),
+    [teamsQuery.data],
+  );
   const instantGames = instantQuery.data || [];
   const coaches = coachesQuery.data || [];
   const challenges = useMemo(
@@ -549,34 +553,7 @@ function CoachesRow({
       </section>
     );
   }
-  if (!list.length) {
-    const demoCoaches = [
-      { id: "demo-c1", initials: "MR", name: "Coach Ryan", sport: "Football" },
-      { id: "demo-c2", initials: "SK", name: "Coach Kelly", sport: "GAA" },
-      { id: "demo-c3", initials: "JO", name: "Coach O'Brien", sport: "Rugby" },
-      { id: "demo-c4", initials: "AL", name: "Coach Lee", sport: "Basketball" },
-    ];
-    return (
-      <section className="space-y-3">
-        <SectionTitle>Coaches near you</SectionTitle>
-        <div className="flex gap-4 overflow-x-auto no-scrollbar -mx-4 px-5 py-4">
-          {demoCoaches.map((coach) => (
-            <HomeCoachCircleCard
-              key={coach.id}
-              initials={coach.initials}
-              name={coach.name}
-              sport={coach.sport}
-              glow
-              onClick={() => {
-                markNavReturn("/");
-                setLocation(ROUTES.coaches);
-              }}
-            />
-          ))}
-        </div>
-      </section>
-    );
-  }
+  if (!list.length) return null;
 
   return (
     <section className="space-y-3">

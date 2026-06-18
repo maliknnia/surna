@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useParams, useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useTeam } from '@/hooks/useTeam';
 import { getSportConfig } from '@/components/TeamCard';
 import TeamHeader from './components/TeamHeader';
 import TeamHighlights from './sections/TeamHighlights';
@@ -34,10 +34,7 @@ export default function TeamPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
-  const { data: team, isLoading, error } = useQuery({
-    queryKey: ['/api/teams', teamId],
-    enabled: !!teamId,
-  });
+  const { data: team, isLoading, error } = useTeam(teamId);
 
   const teamPhoto = team ? teamLogoUrl(team as never) : null;
   const extractedColor = useDiscoveryCardBg(teamPhoto, (team as any)?.sport);

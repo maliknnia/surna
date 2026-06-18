@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Users, Crown, Star } from "lucide-react";
 import TeamMemberProfileSheet, { type TeamMemberRow } from "../components/TeamMemberProfileSheet";
+import { getDemoTeamMembers, isDemoTeamId, normalizeDemoTeamId } from "@/lib/demoTeams";
 
 interface TeamMembersProps {
   teamId: string;
@@ -20,8 +21,17 @@ function memberDisplayName(member: TeamMemberRow): string {
 export default function TeamMembers({ teamId, teamName }: TeamMembersProps) {
   const [, setLocation] = useLocation();
   const [selectedMember, setSelectedMember] = useState<TeamMemberRow | null>(null);
+  const normalizedId = normalizeDemoTeamId(teamId);
   const { data, isLoading } = useQuery<{ members?: TeamMemberRow[] }>({
-    queryKey: ["/api/teams", teamId, "members"],
+    queryKey: ["/api/teams", normalizedId, "members"],
+    queryFn: async () => {
+      if (isDemoTeamId(normalizedId)) {
+        return { members: getDemoTeamMembers(normalizedId) };
+      }
+      const res = await fetch(`/api/teams/${normalizedId}/members`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load members");
+      return res.json();
+    },
   });
 
   const members = data?.members ?? [];

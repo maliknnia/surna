@@ -28,6 +28,7 @@ import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/
 import { teamLogoUrl } from "@/lib/teamLogo";
 import { getSportConfig } from "@/components/TeamCard";
 import type { Team } from "@shared/schema";
+import { mergeWithDemoTeams } from "@/lib/demoTeams";
 
 const SPORT_CHIPS = [
   { key: "All", emoji: "🏆" },
@@ -192,7 +193,12 @@ export default function Teams({
   const chipBg = t.chipBg;
   const chipText = t.chipText;
 
-  const filteredTeams = (teams || []).filter((team: any) => {
+  const mergedTeams = mergeWithDemoTeams(teams || [], {
+    mixDemos: true,
+    sport: sportFilter !== "All" ? sportFilter : undefined,
+  });
+
+  const filteredTeams = mergedTeams.filter((team: any) => {
     return sportFilter === "All" || (team.sport && team.sport.toLowerCase().includes(sportFilter.toLowerCase()));
   });
 
