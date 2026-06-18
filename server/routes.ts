@@ -144,12 +144,12 @@ const stripeSecretKey =
   (process.env.NODE_ENV === "production"
     ? ""
     : "sk_test_local_dev_placeholder_not_valid_for_charges");
-if (!stripeSecretKey) {
-  throw new Error("Missing required Stripe secret: STRIPE_SECRET_KEY (required in production)");
+const stripe: Stripe | null = stripeSecretKey
+  ? new Stripe(stripeSecretKey, { apiVersion: "2025-08-27.basil" })
+  : null;
+if (!stripe) {
+  console.warn("⚠️  STRIPE_SECRET_KEY not set — payment routes will be disabled. Set it in the Railway Variables tab to enable payments.");
 }
-const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: "2025-08-27.basil",
-});
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
