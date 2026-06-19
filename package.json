@@ -19,6 +19,7 @@
     "db:seed:coaches": "tsx scripts/seed-coaches-only.ts",
     "db:setup:local": "drizzle-kit generate && drizzle-kit migrate && node scripts/ensure-media-table.mjs && node scripts/ensure-events-columns.mjs",
     "dev:local": "npm run db:setup:local && npm run dev",
+    "icons:generate": "node scripts/generate-app-icons.mjs",
     "lan": "node scripts/print-dev-lan-url.mjs",
     "phone": "node scripts/phone-tunnel.mjs",
     "phone:cf": "node scripts/phone-cloudflare.mjs",
