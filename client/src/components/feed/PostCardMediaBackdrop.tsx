@@ -3,13 +3,17 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { extractEdgeColor, getCachedEdgeColor } from "@/lib/extractColor";
 import {
   buildImageEdgeGradient,
+  buildNoImageRadialGlow,
+  buildNoImageStripeTexture,
   buildSportImageWash,
   buildTintCardBackground,
+  hexToRgba,
   noImageBottomFade,
   resolveCardScrim,
   resolvePostCardTint,
   type PostCardContentKind,
 } from "@/lib/postCardBackground";
+import { getSportColor } from "@/lib/sportColors";
 import { cn } from "@/lib/utils";
 
 type PostCardMediaBackdropProps = {
@@ -99,7 +103,8 @@ export function PostCardMediaBackdrop({
   const edgeGradient = buildImageEdgeGradient(edgeColor || tint, mode);
   const washOpacity = variant === "home" ? 0.16 : 0.34;
   const sportWash = buildSportImageWash(tint, washOpacity, mode);
-  const scrim = resolveCardScrim(mode, variant);
+  const scrim = resolveCardScrim(mode, variant, tint);
+  const sportMeta = getSportColor(sport);
 
   return (
     <div
@@ -147,10 +152,47 @@ export function PostCardMediaBackdrop({
         )}
 
         {!showPhoto && (
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{ background: noImageBottomFade(mode) }}
-          />
+          <>
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ background: buildNoImageRadialGlow(tint, mode) }}
+            />
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ background: buildNoImageStripeTexture(tint, mode) }}
+            />
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-10 select-none">
+              <span
+                aria-hidden
+                style={{
+                  fontSize: variant === "home" ? 44 : 38,
+                  lineHeight: 1,
+                  opacity: mode === "light" ? 0.2 : 0.26,
+                }}
+              >
+                {sportMeta.emoji}
+              </span>
+              {sport?.trim() ? (
+                <span
+                  style={{
+                    marginTop: 8,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    opacity: mode === "light" ? 0.45 : 0.5,
+                    color: mode === "light" ? hexToRgba(tint, 0.95) : "rgba(255,255,255,0.55)",
+                  }}
+                >
+                  {sport}
+                </span>
+              ) : null}
+            </div>
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ background: noImageBottomFade(mode, tint) }}
+            />
+          </>
         )}
 
         {hasImageUrl && !showImage && mediaSlot}

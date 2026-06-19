@@ -109,7 +109,47 @@ async function main() {
   await renderSquare(512, 0.06, path.join(ROOT, "client/public/brand/surna-logo.png"));
   console.log("wrote surna-logo.png");
 
+  await renderBrandMark(path.join(ROOT, "client/public/brand/surna-logo-mark.png"), 512, {
+    light: true,
+  });
+  console.log("wrote surna-logo-mark.png");
+
+  await renderBrandMark(path.join(ROOT, "client/public/brand/surna-logo-mark-light.png"), 512, {
+    light: false,
+  });
+  console.log("wrote surna-logo-mark-light.png");
+
   console.log("Done.");
+}
+
+/** Transparent PNG mark for in-app headers (black on light UI, white on dark UI). */
+async function renderBrandMark(dest, size, { light }) {
+  let img = await sharp(SOURCE)
+    .resize(size, size, { fit: "contain", background: BG })
+    .flatten({ background: BG })
+    .png()
+    .toBuffer();
+
+  if (!light) {
+    img = await sharp(img).negate({ alpha: false }).png().toBuffer();
+  }
+
+  const { data, info } = await sharp(img).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const threshold = 238;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (r >= threshold && g >= threshold && b >= threshold) {
+      data[i + 3] = 0;
+    }
+  }
+
+  await sharp(data, {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  })
+    .png()
+    .toFile(dest);
 }
 
 main().catch((err) => {

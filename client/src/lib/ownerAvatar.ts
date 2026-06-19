@@ -1,5 +1,9 @@
 /** Brand + signed-in owner assets (local / dev). */
 export const SURNA_LOGO_URL = "/brand/surna-logo.png";
+/** Transparent runner mark for light UI backgrounds. */
+export const SURNA_LOGO_MARK_URL = "/brand/surna-logo-mark.png";
+/** Transparent runner mark for dark UI backgrounds. */
+export const SURNA_LOGO_MARK_LIGHT_URL = "/brand/surna-logo-mark-light.png";
 /** Profile banner + app/social cover — runner logo mark */
 export const OWNER_COVER_URL = SURNA_LOGO_URL;
 /** Owner profile photo (separate from logo cover) */

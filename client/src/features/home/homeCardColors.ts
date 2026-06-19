@@ -31,7 +31,7 @@ export function useHomeCardTint(opts: {
   cardKind?: HomeCardKind;
 }) {
   const { theme } = useTheme();
-  const mode = theme === "light" ? "light" : "dark";
+  const mode: "light" | "dark" = theme === "light" ? "light" : "dark";
   const tint = useMemo(
     () =>
       resolvePostCardTint({

@@ -9,6 +9,7 @@ import {
 } from "@/features/home/homeCardColors";
 import { PostCardMediaBackdrop } from "@/components/feed/PostCardMediaBackdrop";
 import { getEventCoverUrl } from "@/lib/eventCover";
+import { buildNoImageRadialGlow, buildNoImageStripeTexture } from "@/lib/postCardBackground";
 import type { PostCardContentKind } from "@/lib/postCardBackground";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import type { AttendeeEntityType } from "@/components/people/AttendeeCircles";
@@ -365,7 +366,7 @@ export function HomeCoachCircleCard({
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [lit, setLit] = useState(false);
-  const { gradientBackground, textColors } = useHomeCardTint({ sport, cardKind: "coach" });
+  const { gradientBackground, textColors, mode, tint } = useHomeCardTint({ sport, cardKind: "coach" });
   const hasPhoto = Boolean(photo?.trim());
 
   const aimGlow = (clientX: number, clientY: number) => {
@@ -424,12 +425,22 @@ export function HomeCoachCircleCard({
             <img src={photo!} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
           )}
           {!hasPhoto && (
-            <div
-              className="w-full h-full flex items-center justify-center text-2xl font-bold"
-              style={inter({ color: textColors.primary })}
-            >
-              {initials || "C"}
-            </div>
+            <>
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ background: buildNoImageRadialGlow(tint, mode) }}
+              />
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ background: buildNoImageStripeTexture(tint, mode) }}
+              />
+              <div
+                className="relative w-full h-full flex items-center justify-center text-2xl font-bold"
+                style={inter({ color: textColors.primary })}
+              >
+                {initials || "C"}
+              </div>
+            </>
           )}
         </div>
       </div>
