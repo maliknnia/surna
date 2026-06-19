@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   buildTintCardBackground,
+  resolveLightSurface,
   resolvePostCardTint,
   type PostCardContentKind,
 } from "@/lib/postCardBackground";
