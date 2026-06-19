@@ -90,6 +90,7 @@ function HomeImageSurface({
       sport={sport}
       contentKind={toContentKind(cardKind)}
       aspectRatio="auto"
+      variant="home"
       className={`${rounded} ${className}`}
       style={style}
     >
@@ -127,8 +128,7 @@ export function HomePortraitCard({
   const { textColors } = useHomeCardTint({ sport, cardKind });
   const cover =
     imageUrl?.trim() ||
-    getEventCoverUrl({ sport: sport ?? undefined, title }) ||
-    null;
+    getEventCoverUrl({ sport: sport ?? undefined, title });
 
   return (
     <div className="flex-shrink-0 w-[142px]">
@@ -137,7 +137,8 @@ export function HomePortraitCard({
         sport={sport}
         contentKind={toContentKind(cardKind)}
         aspectRatio="142/190"
-        className="w-[142px] rounded-xl active:scale-[0.98] transition-transform cursor-pointer"
+        variant="home"
+        className="w-[142px] h-[190px] rounded-xl active:scale-[0.98] transition-transform cursor-pointer"
         onClick={onClick}
       >
         {attendeeEntity && (
@@ -224,6 +225,7 @@ export function HomeGridCard({
           sport={sport}
           contentKind={toContentKind(cardKind)}
           aspectRatio="auto"
+          variant="home"
           className="relative w-16 h-16 flex-shrink-0 overflow-hidden"
         >
           {!hasImage && (
@@ -274,8 +276,7 @@ export function HomeFeaturedCard({
   const { textColors } = useHomeCardTint({ sport, cardKind });
   const cover =
     imageUrl?.trim() ||
-    getEventCoverUrl({ sport: sport ?? undefined, title }) ||
-    null;
+    getEventCoverUrl({ sport: sport ?? undefined, title });
 
   return (
     <div className="w-full">
@@ -284,6 +285,7 @@ export function HomeFeaturedCard({
         sport={sport}
         contentKind={toContentKind(cardKind)}
         aspectRatio="2/1"
+        variant="home"
         className="w-full rounded-xl min-h-[130px] active:scale-[0.99] transition-transform cursor-pointer"
         onClick={onClick}
       >
@@ -474,7 +476,7 @@ export function HomeCompactRow({
   const pillStyle = useHomeCardPillStyle();
   const { textColors } = useHomeCardTint({ sport, cardKind });
   const thumb =
-    imageUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title }) || null;
+    imageUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title });
 
   return (
     <div className="w-full">
@@ -483,6 +485,7 @@ export function HomeCompactRow({
         sport={sport}
         contentKind={toContentKind(cardKind)}
         aspectRatio="auto"
+        variant="home"
         className="w-full rounded-xl min-h-[72px] active:scale-[0.98] transition-transform cursor-pointer"
         onClick={onClick}
       >

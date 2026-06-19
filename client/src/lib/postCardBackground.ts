@@ -6,6 +6,11 @@ export const POST_CARD_TINTS = {
   basketball: "#4a2a10",
   gaa: "#1a3528",
   rugby: "#1e2848",
+  running: "#1a3328",
+  crossfit: "#3d2018",
+  tennis: "#1a3020",
+  swimming: "#1a2838",
+  mma: "#3d1818",
   challenge: "#3d1a28",
   coach: "#3d3810",
   default: "#242424",
@@ -50,6 +55,10 @@ export function resolvePostCardTint(opts: {
   if (sport.includes("gaa") || sport.includes("hurling")) return POST_CARD_TINTS.gaa;
   if (sport.includes("rugby")) return POST_CARD_TINTS.rugby;
   if (sport.includes("basketball")) return POST_CARD_TINTS.basketball;
+  if (sport.includes("crossfit")) return POST_CARD_TINTS.crossfit;
+  if (sport.includes("tennis") || sport.includes("padel")) return POST_CARD_TINTS.tennis;
+  if (sport.includes("swim")) return POST_CARD_TINTS.swimming;
+  if (sport.includes("mma") || sport.includes("box")) return POST_CARD_TINTS.mma;
   if (
     sport.includes("football") ||
     sport.includes("soccer") ||
@@ -64,10 +73,9 @@ export function resolvePostCardTint(opts: {
   if (
     sport.includes("run") ||
     sport.includes("hik") ||
-    sport.includes("cycl") ||
-    sport.includes("swim")
+    sport.includes("cycl")
   ) {
-    return POST_CARD_TINTS.gaa;
+    return POST_CARD_TINTS.running;
   }
 
   return POST_CARD_TINTS.default;
@@ -79,9 +87,9 @@ export function buildTintCardBackground(
   mode: "light" | "dark" = "dark",
 ): string {
   if (mode === "light") {
-    return `linear-gradient(165deg, ${hexToRgba(tint, 0.38)} 0%, ${hexToRgba(tint, 0.2)} 38%, rgba(255,255,255,0.9) 68%, #ffffff 100%)`;
+    return `linear-gradient(180deg, ${hexToRgba(tint, 0.55)} 0%, ${hexToRgba(tint, 0.32)} 32%, rgba(255,255,255,0.88) 72%, #ffffff 100%)`;
   }
-  return `linear-gradient(165deg, ${hexToRgba(tint, 0.95)} 0%, ${hexToRgba(tint, 0.78)} 38%, ${hexToRgba(tint, 0.42)} 68%, #0a0a0a 100%)`;
+  return `linear-gradient(180deg, ${hexToRgba(tint, 1)} 0%, ${hexToRgba(tint, 0.72)} 30%, ${hexToRgba(tint, 0.38)} 62%, #0a0a0a 100%)`;
 }
 
 /** Full-bleed wash so sport colour shows through photos. */
@@ -111,7 +119,16 @@ export const POST_CARD_DARK_SCRIM =
 export const POST_CARD_LIGHT_SCRIM =
   "linear-gradient(to top, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.52) 42%, rgba(255,255,255,0.1) 100%)";
 
-export function resolveCardScrim(mode: "light" | "dark" = "dark"): string {
+export const POST_CARD_HOME_DARK_SCRIM =
+  "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.38) 48%, rgba(0,0,0,0.08) 100%)";
+
+export const POST_CARD_HOME_LIGHT_SCRIM =
+  "linear-gradient(to top, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.42) 48%, rgba(255,255,255,0.06) 100%)";
+
+export function resolveCardScrim(mode: "light" | "dark" = "dark", variant: "feed" | "home" = "feed"): string {
+  if (variant === "home") {
+    return mode === "light" ? POST_CARD_HOME_LIGHT_SCRIM : POST_CARD_HOME_DARK_SCRIM;
+  }
   return mode === "light" ? POST_CARD_LIGHT_SCRIM : POST_CARD_DARK_SCRIM;
 }
 

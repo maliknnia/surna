@@ -60,6 +60,10 @@ function fallbackFromSport(sport?: string): string | null {
   return SPORT_FALLBACKS[key] ?? null;
 }
 
+function picsumCover(seed: string): string {
+  return `https://picsum.photos/seed/surna-${encodeURIComponent(seed)}/900/600`;
+}
+
 export function getEventCoverUrl(ev: {
   cover_url?: string | null;
   cover_medium_url?: string | null;
@@ -67,15 +71,19 @@ export function getEventCoverUrl(ev: {
   imageUrl?: string | null;
   title?: string | null;
   sport?: string | null;
-}): string | null {
+}): string {
   const uploaded =
     ev.cover_url ||
     ev.cover_medium_url ||
     ev.coverUrl ||
     ev.imageUrl ||
     null;
-  if (uploaded) return uploaded;
-  return fallbackFromTitle(ev.title ?? undefined) || fallbackFromSport(ev.sport ?? undefined);
+  if (uploaded?.trim()) return uploaded.trim();
+  return (
+    fallbackFromTitle(ev.title ?? undefined) ||
+    fallbackFromSport(ev.sport ?? undefined) ||
+    picsumCover(ev.sport || ev.title || "sport")
+  );
 }
 
 export function formatEventWhenShort(dateStr?: string | null): string | null {
