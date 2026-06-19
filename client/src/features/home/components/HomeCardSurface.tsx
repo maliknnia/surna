@@ -170,7 +170,7 @@ export function HomePortraitCard({
               textShadow:
                 textColors.primary === "#ffffff"
                   ? "0 1px 8px rgba(0,0,0,0.55)"
-                  : "0 1px 4px rgba(0,0,0,0.18)",
+                  : "0 1px 3px rgba(255,255,255,0.65)",
             }}
           >
             {title}
@@ -310,7 +310,7 @@ export function HomeFeaturedCard({
                 textShadow:
                   textColors.primary === "#ffffff"
                     ? "0 1px 10px rgba(0,0,0,0.5)"
-                    : "0 1px 4px rgba(0,0,0,0.18)",
+                    : "0 1px 3px rgba(255,255,255,0.65)",
               }}
             >
               {title}

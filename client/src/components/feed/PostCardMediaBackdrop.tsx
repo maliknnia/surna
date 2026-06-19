@@ -10,6 +10,7 @@ import {
   hexToRgba,
   noImageBottomFade,
   resolveCardScrim,
+  resolveLightSurface,
   resolvePostCardTint,
   type PostCardContentKind,
 } from "@/lib/postCardBackground";
@@ -101,9 +102,10 @@ export function PostCardMediaBackdrop({
   const tintBackground = buildTintCardBackground(tint, mode);
   const baseBackground = backgroundOverride?.trim() || tintBackground;
   const edgeGradient = buildImageEdgeGradient(edgeColor || tint, mode, tint);
-  const washOpacity = variant === "home" ? (mode === "light" ? 0.2 : 0.16) : 0.34;
+  const washOpacity = variant === "home" ? 0.16 : 0.34;
   const sportWash = buildSportImageWash(tint, washOpacity, mode);
   const scrim = resolveCardScrim(mode, variant, tint);
+  const lightSurface = mode === "light" ? resolveLightSurface(tint) : null;
   const sportMeta = getSportColor(sport);
 
   return (
@@ -145,9 +147,15 @@ export function PostCardMediaBackdrop({
 
         {showPhoto && !clean && (
           <>
-            <div className="pointer-events-none absolute inset-0" style={{ background: sportWash }} />
-            <div className="pointer-events-none absolute inset-0" style={{ background: edgeGradient }} />
-            <div className="pointer-events-none absolute inset-0" style={{ background: scrim }} />
+            {mode === "dark" ? (
+              <>
+                <div className="pointer-events-none absolute inset-0" style={{ background: sportWash }} />
+                <div className="pointer-events-none absolute inset-0" style={{ background: edgeGradient }} />
+                <div className="pointer-events-none absolute inset-0" style={{ background: scrim }} />
+              </>
+            ) : (
+              <div className="pointer-events-none absolute inset-0" style={{ background: scrim }} />
+            )}
           </>
         )}
 
@@ -180,8 +188,8 @@ export function PostCardMediaBackdrop({
                     fontWeight: 700,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    opacity: mode === "light" ? 0.45 : 0.5,
-                    color: mode === "light" ? hexToRgba(tint, 0.95) : "rgba(255,255,255,0.55)",
+                    opacity: mode === "light" ? 0.38 : 0.5,
+                    color: mode === "light" ? lightSurface?.text ?? "#242424" : "rgba(255,255,255,0.55)",
                   }}
                 >
                   {sport}

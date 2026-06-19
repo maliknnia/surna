@@ -20,7 +20,13 @@ function mapCardKind(cardKind?: HomeCardKind): PostCardContentKind | undefined {
   return cardKind;
 }
 
-export function homeCardTextColors(mode: "light" | "dark") {
+export function homeCardTextColors(mode: "light" | "dark", sportTint?: string) {
+  if (mode === "light" && sportTint) {
+    return {
+      primary: resolveLightSurface(sportTint).text,
+      muted: "rgba(0,0,0,0.52)",
+    };
+  }
   return mode === "light"
     ? { primary: "#121212", muted: "rgba(0,0,0,0.55)" }
     : { primary: "#ffffff", muted: "rgba(255,255,255,0.72)" };
@@ -44,7 +50,7 @@ export function useHomeCardTint(opts: {
     () => buildTintCardBackground(tint, mode),
     [tint, mode],
   );
-  const textColors = useMemo(() => homeCardTextColors(mode), [mode]);
+  const textColors = useMemo(() => homeCardTextColors(mode, tint), [mode, tint]);
 
   return { mode, tint, gradientBackground, textColors };
 }
