@@ -74,22 +74,56 @@ export function resolvePostCardTint(opts: {
 }
 
 /** Full-bleed background when there is no photo. */
-export function buildTintCardBackground(tint: string): string {
-  return `linear-gradient(165deg, ${hexToRgba(tint, 1)} 0%, ${hexToRgba(tint, 0.88)} 42%, ${hexToRgba(tint, 0.55)} 72%, #0a0a0a 100%)`;
+export function buildTintCardBackground(
+  tint: string,
+  mode: "light" | "dark" = "dark",
+): string {
+  if (mode === "light") {
+    return `linear-gradient(165deg, ${hexToRgba(tint, 0.38)} 0%, ${hexToRgba(tint, 0.2)} 38%, rgba(255,255,255,0.9) 68%, #ffffff 100%)`;
+  }
+  return `linear-gradient(165deg, ${hexToRgba(tint, 0.95)} 0%, ${hexToRgba(tint, 0.78)} 38%, ${hexToRgba(tint, 0.42)} 68%, #0a0a0a 100%)`;
 }
 
 /** Full-bleed wash so sport colour shows through photos. */
-export function buildSportImageWash(tint: string, opacity = 0.34): string {
-  return hexToRgba(tint, opacity);
+export function buildSportImageWash(
+  tint: string,
+  opacity = 0.34,
+  mode: "light" | "dark" = "dark",
+): string {
+  const alpha = mode === "light" ? Math.min(opacity * 0.55, 0.22) : opacity;
+  return hexToRgba(tint, alpha);
 }
 
 /** Edge colour wash over a photo (stronger at bottom for text). */
-export function buildImageEdgeGradient(edgeColor: string): string {
+export function buildImageEdgeGradient(
+  edgeColor: string,
+  mode: "light" | "dark" = "dark",
+): string {
+  if (mode === "light") {
+    return `linear-gradient(to top, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.52) 45%, transparent 72%)`;
+  }
   return `linear-gradient(to top, ${hexToRgba(edgeColor, 0.58)} 0%, ${hexToRgba(edgeColor, 0.22)} 45%, transparent 72%)`;
 }
 
 export const POST_CARD_DARK_SCRIM =
   "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.48) 42%, rgba(0,0,0,0.15) 100%)";
+
+export const POST_CARD_LIGHT_SCRIM =
+  "linear-gradient(to top, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.52) 42%, rgba(255,255,255,0.1) 100%)";
+
+export function resolveCardScrim(mode: "light" | "dark" = "dark"): string {
+  return mode === "light" ? POST_CARD_LIGHT_SCRIM : POST_CARD_DARK_SCRIM;
+}
+
+export function cardPhotoBase(mode: "light" | "dark" = "dark"): string {
+  return mode === "light" ? "#f0f0f0" : "#0a0a0a";
+}
+
+export function noImageBottomFade(mode: "light" | "dark" = "dark"): string {
+  return mode === "light"
+    ? "linear-gradient(to top, rgba(255,255,255,0.55) 0%, transparent 55%)"
+    : "linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 55%)";
+}
 
 export function postCardTintGradient(opts: Parameters<typeof resolvePostCardTint>[0]): string {
   return buildTintCardBackground(resolvePostCardTint(opts));

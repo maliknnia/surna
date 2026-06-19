@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 import { extractEdgeColor, getCachedEdgeColor } from "@/lib/extractColor";
 import {
-  POST_CARD_DARK_SCRIM,
   buildImageEdgeGradient,
   buildSportImageWash,
   buildTintCardBackground,
+  cardPhotoBase,
+  noImageBottomFade,
+  resolveCardScrim,
   resolvePostCardTint,
   type PostCardContentKind,
 } from "@/lib/postCardBackground";
@@ -58,6 +61,8 @@ export function PostCardMediaBackdrop({
   backgroundOverride,
   clean = false,
 }: PostCardMediaBackdropProps) {
+  const { theme } = useTheme();
+  const mode = theme === "light" ? "light" : "dark";
   const tint = useMemo(
     () => resolvePostCardTint({ sport, contentKind, authorRole }),
     [sport, contentKind, authorRole],
@@ -87,18 +92,20 @@ export function PostCardMediaBackdrop({
     };
   }, [hasImage, imageUrl]);
 
-  const edgeGradient = buildImageEdgeGradient(edgeColor || tint);
-  const tintBackground = buildTintCardBackground(tint);
+  const edgeGradient = buildImageEdgeGradient(edgeColor || tint, mode);
+  const tintBackground = buildTintCardBackground(tint, mode);
   const noImageBackground =
     backgroundOverride?.trim() || tintBackground;
-  const sportWash = buildSportImageWash(tint);
+  const sportWash = buildSportImageWash(tint, 0.34, mode);
+  const scrim = resolveCardScrim(mode);
+  const photoBase = cardPhotoBase(mode);
 
   return (
     <div
       className={cn("relative overflow-hidden", className)}
       style={{
         aspectRatio: aspectRatio === "auto" ? undefined : aspectRatio,
-        background: hasImage ? (clean ? "#000" : "#0a0a0a") : noImageBackground,
+        background: hasImage ? (clean ? photoBase : photoBase) : noImageBackground,
         ...style,
       }}
       onClick={onClick}
@@ -130,15 +137,13 @@ export function PostCardMediaBackdrop({
           <>
             <div className="pointer-events-none absolute inset-0" style={{ background: sportWash }} />
             <div className="pointer-events-none absolute inset-0" style={{ background: edgeGradient }} />
-            <div className="pointer-events-none absolute inset-0" style={{ background: POST_CARD_DARK_SCRIM }} />
+            <div className="pointer-events-none absolute inset-0" style={{ background: scrim }} />
           </>
         )}
         {!hasImage && (
           <div
             className="pointer-events-none absolute inset-0"
-            style={{
-              background: "linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 55%)",
-            }}
+            style={{ background: noImageBottomFade(mode) }}
           />
         )}
       </div>

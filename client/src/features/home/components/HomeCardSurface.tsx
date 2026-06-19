@@ -2,15 +2,14 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as R
 import {
   HOME_BELOW_CARD_MT,
   HOME_GRID_BG,
-  HOME_IMAGE_SCRIM,
   HOME_TEXT_META,
   HOME_TEXT_SUBTITLE,
+  useHomeCardTint,
   type HomeCardKind,
-  resolveHomeCardBackground,
-  useHomeCardSurface,
 } from "@/features/home/homeCardColors";
+import { PostCardMediaBackdrop } from "@/components/feed/PostCardMediaBackdrop";
 import { getEventCoverUrl } from "@/lib/eventCover";
-import { getSportColor } from "@/lib/sportColors";
+import type { PostCardContentKind } from "@/lib/postCardBackground";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import type { AttendeeEntityType } from "@/components/people/AttendeeCircles";
 import { useHomeCardPillStyle } from "@/features/home/homeCardStyles";
@@ -19,6 +18,13 @@ const inter = (extra?: CSSProperties): CSSProperties => ({
   fontFamily: "Inter, sans-serif",
   ...extra,
 });
+
+function toContentKind(cardKind?: HomeCardKind): PostCardContentKind | undefined {
+  if (!cardKind) return undefined;
+  if (cardKind === "instantJoin") return "event";
+  if (cardKind === "marketplace") return "regular";
+  return cardKind;
+}
 
 function CardTextBelow({
   subtitle,
@@ -78,25 +84,17 @@ function HomeImageSurface({
   children,
   rounded = "rounded-lg",
 }: ImageSurfaceProps) {
-  const { hasImage, surfaceBackground, imageScrim, solidBackground } = useHomeCardSurface({
-    imageUrl,
-    sport,
-    cardKind,
-  });
-
   return (
-    <div
-      className={`relative overflow-hidden ${rounded} ${className}`}
-      style={{ background: hasImage ? surfaceBackground : solidBackground, ...style }}
+    <PostCardMediaBackdrop
+      imageUrl={imageUrl}
+      sport={sport}
+      contentKind={toContentKind(cardKind)}
+      aspectRatio="auto"
+      className={`${rounded} ${className}`}
+      style={style}
     >
-      {hasImage && (
-        <img src={imageUrl!} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-      )}
-      {hasImage && imageScrim && (
-        <div className="absolute inset-0 pointer-events-none" style={{ background: imageScrim }} />
-      )}
       {children}
-    </div>
+    </PostCardMediaBackdrop>
   );
 }
 
@@ -126,92 +124,62 @@ export function HomePortraitCard({
   showCaptionBelow?: boolean;
 }) {
   const pillStyle = useHomeCardPillStyle();
+  const { textColors } = useHomeCardTint({ sport, cardKind });
   const cover =
     imageUrl?.trim() ||
     getEventCoverUrl({ sport: sport ?? undefined, title }) ||
     null;
-  const { hasImage, solidBackground, imageScrim } = useHomeCardSurface({
-    imageUrl: cover,
-    sport,
-    cardKind,
-  });
-  const [photoOk, setPhotoOk] = useState(true);
-  const showPhoto = Boolean(cover && hasImage && photoOk);
-  const sportEmoji = getSportColor(sport).emoji;
 
   return (
     <div className="flex-shrink-0 w-[142px]">
-      <button
-        type="button"
+      <PostCardMediaBackdrop
+        imageUrl={cover}
+        sport={sport}
+        contentKind={toContentKind(cardKind)}
+        aspectRatio="142/190"
+        className="w-[142px] rounded-xl active:scale-[0.98] transition-transform cursor-pointer"
         onClick={onClick}
-        className="block w-full text-left active:scale-[0.98] transition-transform"
       >
-        <div
-          className="relative w-[142px] h-[190px] rounded-xl overflow-hidden"
-          style={{ background: solidBackground }}
-        >
-          {showPhoto && cover && (
-            <>
-              <img
-                src={cover}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="lazy"
-                onError={() => setPhotoOk(false)}
-              />
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: "rgba(0,0,0,0.35)",
-                }}
-              />
-            </>
-          )}
-          {!showPhoto && (
-            <div className="absolute inset-0 flex items-center justify-center text-4xl opacity-90">
-              {sportEmoji}
-            </div>
-          )}
-          {showPhoto && imageScrim && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: imageScrim }}
+        {attendeeEntity && (
+          <div className="absolute top-2 left-2 z-[2]" onClick={(e) => e.stopPropagation()}>
+            <CardAttendeeStrip
+              entityType={attendeeEntity.type}
+              entityId={attendeeEntity.id}
+              fallbackCount={attendeeEntity.count}
+              compact
+              onPhoto
             />
-          )}
-          {attendeeEntity && (
-            <div className="absolute top-2 left-2 z-[2]" onClick={(e) => e.stopPropagation()}>
-              <CardAttendeeStrip
-                entityType={attendeeEntity.type}
-                entityId={attendeeEntity.id}
-                fallbackCount={attendeeEntity.count}
-                compact
-                onPhoto
-              />
-            </div>
-          )}
-          {cta ? (
-            <span
-              className="absolute top-2 right-2 z-[2] px-2.5 py-1 rounded-full text-[10px] font-bold"
-              style={pillStyle}
-            >
-              {cta}
-            </span>
-          ) : null}
-          <div className="absolute bottom-0 left-0 right-0 p-2.5 z-[1]">
-            <p
-              className="text-[13px] font-bold text-white leading-snug line-clamp-2"
-              style={{ ...inter(), textShadow: "0 1px 8px rgba(0,0,0,0.55)" }}
-            >
-              {title}
-            </p>
-            {meta && (
-              <p className="text-[10px] text-white/75 mt-0.5 line-clamp-1" style={inter()}>
-                {meta}
-              </p>
-            )}
           </div>
+        )}
+        {cta ? (
+          <span
+            className="absolute top-2 right-2 z-[2] px-2.5 py-1 rounded-full text-[10px] font-bold"
+            style={pillStyle}
+          >
+            {cta}
+          </span>
+        ) : null}
+        <div className="absolute bottom-0 left-0 right-0 p-2.5 z-[1]">
+          <p
+            className="text-[13px] font-bold leading-snug line-clamp-2"
+            style={{
+              ...inter(),
+              color: textColors.primary,
+              textShadow:
+                textColors.primary === "#ffffff"
+                  ? "0 1px 8px rgba(0,0,0,0.55)"
+                  : "0 1px 6px rgba(255,255,255,0.45)",
+            }}
+          >
+            {title}
+          </p>
+          {meta && (
+            <p className="text-[10px] mt-0.5 line-clamp-1" style={inter({ color: textColors.muted })}>
+              {meta}
+            </p>
+          )}
         </div>
-      </button>
+      </PostCardMediaBackdrop>
       {showCaptionBelow && (subtitle || meta) && (
         <CardTextBelow subtitle={subtitle} meta={meta} subtitleSize={12} width={142} />
       )}
@@ -239,11 +207,8 @@ export function HomeGridCard({
   label: string;
   onClick: () => void;
 }) {
-  const { hasImage, surfaceBackground, imageScrim, solidBackground } = useHomeCardSurface({
-    imageUrl,
-    sport,
-    cardKind,
-  });
+  const { textColors } = useHomeCardTint({ sport, cardKind });
+  const hasImage = Boolean(imageUrl?.trim());
 
   return (
     <div className="min-w-0">
@@ -254,27 +219,24 @@ export function HomeGridCard({
         style={{ background: HOME_GRID_BG }}
         aria-label={label}
       >
-        <div
+        <PostCardMediaBackdrop
+          imageUrl={imageUrl}
+          sport={sport}
+          contentKind={toContentKind(cardKind)}
+          aspectRatio="auto"
           className="relative w-16 h-16 flex-shrink-0 overflow-hidden"
-          style={{ background: hasImage ? surfaceBackground : solidBackground }}
         >
-          {hasImage && (
-            <img src={imageUrl!} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-          )}
-          {hasImage && imageScrim && (
-            <div className="absolute inset-0 pointer-events-none" style={{ background: imageScrim }} />
-          )}
           {!hasImage && (
             <div
-              className="w-full h-full flex items-center justify-center text-[11px] font-bold text-white/45"
-              style={inter()}
+              className="absolute inset-0 flex items-center justify-center text-[11px] font-bold"
+              style={inter({ color: textColors.muted })}
             >
               {label.charAt(0)}
             </div>
           )}
-        </div>
+        </PostCardMediaBackdrop>
         <div className="flex-1 min-w-0 px-3">
-          <p className="text-[14px] font-bold text-white truncate" style={inter()}>
+          <p className="text-[14px] font-bold truncate" style={inter({ color: "var(--surna-text)" })}>
             {title}
           </p>
         </div>
@@ -309,93 +271,65 @@ export function HomeFeaturedCard({
   captionBelow?: string;
 }) {
   const pillStyle = useHomeCardPillStyle();
+  const { textColors } = useHomeCardTint({ sport, cardKind });
   const cover =
     imageUrl?.trim() ||
     getEventCoverUrl({ sport: sport ?? undefined, title }) ||
     null;
-  const { hasImage, solidBackground, imageScrim } = useHomeCardSurface({
-    imageUrl: cover,
-    sport,
-    cardKind,
-  });
-  const [photoOk, setPhotoOk] = useState(true);
-  const showPhoto = Boolean(cover && hasImage && photoOk);
-  const sportEmoji = getSportColor(sport).emoji;
 
   return (
     <div className="w-full">
-      <button
-        type="button"
+      <PostCardMediaBackdrop
+        imageUrl={cover}
+        sport={sport}
+        contentKind={toContentKind(cardKind)}
+        aspectRatio="2/1"
+        className="w-full rounded-xl min-h-[130px] active:scale-[0.99] transition-transform cursor-pointer"
         onClick={onClick}
-        className="w-full rounded-xl overflow-hidden text-left active:scale-[0.99] transition-transform"
-        style={{ background: solidBackground }}
       >
-        <div className="relative w-full aspect-[2/1] min-h-[130px]">
-          {showPhoto && cover && (
-            <>
-              <img
-                src={cover}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="lazy"
-                onError={() => setPhotoOk(false)}
-              />
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: "rgba(0,0,0,0.35)",
-                }}
-              />
-            </>
-          )}
-          {!showPhoto && (
-            <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-90">
-              {sportEmoji}
-            </div>
-          )}
-          {showPhoto && imageScrim && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: imageScrim }}
+        {attendeeEntity && (
+          <div className="absolute top-3 left-3 z-[2]" onClick={(e) => e.stopPropagation()}>
+            <CardAttendeeStrip
+              entityType={attendeeEntity.type}
+              entityId={attendeeEntity.id}
+              fallbackCount={attendeeEntity.count}
+              onPhoto
             />
-          )}
-          {attendeeEntity && (
-            <div className="absolute top-3 left-3 z-[2]" onClick={(e) => e.stopPropagation()}>
-              <CardAttendeeStrip
-                entityType={attendeeEntity.type}
-                entityId={attendeeEntity.id}
-                fallbackCount={attendeeEntity.count}
-                onPhoto
-              />
-            </div>
-          )}
-          <div className="absolute inset-0 flex items-end p-4 gap-3">
-            <div className="flex-1 min-w-0">
-              <p
-                className="text-[17px] font-bold text-white leading-snug line-clamp-2"
-                style={{ ...inter(), textShadow: "0 1px 10px rgba(0,0,0,0.5)" }}
-              >
-                {title}
-              </p>
-              {subtitle && (
-                <p className="text-[12px] text-white/80 mt-1 line-clamp-1" style={inter()}>
-                  {subtitle}
-                </p>
-              )}
-              {meta && (
-                <p className="text-[11px] text-white/65 mt-0.5 line-clamp-1" style={inter()}>
-                  {meta}
-                </p>
-              )}
-            </div>
-            {cta ? (
-              <span className="shrink-0 px-4 py-2 rounded-full text-xs font-bold" style={pillStyle}>
-                {cta}
-              </span>
-            ) : null}
           </div>
+        )}
+        <div className="absolute inset-0 flex items-end p-4 gap-3">
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-[17px] font-bold leading-snug line-clamp-2"
+              style={{
+                ...inter(),
+                color: textColors.primary,
+                textShadow:
+                  textColors.primary === "#ffffff"
+                    ? "0 1px 10px rgba(0,0,0,0.5)"
+                    : "0 1px 8px rgba(255,255,255,0.45)",
+              }}
+            >
+              {title}
+            </p>
+            {subtitle && (
+              <p className="text-[12px] mt-1 line-clamp-1" style={inter({ color: textColors.muted })}>
+                {subtitle}
+              </p>
+            )}
+            {meta && (
+              <p className="text-[11px] mt-0.5 line-clamp-1" style={inter({ color: textColors.muted })}>
+                {meta}
+              </p>
+            )}
+          </div>
+          {cta ? (
+            <span className="shrink-0 px-4 py-2 rounded-full text-xs font-bold" style={pillStyle}>
+              {cta}
+            </span>
+          ) : null}
         </div>
-      </button>
+      </PostCardMediaBackdrop>
       {captionBelow && (
         <CardTextBelow subtitle={captionBelow} subtitleSize={12} width="100%" />
       )}
@@ -429,11 +363,8 @@ export function HomeCoachCircleCard({
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [lit, setLit] = useState(false);
-  const { hasImage, solidBackground, cardBackground } = useHomeCardSurface({
-    imageUrl: photo,
-    cardKind: "coach",
-    sport,
-  });
+  const { gradientBackground, textColors } = useHomeCardTint({ sport, cardKind: "coach" });
+  const hasPhoto = Boolean(photo?.trim());
 
   const aimGlow = (clientX: number, clientY: number) => {
     if (frameRef.current) aimCoachGlow(frameRef.current, clientX, clientY);
@@ -484,16 +415,16 @@ export function HomeCoachCircleCard({
         className={`coach-circle-card__frame${glow && lit ? " coach-circle-card__frame--lit" : ""}`}
       >
         <div
-          className="coach-circle-card__avatar"
-          style={{ background: hasImage ? cardBackground : solidBackground }}
+          className="coach-circle-card__avatar relative overflow-hidden"
+          style={{ background: gradientBackground }}
         >
-          {hasImage && (
+          {hasPhoto && (
             <img src={photo!} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
           )}
-          {!hasImage && (
+          {!hasPhoto && (
             <div
-              className="w-full h-full flex items-center justify-center text-2xl font-bold text-white/80"
-              style={inter()}
+              className="w-full h-full flex items-center justify-center text-2xl font-bold"
+              style={inter({ color: textColors.primary })}
             >
               {initials || "C"}
             </div>
@@ -541,57 +472,28 @@ export function HomeCompactRow({
   attendeeEntity?: { type: AttendeeEntityType; id: string; count?: number };
 }) {
   const pillStyle = useHomeCardPillStyle();
+  const { textColors } = useHomeCardTint({ sport, cardKind });
   const thumb =
     imageUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title }) || null;
-  const { hasImage, solidBackground } = useHomeCardSurface({
-    imageUrl: thumb,
-    sport,
-    cardKind,
-  });
-  const [photoOk, setPhotoOk] = useState(true);
-  const showPhoto = Boolean(thumb && hasImage && photoOk);
-  const onProfileTint = showPhoto || Boolean(sport);
-  const textPrimary = onProfileTint ? "#ffffff" : "var(--surna-text)";
-  const textMuted = onProfileTint ? "rgba(255,255,255,0.72)" : "var(--surna-text-muted)";
 
   return (
     <div className="w-full">
-      <button
-        type="button"
+      <PostCardMediaBackdrop
+        imageUrl={thumb}
+        sport={sport}
+        contentKind={toContentKind(cardKind)}
+        aspectRatio="auto"
+        className="w-full rounded-xl min-h-[72px] active:scale-[0.98] transition-transform cursor-pointer"
         onClick={onClick}
-        className="card-spotify relative w-full flex items-center gap-3 p-2.5 rounded-xl text-left active:scale-[0.98] transition-transform overflow-hidden"
-        style={{ background: solidBackground }}
       >
-        {showPhoto && thumb && (
-          <>
-            <img
-              src={thumb}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-              style={{ filter: "blur(2px) saturate(1.1)", transform: "scale(1.05)" }}
-              loading="lazy"
-              onError={() => setPhotoOk(false)}
-            />
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "rgba(0,0,0,0.35)",
-              }}
-            />
-          </>
-        )}
-        <div
-          className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0"
-          style={{
-            background: onProfileTint ? "rgba(255,255,255,0.15)" : "var(--surna-surface)",
-          }}
-        >
+        <div className="flex items-center gap-3 p-2.5 h-full w-full">
+        <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 ring-1 ring-white/10">
           {thumb ? (
             <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
           ) : (
             <div
               className="w-full h-full flex items-center justify-center"
-              style={{ color: onProfileTint ? "rgba(255,255,255,0.85)" : "var(--surna-text-secondary)" }}
+              style={{ color: textColors.muted }}
             >
               {icon}
             </div>
@@ -600,7 +502,7 @@ export function HomeCompactRow({
         <div className="relative flex-1 min-w-0 space-y-1">
           <p
             className="text-[13px] font-semibold leading-snug line-clamp-2"
-            style={inter({ color: textPrimary })}
+            style={inter({ color: textColors.primary })}
           >
             {title}
           </p>
@@ -613,7 +515,7 @@ export function HomeCompactRow({
             />
           )}
           {subtitle && (
-            <p className="text-[11px] line-clamp-1" style={inter({ color: textMuted })}>
+            <p className="text-[11px] line-clamp-1" style={inter({ color: textColors.muted })}>
               {subtitle}
             </p>
           )}
@@ -623,7 +525,8 @@ export function HomeCompactRow({
             {cta}
           </span>
         ) : null}
-      </button>
+        </div>
+      </PostCardMediaBackdrop>
       {captionBelow && <CardTextBelow subtitle={captionBelow} subtitleSize={12} width="100%" />}
     </div>
   );
