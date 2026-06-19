@@ -100,8 +100,8 @@ export function PostCardMediaBackdrop({
 
   const tintBackground = buildTintCardBackground(tint, mode);
   const baseBackground = backgroundOverride?.trim() || tintBackground;
-  const edgeGradient = buildImageEdgeGradient(edgeColor || tint, mode);
-  const washOpacity = variant === "home" ? 0.16 : 0.34;
+  const edgeGradient = buildImageEdgeGradient(edgeColor || tint, mode, tint);
+  const washOpacity = variant === "home" ? (mode === "light" ? 0.2 : 0.16) : 0.34;
   const sportWash = buildSportImageWash(tint, washOpacity, mode);
   const scrim = resolveCardScrim(mode, variant, tint);
   const sportMeta = getSportColor(sport);
