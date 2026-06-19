@@ -16,20 +16,20 @@ export const POST_CARD_TINTS = {
   default: "#242424",
 } as const;
 
-/** Pastel bases for light mode — visibly sport-colored, not near-white. */
+/** Pastel bases for light mode — soft sport tint with a gentle fade. */
 export const POST_CARD_LIGHT_TINTS: Record<keyof typeof POST_CARD_TINTS, string> = {
-  football: "#9fd4b4",
-  basketball: "#e8c49a",
-  gaa: "#98d4b0",
-  rugby: "#9eb4dc",
-  running: "#98d8b4",
-  crossfit: "#e0b0a0",
-  tennis: "#98d898",
-  swimming: "#94b4dc",
-  mma: "#dc9898",
-  challenge: "#dc98b0",
-  coach: "#dcd098",
-  default: "#c8c8c8",
+  football: "#cfe8d6",
+  basketball: "#f5dcc4",
+  gaa: "#cce8d8",
+  rugby: "#ccd4ec",
+  running: "#cce8d4",
+  crossfit: "#f0ccc0",
+  tennis: "#cce8cc",
+  swimming: "#c8d8ec",
+  mma: "#ecc8c8",
+  challenge: "#ecc0d0",
+  coach: "#ece4c0",
+  default: "#e2e2e2",
 };
 
 export function resolveLightTint(darkTint: string): string {
@@ -111,7 +111,7 @@ export function buildTintCardBackground(
 ): string {
   if (mode === "light") {
     const light = resolveLightTint(tint);
-    return `linear-gradient(180deg, ${hexToRgba(tint, 0.68)} 0%, ${light} 40%, ${hexToRgba(tint, 0.58)} 100%)`;
+    return `linear-gradient(180deg, ${light} 0%, ${hexToRgba(tint, 0.26)} 54%, ${hexToRgba(tint, 0.12)} 82%, rgba(255,255,255,0.3) 100%)`;
   }
   return `linear-gradient(180deg, ${hexToRgba(tint, 1)} 0%, ${hexToRgba(tint, 0.72)} 30%, ${hexToRgba(tint, 0.38)} 62%, #0a0a0a 100%)`;
 }
@@ -122,7 +122,7 @@ export function buildSportImageWash(
   opacity = 0.34,
   mode: "light" | "dark" = "dark",
 ): string {
-  const alpha = mode === "light" ? Math.min(opacity * 0.85, 0.3) : opacity;
+  const alpha = mode === "light" ? Math.min(opacity * 0.62, 0.24) : opacity;
   return hexToRgba(tint, alpha);
 }
 
@@ -134,7 +134,7 @@ export function buildImageEdgeGradient(
 ): string {
   if (mode === "light") {
     const base = sportTint || edgeColor;
-    return `linear-gradient(to top, ${hexToRgba(base, 0.58)} 0%, ${hexToRgba(base, 0.24)} 38%, transparent 66%)`;
+    return `linear-gradient(to top, ${hexToRgba(base, 0.34)} 0%, ${hexToRgba(base, 0.12)} 40%, rgba(255,255,255,0.18) 58%, transparent 72%)`;
   }
   return `linear-gradient(to top, ${hexToRgba(edgeColor, 0.58)} 0%, ${hexToRgba(edgeColor, 0.22)} 45%, transparent 72%)`;
 }
@@ -143,13 +143,13 @@ export const POST_CARD_DARK_SCRIM =
   "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.48) 42%, rgba(0,0,0,0.15) 100%)";
 
 export const POST_CARD_LIGHT_SCRIM =
-  "linear-gradient(to top, rgba(18,18,18,0.42) 0%, rgba(18,18,18,0.14) 42%, transparent 72%)";
+  "linear-gradient(to top, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.38) 42%, rgba(255,255,255,0.08) 100%)";
 
 export const POST_CARD_HOME_DARK_SCRIM =
   "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.38) 48%, rgba(0,0,0,0.08) 100%)";
 
 export const POST_CARD_HOME_LIGHT_SCRIM =
-  "linear-gradient(to top, rgba(18,18,18,0.38) 0%, rgba(18,18,18,0.12) 48%, transparent 72%)";
+  "linear-gradient(to top, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.32) 48%, rgba(255,255,255,0.06) 100%)";
 
 export function resolveCardScrim(
   mode: "light" | "dark" = "dark",
@@ -157,8 +157,8 @@ export function resolveCardScrim(
   tint?: string,
 ): string {
   if (mode === "light" && tint) {
-    const bottom = variant === "home" ? 0.64 : 0.7;
-    return `linear-gradient(to top, ${hexToRgba(tint, bottom)} 0%, ${hexToRgba(tint, 0.3)} 40%, transparent 68%)`;
+    const bottom = variant === "home" ? 0.36 : 0.42;
+    return `linear-gradient(to top, ${hexToRgba(tint, bottom)} 0%, ${hexToRgba(tint, 0.12)} 42%, rgba(255,255,255,0.16) 58%, transparent 72%)`;
   }
   if (variant === "home") {
     return mode === "light" ? POST_CARD_HOME_LIGHT_SCRIM : POST_CARD_HOME_DARK_SCRIM;
@@ -172,7 +172,7 @@ export function cardPhotoBase(mode: "light" | "dark" = "dark"): string {
 
 export function noImageBottomFade(mode: "light" | "dark" = "dark", tint?: string): string {
   if (mode === "light" && tint) {
-    return `linear-gradient(to top, ${hexToRgba(tint, 0.52)} 0%, transparent 58%)`;
+    return `linear-gradient(to top, ${hexToRgba(tint, 0.3)} 0%, rgba(255,255,255,0.12) 52%, transparent 58%)`;
   }
   return mode === "light"
     ? "linear-gradient(to top, rgba(0,0,0,0.12) 0%, transparent 55%)"
@@ -183,14 +183,14 @@ export function noImageBottomFade(mode: "light" | "dark" = "dark", tint?: string
 export function buildNoImageRadialGlow(tint: string, mode: "light" | "dark"): string {
   if (mode === "light") {
     const light = resolveLightTint(tint);
-    return `radial-gradient(circle at 50% 36%, ${hexToRgba(tint, 0.55)} 0%, ${hexToRgba(tint, 0.32)} 52%, ${light} 100%)`;
+    return `radial-gradient(circle at 50% 36%, ${hexToRgba(tint, 0.34)} 0%, ${light} 58%, rgba(255,255,255,0.35) 100%)`;
   }
   return `radial-gradient(circle at 50% 36%, ${hexToRgba(tint, 0.62)} 0%, ${hexToRgba(tint, 0.18)} 52%, transparent 88%)`;
 }
 
 /** Subtle diagonal texture so empty cards feel intentional. */
 export function buildNoImageStripeTexture(tint: string, mode: "light" | "dark"): string {
-  const alpha = mode === "light" ? 0.1 : 0.1;
+  const alpha = mode === "light" ? 0.07 : 0.1;
   return `repeating-linear-gradient(135deg, ${hexToRgba(tint, alpha)} 0px, ${hexToRgba(tint, alpha)} 1px, transparent 1px, transparent 11px)`;
 }
 
