@@ -19,6 +19,10 @@ const TITLE_FALLBACKS: Record<string, string> = {
   beach: "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=900&auto=format&fit=crop&q=80",
   yoga: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=900&auto=format&fit=crop&q=80",
   baseball: "https://images.unsplash.com/photo-1566577733762-1c0d0e6f0f0a?w=900&auto=format&fit=crop&q=80",
+  rugby: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=900&auto=format&fit=crop&q=80",
+  gaa: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=900&auto=format&fit=crop&q=80",
+  cricket: "https://images.unsplash.com/photo-1531419140502-7a3e4e4b4c4b?w=900&auto=format&fit=crop&q=80",
+  cycling: "https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=900&auto=format&fit=crop&q=80",
 };
 
 const SPORT_FALLBACKS: Record<string, string> = {
@@ -36,6 +40,10 @@ const SPORT_FALLBACKS: Record<string, string> = {
   volleyball: TITLE_FALLBACKS.volleyball,
   yoga: TITLE_FALLBACKS.yoga,
   baseball: TITLE_FALLBACKS.baseball,
+  rugby: TITLE_FALLBACKS.rugby,
+  gaa: TITLE_FALLBACKS.gaa,
+  cricket: TITLE_FALLBACKS.cricket,
+  cycling: TITLE_FALLBACKS.cycling,
 };
 
 function fallbackFromTitle(title?: string): string | null {

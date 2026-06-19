@@ -3,6 +3,7 @@
  */
 
 import type { Team } from "@shared/schema";
+import { getEventCoverUrl } from "@/lib/eventCover";
 import { pickStoryUsers } from "@/lib/personalizedDemoFeed";
 import type { TeamMemberRow } from "@/pages/team/components/TeamMemberProfileSheet";
 
@@ -26,8 +27,11 @@ export type DemoTeam = {
   isDemo?: boolean;
 };
 
-function demoPhoto(seed: string, w: number, h: number): string {
-  return `https://picsum.photos/seed/surna-team-${encodeURIComponent(seed)}/${w}/${h}`;
+function teamImage(sport: string, name: string, variant: "logo" | "cover"): string {
+  return (
+    getEventCoverUrl({ sport, title: name }) ||
+    `https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=${variant === "logo" ? 400 : 900}&auto=format&fit=crop&q=85`
+  );
 }
 
 function hashSeed(id: string): number {
@@ -52,8 +56,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 412,
     latitude: 51.8982,
     longitude: -8.4738,
-    logo: demoPhoto("cork-fc-logo", 400, 400),
-    cover: demoPhoto("cork-fc-cover", 1200, 600),
+    logo: teamImage("Soccer", "Cork FC United", "logo"),
+    cover: teamImage("Soccer", "Cork FC United", "cover"),
     isDemo: true,
   },
   {
@@ -71,8 +75,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 288,
     latitude: 51.9015,
     longitude: -8.4682,
-    logo: demoPhoto("rebel-athletic-logo", 400, 400),
-    cover: demoPhoto("rebel-athletic-cover", 1200, 600),
+    logo: teamImage("Basketball", "Rebel Athletic", "logo"),
+    cover: teamImage("Basketball", "Rebel Athletic", "cover"),
     isDemo: true,
   },
   {
@@ -90,8 +94,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 356,
     latitude: 51.8925,
     longitude: -8.4812,
-    logo: demoPhoto("leeside-logo", 400, 400),
-    cover: demoPhoto("leeside-cover", 1200, 600),
+    logo: teamImage("Running", "Leeside United", "logo"),
+    cover: teamImage("Running", "Leeside United", "cover"),
     isDemo: true,
   },
   {
@@ -109,8 +113,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 520,
     latitude: 51.8942,
     longitude: -8.4358,
-    logo: demoPhoto("munster-rugby-logo", 400, 400),
-    cover: demoPhoto("munster-rugby-cover", 1200, 600),
+    logo: teamImage("Rugby", "Munster Rugby Club", "logo"),
+    cover: teamImage("Rugby", "Munster Rugby Club", "cover"),
     isDemo: true,
   },
   {
@@ -128,8 +132,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 164,
     latitude: 51.9038,
     longitude: -8.4655,
-    logo: demoPhoto("shandon-cf-logo", 400, 400),
-    cover: demoPhoto("shandon-cf-cover", 1200, 600),
+    logo: teamImage("CrossFit", "Shandon CrossFit Crew", "logo"),
+    cover: teamImage("CrossFit", "Shandon CrossFit Crew", "cover"),
     isDemo: true,
   },
   {
@@ -145,8 +149,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     rating: "4.4",
     ratingCount: 9,
     followersCount: 198,
-    logo: demoPhoto("la-pickup-logo", 400, 400),
-    cover: demoPhoto("la-pickup-cover", 1200, 600),
+    logo: teamImage("Basketball", "LA Pickup Crew", "logo"),
+    cover: teamImage("Basketball", "LA Pickup Crew", "cover"),
     isDemo: true,
   },
   {
@@ -162,8 +166,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     rating: "4.8",
     ratingCount: 27,
     followersCount: 445,
-    logo: demoPhoto("sunset-run-logo", 400, 400),
-    cover: demoPhoto("sunset-run-cover", 1200, 600),
+    logo: teamImage("Running", "Sunset Run Club", "logo"),
+    cover: teamImage("Running", "Sunset Run Club", "cover"),
     isDemo: true,
   },
 ];

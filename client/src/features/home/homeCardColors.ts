@@ -106,7 +106,7 @@ export function useHomeCardSurface(opts: {
     };
   }, [hasImage, imageUrl, fallbackBg]);
 
-  const cardBackground = hasImage ? containerTint : fallbackBg;
+  const cardBackground = fallbackBg;
 
   return {
     hasImage,

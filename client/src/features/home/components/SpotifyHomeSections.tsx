@@ -333,6 +333,86 @@ function HappeningNearYouRow({
   );
 }
 
+function TeamsNearYouRow({
+  teams,
+  loading,
+  contentSeed,
+}: {
+  teams: any[];
+  loading: boolean;
+  contentSeed: number;
+}) {
+  const [, setLocation] = useLocation();
+
+  const items = useMemo(() => {
+    return shuffleWithSeed(teams, contentSeed + 31)
+      .slice(0, 6)
+      .map((team) => ({
+        id: String(team.id),
+        title: team.name,
+        subtitle: team.city || team.location || "Near you",
+        meta: [
+          team.sport,
+          team.currentMembers != null ? `${team.currentMembers} members` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        imageUrl:
+          team.cover ||
+          team.logo ||
+          team.logoUrl ||
+          getEventCoverUrl({ sport: team.sport, title: team.name }),
+        sport: team.sport as string | undefined,
+        route: `/teams/${team.id}`,
+        attendeeEntity: {
+          type: "team" as const,
+          id: String(team.id),
+          count: team.currentMembers || team.memberCount,
+        },
+      }));
+  }, [teams, contentSeed]);
+
+  if (loading) {
+    return (
+      <section className="space-y-3">
+        <SectionTitle>Teams near you</SectionTitle>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="w-[142px] h-[190px] rounded-xl animate-pulse shrink-0" style={{ background: "var(--surna-surface)" }} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle>Teams near you</SectionTitle>
+      <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 pb-0.5">
+        {items.map((item) => (
+          <HomePortraitCard
+            key={item.id}
+            imageUrl={item.imageUrl}
+            title={item.title}
+            subtitle={item.subtitle}
+            meta={item.meta}
+            sport={item.sport}
+            cardKind="team"
+            cta="View"
+            attendeeEntity={item.attendeeEntity}
+            onClick={() => {
+              markNavReturn("/");
+              setLocation(item.route);
+            }}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function HomeMixedStack({
   events,
   teams,
@@ -355,7 +435,8 @@ function HomeMixedStack({
 
     const recruiting = teams
       .map((team) => {
-        const memberCount = team.memberCount || team.members?.length || 0;
+        const memberCount =
+          team.memberCount || team.currentMembers || team.members?.length || 0;
         const max = team.maxMembers || 15;
         const spotsLeft = Math.max(0, max - memberCount);
         return { team, spotsLeft, memberCount };
@@ -710,6 +791,7 @@ export function SpotifyHomeFeed({
         contentSeed={contentSeed}
         showNew={newIndicators.happeningNearYou}
       />
+      <TeamsNearYouRow teams={teams} loading={loading} contentSeed={contentSeed} />
       <HomeMixedStack
         events={events}
         teams={teams}

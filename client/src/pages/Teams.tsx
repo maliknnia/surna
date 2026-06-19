@@ -96,9 +96,16 @@ export default function Teams({
       if (!response.ok) throw new Error('Failed to fetch teams');
       const data = await response.json();
       const page = Array.isArray(data) ? data : (data.items || []);
+      const merged =
+        offset === 0
+          ? mergeWithDemoTeams(page, {
+              mixDemos: true,
+              sport: sportFilter !== "All" ? sportFilter : undefined,
+            })
+          : page;
       const hasMore = page.length >= limit;
       return {
-        data: page,
+        data: merged,
         hasNextPage: hasMore,
         nextCursor: hasMore ? String(offset + limit) : undefined,
       };
@@ -193,7 +200,7 @@ export default function Teams({
   const chipBg = t.chipBg;
   const chipText = t.chipText;
 
-  const mergedTeams = mergeWithDemoTeams(teams || [], {
+  const mergedTeams = mergeWithDemoTeams(isError ? [] : teams || [], {
     mixDemos: true,
     sport: sportFilter !== "All" ? sportFilter : undefined,
   });
@@ -310,7 +317,7 @@ export default function Teams({
               <div key={i} className="rounded-[28px] animate-pulse" style={{ background: chipBg, height: '148px' }} />
             ))}
           </div>
-        ) : isError ? (
+        ) : isError && filteredTeams.length === 0 ? (
           <div className="text-center py-16 px-6">
             <p className="text-[15px] font-semibold mb-2" style={{ color: textPrimary }}>Couldn&apos;t load teams</p>
             <p className="text-[13px] mb-4" style={{ color: textSecondary }}>Check your connection and try again.</p>

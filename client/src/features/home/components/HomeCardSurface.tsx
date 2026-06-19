@@ -10,6 +10,7 @@ import {
   useHomeCardSurface,
 } from "@/features/home/homeCardColors";
 import { getEventCoverUrl } from "@/lib/eventCover";
+import { getSportColor } from "@/lib/sportColors";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import type { AttendeeEntityType } from "@/components/people/AttendeeCircles";
 import { useHomeCardPillStyle } from "@/features/home/homeCardStyles";
@@ -129,11 +130,14 @@ export function HomePortraitCard({
     imageUrl?.trim() ||
     getEventCoverUrl({ sport: sport ?? undefined, title }) ||
     null;
-  const { hasImage, cardBackground, imageScrim } = useHomeCardSurface({
+  const { hasImage, solidBackground, imageScrim } = useHomeCardSurface({
     imageUrl: cover,
     sport,
     cardKind,
   });
+  const [photoOk, setPhotoOk] = useState(true);
+  const showPhoto = Boolean(cover && hasImage && photoOk);
+  const sportEmoji = getSportColor(sport).emoji;
 
   return (
     <div className="flex-shrink-0 w-[142px]">
@@ -144,15 +148,16 @@ export function HomePortraitCard({
       >
         <div
           className="relative w-[142px] h-[190px] rounded-xl overflow-hidden"
-          style={{ background: cardBackground }}
+          style={{ background: solidBackground }}
         >
-          {hasImage && cover && (
+          {showPhoto && cover && (
             <>
               <img
                 src={cover}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
+                onError={() => setPhotoOk(false)}
               />
               <div
                 className="absolute inset-0 pointer-events-none"
@@ -162,10 +167,17 @@ export function HomePortraitCard({
               />
             </>
           )}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: imageScrim || HOME_IMAGE_SCRIM }}
-          />
+          {!showPhoto && (
+            <div className="absolute inset-0 flex items-center justify-center text-4xl opacity-90">
+              {sportEmoji}
+            </div>
+          )}
+          {showPhoto && imageScrim && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: imageScrim }}
+            />
+          )}
           {attendeeEntity && (
             <div className="absolute top-2 left-2 z-[2]" onClick={(e) => e.stopPropagation()}>
               <CardAttendeeStrip
@@ -301,11 +313,14 @@ export function HomeFeaturedCard({
     imageUrl?.trim() ||
     getEventCoverUrl({ sport: sport ?? undefined, title }) ||
     null;
-  const { hasImage, cardBackground, imageScrim } = useHomeCardSurface({
+  const { hasImage, solidBackground, imageScrim } = useHomeCardSurface({
     imageUrl: cover,
     sport,
     cardKind,
   });
+  const [photoOk, setPhotoOk] = useState(true);
+  const showPhoto = Boolean(cover && hasImage && photoOk);
+  const sportEmoji = getSportColor(sport).emoji;
 
   return (
     <div className="w-full">
@@ -313,12 +328,18 @@ export function HomeFeaturedCard({
         type="button"
         onClick={onClick}
         className="w-full rounded-xl overflow-hidden text-left active:scale-[0.99] transition-transform"
-        style={{ background: cardBackground }}
+        style={{ background: solidBackground }}
       >
         <div className="relative w-full aspect-[2/1] min-h-[130px]">
-          {hasImage && cover && (
+          {showPhoto && cover && (
             <>
-              <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+              <img
+                src={cover}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+                onError={() => setPhotoOk(false)}
+              />
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
@@ -327,10 +348,17 @@ export function HomeFeaturedCard({
               />
             </>
           )}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: imageScrim || HOME_IMAGE_SCRIM }}
-          />
+          {!showPhoto && (
+            <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-90">
+              {sportEmoji}
+            </div>
+          )}
+          {showPhoto && imageScrim && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: imageScrim }}
+            />
+          )}
           {attendeeEntity && (
             <div className="absolute top-3 left-3 z-[2]" onClick={(e) => e.stopPropagation()}>
               <CardAttendeeStrip
@@ -515,12 +543,14 @@ export function HomeCompactRow({
   const pillStyle = useHomeCardPillStyle();
   const thumb =
     imageUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title }) || null;
-  const { hasImage, cardBackground } = useHomeCardSurface({
+  const { hasImage, solidBackground } = useHomeCardSurface({
     imageUrl: thumb,
     sport,
     cardKind,
   });
-  const onProfileTint = hasImage || cardBackground !== HOME_GRID_BG;
+  const [photoOk, setPhotoOk] = useState(true);
+  const showPhoto = Boolean(thumb && hasImage && photoOk);
+  const onProfileTint = showPhoto || Boolean(sport);
   const textPrimary = onProfileTint ? "#ffffff" : "var(--surna-text)";
   const textMuted = onProfileTint ? "rgba(255,255,255,0.72)" : "var(--surna-text-muted)";
 
@@ -530,9 +560,9 @@ export function HomeCompactRow({
         type="button"
         onClick={onClick}
         className="card-spotify relative w-full flex items-center gap-3 p-2.5 rounded-xl text-left active:scale-[0.98] transition-transform overflow-hidden"
-        style={{ background: cardBackground }}
+        style={{ background: solidBackground }}
       >
-        {hasImage && thumb && (
+        {showPhoto && thumb && (
           <>
             <img
               src={thumb}
@@ -540,6 +570,7 @@ export function HomeCompactRow({
               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
               style={{ filter: "blur(2px) saturate(1.1)", transform: "scale(1.05)" }}
               loading="lazy"
+              onError={() => setPhotoOk(false)}
             />
             <div
               className="absolute inset-0 pointer-events-none"
