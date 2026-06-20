@@ -1,23 +1,15 @@
 import { sql } from "drizzle-orm";
-import { v2 as cloudinary } from "cloudinary";
 import { db } from "../db";
 import { posts } from "@shared/schema";
 import { ensurePhase9MobileTables } from "../infrastructure/phase9Mobile";
+import {
+  isCloudinaryConfigured,
+  uploadVideoToCloudinary,
+  type CloudinaryVideoResult,
+} from "./cloudinaryMedia";
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
-
-export function isCloudinaryConfigured(): boolean {
-  return Boolean(
-    process.env.CLOUDINARY_CLOUD_NAME &&
-      process.env.CLOUDINARY_API_KEY &&
-      process.env.CLOUDINARY_API_SECRET,
-  );
-}
+export { isCloudinaryConfigured };
+export type VideoUploadResult = CloudinaryVideoResult;
 
 export async function registerPushToken(userId: string, token: string, platform: string) {
   await ensurePhase9MobileTables();
@@ -83,64 +75,7 @@ export async function sendPushToUser(
   return { sent };
 }
 
-export type VideoUploadResult = {
-  videoUrl: string;
-  thumbnailUrl: string;
-  publicId: string;
-  duration?: number;
-  width?: number;
-  height?: number;
-};
-
-export async function uploadVideoToCloudinary(
-  buffer: Buffer,
-  filename: string,
-): Promise<VideoUploadResult> {
-  if (!isCloudinaryConfigured()) {
-    throw new Error("Cloudinary is not configured (CLOUDINARY_* env vars)");
-  }
-
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: "video",
-        folder: "surna/posts",
-        public_id: `post_${Date.now()}`,
-        overwrite: false,
-        eager: [
-          { width: 720, crop: "limit", quality: "auto", fetch_format: "mp4" },
-          { width: 400, height: 400, crop: "fill", gravity: "auto", format: "jpg" },
-        ],
-        eager_async: false,
-      },
-      (err, result) => {
-        if (err || !result) {
-          reject(err ?? new Error("Cloudinary upload failed"));
-          return;
-        }
-        const eager = (result.eager ?? []) as Array<{ secure_url?: string; format?: string }>;
-        const compressed = eager.find((e) => e.format === "mp4") ?? eager[0];
-        const thumb = eager.find((e) => e.format === "jpg") ?? eager[1];
-
-        resolve({
-          videoUrl: compressed?.secure_url ?? result.secure_url,
-          thumbnailUrl:
-            thumb?.secure_url ??
-            cloudinary.url(result.public_id, {
-              resource_type: "video",
-              format: "jpg",
-              transformation: [{ width: 400, height: 400, crop: "fill", gravity: "auto" }],
-            }),
-          publicId: result.public_id,
-          duration: result.duration,
-          width: result.width,
-          height: result.height,
-        });
-      },
-    );
-    stream.end(buffer);
-  });
-}
+export { uploadVideoToCloudinary };
 
 export async function createVideoPost(
   authorId: string,

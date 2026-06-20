@@ -186,13 +186,15 @@ try {
 
 (async () => {
   const { isS3Configured } = await import("./features/media/s3");
-  const { isCloudinaryConfigured } = await import("./services/phase9MobileService");
+  const { isCloudinaryConfigured } = await import("./services/cloudinaryMedia");
+  const { isMediaStorageConfigured } = await import("./features/media/media.service");
 
   console.log(`🔍 Service Status Check:`);
   console.log(`   📊 Database: ${process.env.DATABASE_URL ? '✅ Connected' : '🔴 Not configured'}`);
   console.log(`   💾 Redis: ${process.env.REDIS_URL ? '✅ Configured' : '🔴 Using in-memory fallback'}`);
-  console.log(`   📦 S3 Storage: ${isS3Configured() ? '✅ Configured' : '🔴 Not configured — image uploads will fail'}`);
-  console.log(`   🎬 Cloudinary: ${isCloudinaryConfigured() ? '✅ Configured' : '🔴 Not configured — video posts will fail'}`);
+  console.log(`   🎬 Cloudinary: ${isCloudinaryConfigured() ? '✅ Configured (photos + videos)' : '🔴 Not configured — uploads will fail'}`);
+  console.log(`   📦 S3 Storage: ${isS3Configured() ? '✅ Configured (optional)' : '⚪ Not set — using Cloudinary only'}`);
+  console.log(`   📤 Media uploads: ${isMediaStorageConfigured() ? '✅ Ready' : '🔴 Configure Cloudinary or S3'}`);
   console.log(`   🔌 Socket.IO: ✅ Ready for real-time features`);
 
   const httpServer = http.createServer(app);

@@ -35,15 +35,14 @@ Register a normal account in the app (no dev login on production).
 
 | Variable | Why |
 |----------|-----|
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | **Photos + videos** — free tier is enough to start |
 | `SESSION_SECRET` / `JWT_SECRET` | Your own random secrets (32+ chars) |
-| `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_PUBLIC_BASE_URL`, `S3_REGION` | Photo posts, stories, chat images |
-| `S3_ENDPOINT` | Required for Cloudflare R2 / MinIO (omit for AWS S3) |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Video posts in feed / camera |
-| `REDIS_URL` | Image thumbnail/WebP worker (optional but recommended) |
+| `S3_BUCKET`, `S3_ACCESS_KEY`, … | Optional later if you outgrow Cloudinary |
+| `REDIS_URL` | Optional image variant worker (S3 only) |
 | `VITE_MAPTILER_KEY` | Map tiles |
 | `STRIPE_SECRET_KEY` | Real payments |
 
-**Media checklist after deploy:** boot logs show `S3 Storage` and `Cloudinary` status. Image post needs S3; video post needs Cloudinary. Set S3 bucket CORS to allow `PUT` from your Railway domain.
+**Media:** Cloudinary alone is enough. Boot logs should show `Cloudinary: ✅` and `Media uploads: ✅`. No S3 required.
 
 ## Don't want to pay Railway?
 
