@@ -54,7 +54,20 @@ mediaRouter.post("/init", async (req: MediaAuthedRequest, res, next) => {
       body.sizeBytes,
     );
     res.status(201).json(result);
-  } catch (e) { next(e); }
+  } catch (e) {
+    if (e instanceof Error) {
+      if (e.message === "S3_NOT_CONFIGURED") {
+        return res.status(503).json({
+          error: "S3_NOT_CONFIGURED",
+          message: "Image storage is not configured. Set S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY, and S3_PUBLIC_BASE_URL.",
+        });
+      }
+      if (e.message.startsWith("FILE_TOO_LARGE_")) {
+        return res.status(413).json({ error: e.message });
+      }
+    }
+    next(e);
+  }
 });
 
 // 1b) Server-side image upload: Sharp compress → S3 (images only)
@@ -76,7 +89,15 @@ mediaRouter.post(
         file.mimetype,
       );
       res.status(201).json({ ...result, queued: true });
-    } catch (e) { next(e); }
+    } catch (e) {
+      if (e instanceof Error && e.message === "S3_NOT_CONFIGURED") {
+        return res.status(503).json({
+          error: "S3_NOT_CONFIGURED",
+          message: "Image storage is not configured. Set S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY, and S3_PUBLIC_BASE_URL.",
+        });
+      }
+      next(e);
+    }
   },
 );
 

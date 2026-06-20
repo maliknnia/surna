@@ -185,11 +185,15 @@ try {
 }
 
 (async () => {
-  console.log(`ðŸ” Service Status Check:`);
-  console.log(`   ðŸ“Š Database: ${process.env.DATABASE_URL ? 'âœ… Connected' : 'ðŸ”´ Not configured'}`);
-  console.log(`   ðŸ’¾ Redis: ${process.env.REDIS_URL ? 'âœ… Configured' : 'ðŸ”´ Using in-memory fallback'}`);
-  console.log(`   ðŸ“¦ S3 Storage: ${(process.env.S3_ENDPOINT && process.env.S3_ACCESS_KEY) ? 'âœ… Configured' : 'ðŸ”´ Not configured - uploads will fail'}`);
-  console.log(`   ðŸ”Œ Socket.IO: âœ… Ready for real-time features`);
+  const { isS3Configured } = await import("./features/media/s3");
+  const { isCloudinaryConfigured } = await import("./services/phase9MobileService");
+
+  console.log(`🔍 Service Status Check:`);
+  console.log(`   📊 Database: ${process.env.DATABASE_URL ? '✅ Connected' : '🔴 Not configured'}`);
+  console.log(`   💾 Redis: ${process.env.REDIS_URL ? '✅ Configured' : '🔴 Using in-memory fallback'}`);
+  console.log(`   📦 S3 Storage: ${isS3Configured() ? '✅ Configured' : '🔴 Not configured — image uploads will fail'}`);
+  console.log(`   🎬 Cloudinary: ${isCloudinaryConfigured() ? '✅ Configured' : '🔴 Not configured — video posts will fail'}`);
+  console.log(`   🔌 Socket.IO: ✅ Ready for real-time features`);
 
   const httpServer = http.createServer(app);
   const io = initIO(httpServer);

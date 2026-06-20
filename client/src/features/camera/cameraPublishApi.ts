@@ -24,7 +24,7 @@ export async function publishFeedPost(params: {
     const file = blobToCaptureFile(params.blob, "video");
     return uploadVideoPost({
       file,
-      content: caption || " ",
+      content: caption,
       sport: params.sport,
       location: params.location,
       videoFormat: params.videoFormat ?? "video",

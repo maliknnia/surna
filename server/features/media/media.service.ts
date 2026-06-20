@@ -5,6 +5,11 @@ import type { MediaKind } from "./media.types";
 import { compressImageForStorage, isCompressibleImage } from "../../lib/imageCompression";
 
 const MAX_MB = Number(process.env.UPLOAD_MAX_MB ?? 15);
+const VIDEO_MAX_MB = Number(process.env.VIDEO_MAX_MB ?? 100);
+
+function maxBytesForKind(kind: MediaKind): number {
+  return (kind === "video" ? VIDEO_MAX_MB : MAX_MB) * 1024 * 1024;
+}
 
 export async function uploadImageToS3(
   userId: string,
@@ -35,18 +40,26 @@ export async function uploadImageToS3(
 }
 
 export async function initUpload(userId: string, kind: MediaKind, filename: string, contentType: string, sizeBytes: number) {
-  if (sizeBytes > MAX_MB * 1024 * 1024) {
-    throw new Error(`FILE_TOO_LARGE_${MAX_MB}MB`);
+  const limitMb = kind === "video" ? VIDEO_MAX_MB : MAX_MB;
+  if (sizeBytes > maxBytesForKind(kind)) {
+    throw new Error(`FILE_TOO_LARGE_${limitMb}MB`);
   }
 
   // Images must go through server-side Sharp compression before S3.
   if (kind === "image" && isCompressibleImage(contentType)) {
+    if (!isS3Configured()) {
+      throw new Error("S3_NOT_CONFIGURED");
+    }
     return {
       mediaId: null as string | null,
       uploadMode: "multipart" as const,
       uploadEndpoint: "/api/media/upload-image",
       maxBytes: MAX_MB * 1024 * 1024,
     };
+  }
+
+  if (!isS3Configured()) {
+    throw new Error("S3_NOT_CONFIGURED");
   }
 
   const ts = Date.now();

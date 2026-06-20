@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
 import { capturePhoto, pickMediaFromGallery } from '@/lib/capacitor/camera';
+import { uploadCreateFile } from '@/lib/uploadCreateMedia';
 
 interface MediaPickerProps {
   onMediaSelected: (mediaId: string, mediaType: string) => void;
@@ -38,21 +39,10 @@ export default function MediaPicker({ onMediaSelected, onClose }: MediaPickerPro
 
   // Upload mutation
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/media/upload', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Upload failed');
-      return response.json();
-    },
+    mutationFn: async (file: File) => uploadCreateFile(file),
     onSuccess: (data) => {
-      onMediaSelected(data.mediaId || data.jobId, getMediaType(selectedFile!));
+      if (!data.mediaId) throw new Error('Upload did not return a media id');
+      onMediaSelected(data.mediaId, getMediaType(selectedFile!));
     },
   });
 
@@ -297,7 +287,7 @@ export default function MediaPicker({ onMediaSelected, onClose }: MediaPickerPro
                   Drop files here or click to browse
                 </p>
                 <p className="text-xs text-token-text opacity-60">
-                  Max size: 10MB for images, 50MB for videos
+                  Max size: 15MB for images, 100MB for videos
                 </p>
               </div>
             </>

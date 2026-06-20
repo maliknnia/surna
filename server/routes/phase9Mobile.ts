@@ -70,21 +70,19 @@ mobilePhase9Router.post("/posts/video", upload.single("video"), async (req, res)
     }
 
     const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
-    if (!content) return res.status(400).json({ message: "Content is required" });
 
-    let videoUrl: string;
-    let thumbnailUrl: string;
-
-    if (isCloudinaryConfigured()) {
-      const uploaded = await uploadVideoToCloudinary(req.file.buffer, req.file.originalname);
-      videoUrl = uploaded.videoUrl;
-      thumbnailUrl = uploaded.thumbnailUrl;
-    } else {
-      // Dev fallback: store as data URL placeholder paths
-      videoUrl = `/uploads/videos/${Date.now()}_${req.file.originalname}`;
-      thumbnailUrl = `/uploads/videos/thumb_${Date.now()}.jpg`;
-      console.warn("[Phase9-5] Cloudinary not configured — using placeholder URLs");
+    if (!isCloudinaryConfigured()) {
+      const isProd = process.env.NODE_ENV === "production";
+      return res.status(isProd ? 503 : 400).json({
+        message: isProd
+          ? "Video uploads are not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET."
+          : "Cloudinary is not configured for local video uploads.",
+      });
     }
+
+    const uploaded = await uploadVideoToCloudinary(req.file.buffer, req.file.originalname);
+    const videoUrl = uploaded.videoUrl;
+    const thumbnailUrl = uploaded.thumbnailUrl;
 
     const post = await createVideoPost(userId, {
       content,
