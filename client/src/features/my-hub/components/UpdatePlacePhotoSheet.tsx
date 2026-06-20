@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { uploadCreateImage } from "@/lib/uploadCreateMedia";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
@@ -14,15 +15,6 @@ interface Props {
   place: MyHubPlace | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-interface InitResponse {
-  mediaId: string | null;
-  uploadUrl?: string;
-  publicUrl?: string;
-  cacheControl?: string;
-  uploadMode?: "multipart" | "presigned";
-  uploadEndpoint?: string;
 }
 
 export function UpdatePlacePhotoSheet({ place, open, onOpenChange }: Props) {
@@ -54,54 +46,9 @@ export function UpdatePlacePhotoSheet({ place, open, onOpenChange }: Props) {
       if (!place) throw new Error("No place");
       if (!file) throw new Error("Pick a photo first");
 
-      // Push the file through the existing media pipeline:
-      //   POST /api/media/init      → presigned S3 upload + pending row
-      //   PUT  <uploadUrl>          → upload to S3 with required Cache-Control
-      //   POST /api/media/complete  → enqueues the background resize worker
-      //                                (AVIF/WebP variants)
-      // Then attach the resulting publicUrl to the place photo gallery.
-      // Images: Sharp compress on server, then S3 (no raw presigned PUT).
-      const initRes = await apiRequest("POST", "/api/media/init", {
-        kind: "image",
-        filename: file.name,
-        contentType: file.type || "image/jpeg",
-        sizeBytes: file.size,
-      });
-      const init = (await initRes.json()) as InitResponse;
-
-      if (init.uploadMode === "multipart" && init.uploadEndpoint) {
-        const form = new FormData();
-        form.append("file", file);
-        const uploadRes = await fetch(init.uploadEndpoint, {
-          method: "POST",
-          body: form,
-          credentials: "include",
-        });
-        if (!uploadRes.ok) throw new Error("Upload to storage failed");
-        const uploaded = (await uploadRes.json()) as { publicUrl: string };
-        const r = await apiRequest("POST", `/api/places/${place.id}/photos`, {
-          imageUrl: uploaded.publicUrl,
-          caption: caption.trim() || undefined,
-        });
-        return r.json();
-      }
-
-      const putHeaders: Record<string, string> = {
-        "Content-Type": file.type || "image/jpeg",
-      };
-      if (init.cacheControl) putHeaders["Cache-Control"] = init.cacheControl;
-
-      const putRes = await fetch(init.uploadUrl!, {
-        method: "PUT",
-        headers: putHeaders,
-        body: file,
-      });
-      if (!putRes.ok) throw new Error("Upload to storage failed");
-
-      await apiRequest("POST", "/api/media/complete", { mediaId: init.mediaId! });
-
+      const { publicUrl } = await uploadCreateImage(file);
       const r = await apiRequest("POST", `/api/places/${place.id}/photos`, {
-        imageUrl: init.publicUrl!,
+        imageUrl: publicUrl,
         caption: caption.trim() || undefined,
       });
       return r.json();

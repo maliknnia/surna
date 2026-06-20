@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { deriveModernSources, deriveLqipPlaceholder } from '@/lib/imageSources';
 import { capturePhoto } from '@/lib/capacitor/camera';
+import { uploadGalleryPhoto } from '@/lib/uploadCreateMedia';
 
 interface UserPhoto {
   id: string;
@@ -56,20 +57,12 @@ export default function Gallery({ userId, isOwnProfile = false }: GalleryProps) 
   const processPhotoFile = async (file: File) => {
     setUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const dataUrl = ev.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          addPhoto.mutate({ imageUrl: dataUrl, width: img.width, height: img.height });
-          setUploading(false);
-        };
-        img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
+      const { publicUrl, width, height } = await uploadGalleryPhoto(file);
+      await addPhoto.mutateAsync({ imageUrl: publicUrl, width, height });
     } catch {
-      setUploading(false);
       toast({ title: 'Upload failed', variant: 'destructive' });
+    } finally {
+      setUploading(false);
     }
   };
 

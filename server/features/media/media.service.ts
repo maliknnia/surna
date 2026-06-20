@@ -38,6 +38,16 @@ export async function uploadImage(
 
   const { buffer: compressed } = await compressImageForStorage(buffer);
 
+  if (isCloudinaryConfigured()) {
+    const uploaded = await uploadImageToCloudinary(compressed, filename);
+    const media = await insertPendingMedia(userId, "image", uploaded.publicUrl);
+    return {
+      mediaId: String((media as { id: string }).id),
+      publicUrl: uploaded.publicUrl,
+      provider: "cloudinary" as const,
+    };
+  }
+
   if (isS3Configured()) {
     const key = buildUploadKey(userId, filename);
     const publicUrl = await putObjectBuffer(key, compressed, "image/jpeg");
@@ -49,13 +59,7 @@ export async function uploadImage(
     return { mediaId, publicUrl, provider: "s3" as const };
   }
 
-  const uploaded = await uploadImageToCloudinary(compressed, filename);
-  const media = await insertPendingMedia(userId, "image", uploaded.publicUrl);
-  return {
-    mediaId: String((media as { id: string }).id),
-    publicUrl: uploaded.publicUrl,
-    provider: "cloudinary" as const,
-  };
+  throw new Error("MEDIA_STORAGE_NOT_CONFIGURED");
 }
 
 /** @deprecated alias */
@@ -74,6 +78,17 @@ export async function uploadVideo(
     throw new Error(`FILE_TOO_LARGE_${VIDEO_MAX_MB}MB`);
   }
 
+  if (isCloudinaryConfigured()) {
+    const uploaded = await uploadVideoToCloudinary(buffer, filename);
+    const media = await insertPendingMedia(userId, "video", uploaded.videoUrl);
+    return {
+      mediaId: String((media as { id: string }).id),
+      publicUrl: uploaded.videoUrl,
+      thumbnailUrl: uploaded.thumbnailUrl,
+      provider: "cloudinary" as const,
+    };
+  }
+
   if (isS3Configured()) {
     const ts = Date.now();
     const safe = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -84,17 +99,6 @@ export async function uploadVideo(
       mediaId: String((media as { id: string }).id),
       publicUrl,
       provider: "s3" as const,
-    };
-  }
-
-  if (isCloudinaryConfigured()) {
-    const uploaded = await uploadVideoToCloudinary(buffer, filename);
-    const media = await insertPendingMedia(userId, "video", uploaded.videoUrl);
-    return {
-      mediaId: String((media as { id: string }).id),
-      publicUrl: uploaded.videoUrl,
-      thumbnailUrl: uploaded.thumbnailUrl,
-      provider: "cloudinary" as const,
     };
   }
 
@@ -111,19 +115,19 @@ export async function initUpload(userId: string, kind: MediaKind, filename: stri
     throw new Error("MEDIA_STORAGE_NOT_CONFIGURED");
   }
 
-  // Images → server multipart (Sharp → S3 or Cloudinary).
+  // Images → server multipart (Sharp → Cloudinary or S3).
   if (kind === "image" && isCompressibleImage(contentType)) {
     return {
       mediaId: null as string | null,
       uploadMode: "multipart" as const,
       uploadEndpoint: "/api/media/upload-image",
       maxBytes: MAX_MB * 1024 * 1024,
-      provider: isS3Configured() ? "s3" : "cloudinary",
+      provider: isCloudinaryConfigured() ? "cloudinary" : "s3",
     };
   }
 
-  // Video → Cloudinary multipart when S3 is not set (free tier friendly).
-  if (kind === "video" && isCloudinaryConfigured() && !isS3Configured()) {
+  // Video → Cloudinary multipart when configured (free tier friendly).
+  if (kind === "video" && isCloudinaryConfigured()) {
     return {
       mediaId: null as string | null,
       uploadMode: "multipart" as const,

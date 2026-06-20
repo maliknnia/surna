@@ -28,6 +28,7 @@ import { ProfileQuickStats } from "@/components/profile/ProfileQuickStats";
 import { ProfilePhotoLightbox, type LightboxPhoto } from "@/components/profile/ProfilePhotoLightbox";
 import { capturePhoto } from "@/lib/capacitor/camera";
 import { useToast } from "@/hooks/use-toast";
+import { uploadGalleryPhoto } from "@/lib/uploadCreateMedia";
 
 import { ProfileAboutSection } from "@/components/profile/ProfileAboutSection";
 import { ProfileTeamsPanel } from "@/components/profile/ProfileTeamsPanel";
@@ -215,20 +216,12 @@ export function ProfileInstagramView({
   const processPhotoFile = async (file: File) => {
     setUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          addPhoto.mutate({ imageUrl: dataUrl, width: img.width, height: img.height });
-          setUploading(false);
-        };
-        img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
+      const { publicUrl, width, height } = await uploadGalleryPhoto(file);
+      await addPhoto.mutateAsync({ imageUrl: publicUrl, width, height });
     } catch {
-      setUploading(false);
       toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
   };
 

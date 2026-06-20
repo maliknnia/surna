@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { uploadCreateImage } from "@/lib/uploadCreateMedia";
 import {
   ArrowLeft,
   Edit,
@@ -42,7 +43,8 @@ export default function ManagePlaceProfile() {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [editData, setEditData] = useState<Partial<Place>>({});
-  const [photoFile, setPhotoFile] = useState<string>("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>("");
   const [postData, setPostData] = useState({ content: "", postType: "update", imageUrl: "" });
 
   const { data: place, isLoading } = useQuery<Place>({
@@ -78,14 +80,18 @@ export default function ManagePlaceProfile() {
   });
 
   const addPhotoMutation = useMutation({
-    mutationFn: async (imageUrl: string) => {
-      const response = await apiRequest("POST", `/api/places/${placeId}/photos`, { imageUrl });
+    mutationFn: async (file: File) => {
+      const { publicUrl } = await uploadCreateImage(file);
+      const response = await apiRequest("POST", `/api/places/${placeId}/photos`, {
+        imageUrl: publicUrl,
+      });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/places", placeId, "photos"] });
       setShowPhotoModal(false);
-      setPhotoFile("");
+      setPhotoFile(null);
+      setPhotoPreview("");
       toast({ title: "Success!", description: "Photo added successfully" });
     },
   });
@@ -461,16 +467,15 @@ export default function ManagePlaceProfile() {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => setPhotoFile(reader.result as string);
-                  reader.readAsDataURL(file);
+                  setPhotoFile(file);
+                  setPhotoPreview(URL.createObjectURL(file));
                 }
               }}
               data-testid="input-photo-file"
             />
-            {photoFile && <img src={photoFile} alt="Preview" className="w-full rounded-lg" />}
+            {photoPreview && <img src={photoPreview} alt="Preview" className="w-full rounded-lg" />}
             <Button
-              onClick={() => addPhotoMutation.mutate(photoFile)}
+              onClick={() => photoFile && addPhotoMutation.mutate(photoFile)}
               disabled={!photoFile || addPhotoMutation.isPending}
               className="w-full bg-gradient-to-r from-token-accent to-token-accent"
               data-testid="button-upload-photo"

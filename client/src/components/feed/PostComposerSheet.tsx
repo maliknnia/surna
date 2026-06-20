@@ -66,10 +66,6 @@ export function PostComposerSheet({ open, onOpenChange }: Props) {
   };
 
   const handleVideoUpload = async (file: File) => {
-    if (!content.trim()) {
-      toast({ title: "Add a caption before uploading video", variant: "destructive" });
-      return;
-    }
     setVideoUploading(true);
     try {
       await uploadVideoPost({

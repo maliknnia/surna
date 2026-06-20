@@ -62,6 +62,34 @@ export async function uploadCreateImage(file: File): Promise<UploadedCreateMedia
   return uploadViaPresigned(init, file);
 }
 
+/** Read width/height from a local image file before upload. */
+export async function imageDimensionsFromFile(
+  file: File,
+): Promise<{ width: number; height: number }> {
+  const url = URL.createObjectURL(file);
+  try {
+    return await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => reject(new Error("Could not read image dimensions"));
+      img.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Upload a gallery/profile photo and return dimensions for the API payload. */
+export async function uploadGalleryPhoto(
+  file: File,
+): Promise<UploadedCreateMedia & { width: number; height: number }> {
+  const [uploaded, dims] = await Promise.all([
+    uploadCreateImage(file),
+    imageDimensionsFromFile(file),
+  ]);
+  return { ...uploaded, ...dims };
+}
+
 /** Upload a single file (image or video) through the app media pipeline. */
 export async function uploadCreateFile(file: File): Promise<UploadedCreateMedia> {
   const kind = file.type.startsWith("video/") ? "video" : "image";
