@@ -1,6 +1,8 @@
 import { MapPin, Calendar, Users, Trophy, Map as MapIcon } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { entityPath, mapPath } from '@/lib/mapNavigation';
+import { getSportLabels } from '@/lib/sportLabels';
+import TeamRecentGames from './TeamRecentGames';
 
 interface TeamAboutProps {
   team: any;
@@ -8,6 +10,7 @@ interface TeamAboutProps {
 
 export default function TeamAbout({ team }: TeamAboutProps) {
   const [, setLocation] = useLocation();
+  const labels = getSportLabels(team.sport);
   const handleViewOnMap = () => {
     if (team.placeId) {
       setLocation(mapPath({ type: "place", id: String(team.placeId) }));
@@ -38,7 +41,7 @@ export default function TeamAbout({ team }: TeamAboutProps) {
 
       {/* Details grid card */}
       <div className="glass-card">
-        <h3 className="text-lg font-bold text-foreground mb-4">Team Details</h3>
+        <h3 className="text-lg font-bold text-foreground mb-4">{labels.groupNoun} details</h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-muted/40">
@@ -65,7 +68,7 @@ export default function TeamAbout({ team }: TeamAboutProps) {
               <Users size={18} className="text-muted-foreground" />
             </div>
             <div>
-              <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Team Size</div>
+              <div className="text-[11px] text-muted-foreground uppercase tracking-wider">{labels.sizeLabel}</div>
               <div className="text-[14px] text-foreground font-medium">
                 {team.currentMembers} / {team.maxMembers}
               </div>
@@ -90,7 +93,7 @@ export default function TeamAbout({ team }: TeamAboutProps) {
       {team.placeName && (
         <div className="glass-card">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-foreground">Home Pitch</h3>
+            <h3 className="text-lg font-bold text-foreground">{labels.homeVenue}</h3>
             <button
               onClick={handleViewOnMap}
               className="h-8 px-3 rounded-full text-[12px] font-semibold flex items-center gap-1.5 bg-muted/40 text-muted-foreground border border-border backdrop-blur-sm active:scale-[0.96] transition-transform"
@@ -136,15 +139,19 @@ export default function TeamAbout({ team }: TeamAboutProps) {
         </div>
       </div>
 
-      {/* Team Type */}
+      {team.id ? <TeamRecentGames teamId={String(team.id)} sport={team.sport} /> : null}
+
+      {/* Visibility */}
       <div className="glass-card">
-        <h3 className="text-lg font-bold text-foreground mb-3">Team Type</h3>
+        <h3 className="text-lg font-bold text-foreground mb-3">{labels.groupNoun} type</h3>
         <div className="flex items-center gap-2">
           <Users size={18} className={team.isPublic ? 'text-muted-foreground' : 'text-muted-foreground'} />
-          <span className="text-[14px] text-foreground font-medium">{team.isPublic ? 'Public Team' : 'Private Team'}</span>
+          <span className="text-[14px] text-foreground font-medium">
+            {team.isPublic ? `Public ${labels.groupNoun.toLowerCase()}` : `Private ${labels.groupNoun.toLowerCase()}`}
+          </span>
         </div>
         <p className="text-[13px] text-muted-foreground mt-2">
-          {team.isPublic ? 'Anyone can request to join this team' : 'Invitation only'}
+          {team.isPublic ? `Anyone can request to join this ${labels.groupNoun.toLowerCase()}` : 'Invitation only'}
         </p>
       </div>
     </div>

@@ -16,6 +16,23 @@ import {
   insertTeamSchema,
 } from '@shared/schema';
 import { teamManagementService } from '../../services/teamManagementService';
+import {
+  getTeamJoinTemplate,
+  submitTeamJoinApplication,
+  tryInstantJoin,
+  updateTeamJoinTemplate,
+} from '../../services/teamJoinApplicationService';
+import {
+  createTeamMemberInvite,
+  declineTeamMemberInvite,
+  getPendingInviteForUser,
+  listMyPendingInvites,
+} from '../../services/teamInviteService';
+import {
+  getTeamRecord,
+  listTeamGames,
+  logTeamGame,
+} from '../../services/teamGameService';
 import { storage } from '../../storage';
 import { toPublicUser } from '../../lib/publicData';
 import { authUserId } from '../../lib/authUser';
@@ -245,7 +262,7 @@ const UpdateTeamSchema = z.object({
   location: z.string().max(120).optional(),
   city: z.string().max(120).optional(),
   isPublic: z.boolean().optional(),
-  joinPolicy: z.enum(['open', 'approval']).optional(),
+  joinPolicy: z.enum(['open', 'approval', 'invite_only']).optional(),
   logo: z.string().url().optional(),
   cover: z.string().url().optional(),
   featuredHighlightIds: z.array(z.string()).max(12).optional(),
@@ -441,44 +458,196 @@ teamsRouter.post('/:id/join', isAuthenticated, async (req: AuthedRequest, res: R
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     const teamId = req.params.id;
-    const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
-
-    const joinPolicy = (team as { joinPolicy?: string | null }).joinPolicy ?? 'open';
-    if (joinPolicy === 'approval') {
-      const { message } = (req.body ?? {}) as { message?: string };
-      const result = await teamManagementService.requestToJoinTeam(teamId, userId, message);
-      return res.json({ success: true, status: 'pending', joined: false, request: result });
-    }
-
-    await storage.joinTeam(teamId, userId);
     try {
-      const { notifyTeamMemberJoined } = await import('../../services/teamNotificationService');
-      await notifyTeamMemberJoined(teamId, userId);
-    } catch (notifyErr) {
-      console.warn('[teams] Member joined notification skipped:', notifyErr);
-    }
-    try {
-      const { triggerNudgeIfNeeded } = await import('../../services/phase8ProfileService');
-      const count = await db
-        .select({ c: sql<number>`count(*)::int` })
-        .from(teamMembers)
-        .where(eq(teamMembers.userId, userId));
-      if (Number(count[0]?.c ?? 0) === 1) {
-        await triggerNudgeIfNeeded(userId, 'first_team_join');
+      const result = await tryInstantJoin(teamId, userId);
+      try {
+        const { triggerNudgeIfNeeded } = await import('../../services/phase8ProfileService');
+        const count = await db
+          .select({ c: sql<number>`count(*)::int` })
+          .from(teamMembers)
+          .where(eq(teamMembers.userId, userId));
+        if (Number(count[0]?.c ?? 0) === 1) {
+          await triggerNudgeIfNeeded(userId, 'first_team_join');
+        }
+      } catch (nudgeErr) {
+        console.warn('[Phase8-3] Team join nudge skipped:', nudgeErr);
       }
-    } catch (nudgeErr) {
-      console.warn('[Phase8-3] Team join nudge skipped:', nudgeErr);
+      return res.json({
+        success: true,
+        status: 'joined',
+        joined: true,
+        currentMembers: result.currentMembers,
+      });
+    } catch (instantErr) {
+      const msg = instantErr instanceof Error ? instantErr.message : '';
+      if (msg === 'JOIN_APPLICATION_REQUIRED') {
+        return res.status(400).json({
+          message: 'Complete the join form to apply',
+          code: 'JOIN_APPLICATION_REQUIRED',
+        });
+      }
+      throw instantErr;
     }
-    const [updated] = await db.select({ currentMembers: teams.currentMembers }).from(teams).where(eq(teams.id, teamId));
-    res.json({
-      success: true,
-      status: 'joined',
-      joined: true,
-      currentMembers: updated?.currentMembers ?? team.currentMembers,
-    });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to join team';
+    res.status(400).json({ message: msg });
+  }
+});
+
+teamsRouter.get('/invites/me', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const invites = await listMyPendingInvites(userId);
+    res.json(invites);
+  } catch (err) {
+    console.error('[teams] my invites error', err);
+    res.status(500).json({ message: 'Failed to load invites' });
+  }
+});
+
+teamsRouter.post('/invites/:inviteId/decline', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    await declineTeamMemberInvite(req.params.inviteId, userId);
+    res.json({ success: true });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to decline invite';
+    res.status(400).json({ message: msg });
+  }
+});
+
+const JoinApplicationSchema = z.object({
+  message: z.string().max(500).optional(),
+  answers: z.record(z.union([z.string(), z.boolean()])).optional(),
+  agreedDocumentIds: z.array(z.string()).optional(),
+  feeAcknowledged: z.boolean().optional(),
+  inviteId: z.string().optional(),
+});
+
+teamsRouter.get('/:id/join-template', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req) ?? undefined;
+    const template = await getTeamJoinTemplate(req.params.id, userId);
+    if (!template) return res.status(404).json({ message: 'Team not found' });
+    res.json(template);
+  } catch (err) {
+    console.error('[teams] join-template error', err);
+    res.status(500).json({ message: 'Failed to load join template' });
+  }
+});
+
+teamsRouter.post('/:id/invites', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const body = z
+      .object({
+        userId: z.string().min(1),
+        message: z.string().max(500).optional(),
+      })
+      .safeParse(req.body ?? {});
+    if (!body.success) {
+      return res.status(400).json({ message: 'INVALID_BODY', issues: body.error.issues });
+    }
+
+    const invite = await createTeamMemberInvite(
+      req.params.id,
+      userId,
+      body.data.userId,
+      body.data.message,
+    );
+    res.status(201).json(invite);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to send invite';
+    res.status(400).json({ message: msg });
+  }
+});
+
+teamsRouter.put('/:id/join-template', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const JoinTemplateSchema = z.object({
+      joinPolicy: z.enum(['open', 'approval', 'invite_only']).optional(),
+      isPublic: z.boolean().optional(),
+      joinFeeCents: z.number().int().min(0).max(1_000_000).optional(),
+      joinFeeNote: z.string().max(500).nullable().optional(),
+      requirements: z
+        .object({
+          questions: z.array(
+            z.object({
+              id: z.string().min(1),
+              type: z.enum(['text', 'yesno', 'select']),
+              label: z.string().min(1).max(300),
+              required: z.boolean().optional(),
+              options: z.array(z.string()).optional(),
+            }),
+          ),
+          documents: z.array(
+            z.object({
+              id: z.string().min(1),
+              title: z.string().min(1).max(200),
+              body: z.string().max(5000),
+              required: z.boolean().optional(),
+            }),
+          ),
+        })
+        .optional(),
+    });
+
+    const parsed = JoinTemplateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'INVALID_BODY', issues: parsed.error.issues });
+    }
+
+    const updated = await updateTeamJoinTemplate(req.params.id, userId, parsed.data);
+    res.json(updated);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to update join template';
+    res.status(403).json({ message: msg });
+  }
+});
+
+teamsRouter.post('/:id/apply', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const parsed = JoinApplicationSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'INVALID_BODY', issues: parsed.error.issues });
+    }
+
+    const result = await submitTeamJoinApplication(req.params.id, userId, parsed.data);
+
+    if (result.status === 'joined') {
+      try {
+        const { triggerNudgeIfNeeded } = await import('../../services/phase8ProfileService');
+        const count = await db
+          .select({ c: sql<number>`count(*)::int` })
+          .from(teamMembers)
+          .where(eq(teamMembers.userId, userId));
+        if (Number(count[0]?.c ?? 0) === 1) {
+          await triggerNudgeIfNeeded(userId, 'first_team_join');
+        }
+      } catch (nudgeErr) {
+        console.warn('[Phase8-3] Team join nudge skipped:', nudgeErr);
+      }
+    }
+
+    res.json({
+      success: true,
+      status: result.status,
+      joined: result.status === 'joined',
+      requestId: result.requestId,
+      currentMembers: result.currentMembers,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to submit application';
     res.status(400).json({ message: msg });
   }
 });
@@ -839,6 +1008,53 @@ teamsRouter.post(
   },
 );
 
+teamsRouter.get('/:id/games', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const teamId = req.params.id;
+    const [team] = await db.select({ id: teams.id }).from(teams).where(eq(teams.id, teamId)).limit(1);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const games = await listTeamGames(teamId, limit);
+    const record = await getTeamRecord(teamId);
+    res.json({ games, record });
+  } catch (err) {
+    console.error('[teams] list games error', err);
+    res.status(500).json({ message: 'Failed to load games' });
+  }
+});
+
+teamsRouter.post('/:id/games', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const body = z
+      .object({
+        opponentName: z.string().min(1).max(120),
+        result: z.enum(['win', 'loss', 'draw']),
+        ourScore: z.number().int().min(0).max(999).optional(),
+        theirScore: z.number().int().min(0).max(999).optional(),
+        playerIds: z.array(z.string().min(1)).min(1),
+        playedAt: z.string().optional(),
+        notes: z.string().max(500).optional(),
+      })
+      .safeParse(req.body ?? {});
+    if (!body.success) {
+      return res.status(400).json({ message: 'INVALID_BODY', issues: body.error.issues });
+    }
+
+    const result = await logTeamGame(req.params.id, userId, body.data);
+    res.status(201).json(result);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to log game';
+    res.status(400).json({ message: msg });
+  }
+});
+
 teamsRouter.get('/:id', isAuthenticated, async (req: AuthedRequest, res: Response) => {
   try {
     const teamId = req.params.id;
@@ -882,6 +1098,9 @@ teamsRouter.get('/:id', isAuthenticated, async (req: AuthedRequest, res: Respons
       )
       .limit(1);
 
+    const pendingInvite = await getPendingInviteForUser(teamId, userId);
+    const record = await getTeamRecord(teamId);
+
     res.json({
       ...team.team,
       joinPolicy: (team.team as { joinPolicy?: string | null }).joinPolicy ?? 'open',
@@ -896,6 +1115,12 @@ teamsRouter.get('/:id', isAuthenticated, async (req: AuthedRequest, res: Respons
       canManage,
       hasJoined: isMember,
       hasRequestedToJoin: pendingRequest.length > 0,
+      pendingInvite: pendingInvite
+        ? { id: pendingInvite.id, message: pendingInvite.message }
+        : null,
+      record: { W: record.W, L: record.L, D: record.D },
+      currentWinStreak: team.team.currentWinStreak ?? 0,
+      longestWinStreak: team.team.longestWinStreak ?? 0,
     });
   } catch (err) {
     console.error('[teams] get team error', err);

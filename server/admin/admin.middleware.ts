@@ -4,6 +4,7 @@ import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { hasPermission } from "./rbac";
 import type { AdminPermission } from "@shared/schema";
+import { resolveRequestUserId } from "../lib/authUser";
 
 export interface AdminRequest extends Request {
   admin?: {
@@ -19,12 +20,12 @@ export async function requireAdmin(
   res: Response,
   next: NextFunction
 ) {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).json({ message: "Authentication required" });
+  const sessionUser = (req as any).session?.localUser;
+  if (sessionUser?.dbUser) {
+    req.user = { ...sessionUser, ...sessionUser.dbUser } as any;
   }
 
-  const sessionUser = req.user as { id?: string; claims?: { sub?: string } };
-  const userId = sessionUser.claims?.sub || sessionUser.id;
+  const userId = resolveRequestUserId(req as Parameters<typeof resolveRequestUserId>[0]);
   if (!userId) {
     return res.status(401).json({ message: "Authentication required" });
   }

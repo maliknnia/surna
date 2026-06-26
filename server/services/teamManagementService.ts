@@ -333,10 +333,14 @@ export class TeamManagementService {
       id: teamJoinRequests.id,
       userId: teamJoinRequests.userId,
       message: teamJoinRequests.message,
+      answers: teamJoinRequests.answers,
+      agreedDocuments: teamJoinRequests.agreedDocuments,
+      paymentStatus: teamJoinRequests.paymentStatus,
       status: teamJoinRequests.status,
       createdAt: teamJoinRequests.createdAt,
       firstName: users.firstName,
       lastName: users.lastName,
+      username: users.username,
       profileImageUrl: users.profileImageUrl,
     })
     .from(teamJoinRequests)

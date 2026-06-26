@@ -1,10 +1,18 @@
 import { MapPin, Star, Users, Heart, MessageCircle, UserPlus, Trophy, Settings, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { teamLogoUrl } from '@/lib/teamLogo';
-import { joinTeamUnified, joinButtonLabel, leaveTeam } from '@/lib/teamJoin';
+import {
+  joinTeamUnified,
+  joinButtonLabel,
+  leaveTeam,
+  fetchTeamJoinTemplate,
+  shouldOpenJoinSheet,
+} from '@/lib/teamJoin';
+import { TeamJoinSheet } from '@/components/teams/TeamJoinSheet';
+import { getSportLabels } from '@/lib/sportLabels';
 
 interface SportConfig {
   emoji: string;
@@ -15,9 +23,11 @@ interface SportConfig {
 interface TeamHeaderProps {
   team: any;
   sportConfig: SportConfig;
+  /** Open join sheet on mount (e.g. from notification ?join=1) */
+  openJoinSheet?: boolean;
 }
 
-export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
+export default function TeamHeader({ team, sportConfig, openJoinSheet }: TeamHeaderProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isFollowing, setIsFollowing] = useState(!!team.isFollowing);
@@ -27,7 +37,15 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
   const [memberCountState, setMemberCountState] = useState<number>(
     team.currentMembers || team.memberCount || 0
   );
+  const [joinSheetOpen, setJoinSheetOpen] = useState(false);
   const accentColor = sportConfig.ringColor;
+  const labels = getSportLabels(team.sport);
+
+  useEffect(() => {
+    if (openJoinSheet && !hasJoined && !hasRequested) {
+      setJoinSheetOpen(true);
+    }
+  }, [openJoinSheet, hasJoined, hasRequested]);
 
   const handleFollow = async () => {
     // Flip state immediately so the button reflects the tap, snapshot
@@ -75,25 +93,45 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
 
   const handleJoin = async () => {
     if (hasJoined || hasRequested) return;
+    if (team.pendingInvite) {
+      setJoinSheetOpen(true);
+      return;
+    }
+    if (team.joinPolicy === 'invite_only') {
+      toast({
+        title: 'Invite only',
+        description: 'Ask the captain to invite you to this team.',
+      });
+      return;
+    }
     try {
+      const template = await fetchTeamJoinTemplate(team.id);
+      if (shouldOpenJoinSheet(template)) {
+        setJoinSheetOpen(true);
+        return;
+      }
       const result = await joinTeamUnified(team.id);
-      if (result.status === "pending") {
+      if (result.status === 'pending') {
         setHasRequested(true);
         queryClient.invalidateQueries({ queryKey: ['/api/teams', team.id] });
-        toast({ title: "Request sent", description: "The captain will review your request" });
+        toast({ title: 'Request sent', description: 'The captain will review your request' });
         return;
       }
       setHasJoined(true);
-      if (typeof result.currentMembers === "number") {
+      if (typeof result.currentMembers === 'number') {
         setMemberCountState(result.currentMembers);
       } else {
         setMemberCountState((c) => c + 1);
       }
       queryClient.invalidateQueries({ queryKey: ['/api/teams', team.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/teams/my-teams'] });
-      toast({ title: "Joined Team!", description: `You're now a member of ${team.name}` });
-    } catch {
-      toast({ title: "Couldn't join team", description: "Please try again in a moment.", variant: "destructive" });
+      toast({ title: 'Joined Team!', description: `You're now a member of ${team.name}` });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'JOIN_APPLICATION_REQUIRED') {
+        setJoinSheetOpen(true);
+        return;
+      }
+      toast({ title: "Couldn't join team", description: 'Please try again in a moment.', variant: 'destructive' });
     }
   };
 
@@ -169,7 +207,7 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
       <div className="spotify-stats-pill">
         <div className="text-center">
           <p className="text-[17px] font-bold text-foreground">{memberCount}</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Members</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{labels.rosterLabel}</p>
         </div>
         <div className="w-px h-8 bg-muted/40" />
         <div className="text-center">
@@ -211,7 +249,7 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
 
       {/* Primary CTA buttons */}
       <div className="flex items-center gap-2.5 w-full max-w-sm mt-5">
-        <button onClick={handleJoin} disabled={hasJoined || hasRequested}
+        <button onClick={handleJoin} disabled={hasJoined || hasRequested || (team.joinPolicy === 'invite_only' && !team.pendingInvite)}
           className="flex-1 h-12 rounded-full text-[14px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.96] disabled:active:scale-100"
           style={{
             background: accentColor,
@@ -221,7 +259,12 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
             opacity: (hasJoined || hasRequested) ? 0.85 : 1,
           }}>
           <UserPlus size={16} />
-          {joinButtonLabel({ hasJoined, hasRequestedToJoin: hasRequested, joinPolicy: team.joinPolicy })}
+          {joinButtonLabel({
+            hasJoined,
+            hasRequestedToJoin: hasRequested,
+            joinPolicy: team.joinPolicy,
+            pendingInvite: team.pendingInvite,
+          })}
         </button>
         <button onClick={handleFollow}
           className="h-12 px-5 rounded-full text-[13px] font-semibold flex items-center gap-2 transition-all active:scale-[0.96] bg-muted/60 hover:bg-muted text-foreground border border-border backdrop-blur-sm">
@@ -260,6 +303,18 @@ export default function TeamHeader({ team, sportConfig }: TeamHeaderProps) {
           <span className="text-sm font-bold text-foreground">{team.record.W}-{team.record.L}-{team.record.D}</span>
         </div>
       )}
+
+      <TeamJoinSheet
+        teamId={team.id}
+        teamName={team.name}
+        open={joinSheetOpen}
+        onOpenChange={setJoinSheetOpen}
+        onJoined={(count) => {
+          setHasJoined(true);
+          if (typeof count === 'number') setMemberCountState(count);
+        }}
+        onPending={() => setHasRequested(true)}
+      />
     </div>
   );
 }

@@ -804,11 +804,13 @@ export class DatabaseStorage implements IStorage {
       .values({ ...team, captainId: ownerId })
       .returning();
     
-    // Add owner as team member
+    // Add owner as active team member (default status is pending)
     await db.insert(teamMembers).values({
       teamId: newTeam.id,
       userId: ownerId,
       role: "captain",
+      status: "active",
+      approvedAt: new Date(),
     });
 
     return newTeam;
@@ -2482,7 +2484,13 @@ export class DatabaseStorage implements IStorage {
 
     const members = await this.getInstantTeamMembers(teamId);
     for (const m of members) {
-      await db.insert(teamMembers).values({ teamId: newTeam.id, userId: m.userId, role: m.userId === userId ? 'captain' : 'member', status: 'active' });
+      await db.insert(teamMembers).values({
+        teamId: newTeam.id,
+        userId: m.userId,
+        role: m.userId === userId ? "captain" : "member",
+        status: "active",
+        approvedAt: new Date(),
+      });
     }
 
     await db.update(instantTeams).set({ status: 'converted' }).where(eq(instantTeams.id, teamId));

@@ -46,6 +46,11 @@ export function ensureEventsCompatTables(): Promise<void> {
 
       CREATE INDEX IF NOT EXISTS idx_event_rsvps_event_status
         ON event_rsvps(event_id, status);
+
+      ALTER TABLE event_rsvps ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+      ALTER TABLE event_rsvps ADD COLUMN IF NOT EXISTS waitlist_position integer;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_event_rsvps_event_user_unique
+        ON event_rsvps(event_id, user_id);
     `).then(() => undefined).catch((err) => {
       eventsCompatEnsured = null;
       throw err;

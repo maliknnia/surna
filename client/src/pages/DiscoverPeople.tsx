@@ -304,7 +304,7 @@ export default function DiscoverPeople() {
                 </button>
               ) : null}
             </div>
-          </div>
+        </div>
         ) : null}
       </header>
 
@@ -312,7 +312,7 @@ export default function DiscoverPeople() {
         {listLoading ? (
           <div className="py-16 flex justify-center">
             <div className="w-8 h-8 border-2 border-border border-t-foreground rounded-full animate-spin" />
-          </div>
+                    </div>
         ) : listPeople.length === 0 ? (
           <div className="py-16 text-center px-4">
             <p className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>
@@ -363,8 +363,8 @@ export default function DiscoverPeople() {
               />
             ))}
           </div>
-        )}
-      </div>
+                  )}
+                </div>
     </div>
   );
 }

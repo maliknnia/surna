@@ -128,6 +128,17 @@ async function ensureCoachProfileColumn() {
   await db.execute(sql`ALTER TABLE coaches ADD COLUMN IF NOT EXISTS profile_json jsonb DEFAULT '{}'::jsonb`);
 }
 
+let coachProfileColumnReady: Promise<void> | null = null;
+function ensureCoachProfileColumnOnce(): Promise<void> {
+  if (!coachProfileColumnReady) {
+    coachProfileColumnReady = ensureCoachProfileColumn().catch((err) => {
+      coachProfileColumnReady = null;
+      throw err;
+    });
+  }
+  return coachProfileColumnReady;
+}
+
 function enrichCoachRow<T extends { id: string; specialties?: string[] | null; experience?: string | null; certifications?: string[] | null; hourlyRate?: string | null; bio?: string | null; profileJson?: unknown; isVerified?: boolean | null; user: { sport?: string | null; profileImageUrl?: string | null } }>(
   row: T,
 ) {
@@ -171,19 +182,32 @@ const commentLimiter = createPerUserLimiter({ windowMs: 60_000, max: 20 });
 
 // Stage 2: Simple caching layer (Redis-ready)
 const cache = new Map<string, { data: any; expires: number }>();
+const cacheInflight = new Map<string, Promise<unknown>>();
 
 function withCache<T>(key: string, ttl: number, fn: () => Promise<T>): Promise<T> {
   const cached = cache.get(key);
   const now = Date.now();
-  
+
   if (cached && cached.expires > now) {
-    return Promise.resolve(cached.data);
+    return Promise.resolve(cached.data as T);
   }
-  
-  return fn().then(result => {
-    cache.set(key, { data: result, expires: now + (ttl * 1000) });
-    return result;
-  });
+
+  const pending = cacheInflight.get(key);
+  if (pending) return pending as Promise<T>;
+
+  const p = fn()
+    .then((result) => {
+      cache.set(key, { data: result, expires: Date.now() + ttl * 1000 });
+      cacheInflight.delete(key);
+      return result;
+    })
+    .catch((err) => {
+      cacheInflight.delete(key);
+      throw err;
+    });
+
+  cacheInflight.set(key, p);
+  return p;
 }
 
 // Stage 2: Monitoring counters
@@ -191,6 +215,10 @@ let requestCount = 0;
 let errorCount = 0;
 
 export async function registerRoutes(app: Express, io?: any): Promise<Server> {
+  await ensureCoachProfileColumnOnce().catch((err) => {
+    console.warn("[coaches] profile_json column ensure skipped:", errMsg(err));
+  });
+
   // Stage 6: Security middleware first (disabled for performance)
   // setupSecurityMiddleware(app);
   // app.use(ipBlockingMiddleware);
@@ -347,6 +375,14 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
 
   // Package #13: Admin Control System routes
   try {
+    const { ensureAdminDashboardSchema } = await import("./admin/ensureAdminDashboardSchema");
+    const { ensureComplianceRequestsSchema } = await import("./security/ensureComplianceSchema");
+    void ensureAdminDashboardSchema().catch((err) => {
+      console.error("[boot] Admin dashboard schema migration failed", err);
+    });
+    void ensureComplianceRequestsSchema().catch((err) => {
+      console.error("[boot] Compliance requests schema migration failed", err);
+    });
     app.use("/api/admin", adminRouter);
     console.log("âœ… Admin Control System routes mounted at /api/admin");
   } catch (error) {
@@ -517,18 +553,19 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   app.get("/api/places", async (req, res) => {
     try {
       const { sport, city, minRating, limit, offset } = req.query;
-      const filters: any = {};
-      
-      if (sport) filters.sport = sport as string;
-      if (city) filters.city = city as string;
-      if (minRating) filters.minRating = parseFloat(minRating as string);
-      
-      const places = await storage.getPlaces(
-        filters,
-        limit ? parseInt(limit as string) : 20,
-        offset ? parseInt(offset as string) : 0
-      );
-      
+      const lim = limit ? parseInt(limit as string) : 20;
+      const off = offset ? parseInt(offset as string) : 0;
+      const cacheKey = `places_${sport ?? ""}_${city ?? ""}_${minRating ?? ""}_${lim}_${off}`;
+
+      const places = await withCache(cacheKey, 30, async () => {
+        const filters: Record<string, string | number> = {};
+        if (sport) filters.sport = sport as string;
+        if (city) filters.city = city as string;
+        if (minRating) filters.minRating = parseFloat(minRating as string);
+        return storage.getPlaces(filters, lim, off);
+      });
+
+      res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
       res.json((places as any[]).map(withPlaceImageVariants));
     } catch (error: unknown) {
       console.error("Error fetching places:", error);
@@ -1578,7 +1615,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   app.get('/api/posts/recent', async (req, res) => {
     try {
       const limit = Math.min(Number(req.query.limit) || 15, 30);
-      const rows = await db.execute(sql`
+      const rows = await withCache(`posts_recent_${limit}`, 30, async () => {
+        const result = await db.execute(sql`
         SELECT p.id, p.author_id, p.content, p.image_url, p.media_type, p.sport, p.likes_count, p.comments_count, p.created_at,
                u.id as author_id_ref, u.display_name as author_display_name, u.first_name as author_first_name, u.profile_image_url as author_profile_image_url, u.username as author_username
         FROM posts p
@@ -1586,9 +1624,11 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         ORDER BY p.created_at DESC
         LIMIT ${limit}
       `);
+        return result.rows || [];
+      });
 
       res.setHeader('Cache-Control', 'public, max-age=60');
-      res.json((rows.rows || []).map((r: any) => ({
+      res.json((rows as any[]).map((r: any) => ({
         id: r.id,
         authorId: r.author_id,
         content: r.content,
@@ -1974,11 +2014,10 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
 
       const coaches = await withCache(
         `coaches_${limit}_${offset}_${sportKey}`,
-        30,
+        60,
         async () => storage.getCoaches(limit, offset, sportParam)
       );
 
-      await ensureCoachProfileColumn();
       res.setHeader("Cache-Control", "private, max-age=15, stale-while-revalidate=60");
       res.json(coaches.map((c) => enrichCoachRow(c)));
     } catch (error: unknown) {
@@ -3756,7 +3795,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   app.get('/api/coaches/:id', async (req: any, res) => {
     try {
       const coachId = req.params.id;
-      await ensureCoachProfileColumn();
+      await ensureCoachProfileColumnOnce();
       const coach = await storage.getCoachById(coachId);
       
       if (!coach) {
@@ -3773,7 +3812,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   app.get("/api/coaches/:id/availability", async (req: any, res) => {
     try {
       await ensureCoachWeeklyAvailabilityColumn();
-      await ensureCoachProfileColumn();
+      await ensureCoachProfileColumnOnce();
       const coachId = req.params.id;
       const coach = await storage.getCoachById(coachId);
       if (!coach) return res.status(404).json({ message: "Coach not found" });
@@ -3800,7 +3839,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       const userId = sessionUserId(req);
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
       await ensureCoachWeeklyAvailabilityColumn();
-      await ensureCoachProfileColumn();
+      await ensureCoachProfileColumnOnce();
       const [row] = await db.select().from(coaches).where(eq(coaches.userId, userId)).limit(1);
       if (!row) return res.status(404).json({ message: "Coach profile not found" });
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -3845,7 +3884,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       const userId = sessionUserId(req);
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
       await ensureCoachWeeklyAvailabilityColumn();
-      await ensureCoachProfileColumn();
+      await ensureCoachProfileColumnOnce();
 
       const body = coachApplySchema.parse(req.body);
       if (!body.backgroundCheckConsent) {
@@ -4005,7 +4044,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     try {
       const userId = sessionUserId(req);
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
-      await ensureCoachProfileColumn();
+      await ensureCoachProfileColumnOnce();
       const patch = coachProfilePatchSchema.parse(req.body);
       const [row] = await db.select().from(coaches).where(eq(coaches.userId, userId)).limit(1);
       if (!row) return res.status(404).json({ message: "Coach profile not found" });

@@ -12,6 +12,11 @@ import {
 import { isAuthenticated } from "../../replitAuth";
 import { resolveRequestUserId } from "../../lib/authUser";
 import { getActiveNudges, dismissNudge } from "../../services/phase8ProfileService";
+import {
+  getProfileTeamGames,
+  getProfileTeamGameSummary,
+  setTeamGameProfileVisibility,
+} from "../../services/teamGameService";
 
 export const profileRouter = Router();
 
@@ -98,6 +103,34 @@ profileRouter.get("/:id/feed", isAuthenticated, async (req, res) => {
     res.json({ posts });
   } catch {
     res.status(500).json({ message: "Failed to fetch activity feed" });
+  }
+});
+
+profileRouter.get("/:id/team-games", isAuthenticated, async (req, res) => {
+  try {
+    const viewerId = resolveRequestUserId(req as Parameters<typeof resolveRequestUserId>[0]);
+    if (!viewerId) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const profileUserId = req.params.id;
+    const includeHidden = viewerId === profileUserId;
+    const games = await getProfileTeamGames(profileUserId, { includeHidden });
+    const summary = await getProfileTeamGameSummary(profileUserId);
+    res.json({ games, summary });
+  } catch {
+    res.status(500).json({ message: "Failed to fetch team games" });
+  }
+});
+
+profileRouter.patch("/team-games/:participantId/visibility", isAuthenticated, async (req, res) => {
+  try {
+    const userId = resolveRequestUserId(req as Parameters<typeof resolveRequestUserId>[0]);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const parsed = z.object({ showOnProfile: z.boolean() }).safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ message: "INVALID_BODY" });
+    await setTeamGameProfileVisibility(req.params.participantId, userId, parsed.data.showOnProfile);
+    res.json({ success: true });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to update visibility";
+    res.status(400).json({ message: msg });
   }
 });
 

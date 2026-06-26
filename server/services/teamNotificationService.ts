@@ -114,6 +114,28 @@ export async function notifyJoinRequestReviewed(
   });
 }
 
+export async function notifyTeamMemberInvite(
+  teamId: string,
+  inviterId: string,
+  inviteeId: string,
+  inviteId: string,
+): Promise<void> {
+  const [name, inviter] = await Promise.all([teamName(teamId), displayName(inviterId)]);
+  const message = `${inviter} invited you to join ${name}`;
+
+  await notifyUser({
+    userId: inviteeId,
+    actorId: inviterId,
+    type: "team_invite",
+    message,
+    metadata: teamMeta(teamId, {
+      inviteId,
+      join: true,
+      route: `/teams/${teamId}?join=1`,
+    }),
+  });
+}
+
 export async function notifyTeamMemberJoined(
   teamId: string,
   memberId: string,

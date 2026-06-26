@@ -20,6 +20,10 @@ export const pool = new Pool({
   connectionTimeoutMillis: POOL_CONN_TIMEOUT_MS,
 });
 
+pool.on("error", (err) => {
+  console.error("[db] idle pool client error (non-fatal):", err.message);
+});
+
 console.log(`ðŸ—„ï¸  [db] Postgres pool: max=${POOL_MAX} idle=${POOL_IDLE_MS}ms connTimeout=${POOL_CONN_TIMEOUT_MS}ms`);
 
 export const db = drizzle({ 

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useParams, useLocation } from 'wouter';
 import { useTeam } from '@/hooks/useTeam';
 import { getSportConfig } from '@/components/TeamCard';
+import { getSportLabels } from '@/lib/sportLabels';
 import TeamHeader from './components/TeamHeader';
 import TeamHighlights from './sections/TeamHighlights';
 import { EntityShareSheet } from '@/components/teams/EntityShareSheet';
@@ -35,6 +36,10 @@ export default function TeamPage() {
   const [scrollY, setScrollY] = useState(0);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const { data: team, isLoading, error } = useTeam(teamId);
+
+  const openJoinFromNotification =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("join") === "1";
 
   const teamPhoto = team ? teamLogoUrl(team as never) : null;
   const extractedColor = useDiscoveryCardBg(teamPhoto, (team as any)?.sport);
@@ -90,10 +95,11 @@ export default function TeamPage() {
 
   const teamAny = team as Record<string, unknown>;
   const sponsors = (teamAny.sponsors as unknown[] | null) ?? [];
+  const sportLabels = getSportLabels((team as { sport?: string }).sport);
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'about', label: 'About' },
-    { id: 'members', label: 'Members' },
+    { id: 'members', label: sportLabels.rosterLabel },
     { id: 'feed', label: 'Feed' },
     { id: 'chat', label: 'Chat' },
     { id: 'challenges', label: 'Challenges' },
@@ -151,7 +157,11 @@ export default function TeamPage() {
       <div className="spotify-content-layer" ref={scrollRef} onScroll={handleScroll}>
         {/* Hero section with parallax */}
         <div className="spotify-hero" style={{ transform: `translateY(-${heroParallax}px)` }}>
-          <TeamHeader team={team} sportConfig={extractedColor ? { ...config, colors: [extractedColor, extractedColor] as [string, string], ringColor: extractedColor } : config} />
+          <TeamHeader
+            team={team}
+            sportConfig={extractedColor ? { ...config, colors: [extractedColor, extractedColor] as [string, string], ringColor: extractedColor } : config}
+            openJoinSheet={openJoinFromNotification}
+          />
           <TeamHighlights teamId={teamId!} teamName={(team as any).name} />
         </div>
 

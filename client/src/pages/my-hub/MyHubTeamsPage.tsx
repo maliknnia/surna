@@ -10,6 +10,9 @@ import { MyHubTeamCard, type MyHubTeam } from "@/features/my-hub/components/MyHu
 import { EditTeamSheet } from "@/features/my-hub/components/EditTeamSheet";
 import { PostTeamUpdateSheet } from "@/features/my-hub/components/PostTeamUpdateSheet";
 import { TeamJoinRequestsSheet } from "@/features/my-hub/components/TeamJoinRequestsSheet";
+import { TeamJoinSettingsSheet } from "@/features/my-hub/components/TeamJoinSettingsSheet";
+import { TeamInvitePlayerSheet } from "@/features/my-hub/components/TeamInvitePlayerSheet";
+import { LogTeamGameSheet } from "@/features/my-hub/components/LogTeamGameSheet";
 import { ManageHighlightsSheet } from "@/features/my-hub/components/ManageHighlightsSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { HubSubpageHeader } from "@/components/create/HubSubpageHeader";
@@ -32,6 +35,12 @@ export default function MyHubTeamsPage() {
   const [reqOpen, setReqOpen] = useState(false);
   const [highlightsTarget, setHighlightsTarget] = useState<MyHubTeam | null>(null);
   const [highlightsOpen, setHighlightsOpen] = useState(false);
+  const [joinSettingsTarget, setJoinSettingsTarget] = useState<MyHubTeam | null>(null);
+  const [joinSettingsOpen, setJoinSettingsOpen] = useState(false);
+  const [inviteTarget, setInviteTarget] = useState<MyHubTeam | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [logGameTarget, setLogGameTarget] = useState<MyHubTeam | null>(null);
+  const [logGameOpen, setLogGameOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery<ManagedTeamsResponse>({
     queryKey: ["/api/teams/me/managed"],
@@ -58,6 +67,21 @@ export default function MyHubTeamsPage() {
   const handleHighlights = (t: MyHubTeam) => {
     setHighlightsTarget(t);
     setHighlightsOpen(true);
+  };
+
+  const handleJoinSettings = (t: MyHubTeam) => {
+    setJoinSettingsTarget(t);
+    setJoinSettingsOpen(true);
+  };
+
+  const handleInvite = (t: MyHubTeam) => {
+    setInviteTarget(t);
+    setInviteOpen(true);
+  };
+
+  const handleLogGame = (t: MyHubTeam) => {
+    setLogGameTarget(t);
+    setLogGameOpen(true);
   };
 
   return (
@@ -127,6 +151,9 @@ export default function MyHubTeamsPage() {
                       onEdit={handleEdit}
                       onPostUpdate={handlePost}
                       onReviewRequests={handleRequests}
+                      onJoinSettings={handleJoinSettings}
+                      onInvitePlayer={handleInvite}
+                      onLogGame={handleLogGame}
                       onManageHighlights={handleHighlights}
                     />
                   ))}
@@ -149,6 +176,9 @@ export default function MyHubTeamsPage() {
                       onEdit={handleEdit}
                       onPostUpdate={handlePost}
                       onReviewRequests={handleRequests}
+                      onJoinSettings={handleJoinSettings}
+                      onInvitePlayer={handleInvite}
+                      onLogGame={handleLogGame}
                       onManageHighlights={handleHighlights}
                     />
                   ))}
@@ -196,6 +226,30 @@ export default function MyHubTeamsPage() {
         onOpenChange={(o) => {
           setHighlightsOpen(o);
           if (!o) setHighlightsTarget(null);
+        }}
+      />
+      <TeamJoinSettingsSheet
+        team={joinSettingsTarget}
+        open={joinSettingsOpen}
+        onOpenChange={(o) => {
+          setJoinSettingsOpen(o);
+          if (!o) setJoinSettingsTarget(null);
+        }}
+      />
+      <TeamInvitePlayerSheet
+        team={inviteTarget}
+        open={inviteOpen}
+        onOpenChange={(o) => {
+          setInviteOpen(o);
+          if (!o) setInviteTarget(null);
+        }}
+      />
+      <LogTeamGameSheet
+        team={logGameTarget}
+        open={logGameOpen}
+        onOpenChange={(o) => {
+          setLogGameOpen(o);
+          if (!o) setLogGameTarget(null);
         }}
       />
     </div>

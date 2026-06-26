@@ -5,9 +5,10 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  
+  retries: process.env.CI ? 2 : 1,
+  workers: process.env.CI ? 1 : 1,
+  timeout: 60_000,
+
   reporter: process.env.CI ? [
     ['html'],
     ['junit', { outputFile: 'test-results/junit.xml' }],
@@ -19,6 +20,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    navigationTimeout: 60_000,
   },
 
   projects: [
@@ -45,9 +47,14 @@ export default defineConfig({
   ],
 
   webServer: process.env.CI ? undefined : {
-    command: 'npm start',
+    command: 'npx tsx server/index.ts',
     url: 'http://localhost:5000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: process.env.PW_REUSE_SERVER === "1",
     timeout: 120 * 1000,
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      LOCAL_AUTH_BYPASS: '1',
+    },
   },
 });

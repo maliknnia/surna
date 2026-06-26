@@ -2,15 +2,54 @@
 import { sql } from "drizzle-orm";
 import type { NotifType } from "./notifications.types";
 
+const NOTIF_TYPE_TITLES: Record<NotifType, string> = {
+  like: "New like",
+  comment: "New comment",
+  follow: "New follower",
+  system: "SURNA",
+  event_reminder: "Event reminder",
+  event_rsvp: "Event RSVP",
+  event_cancelled: "Event cancelled",
+  team_join_request: "Join request",
+  team_join_approved: "Join approved",
+  team_join_rejected: "Join declined",
+  team_invite: "Team invite",
+  team_member_joined: "New team member",
+  team_schedule_reminder: "Training reminder",
+  team_schedule_update: "Schedule update",
+};
+
+function resolveNotificationTitle(
+  type: NotifType,
+  message?: string | null,
+  title?: string | null,
+): string {
+  if (title?.trim()) return title.trim().slice(0, 140);
+  if (message?.trim()) {
+    const m = message.trim();
+    return m.length <= 140 ? m : `${m.slice(0, 137)}...`;
+  }
+  return NOTIF_TYPE_TITLES[type] ?? "SURNA";
+}
+
+function resolveNotificationMessage(message?: string | null, title?: string): string {
+  if (message?.trim()) return message.trim();
+  return title ?? "You have a new notification";
+}
+
 export async function insertNotification(row: {
   userId: string; actorId?: string | null; type: NotifType;
   postId?: string | null; commentId?: string | null;
+  title?: string | null;
   message?: string | null; metadata?: any;
 }) {
+  const title = resolveNotificationTitle(row.type, row.message, row.title);
+  const message = resolveNotificationMessage(row.message, title);
+
   const q = await db.execute(sql`
-    INSERT INTO notifications (user_id, actor_id, type, post_id, comment_id, message, metadata)
-    VALUES (${row.userId}, ${row.actorId ?? null}, ${row.type},
-            ${row.postId ?? null}, ${row.commentId ?? null}, ${row.message ?? null}, ${JSON.stringify(row.metadata ?? null)})
+    INSERT INTO notifications (user_id, actor_id, type, title, post_id, comment_id, message, metadata)
+    VALUES (${row.userId}, ${row.actorId ?? null}, ${row.type}, ${title},
+            ${row.postId ?? null}, ${row.commentId ?? null}, ${message}, ${JSON.stringify(row.metadata ?? null)})
     RETURNING id, user_id AS "userId", actor_id AS "actorId", type, post_id AS "postId",
               comment_id AS "commentId", message, metadata, read_at AS "readAt", created_at AS "createdAt";
   `);

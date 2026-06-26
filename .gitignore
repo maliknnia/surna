@@ -11,5 +11,7 @@ vite.config.ts.*
 .local/
 .tools/
 .vscode/
-*.zip
+soak-results/latest.txt
 .tmp-*.txt
+playwright-report/
+test-results/

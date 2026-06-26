@@ -5,6 +5,7 @@ import type { NotifType } from "./notifications.types";
 export async function notifyUser(row: {
   userId: string; actorId?: string | null; type: NotifType;
   postId?: string | null; commentId?: string | null;
+  title?: string | null;
   message?: string | null; metadata?: any;
 }) {
   const rec = await insertNotification(row);

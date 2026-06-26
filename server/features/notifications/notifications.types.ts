@@ -1,4 +1,4 @@
-﻿export type NotifType =
+export type NotifType =
   | "like"
   | "comment"
   | "follow"
@@ -9,6 +9,7 @@
   | "team_join_request"
   | "team_join_approved"
   | "team_join_rejected"
+  | "team_invite"
   | "team_member_joined"
   | "team_schedule_reminder"
   | "team_schedule_update";

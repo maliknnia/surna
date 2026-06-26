@@ -21,6 +21,26 @@ export async function dismissCookieConsent(page: Page) {
   }
 }
 
+/** SPA-friendly navigation — avoid hanging on long-lived connections during `load`. */
+export async function gotoApp(page: Page, path = "/") {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.goto(path, { waitUntil: "domcontentloaded", timeout: 45_000 });
+      return;
+    } catch (err) {
+      lastError = err;
+      if (attempt < 2) await page.waitForTimeout(750 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
+/** Wait until authenticated mobile shell is interactive. */
+export async function waitForMobileShell(page: Page) {
+  await page.locator('[data-testid="mobile-home"]').waitFor({ state: "visible", timeout: 30_000 });
+}
+
 /** User payload that skips onboarding modals in e2e. */
 export const MOCK_USER = {
   id: "e2e-user-1",

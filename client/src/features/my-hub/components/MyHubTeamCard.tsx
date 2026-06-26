@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Megaphone,
   UserCheck,
+  UserPlus,
   ShieldCheck,
   BarChart3,
   ListChecks,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { LockedAction } from "./LockedAction";
 import { StatusPill } from "./StatusPill";
+import { getSportLabels } from "@/lib/sportLabels";
 
 export interface MyHubTeam {
   id: string;
@@ -44,6 +46,9 @@ interface Props {
   onEdit: (team: MyHubTeam) => void;
   onPostUpdate: (team: MyHubTeam) => void;
   onReviewRequests: (team: MyHubTeam) => void;
+  onJoinSettings?: (team: MyHubTeam) => void;
+  onInvitePlayer?: (team: MyHubTeam) => void;
+  onLogGame?: (team: MyHubTeam) => void;
   onManageHighlights?: (team: MyHubTeam) => void;
   canEdit: boolean;
 }
@@ -63,12 +68,13 @@ function formatRelative(iso?: string | null) {
   return d.toLocaleDateString();
 }
 
-export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, onManageHighlights, canEdit }: Props) {
+export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, onJoinSettings, onInvitePlayer, onLogGame, onManageHighlights, canEdit }: Props) {
   const [proOpen, setProOpen] = useState(false);
   const members = team.currentMembers ?? 0;
   const cap = team.maxMembers ?? null;
   const pending = team.pendingRequestsCount ?? 0;
   const role = team.myRole ?? "member";
+  const labels = getSportLabels(team.sport);
 
   return (
     <div
@@ -156,11 +162,27 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
           />
         )}
         <Link href={`/teams/${team.id}#members`}>
-          <ActionChip icon={Users} label="Members" testId={`team-members-${team.id}`} />
+          <ActionChip icon={Users} label={labels.rosterLabel} testId={`team-members-${team.id}`} />
         </Link>
         <Link href={`/messages?context=team&id=${team.id}`}>
           <ActionChip icon={MessageCircle} label="Chat" testId={`team-chat-${team.id}`} />
         </Link>
+        {canEdit && onInvitePlayer ? (
+          <ActionChip
+            icon={UserPlus}
+            label="Invite"
+            onClick={() => onInvitePlayer(team)}
+            testId={`team-invite-${team.id}`}
+          />
+        ) : null}
+        {canEdit && onJoinSettings ? (
+          <ActionChip
+            icon={ListChecks}
+            label="Join setup"
+            onClick={() => onJoinSettings(team)}
+            testId={`team-join-setup-${team.id}`}
+          />
+        ) : null}
         <ActionChip
           icon={UserCheck}
           label={pending > 0 ? `Requests · ${pending}` : "Requests"}
@@ -174,6 +196,14 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
           onClick={() => onPostUpdate(team)}
           testId={`team-post-${team.id}`}
         />
+        {canEdit && onLogGame ? (
+          <ActionChip
+            icon={Trophy}
+            label={labels.logActivity}
+            onClick={() => onLogGame(team)}
+            testId={`team-log-game-${team.id}`}
+          />
+        ) : null}
         {canEdit && onManageHighlights ? (
           <ActionChip
             icon={BarChart3}

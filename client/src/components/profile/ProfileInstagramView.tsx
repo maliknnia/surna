@@ -498,7 +498,7 @@ export function ProfileInstagramView({
             </div>
           }
         >
-          <ProfileGamesPanel userId={userId} />
+          <ProfileGamesPanel userId={userId} isOwnProfile={isOwnProfile} />
         </Suspense>
       ) : null}
 

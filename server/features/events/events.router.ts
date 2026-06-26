@@ -1,4 +1,4 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import { z } from "zod";
 import { CreateEvent, UpdateEvent, ListQuery, RSVPBody, SaveEventRoute } from "./events.validation";
 import { createEvent, editEvent, rsvp, getEventRoute, saveEventRoute } from "./events.service";

@@ -476,6 +476,9 @@ export function resolveNotificationRoute(
       return entityPath("event", "demo-ev-5v5-soccer");
     case "team_invite":
     case "team_update":
+      if (notif.entityKind === "team" && notif.entityId) {
+        return `${entityPath("team", notif.entityId)}?join=1`;
+      }
       return entityPath("team", "dt1");
     case "nearby":
       return mapPath();

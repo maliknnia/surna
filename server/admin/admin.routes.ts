@@ -22,6 +22,7 @@ import { adminMarketplaceRouter } from "./admin.marketplace.routes";
 import { adminPaymentsRouter } from "./admin.payments.routes";
 import { getHealthSnapshot } from "../monitoring/prometheusMetrics";
 import { getBullMqMetrics } from "../worker/metrics";
+import { ensureAdminDashboardSchema } from "./ensureAdminDashboardSchema";
 
 export const adminRouter = Router();
 
@@ -38,6 +39,8 @@ adminRouter.use("/payments", adminPaymentsRouter);
 // ============================================================================
 adminRouter.get("/dashboard/stats", async (req: AdminRequest, res) => {
   try {
+    await ensureAdminDashboardSchema();
+
     const stats = await db.execute(sql`
       SELECT
         (SELECT COUNT(*) FROM ${users}) as total_users,
@@ -48,7 +51,7 @@ adminRouter.get("/dashboard/stats", async (req: AdminRequest, res) => {
         (SELECT COUNT(*) FROM ${events}) as total_events,
         (SELECT COUNT(*) FROM ${products}) as total_products,
         (SELECT COUNT(*) FROM ${orders}) as total_orders,
-        (SELECT COALESCE(SUM(balance_cents), 0) FROM ${wallets}) as total_wallet_balance
+        (SELECT COALESCE(SUM(balance), 0) FROM ${wallets}) as total_wallet_balance
     `);
 
     const queueCounts = await db.execute(sql`
@@ -57,7 +60,7 @@ adminRouter.get("/dashboard/stats", async (req: AdminRequest, res) => {
         (SELECT COUNT(*) FROM ${postComments} WHERE flagged = true) as flagged_comments,
         (SELECT COUNT(*) FROM ${teams} WHERE verified = false) as pending_teams,
         (SELECT COUNT(*) FROM ${events} WHERE approved = false) as pending_events,
-        (SELECT COUNT(*) FROM ${productSellers} WHERE verified = false) as pending_shops
+        (SELECT COUNT(*) FROM ${productSellers} WHERE is_verified = false) as pending_shops
     `);
 
     res.json({

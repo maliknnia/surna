@@ -14,6 +14,8 @@ import {
 import { z } from "zod";
 import { twoFactorSetupSchema, changePasswordSchema } from "@shared/schema";
 import { authUserId } from "../lib/authUser";
+import { complianceService } from "./complianceReporting";
+import { storage } from "../storage";
 
 const router = Router();
 
@@ -182,8 +184,7 @@ router.get('/privacy/settings', isAuthenticated, async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const privacyService = new PrivacyControlsService();
-    const settings = await privacyService.getUserPrivacySettings(userId);
+    const settings = await PrivacyControlsService.getUserPrivacySettings(userId);
     
     res.json(settings);
   } catch (error) {
@@ -199,9 +200,9 @@ router.put('/privacy/settings', isAuthenticated, async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const privacyService = new PrivacyControlsService();
-    const updatedSettings = await privacyService.updatePrivacySettings(userId, req.body);
-    
+    await PrivacyControlsService.updatePrivacySettings(userId, req.body);
+    const updatedSettings = await PrivacyControlsService.getUserPrivacySettings(userId);
+
     res.json(updatedSettings);
   } catch (error) {
     console.error('Privacy settings update error:', error);
@@ -217,8 +218,7 @@ router.get('/privacy/data-export', isAuthenticated, async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const privacyService = new PrivacyControlsService();
-    const dataExport = await privacyService.exportUserData(userId);
+    const dataExport = await PrivacyControlsService.exportUserData(userId);
     
     res.json({
       message: 'Data export completed',
@@ -240,12 +240,29 @@ router.post('/privacy/data-deletion', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Confirmation required for data deletion' });
     }
 
-    const privacyService = new PrivacyControlsService();
-    await privacyService.initiateAccountDeletion(userId, reason);
-    
-    res.json({ 
-      message: 'Account deletion initiated. Your data will be permanently deleted within 30 days.',
-      deletionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    const user = await storage.getUser(userId);
+    const email = (user?.email ?? "").trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: "User email required for deletion request" });
+    }
+
+    const result = await complianceService.submitGDPRDataDeletionRequest(
+      userId,
+      email,
+      req,
+      typeof reason === "string" ? reason : undefined,
+      { skipVerification: true },
+    );
+    if (!result.success || !result.requestId) {
+      return res.status(500).json({
+        error: result.error ?? "Failed to initiate data deletion",
+      });
+    }
+
+    res.json({
+      message: "Account deletion initiated. Your data will be permanently deleted within 30 days.",
+      requestId: result.requestId,
+      deletionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
   } catch (error) {
     console.error('Data deletion error:', error);

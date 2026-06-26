@@ -2,6 +2,7 @@
 
 let redis: Redis | null = null;
 const memCache = new Map<string, { data: any; exp: number }>();
+const cacheInflight = new Map<string, Promise<unknown>>();
 
 const MEM_MAX = 5000;
 
@@ -129,9 +130,22 @@ export async function cacheAside<T>(
 ): Promise<T> {
   const cached = await cacheGet<T>(key);
   if (cached !== null) return cached;
-  const fresh = await fetcher();
-  await cacheSet(key, fresh, ttlSec);
-  return fresh;
+
+  const pending = cacheInflight.get(key);
+  if (pending) return pending as Promise<T>;
+
+  const p = (async () => {
+    try {
+      const fresh = await fetcher();
+      await cacheSet(key, fresh, ttlSec);
+      return fresh;
+    } finally {
+      cacheInflight.delete(key);
+    }
+  })();
+
+  cacheInflight.set(key, p);
+  return p;
 }
 
 export function cacheKey(...parts: (string | number)[]): string {

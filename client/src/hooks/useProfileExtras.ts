@@ -68,6 +68,17 @@ export function useProfileExtras(
     enabled: !!userId,
   });
 
+  const { data: teamGamesSummary } = useQuery({
+    queryKey: ["/api/profile", userId, "team-games", "summary"],
+    queryFn: async () => {
+      const res = await fetch(`/api/profile/${userId}/team-games`, { credentials: "include" });
+      if (!res.ok) return { total: 0, wins: 0, winRate: 0 };
+      const json = await res.json();
+      return json.summary as { total: number; wins: number; winRate: number };
+    },
+    enabled: !!userId,
+  });
+
   return useMemo(() => {
     const sports = resolveProfileSports(
       user?.sports ?? user?.profile?.sports,
@@ -80,9 +91,22 @@ export function useProfileExtras(
       ? computeMatchStats(matches as Parameters<typeof computeMatchStats>[0], userId)
       : { total: 0, winRate: 0 };
 
+    const teamTotal = teamGamesSummary?.total ?? 0;
+    const teamWinRate = teamGamesSummary?.winRate ?? 0;
+    const combinedGames = matchStats.total + teamTotal;
+    const combinedWinRate =
+      combinedGames > 0
+        ? Math.round(
+            ((matchStats.total > 0 ? (matchStats.winRate / 100) * matchStats.total : 0) +
+              (teamTotal > 0 ? (teamWinRate / 100) * teamTotal : 0)) /
+              combinedGames *
+              100,
+          )
+        : 0;
+
     const apiLevel = gamification?.level ?? user?.stats?.level ?? 0;
-    const apiWinRate = user?.stats?.winRate ?? (matchStats.total > 0 ? matchStats.winRate : 0);
-    const apiGames = user?.stats?.gamesPlayed ?? matchStats.total;
+    const apiWinRate = user?.stats?.winRate ?? (combinedGames > 0 ? combinedWinRate : matchStats.winRate);
+    const apiGames = user?.stats?.gamesPlayed ?? combinedGames;
 
     const parsedRating = parseRating(user);
     const useDemo = isOwnProfile && apiLevel <= 1 && apiGames === 0 && parsedRating.value === 0;
@@ -112,5 +136,5 @@ export function useProfileExtras(
           : 0;
 
     return { sports, level, winRate, gamesCount, rating, ratingCount };
-  }, [user, userId, isOwnProfile, gamification, challengesData]);
+  }, [user, userId, isOwnProfile, gamification, challengesData, teamGamesSummary]);
 }

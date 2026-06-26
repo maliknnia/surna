@@ -31,6 +31,7 @@ export async function initializeInfrastructure() {
     import("./phase7Health").then(m => m.ensurePhase7HealthTables()).catch(e => logger.warn("Phase7 health tables deferred", { error: e.message })),
     import("./phase8Profile").then(m => m.ensurePhase8ProfileTables()).catch(e => logger.warn("Phase8 profile tables deferred", { error: e.message })),
     import("./phase9Mobile").then(m => m.ensurePhase9MobileTables()).catch(e => logger.warn("Phase9 mobile tables deferred", { error: e.message })),
+    import("../teams/ensureTeamLifecycleSchema").then(m => m.ensureTeamLifecycleSchema()).catch(e => logger.warn("Team lifecycle schema deferred", { error: e.message })),
   ]);
 
   try {
@@ -59,6 +60,13 @@ export async function initializeInfrastructure() {
     startTeamScheduleReminderJob();
   } catch (e: any) {
     logger.warn("Team schedule reminder job deferred", { error: e?.message });
+  }
+
+  try {
+    const { startCompliancePurgeJob } = await import("../services/compliancePurgeJob");
+    startCompliancePurgeJob();
+  } catch (e: any) {
+    logger.warn("Compliance purge job deferred", { error: e?.message });
   }
 
   initializeWorkers();

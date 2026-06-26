@@ -1,10 +1,19 @@
 import { lazy, Suspense } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProfileExtras } from "@/hooks/useProfileExtras";
 import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
 import { Link } from "wouter";
 import { ROUTES } from "@/navigation";
 import { ChevronRight } from "lucide-react";
+import {
+  fetchProfileTeamGames,
+  formatGameScore,
+  resultLabel,
+  resultTone,
+  setProfileTeamGameVisibility,
+} from "@/lib/teamGames";
+import { getSportLabels } from "@/lib/sportLabels";
 
 const Stats = lazy(() => import("@/pages/profile/sections/Stats"));
 const ChallengeHistory = lazy(() => import("@/pages/profile/sections/ChallengeHistory"));
@@ -71,11 +80,88 @@ export function ProfileStatsPanel({ userId, profileExtras }: ProfileStatsPanelPr
 
 type ProfileGamesPanelProps = {
   userId: string;
+  isOwnProfile?: boolean;
 };
 
-export function ProfileGamesPanel({ userId }: ProfileGamesPanelProps) {
+function ProfileTeamGamesList({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/profile", userId, "team-games"],
+    queryFn: () => fetchProfileTeamGames(userId),
+    enabled: !!userId,
+  });
+
+  const visibilityMutation = useMutation({
+    mutationFn: ({ participantId, showOnProfile }: { participantId: string; showOnProfile: boolean }) =>
+      setProfileTeamGameVisibility(participantId, showOnProfile),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile", userId, "team-games"] });
+    },
+  });
+
+  const games = data?.games ?? [];
+
+  if (isLoading) return <PanelFallback />;
+  if (games.length === 0) return null;
+
+  const sectionTitle = getSportLabels(null).profileActivityTitle;
+
+  return (
+    <ProfileSectionCard title={sectionTitle}>
+      <div className="space-y-3">
+        {games.map((game) => {
+          const score = formatGameScore(game);
+          const tone = resultTone(game.result);
+          const toneColor =
+            tone === "success" ? "#22c55e" : tone === "danger" ? "#ef4444" : "var(--surna-text-secondary)";
+          return (
+            <div
+              key={game.id}
+              className="flex items-start justify-between gap-3 py-2"
+              style={{ borderBottom: "1px solid var(--surna-border)" }}
+            >
+              <div className="min-w-0">
+                <div className="text-[14px] font-semibold truncate" style={{ color: "var(--surna-text)" }}>
+                  {game.teamName} vs {game.opponentName}
+                </div>
+                <div className="text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
+                  {game.playedAt ? new Date(game.playedAt).toLocaleDateString() : "—"}
+                  {score ? ` · ${score}` : ""}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] font-bold uppercase" style={{ color: toneColor }}>
+                  {resultLabel(game.result)}
+                </span>
+                {isOwnProfile ? (
+                  <button
+                    type="button"
+                    aria-label={game.showOnProfile ? "Hide on profile" : "Show on profile"}
+                    onClick={() =>
+                      visibilityMutation.mutate({
+                        participantId: game.id,
+                        showOnProfile: !game.showOnProfile,
+                      })
+                    }
+                    className="p-1 rounded-lg"
+                    style={{ color: game.showOnProfile ? "var(--surna-text-secondary)" : "var(--surna-text-muted)" }}
+                  >
+                    {game.showOnProfile ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ProfileSectionCard>
+  );
+}
+
+export function ProfileGamesPanel({ userId, isOwnProfile = false }: ProfileGamesPanelProps) {
   return (
     <div className="space-y-4">
+      <ProfileTeamGamesList userId={userId} isOwnProfile={isOwnProfile} />
       <Link href={ROUTES.challenges}>
         <button
           type="button"

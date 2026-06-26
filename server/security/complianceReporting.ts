@@ -6,6 +6,8 @@ import { auditLogger, AuditEventType, AuditSeverity } from "./auditLogging";
 import { parentalConsentService } from "./parentalConsent";
 import { dataEncryption, maskSensitiveData } from "./dataEncryption";
 import type { Request, Response } from 'express';
+import { ensureComplianceRequestsSchema } from "./ensureComplianceSchema";
+import { PrivacyControlsService } from "./privacyControls";
 
 export enum ComplianceRequestType {
   GDPR_DATA_EXPORT = 'gdpr_data_export',
@@ -81,40 +83,7 @@ class ComplianceService {
   }
 
   private async initializeDatabase(): Promise<void> {
-    try {
-      const createTableQuery = sql`
-        CREATE TABLE IF NOT EXISTS compliance_requests (
-          id VARCHAR PRIMARY KEY,
-          request_type VARCHAR NOT NULL,
-          status VARCHAR NOT NULL DEFAULT 'pending',
-          user_id VARCHAR NOT NULL,
-          user_email VARCHAR NOT NULL,
-          requested_by VARCHAR NOT NULL,
-          request_data JSONB,
-          response_data JSONB,
-          submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          processed_at TIMESTAMP WITH TIME ZONE,
-          processed_by VARCHAR,
-          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-          additional_notes TEXT,
-          verification_required BOOLEAN DEFAULT false,
-          verification_code VARCHAR,
-          ip_address VARCHAR NOT NULL,
-          user_agent TEXT,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-      `;
-      
-      await db.execute(createTableQuery);
-
-      // Create indexes
-      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_compliance_requests_user_id ON compliance_requests(user_id)`);
-      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_compliance_requests_status ON compliance_requests(status)`);
-      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_compliance_requests_type ON compliance_requests(request_type)`);
-    } catch (error) {
-      console.error('Failed to initialize compliance database:', error);
-    }
+    await ensureComplianceRequestsSchema();
   }
 
   public async submitGDPRDataExportRequest(
@@ -169,28 +138,46 @@ class ComplianceService {
   public async submitGDPRDataDeletionRequest(
     userId: string,
     userEmail: string,
-    req: Request
+    req: Request,
+    reason?: string,
+    options?: { skipVerification?: boolean },
   ): Promise<{ success: boolean; requestId?: string; error?: string }> {
     try {
+      await ensureComplianceRequestsSchema();
+
       const requestId = this.generateRequestId('gdpr_deletion');
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
       const verificationCode = this.generateVerificationCode();
+      const requestData = reason ? JSON.stringify({ reason }) : null;
+      const skipVerification = options?.skipVerification === true;
+      const needsVerification = !skipVerification;
 
       const insertQuery = sql`
         INSERT INTO compliance_requests (
           id, request_type, user_id, user_email, requested_by, expires_at,
-          verification_required, verification_code, ip_address, user_agent
+          verification_required, verification_code, ip_address, user_agent,
+          request_data, additional_notes
         ) VALUES (
           ${requestId}, ${ComplianceRequestType.GDPR_DATA_DELETION}, ${userId},
-          ${userEmail}, ${userId}, ${expiresAt}, ${true}, ${verificationCode},
-          ${req.ip}, ${req.get('User-Agent')}
+          ${userEmail}, ${userId}, ${expiresAt}, ${needsVerification}, ${needsVerification ? verificationCode : null},
+          ${req.ip ?? "unknown"}, ${req.get("User-Agent") ?? null},
+          ${requestData}::jsonb, ${reason ?? null}
         )
       `;
 
       await db.execute(insertQuery);
 
-      // Send verification email
-      await this.sendVerificationEmail(userEmail, verificationCode, 'data deletion');
+      if (skipVerification) {
+        await db.execute(sql`
+          UPDATE compliance_requests
+          SET verification_required = false, updated_at = NOW()
+          WHERE id = ${requestId}
+        `);
+      }
+
+      if (needsVerification) {
+        await this.sendVerificationEmail(userEmail, verificationCode, 'data deletion');
+      }
 
       // Log audit event
       await auditLogger.log({
@@ -213,6 +200,30 @@ class ComplianceService {
       console.error('Failed to submit GDPR data deletion request:', error);
       return { success: false, error: 'Failed to submit data deletion request' };
     }
+  }
+
+  /** Process pending GDPR deletions whose grace period (expires_at) has passed. */
+  public async processDueDeletionRequests(): Promise<{ processed: number; errors: number }> {
+    await ensureComplianceRequestsSchema();
+
+    const due = await db.execute(sql`
+      SELECT id FROM compliance_requests
+      WHERE request_type = ${ComplianceRequestType.GDPR_DATA_DELETION}
+        AND status = ${ComplianceRequestStatus.PENDING}
+        AND expires_at <= NOW()
+        AND (verification_required IS NOT TRUE)
+    `);
+
+    let processed = 0;
+    let errors = 0;
+
+    for (const row of due.rows as Array<{ id: string }>) {
+      const result = await this.processComplianceRequest(row.id, "compliance_purge_job");
+      if (result.success) processed += 1;
+      else errors += 1;
+    }
+
+    return { processed, errors };
   }
 
   public async verifyComplianceRequest(
@@ -342,60 +353,11 @@ class ComplianceService {
 
   private async deleteUserData(userId: string): Promise<{ recordsAffected: number; deletedCategories: string[] }> {
     try {
-      let recordsAffected = 0;
-      const deletedCategories: string[] = [];
-
-      // Delete user data in reverse dependency order
-      
-      // Delete analytics events
-      const analyticsResult = await db.execute(sql`DELETE FROM analytics_events WHERE user_id = ${userId}`);
-      recordsAffected += analyticsResult.rowCount || 0;
-      deletedCategories.push('analytics');
-
-      // Delete messages
-      const messagesResult = await db.execute(sql`DELETE FROM messages WHERE sender_id = ${userId}`);
-      recordsAffected += messagesResult.rowCount || 0;
-      deletedCategories.push('messages');
-
-      // Delete comments
-      const commentsResult = await db.execute(sql`DELETE FROM comments WHERE user_id = ${userId}`);
-      recordsAffected += commentsResult.rowCount || 0;
-      deletedCategories.push('comments');
-
-      // Delete posts
-      const postsResult = await db.execute(sql`DELETE FROM posts WHERE user_id = ${userId}`);
-      recordsAffected += postsResult.rowCount || 0;
-      deletedCategories.push('posts');
-
-      // Remove from teams (but don't delete teams)
-      const teamMembersResult = await db.execute(sql`DELETE FROM team_members WHERE user_id = ${userId}`);
-      recordsAffected += teamMembersResult.rowCount || 0;
-      deletedCategories.push('team_memberships');
-
-      // Remove from events
-      const eventParticipantsResult = await db.execute(sql`DELETE FROM event_participants WHERE user_id = ${userId}`);
-      recordsAffected += eventParticipantsResult.rowCount || 0;
-      deletedCategories.push('event_participations');
-
-      // Delete purchases (keep for accounting, but anonymize)
-      const purchasesResult = await db.execute(sql`
-        UPDATE purchases 
-        SET user_id = 'anonymized', email = 'anonymized@deleted.user'
-        WHERE user_id = ${userId}
-      `);
-      recordsAffected += purchasesResult.rowCount || 0;
-      deletedCategories.push('purchases_anonymized');
-
-      // Delete parental consent
-      await db.execute(sql`DELETE FROM parental_consent WHERE user_id = ${userId}`);
-      deletedCategories.push('parental_consent');
-
-      // Finally, delete user profile
-      const userResult = await db.execute(sql`DELETE FROM users WHERE id = ${userId}`);
-      recordsAffected += userResult.rowCount || 0;
-      deletedCategories.push('profile');
-
-      return { recordsAffected, deletedCategories };
+      await PrivacyControlsService.deleteUserData(userId, true);
+      return {
+        recordsAffected: 1,
+        deletedCategories: ["profile_anonymized"],
+      };
     } catch (error) {
       console.error('Failed to delete user data:', error);
       throw error;
@@ -567,7 +529,28 @@ class ComplianceService {
     try {
       const query = sql`SELECT * FROM compliance_requests WHERE id = ${requestId}`;
       const result = await db.execute(query);
-      return result.rows[0] as ComplianceRequest || null;
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (!row) return null;
+
+      return {
+        id: String(row.id),
+        requestType: row.request_type as ComplianceRequestType,
+        status: row.status as ComplianceRequestStatus,
+        userId: String(row.user_id),
+        userEmail: String(row.user_email),
+        requestedBy: String(row.requested_by),
+        requestData: row.request_data,
+        responseData: row.response_data,
+        submittedAt: row.submitted_at as Date,
+        processedAt: row.processed_at as Date | undefined,
+        processedBy: row.processed_by as string | undefined,
+        expiresAt: row.expires_at as Date,
+        additionalNotes: row.additional_notes as string | undefined,
+        verificationRequired: row.verification_required === true,
+        verificationCode: row.verification_code as string | undefined,
+        ipAddress: String(row.ip_address ?? ""),
+        userAgent: String(row.user_agent ?? ""),
+      };
     } catch (error) {
       return null;
     }

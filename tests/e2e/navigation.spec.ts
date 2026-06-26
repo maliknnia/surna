@@ -1,16 +1,19 @@
 // E2E tests for navigation and basic functionality
 import { test, expect } from "@playwright/test";
-import { mockAuthenticatedSession, prepareE2EPage, dismissCookieConsent } from "./helpers";
+import { mockAuthenticatedSession, prepareE2EPage, dismissCookieConsent, gotoApp, waitForMobileShell } from "./helpers";
 
 test.describe("Navigation", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.beforeEach(async ({ page }) => {
     await prepareE2EPage(page);
     await mockAuthenticatedSession(page);
   });
 
   test("should navigate between main shell panels", async ({ page }) => {
-    await page.goto("/");
+    await gotoApp(page);
     await dismissCookieConsent(page);
+    await waitForMobileShell(page);
     await expect(page.locator('[data-testid="mobile-home"]')).toBeVisible();
 
     await page.locator('[data-testid="nav-events"]').click();
@@ -32,8 +35,9 @@ test.describe("Navigation", () => {
 
   test("should show bottom navigation on mobile", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto("/");
+    await gotoApp(page);
     await dismissCookieConsent(page);
+    await waitForMobileShell(page);
 
     const bottomNav = page.locator('nav[aria-label="Main navigation"]');
     await expect(bottomNav).toBeVisible();
@@ -42,14 +46,14 @@ test.describe("Navigation", () => {
   });
 
   test("should open feed as a standalone route", async ({ page }) => {
-    await page.goto("/feed");
+    await gotoApp(page, "/feed");
 
     await expect(page).toHaveURL(/\/feed/);
     await expect(page.locator('[data-testid="tab-home"]')).toBeVisible();
   });
 
   test("should handle 404 pages correctly", async ({ page }) => {
-    await page.goto("/non-existent-page");
+    await gotoApp(page, "/non-existent-page");
 
     await expect(page.locator('[data-testid="not-found-page"]')).toBeVisible();
     await expect(page.locator('[data-testid="link-home"]')).toBeVisible();

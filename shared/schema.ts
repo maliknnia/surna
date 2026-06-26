@@ -164,8 +164,13 @@ export const teams = pgTable("teams", {
   followersCount: integer("followers_count").default(0), // Package #4: Follow count
   sponsors: jsonb("sponsors"), // Package #4: Sponsor array [{id, name, logo, link, tier}]
   isPublic: boolean("is_public").default(true),
-  /** open = instant join; approval = captain reviews join requests */
+  /** open | approval | invite_only */
   joinPolicy: varchar("join_policy").default("open"),
+  /** Optional join fee (display + acknowledge for v1; cents) */
+  joinFeeCents: integer("join_fee_cents").default(0),
+  joinFeeNote: text("join_fee_note"),
+  /** Pre-join questions + agreement documents configured by captain */
+  joinRequirements: jsonb("join_requirements").default({ questions: [], documents: [] }),
   /** Curated highlight video post ids (captain-managed; Pro can extend later) */
   featuredHighlightIds: text("featured_highlight_ids").array().default(sql`ARRAY[]::text[]`),
   maxMembers: integer("max_members").default(20),
@@ -199,6 +204,13 @@ export const teamJoinRequests = pgTable("team_join_requests", {
   teamId: varchar("team_id").notNull().references(() => teams.id),
   userId: varchar("user_id").notNull().references(() => users.id),
   message: text("message"),
+  answers: jsonb("answers").default({}),
+  agreedDocuments: jsonb("agreed_documents").default([]),
+  /** not_required | acknowledged | paid */
+  paymentStatus: varchar("payment_status").default("not_required"),
+  /** self | invite */
+  source: varchar("source").default("self"),
+  invitedBy: varchar("invited_by").references(() => users.id),
   status: varchar("status").default("pending"), // 'pending', 'approved', 'rejected'
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
@@ -206,6 +218,19 @@ export const teamJoinRequests = pgTable("team_join_requests", {
 }, (table) => ({
   teamUserIdx: index("team_join_requests_team_user_idx").on(table.teamId, table.userId),
   teamCreatedIdx: index("team_join_requests_team_created_idx").on(table.teamId, table.createdAt),
+}));
+export const teamMemberInvites = pgTable("team_member_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  invitedBy: varchar("invited_by").notNull().references(() => users.id),
+  status: varchar("status").default("pending"), // pending | accepted | declined | cancelled
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  respondedAt: timestamp("responded_at"),
+}, (table) => ({
+  userStatusIdx: index("team_member_invites_user_status_idx").on(table.userId, table.status),
+  teamStatusIdx: index("team_member_invites_team_status_idx").on(table.teamId, table.status),
 }));
 export const teamStats = pgTable("team_stats", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -219,6 +244,32 @@ export const teamStats = pgTable("team_stats", {
   topPlayerId: varchar("top_player_id").references(() => users.id),
   lastUpdated: timestamp("last_updated").defaultNow(),
 });
+
+/** Logged friendly/competitive games for consumer teams */
+export const teamGames = pgTable("team_games", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id),
+  loggedBy: varchar("logged_by").notNull().references(() => users.id),
+  opponentName: varchar("opponent_name").notNull(),
+  /** win | loss | draw */
+  result: varchar("result").notNull(),
+  ourScore: integer("our_score"),
+  theirScore: integer("their_score"),
+  playedAt: timestamp("played_at").defaultNow(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const teamGameParticipants = pgTable("team_game_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gameId: varchar("game_id").notNull().references(() => teamGames.id, { onDelete: "cascade" }),
+  teamId: varchar("team_id").notNull().references(() => teams.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  showOnProfile: boolean("show_on_profile").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userShowIdx: index("team_game_participants_user_idx").on(table.userId, table.showOnProfile),
+}));
 
 // User follows (social connections) — legacy; Phase 3 uses `follows` table
 export const userFollows = pgTable("user_follows", {

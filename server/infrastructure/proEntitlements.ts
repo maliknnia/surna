@@ -97,6 +97,7 @@ export async function getTeamEntitlement(teamId: string): Promise<ProTeamEntitle
 
 /** Dev/demo: allow any signed-in user into Pro without a paid row. */
 export function isProEntitlementOpenAccess(): boolean {
+  if (process.env.PRO_ENTITLEMENT_STRICT === "1") return false;
   return (
     process.env.PRO_ENTITLEMENT_OPEN === "1" ||
     process.env.LOCAL_AUTH_BYPASS === "1" ||

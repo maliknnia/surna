@@ -87,7 +87,10 @@ instantTeamsRouter.post("/", async (req, res) => {
   if (!userId) return;
   try {
     const validated = createTeamSchema.parse(req.body);
-    const team = await storage.createInstantTeam(userId, validated);
+    const team = await storage.createInstantTeam(userId, {
+      ...validated,
+      startTime: new Date(validated.startTime),
+    });
     res.status(201).json(team);
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });

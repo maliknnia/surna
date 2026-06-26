@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { fetchTeamJoinTemplate } from "@/lib/teamJoin";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,9 @@ interface JoinRequest {
   id: string;
   userId: string;
   message?: string | null;
+  answers?: Record<string, string | boolean> | null;
+  agreedDocuments?: { documentId: string; agreedAt: string }[] | null;
+  paymentStatus?: string | null;
   status: string;
   createdAt: string;
   username?: string | null;
@@ -32,6 +36,15 @@ export function TeamJoinRequestsSheet({ team, open, onOpenChange }: Props) {
     queryKey: ["/api/teams", team?.id, "join-requests"],
     enabled: open && !!team?.id,
   });
+
+  const { data: joinTemplate } = useQuery({
+    queryKey: ["/api/teams", team?.id, "join-template"],
+    queryFn: () => fetchTeamJoinTemplate(team!.id),
+    enabled: open && !!team?.id,
+  });
+
+  const questionLabel = (id: string) =>
+    joinTemplate?.requirements.questions.find((q) => q.id === id)?.label ?? "Answer";
 
   const decideMutation = useMutation({
     mutationFn: async ({ id, decision }: { id: string; decision: "approved" | "rejected" }) => {
@@ -145,6 +158,24 @@ export function TeamJoinRequestsSheet({ team, open, onOpenChange }: Props) {
                       style={{ color: "var(--surna-text-secondary)" }}
                     >
                       {r.message}
+                    </p>
+                  )}
+                  {r.answers && Object.keys(r.answers).length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {Object.entries(r.answers).map(([key, val]) => (
+                        <p key={key} className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
+                          <span className="font-medium" style={{ color: "var(--surna-text)" }}>
+                            {questionLabel(key)}
+                          </span>
+                          {": "}
+                          {typeof val === "boolean" ? (val ? "Yes" : "No") : String(val)}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {r.paymentStatus && r.paymentStatus !== "not_required" && (
+                    <p className="text-[11px] mt-1" style={{ color: "var(--surna-text-muted)" }}>
+                      Fee: {r.paymentStatus}
                     </p>
                   )}
                   <div className="flex items-center gap-2 mt-2">

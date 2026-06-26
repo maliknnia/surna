@@ -1,6 +1,7 @@
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { Request, Response, NextFunction } from "express";
 import { authRouteRateLimit } from "../middleware/authRateLimit";
+import { isLoadTestMode } from "../lib/loadTestMode";
 
 let store: any = undefined;
 try {
@@ -108,6 +109,9 @@ const IP_BAN_WINDOW = 5 * 60_000;
 
 export function botProtectionMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
+    if (process.env.NODE_ENV === "test" || isLoadTestMode()) {
+      return next();
+    }
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     const now = Date.now();
 

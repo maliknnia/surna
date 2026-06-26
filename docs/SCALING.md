@@ -48,7 +48,16 @@ If you exceed the budget, switch the connection string to Neon's pooled endpoint
 
 ## Load testing
 
-The k6 script is at `scripts/loadtest.k6.js`. It runs **two scenarios in
+**Full staging soak (500 → 100k VUs)** — see **[STAGING_SOAK_CHECKLIST.md](./STAGING_SOAK_CHECKLIST.md)** and `scripts/loadtest.k6.soak.js`:
+
+```bash
+BASE_URL=https://your-staging.replit.app JWT_SECRET=... npm run test:load:staging
+SOAK_PRESET=apex SKIP_WS=1 BASE_URL=... JWT_SECRET=... npm run test:load:staging:100k
+```
+
+Presets: `smoke` (500) · `target` (1.5k) · `scale` (10k) · `apex` (100k, distributed k6 required).
+
+The standard k6 script (`scripts/loadtest.k6.js`) runs **two scenarios in
 parallel** so a single run validates both the HTTP and the realtime path:
 
 - `http_reads` (80% of VUs) — mixed GETs against **public** endpoints
@@ -63,8 +72,9 @@ parallel** so a single run validates both the HTTP and the realtime path:
   adapter is fanning events across instances and that the
   WebSocket-only config works without sticky sessions.
 
-**Easy mode** — `scripts/run-loadtest.sh` mints a `WS_TOKEN` for you from
-`JWT_SECRET` (must match the staging server's secret) and then runs k6:
+**Easy mode (cross-platform)** — `npm run test:load:staging` or `scripts/run-loadtest-staging.mjs` mints `WS_TOKEN` from `JWT_SECRET` and runs the soak script.
+
+**Bash wrapper** — `scripts/run-loadtest.sh` runs the original `loadtest.k6.js`:
 
 ```bash
 # Install k6 once: https://k6.io/docs/get-started/installation/
