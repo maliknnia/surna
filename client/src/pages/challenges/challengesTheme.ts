@@ -51,7 +51,7 @@ export const CHALLENGE_ACCESS_RULES = {
   player1v1: {
     title: "1v1 challenge",
     can: ["You + one opponent after they accept", "Direct invite from their profile"],
-    cannot: ["Random users can't join unless you choose Open type", "Opponent must accept before match starts"],
+    cannot: ["Random users can't join unless you choose Open type", "Opponent must accept before match starts", "Public listings require Open type, not 1v1"],
   },
   teamVsTeam: {
     title: "Team vs team",
@@ -60,8 +60,8 @@ export const CHALLENGE_ACCESS_RULES = {
   },
   open: {
     title: "Open challenge",
-    can: ["Anyone on SURNA can request to join", "Listed in Nearby until full"],
-    cannot: ["You pick who gets in if capacity is limited", "Invite-only users need a public link"],
+    can: ["Anyone on SURNA can request to join", "Listed in Nearby when public until full"],
+    cannot: ["You pick who gets in if capacity is limited", "Must be public or private — not invite-only"],
   },
 } as const;
 

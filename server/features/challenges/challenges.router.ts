@@ -127,6 +127,20 @@ export function createChallengesRouter(io: any): Router {
     }
   });
 
+  // GET /api/competitive-challenges/can-challenge/:userId — before /:id (first registered wins)
+  router.get("/can-challenge/:userId", async (req: any, res, next) => {
+    try {
+      if (!req.jwtUser) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      const { canUserChallenge } = await import("../../services/challengePrivacyService");
+      const allowed = await canUserChallenge(req.params.userId, req.jwtUser.id);
+      res.json({ allowed });
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
   // GET /api/competitive-challenges/:id - Get match details
   router.get("/:id", async (req: any, res, next) => {
     try {

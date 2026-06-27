@@ -30,8 +30,17 @@ export class ChallengesService {
     await ensurePhase6SportTables();
 
     const {
-      validateChallengeCreation,
-    } = await import("../../services/sportChallengeRules");
+      validateMatchForm,
+      resolveHostTeamForUser,
+    } = await import("../../services/challengeRulesEngine");
+    const { validateChallengeCreation } = await import("../../services/sportChallengeRules");
+
+    validateMatchForm({
+      type: data.type,
+      visibility: data.visibility ?? "public",
+      opponentId: data.opponentId,
+      opponentType: data.opponentType,
+    });
 
     if (data.opponentId && data.opponentType === "user") {
       const { canUserChallenge } = await import("../../services/challengePrivacyService");
@@ -41,25 +50,44 @@ export class ChallengesService {
       }
     }
 
-    const creatorType = data.hostTeamId ? "team" : "user";
-    const creatorId = data.hostTeamId ?? userId;
+    let hostTeamId = data.hostTeamId as string | undefined;
+    if (data.type === "teamVsTeam" && data.opponentType === "team" && !hostTeamId) {
+      hostTeamId = (await resolveHostTeamForUser(userId, data.sport)) ?? undefined;
+    }
+
+    const creatorType = hostTeamId ? "team" : "user";
+    const creatorId = hostTeamId ?? userId;
 
     const { challengeType } = await validateChallengeCreation({
       sport: data.sport,
       type: data.type,
       creatorId,
       creatorType,
+      hostTeamId,
       opponentId: data.opponentId,
       opponentType: data.opponentType,
     });
 
     const match = await challengesRepo.createMatch({
-      ...data,
+      title: data.title,
+      type: data.type,
+      sport: data.sport,
+      rules: data.rules,
+      visibility: data.visibility,
+      location: data.location,
+      timeStart: data.timeStart ? new Date(data.timeStart) : undefined,
+      timeEnd: data.timeEnd ? new Date(data.timeEnd) : undefined,
+      entryFee: data.entryFee,
+      reward: data.reward,
+      capacity: data.capacity,
+      coverMediaId: data.coverMediaId,
+      opponentType: data.opponentType,
+      opponentId: data.opponentId,
       challengeType,
-      creatorType: data.hostTeamId ? "team" : "user",
-      creatorId: data.hostTeamId ?? userId,
-      status: data.visibility === 'invite' && data.opponentId ? 'invited' : 'pending',
-    } as any);
+      creatorType: "user",
+      creatorId: userId,
+      status: data.visibility === "invite" && data.opponentId ? "invited" : "pending",
+    });
 
     // Add creator as participant
     await challengesRepo.addParticipant({
@@ -107,6 +135,10 @@ export class ChallengesService {
       throw new Error('Match not found');
     }
 
+    const participants = await challengesRepo.getParticipants(matchId);
+    const { assertCanAcceptChallenge } = await import("../../services/challengeRulesEngine");
+    await assertCanAcceptChallenge(match, userId, participants);
+
     const challengeType =
       (match as { challengeType?: string }).challengeType ??
       (await import("../../services/sportChallengeRules")).resolveChallengeType(match.sport);
@@ -116,7 +148,9 @@ export class ChallengesService {
       await validateContactMatchUsers(match.creatorId, userId);
     }
 
-    await challengesRepo.updateParticipantStatus(matchId, userId, 'accepted');
+    const pendingGuest = participants.find((p) => p.role === "guest" && p.status === "pending");
+    const participantId = pendingGuest?.participantId ?? userId;
+    await challengesRepo.updateParticipantStatus(matchId, participantId, "accepted");
 
     // Update match status
     const updatedMatch = await challengesRepo.updateMatch(matchId, {
@@ -234,9 +268,9 @@ export class ChallengesService {
       throw new Error('Match not found');
     }
 
-    if (match.type !== 'open') {
-      throw new Error('Only open challenges can be joined');
-    }
+    const participants = await challengesRepo.getParticipants(matchId);
+    const { assertCanJoinOpenChallenge } = await import("../../services/challengeRulesEngine");
+    await assertCanJoinOpenChallenge(match, userId, participants);
 
     // Add as participant
     await challengesRepo.addParticipant({

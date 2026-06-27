@@ -62,7 +62,25 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     toast({ title: "Invite", description: "Invite to team/event..." });
   };
 
-  const handleChallenge = () => {
+  const handleChallenge = async () => {
+    try {
+      const res = await fetch(`/api/competitive-challenges/can-challenge/${encodeURIComponent(profile.id)}`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.allowed) {
+          toast({
+            title: "Can't challenge",
+            description: "This player doesn't accept challenges from you.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    } catch {
+      // Fall through to create — server will enforce on submit
+    }
     window.location.href = `/challenges/create?opponentId=${encodeURIComponent(profile.id)}&opponentType=user`;
   };
 

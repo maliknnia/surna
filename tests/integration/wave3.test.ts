@@ -161,6 +161,8 @@ describe.skipIf(!hasDatabase)("Wave 3 — marketplace, coaches, challenges, inst
       expect(challenger.userId).toBeTruthy();
       expect(opponent.userId).toBeTruthy();
 
+      await apiPost(challenger.agent, `/api/users/${opponent.userId}/follow`, {});
+
       const createRes = await apiPost(challenger.agent, "/api/competitive-challenges", {
         title: `Wave3 Match ${Date.now().toString(36)}`,
         type: "player1v1",
@@ -184,6 +186,8 @@ describe.skipIf(!hasDatabase)("Wave 3 — marketplace, coaches, challenges, inst
       expect(reportRes.status).toBe(200);
       expect(reportRes.body.id ?? reportRes.body.result?.id).toBeTruthy();
 
+      await apiPost(challenger.agent, `/api/users/${other.userId}/follow`, {});
+
       const declineCreate = await apiPost(challenger.agent, "/api/competitive-challenges", {
         title: `Decline Match ${Date.now().toString(36)}`,
         type: "player1v1",
@@ -205,6 +209,47 @@ describe.skipIf(!hasDatabase)("Wave 3 — marketplace, coaches, challenges, inst
         .get(`/api/competitive-challenges/ratings/${challenger.userId}`)
         .expect(200);
       expect(ratings.body.ratings).toBeDefined();
+    });
+
+    it("rejects invalid type + visibility combos and enforces open join capacity", async () => {
+      const creator = await readyTestUser(app, "RulesCreator");
+      const joiner = await readyTestUser(app, "RulesJoiner");
+
+      const soloPublic = await apiPost(creator.agent, "/api/competitive-challenges", {
+        title: "Bad solo",
+        type: "solo",
+        sport: "Running",
+        visibility: "public",
+      });
+      expect(soloPublic.status).toBeGreaterThanOrEqual(400);
+
+      const openInvite = await apiPost(creator.agent, "/api/competitive-challenges", {
+        title: "Bad open",
+        type: "open",
+        sport: "Tennis",
+        visibility: "invite",
+      });
+      expect(openInvite.status).toBeGreaterThanOrEqual(400);
+
+      const createOpen = await apiPost(creator.agent, "/api/competitive-challenges", {
+        title: `Open cap ${Date.now().toString(36)}`,
+        type: "open",
+        sport: "Tennis",
+        visibility: "public",
+        capacity: 2,
+      });
+      expect(createOpen.status).toBe(200);
+      const openId = createOpen.body.id as string;
+
+      const join1 = await apiPost(joiner.agent, `/api/competitive-challenges/${openId}/join`, {});
+      expect(join1.status).toBe(200);
+
+      const joinDup = await apiPost(joiner.agent, `/api/competitive-challenges/${openId}/join`, {});
+      expect(joinDup.status).toBeGreaterThanOrEqual(400);
+
+      const filler = await readyTestUser(app, "RulesFiller");
+      const joinFull = await apiPost(filler.agent, `/api/competitive-challenges/${openId}/join`, {});
+      expect(joinFull.status).toBeGreaterThanOrEqual(400);
     });
   });
 

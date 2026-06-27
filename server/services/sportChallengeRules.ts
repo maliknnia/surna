@@ -63,14 +63,20 @@ export async function validateChallengeCreation(params: {
   type: string;
   creatorId: string;
   creatorType?: string;
+  hostTeamId?: string;
   opponentId?: string;
   opponentType?: string;
 }): Promise<{ challengeType: ChallengeType }> {
   const challengeType = resolveChallengeType(params.sport);
 
   if (challengeType === "structured" && params.type === "teamVsTeam" && params.opponentId) {
-    const hostTeamId = params.creatorType === "team" ? params.creatorId : null;
-    if (!hostTeamId) throw new Error("Structured team sports require a team challenger");
+    const hostTeamId =
+      params.hostTeamId ?? (params.creatorType === "team" ? params.creatorId : null);
+    if (!hostTeamId) {
+      throw new Error(
+        "Structured team sports require you to challenge as a team — captain a matching roster first",
+      );
+    }
     const hostSize = await getTeamSize(hostTeamId, params.sport);
     const guestSize = await getTeamSize(params.opponentId, params.sport);
     if (hostSize !== guestSize) {
