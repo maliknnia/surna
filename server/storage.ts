@@ -133,7 +133,7 @@ import {
   type ProTeamEquipmentIssued,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql, count, asc, lt, gte, lte, isNotNull } from "drizzle-orm";
+import { eq, desc, and, or, sql, count, asc, lt, gte, lte, isNotNull, inArray } from "drizzle-orm";
 import { formatApiComment, formatApiCommentFromJoin, type ApiComment } from "./lib/commentFormat";
 
 export interface IStorage {
@@ -284,7 +284,7 @@ export interface IStorage {
   
   // Instant Teams operations
   createInstantTeam(creatorId: string, data: any): Promise<InstantTeam>;
-  getInstantTeams(filters?: { sport?: string; status?: string; skillLevel?: string }): Promise<any[]>;
+  getInstantTeams(filters?: { sport?: string; status?: string; skillLevel?: string }, viewerId?: string): Promise<any[]>;
   getInstantTeam(id: string): Promise<any | undefined>;
   joinInstantTeam(teamId: string, userId: string): Promise<boolean>;
   leaveInstantTeam(teamId: string, userId: string): Promise<boolean>;
@@ -2364,7 +2364,7 @@ export class DatabaseStorage implements IStorage {
     return team;
   }
 
-  async getInstantTeams(filters?: { sport?: string; status?: string; skillLevel?: string }): Promise<any[]> {
+  async getInstantTeams(filters?: { sport?: string; status?: string; skillLevel?: string }, viewerId?: string): Promise<any[]> {
     const conditions = [eq(instantTeams.status, filters?.status || 'active')];
     if (filters?.sport) conditions.push(eq(instantTeams.sport, filters.sport));
     if (filters?.skillLevel && filters.skillLevel !== 'any') conditions.push(eq(instantTeams.skillLevel, filters.skillLevel));
@@ -2380,7 +2380,27 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(instantTeams.startTime))
       .limit(50);
 
-    return teams.map(r => ({ ...r.team, creator: r.creator }));
+    const rows = teams.map(r => ({ ...r.team, creator: r.creator }));
+    if (!viewerId || rows.length === 0) return rows;
+
+    const teamIds = rows.map((t) => t.id);
+    const memberships = await db
+      .select({ teamId: instantTeamMembers.teamId })
+      .from(instantTeamMembers)
+      .where(and(inArray(instantTeamMembers.teamId, teamIds), eq(instantTeamMembers.userId, viewerId)));
+    const memberSet = new Set(memberships.map((m) => m.teamId));
+
+    const chatByTeam = new Map<string, string>();
+    for (const teamId of memberSet) {
+      const groupId = await this.getInstantTeamMessengerGroupId(teamId);
+      if (groupId) chatByTeam.set(teamId, groupId);
+    }
+
+    return rows.map((t) => ({
+      ...t,
+      isMember: memberSet.has(t.id),
+      messengerGroupId: chatByTeam.get(t.id),
+    }));
   }
 
   async getInstantTeam(id: string): Promise<any | undefined> {
@@ -2401,6 +2421,26 @@ export class DatabaseStorage implements IStorage {
     if (!team || team.status !== 'active') return false;
     const currentJoined = team.playersJoined ?? 0;
     if (currentJoined >= team.playersNeeded) return false;
+
+    if (team.visibility === "invite-only" && team.creatorId !== userId) {
+      const [invite] = await db
+        .select()
+        .from(instantTeamInvites)
+        .where(
+          and(
+            eq(instantTeamInvites.teamId, teamId),
+            eq(instantTeamInvites.toUserId, userId),
+            or(eq(instantTeamInvites.status, "pending"), eq(instantTeamInvites.status, "accepted")),
+          ),
+        );
+      if (!invite) return false;
+      if (invite.status === "pending") {
+        await db
+          .update(instantTeamInvites)
+          .set({ status: "accepted" })
+          .where(eq(instantTeamInvites.id, invite.id));
+      }
+    }
 
     const [existing] = await db.select().from(instantTeamMembers).where(and(eq(instantTeamMembers.teamId, teamId), eq(instantTeamMembers.userId, userId)));
     if (existing) return false;

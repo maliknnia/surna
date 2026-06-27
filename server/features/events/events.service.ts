@@ -131,6 +131,20 @@ export async function rsvp(
     }
   }
 
+  if (status === "going" || status === "interested") {
+    try {
+      const messengerService = new MessengerService(null);
+      const title = String((ev as { title?: string }).title ?? "Event");
+      await messengerService.createGroup(userId, {
+        name: title,
+        description: `Event chat · ${eventId}`,
+        eventId,
+      });
+    } catch (err) {
+      console.warn("[Events] RSVP event chat join skipped:", err);
+    }
+  }
+
   return { rsvp: row, ticket, waitlisted: status === "waitlist" };
 }
 

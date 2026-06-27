@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { MessageCircle, Users, Search, Plus, Edit, X, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -9,6 +9,9 @@ import GroupChat from './GroupChat';
 import CreateGroupModal from './CreateGroupModal';
 import UserSearchModal from './UserSearchModal';
 import { getMessengerTheme } from './messengerTheme';
+import { EntitySectionTabs } from '@/components/entity';
+import { apiRequest } from '@/lib/queryClient';
+import { useMessengerRealtime } from '@/hooks/useMessengerRealtime';
 
 interface MessengerAppProps {
   onClose?: () => void;
@@ -18,12 +21,15 @@ interface MessengerAppProps {
 export default function MessengerApp({ onClose, isPage = false }: MessengerAppProps) {
   const { user } = useAuth();
   const { isDark } = useTheme();
+  const [, setLocation] = useLocation();
   const t = getMessengerTheme(isDark);
   const [selectedTab, setSelectedTab]           = useState<'dm' | 'groups'>('dm');
   const [selectedConversation, setSelectedConversation] = useState<{ type: 'dm' | 'group'; id: string; data?: any } | null>(null);
   const [searchQuery, setSearchQuery]           = useState('');
   const [showUserSearch, setShowUserSearch]     = useState(false);
   const [showCreateGroup, setShowCreateGroup]   = useState(false);
+
+  useMessengerRealtime(true);
 
   useEffect(() => { setSelectedConversation(null); }, [selectedTab]);
 
@@ -40,8 +46,67 @@ export default function MessengerApp({ onClose, isPage = false }: MessengerAppPr
     if (peerId) {
       setSelectedTab("dm");
       setSelectedConversation({ type: "dm", id: peerId });
+      return;
     }
-  }, [isPage]);
+
+    const context = params.get("context");
+    const teamId = params.get("id");
+    const eventId = params.get("eventId");
+    const placeId = params.get("placeId");
+
+    if (context === "team" && teamId) {
+      void (async () => {
+        try {
+          const instant = await fetch(`/api/instant-teams/${teamId}`, { credentials: "include" });
+          if (instant.ok) {
+            const data = await instant.json();
+            const gid = data.messengerGroupId ?? data.messenger_group_id;
+            if (gid) {
+              setSelectedTab("groups");
+              setSelectedConversation({ type: "group", id: String(gid) });
+              return;
+            }
+          }
+        } catch {
+          /* fall through */
+        }
+        setLocation(`/teams/${teamId}#chat`);
+      })();
+      return;
+    }
+
+    if (eventId) {
+      void (async () => {
+        try {
+          const ev = await fetch(`/api/events/${eventId}`, { credentials: "include" });
+          if (ev.ok) {
+            const data = await ev.json();
+            const gid = data.chat_group_id ?? data.chatGroupId;
+            if (gid) {
+              setSelectedTab("groups");
+              setSelectedConversation({ type: "group", id: String(gid) });
+              return;
+            }
+          }
+          const group = (await apiRequest("POST", "/api/messenger/groups", {
+            name: "Event chat",
+            eventId,
+          })) as { id?: string };
+          if (group?.id) {
+            setSelectedTab("groups");
+            setSelectedConversation({ type: "group", id: group.id });
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+      return;
+    }
+
+    if (context === "place" && placeId) {
+      setLocation(`/places/${placeId}`);
+    }
+  }, [isPage, setLocation]);
 
   const handleStartConversation = (userId: string, userData?: any) => {
     if (userData?.type === 'group') {
@@ -152,24 +217,16 @@ export default function MessengerApp({ onClose, isPage = false }: MessengerAppPr
             />
           </div>
 
-          <div className="flex gap-1.5 mt-2.5">
-            {(['dm', 'groups'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setSelectedTab(tab)}
-                className="flex-1 h-9 rounded-full border-none cursor-pointer flex items-center justify-center gap-1.5 text-[13px] font-bold transition-all duration-150"
-                style={{
-                  background: selectedTab === tab ? t.tabActiveBg : t.tabInactiveBg,
-                  color: selectedTab === tab ? t.tabActiveText : t.tabInactiveText,
-                }}
-                data-testid={`tab-${tab}`}
-              >
-                {tab === 'dm' ? <MessageCircle size={14} /> : <Users size={14} />}
-                {tab === 'dm' ? 'Direct' : 'Groups'}
-              </button>
-            ))}
-          </div>
+          <EntitySectionTabs
+            tabs={[
+              { id: 'dm', label: 'Direct' },
+              { id: 'groups', label: 'Groups' },
+            ]}
+            activeId={selectedTab}
+            onChange={(id) => setSelectedTab(id as 'dm' | 'groups')}
+            stickyTop="top-[7.5rem]"
+            testIdPrefix="messenger-tab"
+          />
         </div>
       </header>
 
@@ -195,6 +252,8 @@ export default function MessengerApp({ onClose, isPage = false }: MessengerAppPr
           type={selectedTab === 'dm' ? 'dm' : 'groups'}
           searchQuery={searchQuery}
           onSelect={(id, data) => handleSelectConversation(selectedTab === 'dm' ? 'dm' : 'group', id, data)}
+          onCompose={() => setShowUserSearch(true)}
+          onCreateGroup={() => setShowCreateGroup(true)}
         />
       </div>
 

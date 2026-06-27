@@ -432,6 +432,27 @@ export function createMessengerRouter(io: any): Router {
     }
   });
 
+  // ========== REALTIME ==========
+
+  // GET /api/messenger/realtime-token — short-lived JWT for Socket.IO (session auth)
+  router.get("/realtime-token", async (req: any, res, next) => {
+    try {
+      if (!req.jwtUser?.id) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      const jwt = await import("jsonwebtoken");
+      const { resolveJwtSecret } = await import("../../lib/productionSecurity");
+      const token = jwt.sign(
+        { sub: req.jwtUser.id, username: req.jwtUser.username ?? "user" },
+        resolveJwtSecret(),
+        { expiresIn: "15m" },
+      );
+      res.json({ token: `Bearer ${token}` });
+    } catch (error: unknown) {
+      next(error);
+    }
+  });
+
   // ========== SETTINGS ENDPOINTS ==========
 
   // GET /api/messenger/settings/me

@@ -13,6 +13,7 @@ import { getEventCoverUrl } from "@/lib/eventCover";
 import SpotifyPlaylistCard from "@/components/cards/SpotifyPlaylistCard";
 import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
 import { isLightHex } from "@/lib/colorUtils";
+import { normalizeEventFormat, EVENT_FORMAT_META } from "@shared/eventFormats";
 
 function formatEventWhen(dateStr: string): string | null {
   const d = new Date(dateStr);
@@ -66,6 +67,7 @@ export default function EventCard({ ev }: { ev: any }) {
   );
 
   const sport = inferSport(ev);
+  const eventFormat = normalizeEventFormat(ev.event_format ?? ev.eventFormat);
   const sportConfig = getSportConfig(sport);
   const coverUrl = getEventCoverUrl(ev);
 
@@ -110,7 +112,7 @@ export default function EventCard({ ev }: { ev: any }) {
   const openEvent = () => {
     const onHome = window.location.pathname === "/" || window.location.pathname === "/mobile";
     markNavReturn(onHome ? mobilePanelReturnPath("events") : "/events");
-    setLocation(eventDetailPath(String(ev.id), ev.sport));
+    setLocation(eventDetailPath(String(ev.id), ev.sport, eventFormat));
   };
 
   const openOnMap = (e: MouseEvent<HTMLButtonElement>) => {
@@ -150,6 +152,7 @@ export default function EventCard({ ev }: { ev: any }) {
   ].filter(Boolean);
 
   const subtitleParts = [
+    eventFormat !== "open" ? EVENT_FORMAT_META[eventFormat].shortLabel : null,
     sport ? String(sport) : null,
     isRecommended ? "Recommended" : null,
   ].filter(Boolean);

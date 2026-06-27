@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import type { ProfileExtras } from "@/hooks/useProfileExtras";
 import type { UserHighlight } from "@shared/userProfile";
-import { OWNER_DEMO_ABOUT } from "@/lib/demoProfileMedia";
 import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
 import { ProfileSportsSection } from "@/components/profile/ProfileSportsSection";
 import { ROUTES } from "@/navigation";
@@ -75,14 +74,13 @@ export function ProfileAboutSection({
   onWinRateClick,
   onLevelClick,
 }: ProfileAboutSectionProps) {
-  const useDemo = isOwnProfile && !bio && !location;
-  const aboutBio = bio || (useDemo ? OWNER_DEMO_ABOUT.bio : "");
-  const aboutLocation = location || (useDemo ? OWNER_DEMO_ABOUT.location : "");
-  const aboutPrimary = primarySport || (useDemo ? OWNER_DEMO_ABOUT.primarySport : "");
-  const aboutPosition = position || (useDemo ? OWNER_DEMO_ABOUT.position : "");
-  const aboutSkill = skillLevel || (useDemo ? OWNER_DEMO_ABOUT.skillLevel : "");
-  const aboutAvailability = availability || (useDemo ? OWNER_DEMO_ABOUT.availability : "");
-  const aboutLooking = lookingFor || (useDemo ? OWNER_DEMO_ABOUT.lookingFor : "");
+  const aboutBio = bio ?? "";
+  const aboutLocation = location ?? "";
+  const aboutPrimary = primarySport ?? "";
+  const aboutPosition = position ?? "";
+  const aboutSkill = skillLevel ?? "";
+  const aboutAvailability = availability ?? "";
+  const aboutLooking = lookingFor ?? "";
 
   const joinedLabel = createdAt
     ? new Date(createdAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })

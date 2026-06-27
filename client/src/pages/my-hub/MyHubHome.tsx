@@ -33,6 +33,7 @@ export default function MyHubHome() {
       label: "Upcoming",
       value: data?.upcomingEvents ?? 0,
       icon: Calendar,
+      href: "/calendar",
     },
     {
       key: "requests",

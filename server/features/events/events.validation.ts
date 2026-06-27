@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  EventLineupSchema,
+  EVENT_FORMATS,
+  validateEventFormatPayload,
+  type EventFormat,
+  type EventLineup,
+} from "@shared/eventFormats";
 
 const venueAddressSchema = z.object({
   venueName: z.string().max(120).optional(),
@@ -10,7 +17,7 @@ const venueAddressSchema = z.object({
   country: z.string().max(80).optional(),
 });
 
-export const CreateEvent = z.object({
+const CreateEventFields = z.object({
   title: z.string().min(1).max(140),
   description: z.string().max(4000).optional(),
   startsAt: z.string().datetime(),
@@ -22,9 +29,23 @@ export const CreateEvent = z.object({
   visibility: z.enum(["public","private","unlisted"]).default("public"),
   capacity: z.number().int().min(1).optional(),
   coverMediaId: z.string().uuid().optional(),
+  eventFormat: z.enum(EVENT_FORMATS).default("open"),
+  sport: z.string().min(1).max(80),
+  eventLineup: EventLineupSchema.optional(),
 });
 
-export const UpdateEvent = CreateEvent.partial().extend({
+export const CreateEvent = CreateEventFields.superRefine((data, ctx) => {
+  const err = validateEventFormatPayload(
+    data.eventFormat as EventFormat,
+    data.eventLineup as EventLineup | undefined,
+    data.title,
+  );
+  if (err) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: err, path: ["eventLineup"] });
+  }
+});
+
+export const UpdateEvent = CreateEventFields.partial().extend({
   featuredHighlightIds: z.array(z.string()).max(12).optional(),
   // Soft-cancel + draft lifecycle. Backed by `events.status` /
   // `events.cancelled_at` columns added by the My Hub migration. Reusing

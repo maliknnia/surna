@@ -1,7 +1,8 @@
 import { format } from "date-fns";
 import { MapPin, Clock, ChevronRight } from "lucide-react";
 import { useLocation } from "wouter";
-import { cn } from "@/lib/utils";
+import { EntityEmptyState, entityCardStyle } from "@/components/entity";
+import { ROUTES } from "@/navigation";
 
 export type AgendaEvent = {
   id: string;
@@ -15,71 +16,102 @@ export type AgendaEvent = {
   isMine?: boolean;
 };
 
-function sportDot(sport?: string) {
-  return "bg-foreground/80";
+const SPORT_DOT: Record<string, string> = {
+  soccer: "#30D158",
+  football: "#30D158",
+  gaa: "#DC2626",
+  rugby: "#FF9F0A",
+  basketball: "#FF6B6B",
+  running: "#4A9EFF",
+};
+
+function sportDotColor(sport?: string): string {
+  if (!sport) return "var(--surna-gold, #f5c518)";
+  const key = sport.toLowerCase();
+  for (const [k, color] of Object.entries(SPORT_DOT)) {
+    if (key.includes(k)) return color;
+  }
+  return "var(--surna-gold, #f5c518)";
 }
 
 export function CalendarAgenda({
   events,
   emptyTitle = "Nothing scheduled",
   emptyHint = "Pick another day or browse events.",
+  emptyActionLabel = "Browse events",
+  emptyActionHref = ROUTES.events,
   compact = false,
 }: {
   events: AgendaEvent[];
   emptyTitle?: string;
   emptyHint?: string;
+  emptyActionLabel?: string;
+  emptyActionHref?: string;
   compact?: boolean;
 }) {
   const [, setLocation] = useLocation();
 
   if (events.length === 0) {
     return (
-      <div className={cn("text-center py-10 px-4", compact && "py-6")}>
-        <p className="text-[15px] font-semibold text-foreground">{emptyTitle}</p>
-        <p className="text-[13px] text-muted-foreground mt-1">{emptyHint}</p>
-      </div>
+      <EntityEmptyState
+        icon={Clock}
+        title={emptyTitle}
+        description={emptyHint}
+        actionLabel={emptyActionLabel}
+        actionHref={emptyActionHref}
+        compact={compact}
+      />
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {events.map((ev) => {
         const start = new Date(ev.starts_at);
+        const dotColor = sportDotColor(ev.sport);
         return (
           <button
             key={ev.id}
             type="button"
-            onClick={() => setLocation(`/events/${ev.id}`)}
-            className="w-full flex items-center gap-3 p-3.5 rounded-2xl text-left active:scale-[0.99] transition-all bg-muted/25 hover:bg-muted/40 border border-border/30"
+            onClick={() => setLocation(ROUTES.event(ev.id))}
+            className="w-full flex items-center gap-3 p-4 rounded-2xl text-left active:opacity-90 transition-opacity"
+            style={entityCardStyle}
           >
             <div className="shrink-0 text-center w-12">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--surna-text-secondary)" }}>
                 {format(start, "MMM")}
               </p>
-              <p className="surna-stat text-[22px] leading-none text-foreground">{format(start, "d")}</p>
+              <p className="text-[22px] font-bold leading-none tabular-nums" style={{ color: "var(--surna-text)" }}>
+                {format(start, "d")}
+              </p>
             </div>
-            <div className={cn("w-1 self-stretch rounded-full shrink-0", sportDot(ev.sport))} />
+            <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: dotColor }} />
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-foreground truncate">{ev.title}</p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[12px] text-muted-foreground">
+              <p className="text-[15px] font-semibold truncate" style={{ color: "var(--surna-text)" }}>
+                {ev.title}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
                 <span className="flex items-center gap-1">
                   <Clock size={12} />
                   {format(start, "h:mm a")}
                 </span>
-                {ev.location && (
+                {ev.location ? (
                   <span className="flex items-center gap-1 truncate max-w-[140px]">
                     <MapPin size={12} />
                     {ev.location}
                   </span>
-                )}
+                ) : null}
               </div>
-              {ev.isMine && (
-                <span className="inline-block mt-1.5 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-foreground/10 text-muted-foreground">
+              {ev.isMine ? (
+                <span
+                  className="inline-block mt-1.5 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                  style={{ background: "var(--surna-base)", color: "var(--surna-text-secondary)" }}
+                >
                   On your schedule
                 </span>
-              )}
+              ) : null}
             </div>
-            <ChevronRight size={18} className="text-muted-foreground shrink-0" />
+            <ChevronRight size={18} className="shrink-0" style={{ color: "var(--surna-text-secondary)" }} />
           </button>
         );
       })}

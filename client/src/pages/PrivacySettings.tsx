@@ -1,6 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { useSmartBack } from "@/lib/navigation";
 import { useUserPrivacy } from "@/hooks/useUserPrivacy";
+import { useMessengerSettings, useUpdateMessengerSettings } from "@/hooks/useMessengerSettings";
 import {
   ArrowLeft,
   MapPin,
@@ -143,8 +144,10 @@ export default function PrivacySettingsPage() {
   const goBack = useSmartBack({ fallback: "/settings" });
   const [, navigate] = useLocation();
   const { settings, isLoading, patch, savedFlash } = useUserPrivacy();
+  const { data: messengerSettings, isLoading: messengerLoading } = useMessengerSettings();
+  const updateMessenger = useUpdateMessengerSettings();
 
-  if (isLoading) {
+  if (isLoading || messengerLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: PAGE_BG }}>
         <p style={inter({ color: MUTED })}>Loading privacy settings…</p>
@@ -333,7 +336,12 @@ export default function PrivacySettingsPage() {
           icon={MessageCircle}
           title="Read receipts"
           subtitle="Show when you have read messages"
-          right={<Toggle checked={settings.readReceipts} onChange={(v) => void patch({ readReceipts: v })} />}
+          right={
+            <Toggle
+              checked={messengerSettings?.read_receipts ?? true}
+              onChange={(v) => void updateMessenger.mutate({ read_receipts: v })}
+            />
+          }
         />
         <PrivacyRow
           icon={Eye}
@@ -344,13 +352,30 @@ export default function PrivacySettingsPage() {
         <p className="px-4 pt-2 pb-1 text-[12px]" style={{ color: MUTED }}>Who can add me to group chats</p>
         <AudiencePicker value={settings.whoCanAddToGroups} options={AUDIENCE_OPTS} onChange={(v) => void patch({ whoCanAddToGroups: v as PrivacyAudience })} />
         <p className="px-4 pt-2 pb-1 text-[12px]" style={{ color: MUTED }}>Message requests from strangers</p>
+        <PrivacyRow
+          icon={MessageCircle}
+          title="Allow message requests"
+          subtitle="People you do not follow can request to chat"
+          right={
+            <Toggle
+              checked={messengerSettings?.allow_message_requests ?? true}
+              onChange={(v) => void updateMessenger.mutate({ allow_message_requests: v })}
+            />
+          }
+        />
+        <p className="px-4 pt-2 pb-1 text-[12px]" style={{ color: MUTED }}>Who can call me</p>
         <AudiencePicker
-          value={settings.messageRequestsFromStrangers}
+          value={messengerSettings?.call_permission ?? "following"}
           options={[
-            { id: "allow", label: "Allow" },
-            { id: "block", label: "Block" },
+            { id: "everyone", label: "Everyone" },
+            { id: "following", label: "People I follow" },
+            { id: "none", label: "Nobody" },
           ]}
-          onChange={(v) => void patch({ messageRequestsFromStrangers: v as UserPrivacySettings["messageRequestsFromStrangers"] })}
+          onChange={(v) =>
+            void updateMessenger.mutate({
+              call_permission: v as "everyone" | "following" | "none",
+            })
+          }
         />
       </div>
 

@@ -62,6 +62,10 @@ export function isDemoChallengeId(id: string): boolean {
   return id.startsWith("demo-ch-");
 }
 
+export function challengeDetailRoute(id: string): string {
+  return isDemoChallengeId(id) ? "/challenges" : `/challenges/${id}`;
+}
+
 export function mergeWithDemoChallenges(
   apiMatches: unknown[],
   options?: { skipDemo?: boolean; mixDemos?: boolean },

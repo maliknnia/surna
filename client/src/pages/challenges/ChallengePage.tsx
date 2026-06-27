@@ -23,10 +23,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { fetchChallengeDetail } from "@/lib/challengesApi";
 import ScoreReporter from "./ScoreReporter";
 import ChallengeChat from "./ChallengeChat";
-import type { CompetitiveMatch, MatchParticipant } from "@shared/schema";
+import type { CompetitiveMatch, MatchParticipant, MatchResult } from "@shared/schema";
 import { useChallengesTheme } from "./challengesTheme";
 import { AccessRulesSummary } from "./ChallengeAccessInfo";
 import type { ChallengeTypeKey, VisibilityKey } from "./challengesTheme";
+import { ROUTES } from "@/navigation";
+import { isDemoChallengeId } from "@/lib/demoChallenges";
 
 type TabType = "details" | "participants" | "chat" | "results";
 
@@ -57,10 +59,11 @@ export default function ChallengePage() {
   const { data: challengeData, isLoading, error } = useQuery<{
     match: CompetitiveMatch;
     participants: MatchParticipant[];
+    result?: MatchResult | null;
   }>({
     queryKey: ["challenge-detail", challengeId],
     queryFn: () => fetchChallengeDetail(challengeId!),
-    enabled: !!challengeId,
+    enabled: !!challengeId && !isDemoChallengeId(challengeId!),
   });
 
   const { data: userTeams } = useQuery<{ id: string }[]>({
@@ -70,6 +73,7 @@ export default function ChallengePage() {
 
   const challenge = challengeData?.match;
   const participants = challengeData?.participants || [];
+  const matchResult = challengeData?.result ?? null;
   const challengeLocation = challenge ? locationAddress(challenge.location) : null;
   const challengeEntryFee = challenge ? entryFeeLabel(challenge.entryFee) : null;
 
@@ -120,6 +124,66 @@ export default function ChallengePage() {
     },
   });
 
+  const joinMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/competitive-challenges/${challengeId}/join`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["challenge-detail", challengeId] });
+      queryClient.invalidateQueries({ queryKey: ["challenges-list"] });
+      toast({ title: "Joined!", description: "You're in the challenge." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Can't join", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const confirmResultMutation = useMutation({
+    mutationFn: (resultId: string) =>
+      apiRequest("POST", `/api/competitive-challenges/${challengeId}/confirm`, { resultId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["challenge-detail", challengeId] });
+      queryClient.invalidateQueries({ queryKey: ["challenges-list"] });
+      toast({ title: "Result confirmed", description: "Ratings updated." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const disputeResultMutation = useMutation({
+    mutationFn: ({ resultId, reason }: { resultId: string; reason: string }) =>
+      apiRequest("POST", `/api/competitive-challenges/${challengeId}/dispute`, { resultId, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["challenge-detail", challengeId] });
+      queryClient.invalidateQueries({ queryKey: ["challenges-list"] });
+      toast({ title: "Result disputed", description: "We'll review the outcome." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  if (challengeId && isDemoChallengeId(challengeId)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: t.pageBg }}>
+        <div className="text-center max-w-sm">
+          <Trophy size={36} className="mx-auto mb-4" style={{ color: t.iconAccent }} />
+          <h2 className="text-xl font-bold mb-2" style={{ color: t.textPrimary }}>Sample challenge</h2>
+          <p className="text-[13px] mb-5" style={{ color: t.textMuted }}>
+            This is a preview card on the home feed. Create or join a real challenge to compete.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.challenges)}
+            className="px-5 py-2.5 rounded-full text-[13px] font-semibold"
+            style={{ background: t.ctaBg, color: t.ctaText }}
+          >
+            Browse challenges
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: t.pageBg }}>
@@ -165,6 +229,16 @@ export default function ChallengePage() {
   ];
 
   const canRespond = challenge.status === "pending" || challenge.status === "invited";
+  const isOpenJoin =
+    challenge.type === "open" &&
+    (challenge.status === "pending" || challenge.status === "live") &&
+    !isParticipant &&
+    user;
+  const canConfirmResult =
+    matchResult?.status === "pending" &&
+    user &&
+    matchResult.reportedById !== user.id &&
+    isParticipant;
   const challengeType = (challenge.type || "player1v1") as ChallengeTypeKey;
   const visibility = (challenge.visibility || "public") as VisibilityKey;
 
@@ -221,6 +295,21 @@ export default function ChallengePage() {
         >
           <Flag size={15} />
           Report Result
+        </button>
+      );
+    }
+
+    if (isOpenJoin) {
+      return (
+        <button
+          type="button"
+          onClick={() => joinMutation.mutate()}
+          disabled={joinMutation.isPending}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-[13px] font-semibold transition-all active:scale-95 disabled:opacity-40"
+          style={{ background: t.ctaBg, color: t.ctaText }}
+        >
+          <Trophy size={15} />
+          {joinMutation.isPending ? "Joining…" : "Join challenge"}
         </button>
       );
     }
@@ -306,18 +395,30 @@ export default function ChallengePage() {
 
           <div className="flex gap-2 mb-6">
             {renderActionButtons()}
-            <button
-              type="button"
-              onClick={() => setActiveTab("chat")}
-              className="px-4 py-2.5 rounded-2xl transition-all active:scale-95"
-              style={{
-                background: activeTab === "chat" ? t.ctaBg : t.secondaryBtnBg,
-                color: activeTab === "chat" ? t.ctaText : t.secondaryBtnText,
-              }}
-              aria-label="Open challenge chat"
-            >
-              <MessageCircle size={16} />
-            </button>
+            {challenge.messengerGroupId && isParticipant ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/messages?groupId=${encodeURIComponent(challenge.messengerGroupId!)}`)}
+                className="px-4 py-2.5 rounded-2xl transition-all active:scale-95"
+                style={{ background: t.secondaryBtnBg, color: t.secondaryBtnText }}
+                aria-label="Open group chat"
+              >
+                <MessageCircle size={16} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setActiveTab("chat")}
+                className="px-4 py-2.5 rounded-2xl transition-all active:scale-95"
+                style={{
+                  background: activeTab === "chat" ? t.ctaBg : t.secondaryBtnBg,
+                  color: activeTab === "chat" ? t.ctaText : t.secondaryBtnText,
+                }}
+                aria-label="Open challenge chat"
+              >
+                <MessageCircle size={16} />
+              </button>
+            )}
           </div>
 
           <div
@@ -512,13 +613,67 @@ export default function ChallengePage() {
 
           {activeTab === "results" && (
             <div
-              className="rounded-2xl p-4 text-center py-12"
+              className="rounded-2xl p-4"
               style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}
             >
-              <Trophy size={28} className="mx-auto mb-2" style={{ color: t.iconMuted }} />
-              <p className="text-[13px]" style={{ color: t.textMuted }}>
-                Results appear after the match
-              </p>
+              {matchResult ? (
+                <div className="space-y-4">
+                  <div className="text-center py-4">
+                    <p className="text-[11px] uppercase tracking-wider mb-1" style={{ color: t.textMuted }}>
+                      {matchResult.status === "confirmed" ? "Final result" : "Reported result"}
+                    </p>
+                    <p className="text-2xl font-bold tabular-nums" style={{ color: t.textPrimary }}>
+                      {matchResult.hostScore ?? "–"} : {matchResult.guestScore ?? "–"}
+                    </p>
+                    <p className="text-sm capitalize mt-1" style={{ color: t.textSecondary }}>
+                      {String(matchResult.outcome).replace(/([A-Z])/g, " $1").trim()}
+                    </p>
+                    <span
+                      className="inline-block mt-2 text-[10px] font-bold px-2.5 py-1 rounded-full capitalize"
+                      style={{ background: t.chipBg, color: t.accentPurple }}
+                    >
+                      {matchResult.status}
+                    </span>
+                  </div>
+                  {matchResult.notes ? (
+                    <p className="text-[13px]" style={{ color: t.textSecondary }}>{matchResult.notes}</p>
+                  ) : null}
+                  {canConfirmResult && matchResult.id ? (
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => confirmResultMutation.mutate(matchResult.id)}
+                        disabled={confirmResultMutation.isPending}
+                        className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold"
+                        style={{ background: t.success, color: "#fff" }}
+                      >
+                        Confirm result
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const reason = window.prompt("Why are you disputing this result?");
+                          if (reason?.trim()) {
+                            disputeResultMutation.mutate({ resultId: matchResult.id, reason: reason.trim() });
+                          }
+                        }}
+                        disabled={disputeResultMutation.isPending}
+                        className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold"
+                        style={{ background: t.secondaryBtnBg, color: t.secondaryBtnText }}
+                      >
+                        Dispute
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Trophy size={28} className="mx-auto mb-2" style={{ color: t.iconMuted }} />
+                  <p className="text-[13px]" style={{ color: t.textMuted }}>
+                    Results appear after the match is played and reported
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

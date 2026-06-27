@@ -305,7 +305,7 @@ export async function searchVenues(params: { sport?: string; location?: string; 
       distanceKm,
       availability: "Book via venue profile",
       location: p.city ? String(p.city) : null,
-      bookingUrl: `/place/${p.id}`,
+      bookingUrl: `/places/${p.id}`,
     } satisfies DiscoveryResult;
   });
 }

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, MapPin, Clock, Users, Trophy, Eye, CheckCircle2 } from "lucide-react";
+import { Zap, MapPin, Clock, Users, Trophy, Eye, CheckCircle2, Navigation, Loader2, AlertCircle } from "lucide-react";
 import { createHubPath } from "@/lib/createHub";
 import { ROUTES } from "@/navigation";
 import { invalidateMyHubQueries } from "@/lib/hubQueries";
@@ -60,9 +60,43 @@ export default function CreateInstantTeam() {
   const [startTime, setStartTime] = useState(timeOptions[0].value);
   const [locationName, setLocationName] = useState("");
   const [description, setDescription] = useState("");
-  const [lat] = useState(40.7128);
-  const [lng] = useState(-74.006);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const [coverMedia, setCoverMedia] = useState<CreateMediaValue>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+    );
+  }, []);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoError("Location is not available on this device.");
+      return;
+    }
+    setLocating(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        setGeoError("Couldn't get your location. Check permissions and try again.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   useHydrateCreateDraft({
     onCover: setCoverMedia,
@@ -80,8 +114,8 @@ export default function CreateInstantTeam() {
         startTime,
         locationName,
         description,
-        lat: lat.toString(),
-        lng: lng.toString(),
+        lat: coords!.lat.toString(),
+        lng: coords!.lng.toString(),
       });
       return res.json();
     },
@@ -126,6 +160,14 @@ export default function CreateInstantTeam() {
             toast({
               title: "Add a location",
               description: "Tell players where to meet before going live.",
+              variant: "destructive",
+            });
+            return;
+          }
+          if (!coords) {
+            toast({
+              title: "Location required",
+              description: "Turn on location or tap Use my location so the game appears on the map.",
               variant: "destructive",
             });
             return;
@@ -316,6 +358,28 @@ export default function CreateInstantTeam() {
               className="w-full px-4 py-3 rounded-xl text-sm outline-none"
               style={{ background: "var(--surna-elevated)", color: "var(--surna-text)", border: "1px solid var(--surna-separator)" }}
             />
+            <button
+              type="button"
+              onClick={useMyLocation}
+              disabled={locating}
+              className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: "var(--surna-surface)", color: "var(--surna-text)", border: "1px solid var(--surna-separator)" }}
+            >
+              {locating ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
+              {coords ? "Refresh my location" : "Use my location"}
+            </button>
+            {coords ? (
+              <p className="mt-2 text-xs flex items-center gap-1.5" style={{ color: "#34C759" }}>
+                <CheckCircle2 size={14} />
+                Map pin set ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
+              </p>
+            ) : null}
+            {geoError ? (
+              <p className="mt-2 text-xs flex items-center gap-1.5" style={{ color: "#FF3B30" }}>
+                <AlertCircle size={14} />
+                {geoError}
+              </p>
+            ) : null}
           </div>
           <div>
             <label className="text-xs font-semibold mb-2 block" style={{ color: "var(--surna-text-secondary)" }}>Details (optional)</label>

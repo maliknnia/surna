@@ -5,7 +5,8 @@ import { useRoute, useLocation, Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Settings } from "lucide-react";
+import { ArrowLeft, Settings, UserPlus } from "lucide-react";
+import { EntityEmptyState } from "@/components/entity";
 import { OWNER_PROFILE_AVATAR, OWNER_COVER_URL } from "@/lib/ownerAvatar";
 import type { UserWithProfile } from "@/lib/userProfileApi";
 import { ProfileInstagramView, type ProfileInstagramUser } from "@/components/profile/ProfileInstagramView";
@@ -30,7 +31,7 @@ export default function ProfilePage() {
   const isOwnProfile = !params?.userId || viewingUserId === (user as { id?: string })?.id;
   const [, setLocation] = useLocation();
 
-  const { data: userStats } = useQuery<UserWithProfile | null>({
+  const { data: userStats, isLoading: statsLoading, isError: statsError } = useQuery<UserWithProfile | null>({
     queryKey: ["/api/users", viewingUserId],
     queryFn: async () => {
       if (!viewingUserId) return null;
@@ -120,7 +121,21 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surna-void)" }}>
-        <div className="w-8 h-8 border-2 border-border border-t-white rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "var(--surna-border)", borderTopColor: "var(--surna-text)" }} />
+      </div>
+    );
+  }
+
+  if (!isLoading && viewingUserId && !isOwnProfile && (statsError || (!statsLoading && !userStats))) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6" style={{ background: "var(--surna-base)" }}>
+        <EntityEmptyState
+          icon={UserPlus}
+          title="Profile not found"
+          description="This athlete may have deleted their account or the link is invalid."
+          actionLabel="Discover people"
+          actionHref={ROUTES.discoverPeople}
+        />
       </div>
     );
   }

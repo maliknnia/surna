@@ -5,21 +5,21 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import {
-  ArrowLeft, Phone, Video, MoreVertical,
+  ArrowLeft, MoreVertical,
   Users, Settings, UserPlus, Crown, Shield, X,
-  BarChart2, Calendar, MapPin, Trophy, FileText, Target, Image as ImageIcon,
-  Navigation,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import MessageBubble from './MessageBubble';
 import ChatComposer from './ChatComposer';
-import VoiceRecorder from './VoiceRecorder';
 import MediaPicker from './MediaPicker';
 import { isDemoConversation, getDemoGroupMessages } from './demoData';
 import { getMessengerTheme } from './messengerTheme';
 import { mapPath } from '@/lib/mapNavigation';
+import { GROUP_PLUS_OPTIONS, type PlusSheetOption } from './plusSheetOptions';
+import { joinGroupRoom, leaveGroupRoom } from '@/lib/messengerSocket';
 
 interface GroupChatProps {
   groupId: string;
@@ -58,16 +58,7 @@ interface GroupMember {
   };
 }
 
-const PLUS_OPTIONS = [
-  { icon: BarChart2,  label: 'Create Poll',   action: 'poll'      },
-  { icon: Calendar,   label: 'Plan Event',    action: 'event'     },
-  { icon: MapPin,     label: 'Location',      action: 'location'  },
-  { icon: Trophy,     label: 'Challenge',     action: 'challenge' },
-  { icon: UserPlus,   label: 'Add People',    action: 'people'    },
-  { icon: FileText,   label: 'Shared Notes',  action: 'notes'     },
-  { icon: Target,     label: 'Create Match',  action: 'match'     },
-  { icon: ImageIcon,  label: 'Media',         action: 'media'     },
-];
+const PLUS_OPTIONS = GROUP_PLUS_OPTIONS;
 
 const SMART_PLACEHOLDERS = ['Message the group…', 'Plan something…', 'Share a poll…', 'Invite to event…'];
 
@@ -128,7 +119,6 @@ export default function GroupChat({ groupId, groupData, onBack }: GroupChatProps
   const { toast } = useToast();
 
   const [message, setMessage]         = useState('');
-  const [isRecording, setIsRecording] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [showGroupInfo, setShowGroupInfo]     = useState(false);
   const [showPlus, setShowPlus]               = useState(false);
@@ -207,6 +197,12 @@ export default function GroupChat({ groupId, groupData, onBack }: GroupChatProps
 
   useEffect(() => {
     if (isDemo || !groupId) return;
+    joinGroupRoom(groupId);
+    return () => leaveGroupRoom(groupId);
+  }, [groupId, isDemo]);
+
+  useEffect(() => {
+    if (isDemo || !groupId) return;
     void fetch(`/api/messenger/groups/${groupId}/read`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -240,24 +236,14 @@ export default function GroupChat({ groupId, groupData, onBack }: GroupChatProps
       case 'event':
         navigate('/events/create');
         break;
-      case 'challenge':
-      case 'match':
-        navigate('/challenges/create');
-        break;
       case 'location':
         navigate(mapPath());
-        break;
-      case 'poll':
-        toast({ title: 'Poll', description: 'Type your poll question in the message box to share with the group.' });
         break;
       case 'people':
         setShowGroupInfo(true);
         break;
-      case 'notes':
-        navigate('/saved');
-        break;
       default:
-        toast({ title: 'Coming soon', description: 'This action is not available yet.' });
+        break;
     }
   };
 
@@ -295,11 +281,9 @@ export default function GroupChat({ groupId, groupData, onBack }: GroupChatProps
           </div>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          {[{ icon: Phone, id: 'voice' }, { icon: Video, id: 'video' }, { icon: MoreVertical, id: 'more' }].map(({ icon: Icon, id }) => (
-            <button key={id} data-testid={`button-${id}-call`} onClick={id === 'more' ? () => setShowGroupInfo(true) : undefined} style={{ width: 34, height: 34, borderRadius: '50%', background: actionBg, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <Icon size={17} color={iconClr} />
-            </button>
-          ))}
+          <button data-testid="button-more" onClick={() => setShowGroupInfo(true)} style={{ width: 34, height: 34, borderRadius: '50%', background: actionBg, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <MoreVertical size={17} color={iconClr} />
+          </button>
         </div>
       </div>
 
@@ -336,7 +320,6 @@ export default function GroupChat({ groupId, groupData, onBack }: GroupChatProps
       </div>
 
       {/* Overlays */}
-      {isRecording && <VoiceRecorder onRecorded={() => setIsRecording(false)} onCancel={() => setIsRecording(false)} />}
       {showMediaPicker && <MediaPicker onMediaSelected={(id) => { sendMessageMutation.mutate({ mediaId: id }); setShowMediaPicker(false); }} onClose={() => setShowMediaPicker(false)} />}
 
       <ChatComposer
@@ -349,7 +332,6 @@ export default function GroupChat({ groupId, groupData, onBack }: GroupChatProps
         onKeyDown={handleKeyDown}
         placeholder={SMART_PLACEHOLDERS[placeholderIdx]}
         isPending={sendMessageMutation.isPending}
-        onVoice={() => setIsRecording(true)}
         onCamera={() => setShowMediaPicker(true)}
         replyBar={
           replyTo ? (

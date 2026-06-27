@@ -4,31 +4,35 @@ import { Link } from "wouter";
 import {
   LayoutGrid,
   Image as ImageIcon,
-  MapPin,
   UserPlus,
-  CheckCircle2,
   Share2,
   Play,
   Film,
   MessageCircle,
-  Star,
   Plus,
   Loader2,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { deriveLqipPlaceholder, deriveModernSources } from "@/lib/imageSources";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { ROUTES } from "@/navigation";
 import type { UserHighlight } from "@shared/userProfile";
 import { cn } from "@/lib/utils";
-import { mergeProfilePhotos, type DemoProfilePhoto } from "@/lib/demoProfileMedia";
 import type { ProfileExtras } from "@/hooks/useProfileExtras";
 import { ProfileQuickStats } from "@/components/profile/ProfileQuickStats";
 import { ProfilePhotoLightbox, type LightboxPhoto } from "@/components/profile/ProfilePhotoLightbox";
 import { capturePhoto } from "@/lib/capacitor/camera";
 import { useToast } from "@/hooks/use-toast";
 import { uploadGalleryPhoto } from "@/lib/uploadCreateMedia";
+import {
+  EntityHero,
+  EntityStatRow,
+  EntitySectionTabs,
+  EntityGridSkeleton,
+  EntityEmptyState,
+  entityBtnClass,
+  entityBtnSurface,
+} from "@/components/entity";
 
 import { ProfileAboutSection } from "@/components/profile/ProfileAboutSection";
 import { ProfileTeamsPanel } from "@/components/profile/ProfileTeamsPanel";
@@ -108,38 +112,12 @@ type ProfileInstagramViewProps = {
   headerExtra?: React.ReactNode;
 };
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 10_000) return `${Math.round(n / 1000)}k`;
-  if (n >= 1_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(n);
-}
-
 function matchesSport(text: string | null | undefined, sport: string): boolean {
   if (!text) return false;
   return text.toLowerCase().includes(sport.toLowerCase());
 }
 
-function renderStars(rating: number) {
-  const stars = [];
-  for (let i = 0; i < 5; i++) {
-    const filled = rating >= i + 1;
-    const half = !filled && rating >= i + 0.5;
-    stars.push(
-      <Star
-        key={i}
-        className="w-3.5 h-3.5"
-        style={{ color: "var(--surna-gold, #f5c518)" }}
-        fill={filled || half ? "currentColor" : "none"}
-        strokeWidth={1.5}
-      />,
-    );
-  }
-  return stars;
-}
-
-const igBtn =
-  "flex-1 h-[34px] rounded-lg text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 active:opacity-70 transition-opacity";
+const igBtn = entityBtnClass;
 
 export function ProfileInstagramView({
   user,
@@ -192,7 +170,7 @@ export function ProfileInstagramView({
     enabled: !!userId,
   });
 
-  const photos = mergeProfilePhotos(apiPhotos, isOwnProfile) as (UserPhoto | DemoProfilePhoto)[];
+  const photos = apiPhotos;
 
   const addPhoto = useMutation({
     mutationFn: async (payload: { imageUrl: string; caption?: string; width?: number; height?: number }) =>
@@ -260,10 +238,7 @@ export function ProfileInstagramView({
     { value: profileExtras.gamesCount, label: "games" },
   ];
 
-  const btnSurface = {
-    background: "var(--ig-profile-btn-bg)",
-    color: "var(--surna-text)",
-  };
+  const btnSurface = entityBtnSurface;
 
   const handleShareProfile = () => {
     const url = `${window.location.origin}/profile/${userId}`;
@@ -276,100 +251,24 @@ export function ProfileInstagramView({
 
   return (
     <div className="pb-2">
-      {showCover && coverPhotoUrl ? (
-        <div
-          className="-mx-4 mb-4 h-28 sm:h-32 overflow-hidden"
-          style={{ borderBottom: "1px solid var(--surna-border)" }}
-        >
-          <img src={coverPhotoUrl} alt="" className="h-full w-full object-cover object-top" />
-        </div>
-      ) : null}
+      <EntityHero
+        coverUrl={showCover ? coverPhotoUrl : null}
+        avatarUrl={avatarUrl}
+        avatarFallback={initials}
+        title={displayName}
+        subtitle={`@${username}`}
+        verified={user.verified}
+        badge={{ label: String(profileExtras.level) }}
+        rating={profileExtras.rating > 0 ? profileExtras.rating : undefined}
+        onRatingClick={onRatingClick}
+        bio={bioText || undefined}
+        location={user.location}
+      />
 
-      {/* Centered avatar */}
-      <div className="flex flex-col items-center mb-3">
-        <Avatar className="w-[96px] h-[96px] shrink-0 mb-3">
-          <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
-          <AvatarFallback
-            className="text-xl font-semibold"
-            style={{ background: "var(--surna-elevated)", color: "var(--surna-text)" }}
-          >
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-
-        <div className="flex items-center gap-2 mb-0.5">
-          <h2 className="text-[18px] font-bold leading-tight" style={{ color: "var(--surna-text)" }}>
-            {displayName}
-          </h2>
-          {user.verified ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "var(--surna-gold, #f5c518)" }} fill="currentColor" />
-          ) : null}
-          <span
-            className="px-2 py-0.5 rounded-full text-[12px] font-bold tabular-nums"
-            style={{ background: "var(--surna-gold, #f5c518)", color: "#111" }}
-          >
-            {profileExtras.level}
-          </span>
-        </div>
-
-        <p className="text-[14px] mb-1" style={{ color: "var(--surna-text-secondary)" }}>
-          @{username}
-        </p>
-
-        {profileExtras.rating > 0 ? (
-          <button
-            type="button"
-            onClick={onRatingClick}
-            className="flex items-center gap-1.5 mb-2 active:opacity-70"
-          >
-            <span className="flex items-center gap-0.5">{renderStars(profileExtras.rating)}</span>
-            <span className="text-[14px] font-semibold tabular-nums" style={{ color: "var(--surna-gold, #f5c518)" }}>
-              {profileExtras.rating.toFixed(1)}
-            </span>
-          </button>
-        ) : null}
-
-        {bioText ? (
-          <p
-            className="text-[14px] text-center leading-snug whitespace-pre-wrap max-w-sm px-2"
-            style={{ color: "var(--surna-text)" }}
-          >
-            {bioText}
-          </p>
-        ) : null}
-
-        {user.location ? (
-          <div className="flex items-center gap-1 mt-1.5">
-            <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--surna-text-secondary)" }} />
-            <span className="text-[13px]" style={{ color: "var(--surna-text-secondary)" }}>
-              {user.location}
-            </span>
-          </div>
-        ) : null}
-      </div>
-
-      {/* 4-stat row */}
-      <div className="flex justify-around text-center mb-4 px-1">
-        {stats.map((stat) => (
-          <button
-            key={stat.label}
-            type="button"
-            onClick={() => onStatClick?.(stat.label)}
-            className="min-w-0 flex-1 px-1 active:opacity-60 transition-opacity"
-            data-testid={`profile-stat-${stat.label}`}
-          >
-            <span className="block text-[17px] font-semibold leading-none tabular-nums" style={{ color: "var(--surna-text)" }}>
-              {formatCount(typeof stat.value === "number" ? stat.value : 0)}
-            </span>
-            <span
-              className="block text-[12px] mt-1 capitalize"
-              style={{ color: "var(--surna-text-secondary)" }}
-            >
-              {stat.label}
-            </span>
-          </button>
-        ))}
-      </div>
+      <EntityStatRow
+        stats={stats.map((s) => ({ value: s.value, label: s.label }))}
+        onStatClick={onStatClick}
+      />
 
       {/* Action row */}
       <div className="flex gap-1.5 mb-4">
@@ -423,36 +322,17 @@ export function ProfileInstagramView({
       <ProfileQuickStats
         winRate={profileExtras.winRate}
         level={profileExtras.level}
+        gamesCount={profileExtras.gamesCount}
         onWinRateClick={onWinRateClick}
         onLevelClick={onLevelClick}
       />
 
-      {/* Section tabs — same flow as venues / teams */}
-      <nav
-        className="-mx-4 px-4 sticky top-11 z-30 backdrop-blur-md border-b mb-4"
-        style={{ background: "color-mix(in srgb, var(--surna-base) 92%, transparent)", borderColor: "var(--surna-border)" }}
-      >
-        <div className="flex gap-1 overflow-x-auto no-scrollbar">
-          {sectionTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setSection(tab.id)}
-              className="px-3.5 py-3 text-[13px] font-semibold whitespace-nowrap relative shrink-0 active:opacity-70"
-              style={{ color: section === tab.id ? "var(--surna-text)" : "var(--surna-text-secondary)" }}
-              data-testid={`profile-section-${tab.id}`}
-            >
-              {tab.label}
-              {section === tab.id ? (
-                <div
-                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-[2px] rounded-full"
-                  style={{ background: "var(--surna-gold, #f5c518)" }}
-                />
-              ) : null}
-            </button>
-          ))}
-        </div>
-      </nav>
+      <EntitySectionTabs
+        tabs={sectionTabs}
+        activeId={section}
+        onChange={(id) => setSection(id as ProfileSection)}
+        testIdPrefix="profile-section"
+      />
 
       {section === "about" ? (
         <ProfileAboutSection
@@ -580,25 +460,19 @@ export function ProfileInstagramView({
       <div className={section === "photos" ? "-mx-4 mt-0" : "-mx-4"}>
         {section === "posts" && postsView === "posts" ? (
           postsLoading ? (
-            <div className="grid grid-cols-3 gap-[1px]">
-              {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="aspect-square animate-pulse" style={{ background: "var(--surna-elevated)" }} />
-              ))}
-            </div>
+            <EntityGridSkeleton cells={9} />
           ) : imagePosts.length === 0 ? (
-            <div className="py-16 text-center px-6">
-              <LayoutGrid className="w-12 h-12 mx-auto mb-3 opacity-25" style={{ color: "var(--surna-text)" }} />
-              <p className="text-base font-semibold" style={{ color: "var(--surna-text)" }}>
-                {selectedSport ? `No ${selectedSport} posts yet` : "No posts yet"}
-              </p>
-              {isOwnProfile && !selectedSport ? (
-                <Link href="/feed">
-                  <p className="text-sm mt-2" style={{ color: "var(--surna-text-secondary)" }}>
-                    When you share photos, they will appear here.
-                  </p>
-                </Link>
-              ) : null}
-            </div>
+            <EntityEmptyState
+              icon={LayoutGrid}
+              title={selectedSport ? `No ${selectedSport} posts yet` : "No posts yet"}
+              description={
+                isOwnProfile && !selectedSport
+                  ? "Share photos and updates from the feed — they'll show up here."
+                  : undefined
+              }
+              actionLabel={isOwnProfile && !selectedSport ? "Go to feed" : undefined}
+              actionHref={isOwnProfile && !selectedSport ? ROUTES.feed : undefined}
+            />
           ) : (
             <div className="grid grid-cols-3 gap-[1px]">
               {imagePosts.map((post) => (

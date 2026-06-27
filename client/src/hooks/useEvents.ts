@@ -142,6 +142,9 @@ export function useCreateEvent() {
       visibility?: "public" | "private" | "unlisted";
       capacity?: number;
       coverMediaId?: string;
+      eventFormat?: "open" | "versus" | "route" | "lineup";
+      sport: string;
+      eventLineup?: Record<string, unknown>;
     }) => {
       const payload = { ...eventData };
       if (payload.coverMediaId && !/^[0-9a-f-]{36}$/i.test(payload.coverMediaId)) {

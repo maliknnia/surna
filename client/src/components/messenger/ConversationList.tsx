@@ -1,14 +1,22 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MessageCircle, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getMessengerTheme } from './messengerTheme';
+import { EntityEmptyState, EntityListSkeleton } from '@/components/entity';
+import {
+  DEMO_DM_CONVERSATIONS,
+  DEMO_GROUP_CONVERSATIONS,
+  shouldShowMessengerDemos,
+} from './demoData';
 
 interface ConversationListProps {
   type: 'dm' | 'groups';
   searchQuery: string;
   onSelect: (id: string, data?: any) => void;
+  onCompose?: () => void;
+  onCreateGroup?: () => void;
 }
 
 function timeAgo(dateString: string) {
@@ -20,20 +28,13 @@ function timeAgo(dateString: string) {
   return new Date(dateString).toLocaleDateString();
 }
 
-function SkeletonRow({ isDark }: { isDark: boolean }) {
-  const bg = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px' }}>
-      <div style={{ width: 48, height: 48, borderRadius: '50%', background: bg, flexShrink: 0, animation: 'pulse 1.4s ease-in-out infinite' }} />
-      <div style={{ flex: 1 }}>
-        <div style={{ width: '40%', height: 13, borderRadius: 6, background: bg, marginBottom: 8, animation: 'pulse 1.4s ease-in-out infinite' }} />
-        <div style={{ width: '65%', height: 11, borderRadius: 6, background: bg, animation: 'pulse 1.4s ease-in-out infinite 0.1s' }} />
-      </div>
-    </div>
-  );
-}
-
-export default function ConversationList({ type, searchQuery, onSelect }: ConversationListProps) {
+export default function ConversationList({
+  type,
+  searchQuery,
+  onSelect,
+  onCompose,
+  onCreateGroup,
+}: ConversationListProps) {
   const { user } = useAuth();
   const { isDark } = useTheme();
   const isDm = type === 'dm';
@@ -49,13 +50,17 @@ export default function ConversationList({ type, searchQuery, onSelect }: Conver
     },
   });
 
-  const allConversations = useMemo(() => conversations || [], [conversations]);
-
-  useEffect(() => {
-    if (conversations) {
-      console.log("[Fix 8] Messenger conversations loaded from API:", conversations.length);
+  const allConversations = useMemo(() => {
+    const api = conversations || [];
+    if (searchQuery.trim()) return api;
+    if (shouldShowMessengerDemos(api.length)) {
+      const demos = isDm ? DEMO_DM_CONVERSATIONS : DEMO_GROUP_CONVERSATIONS;
+      const apiIds = new Set(api.map((c: { id: string }) => String(c.id)));
+      const extras = demos.filter((d) => !apiIds.has(d.id));
+      return [...api, ...extras];
     }
-  }, [conversations]);
+    return api;
+  }, [conversations, isDm, searchQuery]);
 
   const filtered = allConversations?.filter((conv: any) => {
     if (!searchQuery.trim()) return true;
@@ -72,31 +77,31 @@ export default function ConversationList({ type, searchQuery, onSelect }: Conver
 
   if (isLoading) {
     return (
-      <div className="flex-1" data-testid="conversation-list-loading">
-        {[...Array(6)].map((_, i) => <SkeletonRow key={i} isDark={isDark} />)}
-        <style>{`@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }`}</style>
+      <div className="flex-1 px-2 pt-2" data-testid="conversation-list-loading">
+        <EntityListSkeleton rows={6} rowHeight={72} />
       </div>
     );
   }
 
   if (filtered.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8" data-testid="conversation-list-empty">
-        <div className="text-center max-w-xs">
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: t.actionBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            {isDm ? <MessageCircle size={28} style={{ color: t.iconMuted }} /> : <Users size={28} style={{ color: t.iconMuted }} />}
-          </div>
-          <p style={{ fontSize: 15, fontWeight: 600, color: t.title, marginBottom: 4 }}>
-            {searchQuery ? 'No results' : isDm ? 'No messages yet' : 'No groups yet'}
-          </p>
-          <p style={{ fontSize: 13, color: t.sub, lineHeight: 1.45 }}>
-            {searchQuery
-              ? 'Try a different name or email'
+      <div className="flex-1 flex items-center justify-center" data-testid="conversation-list-empty">
+        <EntityEmptyState
+          icon={isDm ? MessageCircle : Users}
+          title={searchQuery ? 'No results' : isDm ? 'No messages yet' : 'No groups yet'}
+          description={
+            searchQuery
+              ? 'Try a different name or email.'
               : isDm
-                ? 'Tap the compose button to start a conversation with an athlete or coach.'
-                : 'Create a group to plan events, share updates, and stay in sync.'}
-          </p>
-        </div>
+                ? 'Message athletes, coaches, and sellers from their profile — or start a new chat here.'
+                : 'Groups auto-create for events and pickup teams. You can also start your own crew chat.'
+          }
+          actionLabel={
+            searchQuery ? undefined : isDm ? (onCompose ? 'New message' : undefined) : (onCreateGroup ? 'Create group' : undefined)
+          }
+          onAction={searchQuery ? undefined : isDm ? onCompose : onCreateGroup}
+          compact
+        />
       </div>
     );
   }

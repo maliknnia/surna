@@ -164,7 +164,7 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
         <Link href={`/teams/${team.id}#members`}>
           <ActionChip icon={Users} label={labels.rosterLabel} testId={`team-members-${team.id}`} />
         </Link>
-        <Link href={`/messages?context=team&id=${team.id}`}>
+        <Link href={`/teams/${team.id}#chat`}>
           <ActionChip icon={MessageCircle} label="Chat" testId={`team-chat-${team.id}`} />
         </Link>
         {canEdit && onInvitePlayer ? (

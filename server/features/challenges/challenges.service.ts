@@ -33,6 +33,14 @@ export class ChallengesService {
       validateChallengeCreation,
     } = await import("../../services/sportChallengeRules");
 
+    if (data.opponentId && data.opponentType === "user") {
+      const { canUserChallenge } = await import("../../services/challengePrivacyService");
+      const allowed = await canUserChallenge(data.opponentId, userId);
+      if (!allowed) {
+        throw new Error("This user does not accept challenges from you");
+      }
+    }
+
     const creatorType = data.hostTeamId ? "team" : "user";
     const creatorId = data.hostTeamId ?? userId;
 

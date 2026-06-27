@@ -21,6 +21,8 @@ export function ensureEventsCompatTables(): Promise<void> {
       ALTER TABLE events ADD COLUMN IF NOT EXISTS route_coordinates jsonb;
       ALTER TABLE events ADD COLUMN IF NOT EXISTS chat_group_id text;
       ALTER TABLE events ADD COLUMN IF NOT EXISTS featured_highlight_ids text[] DEFAULT ARRAY[]::text[];
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS event_format text NOT NULL DEFAULT 'open';
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS event_lineup jsonb;
 
       CREATE TABLE IF NOT EXISTS event_photos (
         id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -67,14 +69,18 @@ export async function insertEvent(creatorId: string, e: any) {
   const locationDetail = e.locationDetail ? JSON.stringify(e.locationDetail) : null;
   const routeCoordinates = e.routeCoordinates ? JSON.stringify(e.routeCoordinates) : null;
   const eventType = e.eventType ?? e.category ?? "training";
+  const eventFormat = e.eventFormat ?? "open";
+  const eventLineup = e.eventLineup ? JSON.stringify(e.eventLineup) : null;
   const q = await db.execute(sql`
     INSERT INTO events (
       creator_id, organizer_id, title, description, event_type, sport,
+      event_format, event_lineup,
       starts_at, ends_at, start_date, end_date,
       location, visibility, capacity, cover_media_id, lat, lng, location_detail, route_coordinates
     )
     VALUES (
       ${creatorId}, ${creatorId}, ${e.title}, ${e.description ?? ''}, ${eventType}, ${e.sport ?? null},
+      ${eventFormat}, ${eventLineup}::jsonb,
       ${e.startsAt}, ${e.endsAt}, ${e.startsAt}, ${e.endsAt},
       ${e.location ?? ''}, ${e.visibility ?? 'public'}, ${e.capacity ?? null}, ${e.coverMediaId ?? null},
       ${e.lat ?? null}, ${e.lng ?? null}, ${locationDetail}::jsonb, ${routeCoordinates}::jsonb
@@ -98,6 +104,8 @@ export async function updateEvent(creatorId: string, id: string, e: any) {
   const status = e.status ?? null;
   const featuredIds =
     e.featuredHighlightIds !== undefined ? e.featuredHighlightIds : undefined;
+  const eventLineup =
+    e.eventLineup !== undefined ? JSON.stringify(e.eventLineup) : undefined;
   // When transitioning to cancelled, stamp cancelled_at; when reverting
   // to active, clear it. Otherwise leave it untouched.
   const cancelledAtClause =
@@ -120,6 +128,9 @@ export async function updateEvent(creatorId: string, id: string, e: any) {
       visibility = COALESCE(${e.visibility}, visibility),
       capacity = COALESCE(${e.capacity}, capacity),
       cover_media_id = COALESCE(${e.coverMediaId}, cover_media_id),
+      sport = COALESCE(${e.sport ?? null}, sport),
+      event_format = COALESCE(${e.eventFormat ?? null}, event_format),
+      event_lineup = COALESCE(${eventLineup ?? null}::jsonb, event_lineup),
       featured_highlight_ids = COALESCE(${featuredIds ?? null}, featured_highlight_ids),
       status = COALESCE(${status}, status),
       cancelled_at = ${cancelledAtClause}

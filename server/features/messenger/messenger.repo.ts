@@ -99,6 +99,35 @@ export class MessengerRepository {
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS idx_group_msg_group_time ON group_messages (group_id, created_at DESC);
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS group_invites (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        group_id varchar NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+        inviter_id varchar NOT NULL,
+        invitee_id varchar NOT NULL,
+        status text NOT NULL DEFAULT 'pending',
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS group_join_requests (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        group_id varchar NOT NULL REFERENCES group_conversations(id) ON DELETE CASCADE,
+        requester_id varchar NOT NULL,
+        status text NOT NULL DEFAULT 'pending',
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS messenger_settings (
+        user_id varchar PRIMARY KEY,
+        allow_message_requests boolean NOT NULL DEFAULT true,
+        call_permission text NOT NULL DEFAULT 'everyone',
+        read_receipts boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
     this.groupSchemaEnsured = true;
   }
 
@@ -168,6 +197,14 @@ export class MessengerRepository {
     `);
 
     return created.rows[0] as unknown as DMConversation;
+  }
+
+  async getDMConversationById(conversationId: string): Promise<{ user_a: string; user_b: string } | null> {
+    await this.ensureDMSchema();
+    const result = await db.execute(sql`
+      SELECT user_a, user_b FROM dm_conversations WHERE id = ${conversationId} LIMIT 1
+    `);
+    return (result.rows[0] as { user_a: string; user_b: string }) ?? null;
   }
 
   async getDMConversations(userId: string): Promise<any[]> {
@@ -442,15 +479,57 @@ export class MessengerRepository {
     await db.execute(sql`DELETE FROM group_conversations WHERE id = ${groupId}`);
   }
 
-  async getUserGroups(userId: string): Promise<(GroupConversation & { role: string })[]> {
+  async getUserGroups(userId: string): Promise<any[]> {
+    await this.ensureGroupSchema();
     const result = await db.execute(sql`
-      SELECT g.*, gm.role
+      SELECT
+        g.*,
+        gm.role,
+        lm.body AS last_message_body,
+        lm.sender_id AS last_message_sender_id,
+        lm.kind AS last_message_kind,
+        lm.created_at AS last_message_created_at,
+        COALESCE(uc.unread_count, 0) AS unread_count,
+        COALESCE(mc.member_count, 0)::int AS member_count
       FROM group_conversations g
       JOIN group_members gm ON g.id = gm.group_id
+      LEFT JOIN LATERAL (
+        SELECT body, sender_id, kind, created_at
+        FROM group_messages
+        WHERE group_id = g.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) lm ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS unread_count
+        FROM group_messages m
+        WHERE m.group_id = g.id
+          AND m.sender_id <> ${userId}
+          AND m.created_at > COALESCE(
+            (SELECT last_read_at FROM group_reads WHERE group_id = g.id AND user_id = ${userId}),
+            '1970-01-01'::timestamptz
+          )
+      ) uc ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS member_count FROM group_members WHERE group_id = g.id
+      ) mc ON true
       WHERE gm.user_id = ${userId}
-      ORDER BY g.created_at DESC
+      ORDER BY COALESCE(lm.created_at, g.created_at) DESC
     `);
-    return result.rows as unknown as (GroupConversation & { role: string })[];
+    return result.rows.map((row: any) => ({
+      ...row,
+      last_message: row.last_message_body
+        ? {
+            body: row.last_message_body,
+            sender_id: row.last_message_sender_id,
+            kind: row.last_message_kind,
+            created_at: row.last_message_created_at,
+          }
+        : null,
+      last_message_at: row.last_message_created_at ?? row.created_at,
+      unread_count: Number(row.unread_count) || 0,
+      member_count: Number(row.member_count) || 0,
+    }));
   }
 
   async getGroupMessages(
@@ -576,6 +655,7 @@ export class MessengerRepository {
 
   // Invites and Requests
   async createGroupInvite(groupId: string, inviterId: string, inviteeId: string): Promise<{ id: string }> {
+    await this.ensureGroupSchema();
     const result = await db.execute(sql`
       INSERT INTO group_invites (group_id, inviter_id, invitee_id)
       VALUES (${groupId}, ${inviterId}, ${inviteeId})
@@ -619,6 +699,7 @@ export class MessengerRepository {
 
   // Settings
   async getMessengerSettings(userId: string): Promise<MessengerSettings> {
+    await this.ensureGroupSchema();
     const existing = await db.execute(sql`
       SELECT * FROM messenger_settings WHERE user_id = ${userId}
     `);

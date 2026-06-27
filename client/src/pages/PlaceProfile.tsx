@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -21,13 +21,16 @@ import { usePlace } from "@/hooks/usePlaces";
 import { isDemoPlaceId, normalizeDemoPlaceId } from "@/lib/demoPlaces";
 import { PlaceFeedSection } from "@/components/places/PlaceFeedSection";
 import { mapPath } from "@/lib/mapNavigation";
+import { EntityEmptyState, EntitySectionTabs, EntityStatRow } from "@/components/entity";
+import { EntityShareSheet } from "@/components/teams/EntityShareSheet";
+import { ROUTES } from "@/navigation";
 
 import { useSmartBack } from "@/lib/navigation";
 
 type TabType = 'feed' | 'about' | 'reviews' | 'photos' | 'book';
 
 export default function PlaceProfile() {
-  const [, params] = useRoute("/places/:id");
+  const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const goBack = useSmartBack({ fallback: "/?panel=venues" });
   const { user } = useAuth();
@@ -47,6 +50,7 @@ export default function PlaceProfile() {
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState({ bookingType: "session", title: "", startTime: "", endTime: "" });
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
@@ -204,14 +208,13 @@ export default function PlaceProfile() {
   if (!place) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: pageBg }}>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2" style={{ color: textPrimary }}>Place Not Found</h2>
-          <p className="text-sm" style={{ color: textSecondary }}>The place you're looking for doesn't exist.</p>
-          <button onClick={goBack} className="mt-4 px-6 py-2 rounded-full text-sm font-semibold"
-            style={{ background: chipBg, color: textPrimary }}>
-            Back to Places
-          </button>
-        </div>
+        <EntityEmptyState
+          icon={MapPin}
+          title="Venue not found"
+          description="This venue may have been removed or the link is invalid."
+          actionLabel="Browse venues"
+          actionHref={ROUTES.places}
+        />
       </div>
     );
   }
@@ -228,19 +231,7 @@ export default function PlaceProfile() {
     { id: 'book', label: 'Book' },
   ];
 
-  const handleShare = async () => {
-    const url = `${window.location.origin}/places/${placeId}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: place.name, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-        toast({ title: "Link copied", description: "Venue link copied to clipboard" });
-      }
-    } catch {
-      /* user cancelled */
-    }
-  };
+  const handleShare = () => setShowShareSheet(true);
 
   return (
     <div className="place-profile-page" style={{ position: 'fixed', inset: 0, background: pageBg }}>
@@ -342,31 +333,18 @@ export default function PlaceProfile() {
             )}
           </div>
 
-          <div className="flex items-center gap-6 mb-5 px-6 py-3 rounded-2xl backdrop-blur-sm"
-            style={{ background: cardBg }}>
-            <div className="text-center">
-              <div className="flex items-center gap-1 justify-center">
-                <Star size={14} className="fill-amber-400 text-amber-400" />
-                <p className="text-[17px] font-bold" style={{ color: textPrimary }}>{rating > 0 ? rating.toFixed(1) : '—'}</p>
-              </div>
-              <p className="text-[10px] uppercase tracking-wider" style={{ color: textTertiary }}>Rating</p>
-            </div>
-            <div className="w-px h-8" style={{ background: borderColor }} />
-            <div className="text-center">
-              <p className="text-[17px] font-bold" style={{ color: textPrimary }}>{place.followersCount || 0}</p>
-              <p className="text-[10px] uppercase tracking-wider" style={{ color: textTertiary }}>Followers</p>
-            </div>
-            <div className="w-px h-8" style={{ background: borderColor }} />
-            <div className="text-center">
-              <p className="text-[17px] font-bold" style={{ color: textPrimary }}>{place.reviewsCount || 0}</p>
-              <p className="text-[10px] uppercase tracking-wider" style={{ color: textTertiary }}>Reviews</p>
-            </div>
-            <div className="w-px h-8" style={{ background: borderColor }} />
-            <div className="text-center">
-              <p className="text-[17px] font-bold" style={{ color: textPrimary }}>{place.bookingsCount || 0}</p>
-              <p className="text-[10px] uppercase tracking-wider" style={{ color: textTertiary }}>Bookings</p>
-            </div>
-          </div>
+          <EntityStatRow
+            stats={[
+              { value: rating > 0 ? rating.toFixed(1) : "—", label: "rating" },
+              { value: place.followersCount || 0, label: "followers" },
+              { value: place.reviewsCount || 0, label: "reviews" },
+              { value: place.bookingsCount || 0, label: "bookings" },
+            ]}
+            onStatClick={(label) => {
+              if (label === "reviews") setActiveTab("reviews");
+              if (label === "bookings") setActiveTab("book");
+            }}
+          />
 
           <div className="flex items-center gap-2.5 w-full max-w-sm">
             <button onClick={() => setShowBookingModal(true)}
@@ -406,21 +384,13 @@ export default function PlaceProfile() {
           )}
         </div>
 
-        <nav className="sticky top-0 z-20 backdrop-blur-xl" style={{ background: navBg, borderBottom: `1px solid ${borderColor}` }}>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide px-4">
-            {tabs.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition-all duration-200 relative"
-                style={{ color: activeTab === tab.id ? textPrimary : textTertiary }}>
-                {tab.label}
-                {activeTab === tab.id && (
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-[2px] rounded-full"
-                    style={{ background: accentColor }} />
-                )}
-              </button>
-            ))}
-          </div>
-        </nav>
+        <EntitySectionTabs
+          tabs={tabs}
+          activeId={activeTab}
+          onChange={(id) => setActiveTab(id as TabType)}
+          stickyTop="top-0"
+          testIdPrefix="place-section"
+        />
 
         <div className="px-4 py-5 pb-32 space-y-5">
           {activeTab === 'feed' && placeId && (
@@ -789,6 +759,13 @@ export default function PlaceProfile() {
           </div>
         </DialogContent>
       </Dialog>
+      <EntityShareSheet
+        open={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        title={place.name}
+        path={`/places/${placeId}`}
+        shareText={`${place.name}${place.city ? ` · ${place.city}` : ""}`}
+      />
     </div>
   );
 }

@@ -8,7 +8,7 @@ import {
   users,
   teams
 } from "@shared/schema";
-import { eq, and, or, desc, asc, gte, lte, sql, type SQL } from "drizzle-orm";
+import { eq, and, or, desc, asc, gte, lte, sql, type SQL, inArray } from "drizzle-orm";
 import type { 
   CompetitiveMatch, 
   InsertCompetitiveMatch,
@@ -39,6 +39,7 @@ export const challengesRepo = {
     type?: string;
     sport?: string;
     status?: string;
+    visibility?: string;
     creatorId?: string;
     userId?: string; // Package #10: filter by participant user
     teamId?: string; // Package #10: filter by participant team
@@ -63,7 +64,15 @@ export const challengesRepo = {
       conditions.push(eq(competitiveMatches.sport, filters.sport));
     }
     if (filters.status) {
-      conditions.push(eq(competitiveMatches.status, filters.status));
+      const statuses = filters.status.split(",").map((s) => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        conditions.push(eq(competitiveMatches.status, statuses[0]));
+      } else if (statuses.length > 1) {
+        conditions.push(inArray(competitiveMatches.status, statuses));
+      }
+    }
+    if (filters.visibility) {
+      conditions.push(eq(competitiveMatches.visibility, filters.visibility));
     }
     if (filters.creatorId) {
       conditions.push(eq(competitiveMatches.creatorId, filters.creatorId));

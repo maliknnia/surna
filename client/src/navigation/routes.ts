@@ -34,7 +34,8 @@ export const ROUTES = {
   discoverPeople: '/discover/people',
   map: '/map',
   sports: '/sports',
-  person: (id: string) => `/person/${id}`,
+  person: (id: string) => `/profile/${id}`,
+  profileUser: (id: string) => `/profile/${id}`,
   
   // Sports Hub
   places: '/places',
@@ -45,6 +46,7 @@ export const ROUTES = {
   teams: '/teams',
   createTeam: '/teams/create',
   createInstantTeam: '/instant-teams/create',
+  instantTeam: (id: string) => `/instant-teams/${id}`,
   team: (id: string) => `/teams/${id}`,
   manageTeam: '/teams/manage',
   

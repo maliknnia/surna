@@ -95,6 +95,16 @@ export function createChallengesRouter(io: any): Router {
         limit: limit ? parseInt(limit) : 50,
       };
 
+      if (status?.includes(",")) {
+        filters.status = status;
+      }
+
+      // Map summary uses visibility=public with multi-status
+      const visibility = req.query.visibility as string | undefined;
+      if (visibility) {
+        filters.visibility = visibility;
+      }
+
       if (mine === 'true') {
         filters.creatorId = req.jwtUser.id;
       }
@@ -126,8 +136,10 @@ export function createChallengesRouter(io: any): Router {
 
       // Get participants
       const participants = await challengesRepo.getParticipants(req.params.id);
+      const results = await challengesRepo.getResultsByMatch(req.params.id);
+      const result = results[0] ?? null;
 
-      res.json({ match, participants });
+      res.json({ match, participants, result });
     } catch (error: any) {
       next(error);
     }

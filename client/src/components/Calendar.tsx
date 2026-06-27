@@ -22,6 +22,7 @@ import {
   isToday,
   addMonths,
   subMonths,
+  addDays,
   isBefore,
   startOfDay,
 } from "date-fns";
@@ -31,6 +32,9 @@ import { exportMyCalendarIcs } from "@/lib/eventCalendar";
 import { useMyRSVPs } from "@/hooks/useEvents";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarAgenda, type AgendaEvent } from "@/components/calendar/CalendarAgenda";
+import { EntityEmptyState, EntityListSkeleton } from "@/components/entity";
+import { createHubPath } from "@/lib/createHub";
+import { ROUTES } from "@/navigation";
 
 type CalEvent = AgendaEvent & { description?: string };
 
@@ -56,7 +60,7 @@ export function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
-  const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [filterMode, setFilterMode] = useState<FilterMode>("mine");
   const [exporting, setExporting] = useState(false);
 
   const monthStart = startOfMonth(currentMonth);
@@ -65,7 +69,7 @@ export function Calendar() {
   const calendarEnd = endOfWeek(monthEnd);
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const { data: eventsData = [], isLoading } = useQuery<CalEvent[]>({
+  const { data: apiEvents = [], isLoading, isError, refetch } = useQuery<CalEvent[]>({
     queryKey: ["calendar-events", calendarStart.toISOString(), calendarEnd.toISOString()],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -77,10 +81,15 @@ export function Calendar() {
       if (!res.ok) throw new Error("Failed to load events");
       const data = await res.json();
       const items = data?.items ?? data ?? [];
-      return mergeWithDemoEvents(items).map((e: Record<string, unknown>) => mapApiEvent(e));
+      return (items as Record<string, unknown>[]).map((e) => mapApiEvent(e));
     },
     staleTime: 60_000,
   });
+
+  const eventsData = useMemo(() => {
+    if (filterMode === "mine") return apiEvents;
+    return mergeWithDemoEvents(apiEvents).map((e) => mapApiEvent(e as Record<string, unknown>));
+  }, [apiEvents, filterMode]);
 
   const { data: myRsvps } = useMyRSVPs();
   const myEventIds = useMemo(() => {
@@ -143,17 +152,24 @@ export function Calendar() {
     }
   };
 
+  const weekDays = useMemo(() => {
+    const anchor = startOfWeek(selectedDate);
+    return eachDayOfInterval({ start: anchor, end: addDays(anchor, 6) });
+  }, [selectedDate]);
+
   if (isLoading) {
+    return <EntityListSkeleton rows={4} rowHeight={72} />;
+  }
+
+  if (isError) {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-12 rounded-2xl bg-muted/30" />
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 35 }).map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl bg-muted/20" />
-          ))}
-        </div>
-        <div className="h-32 rounded-2xl bg-muted/20" />
-      </div>
+      <EntityEmptyState
+        icon={CalendarDays}
+        title="Couldn't load schedule"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={() => void refetch()}
+      />
     );
   }
 
@@ -191,16 +207,20 @@ export function Calendar() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-full p-0.5 bg-muted/40">
-            {(["all", "mine"] as const).map((f) => (
+          <div
+            className="flex rounded-full p-0.5"
+            style={{ background: "var(--surna-elevated)", border: "1px solid var(--surna-border)" }}
+          >
+            {(["mine", "all"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => setFilterMode(f)}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors",
-                  filterMode === f ? "bg-foreground text-background" : "text-muted-foreground",
-                )}
+                className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors"
+                style={{
+                  background: filterMode === f ? "var(--surna-text)" : "transparent",
+                  color: filterMode === f ? "var(--surna-base)" : "var(--surna-text-secondary)",
+                }}
               >
                 {f === "all" ? "Discover" : "My schedule"}
               </button>
@@ -241,15 +261,61 @@ export function Calendar() {
           </button>
           <button
             type="button"
-            onClick={() => setLocation("/events/create")}
-            className="h-8 px-3 rounded-full text-[12px] font-bold flex items-center gap-1 bg-foreground text-background"
+            onClick={() => setLocation(createHubPath("event"))}
+            className="h-8 px-3 rounded-full text-[12px] font-bold flex items-center gap-1"
+            style={{ background: "var(--surna-text)", color: "var(--surna-base)" }}
           >
             <Plus size={14} />
             Create
           </button>
         </div>
 
-        <p className="text-[13px] text-muted-foreground">
+        {/* 7-day strip */}
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          {weekDays.map((day) => {
+            const selected = isSameDay(day, selectedDate);
+            const dateKey = format(day, "yyyy-MM-dd");
+            const hasEvents = (eventsByDate[dateKey]?.length ?? 0) > 0;
+            return (
+              <button
+                key={day.toISOString()}
+                type="button"
+                onClick={() => {
+                  setSelectedDate(day);
+                  if (!isSameMonth(day, currentMonth)) setCurrentMonth(day);
+                }}
+                className="flex flex-col items-center min-w-[44px] py-2 px-1 rounded-xl active:opacity-80"
+                style={{
+                  background: selected ? "var(--surna-text)" : "var(--surna-elevated)",
+                  border: selected ? "none" : "1px solid var(--surna-border)",
+                }}
+              >
+                <span
+                  className="text-[10px] font-semibold uppercase"
+                  style={{ color: selected ? "var(--surna-base)" : "var(--surna-text-secondary)" }}
+                >
+                  {format(day, "EEE")}
+                </span>
+                <span
+                  className="text-[15px] font-bold tabular-nums"
+                  style={{ color: selected ? "var(--surna-base)" : "var(--surna-text)" }}
+                >
+                  {format(day, "d")}
+                </span>
+                {hasEvents ? (
+                  <span
+                    className="w-1 h-1 rounded-full mt-1"
+                    style={{ background: selected ? "var(--surna-base)" : "var(--surna-gold, #f5c518)" }}
+                  />
+                ) : (
+                  <span className="h-1 mt-1" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="text-[13px]" style={{ color: "var(--surna-text-secondary)" }}>
           {monthEventCount} event{monthEventCount === 1 ? "" : "s"} this month
           {filterMode === "mine" && myEventIds.size > 0 ? ` · ${myEventIds.size} on your schedule` : ""}
         </p>
@@ -316,7 +382,9 @@ export function Calendar() {
             <CalendarAgenda
               events={selectedDateEvents}
               emptyTitle="Free day"
-              emptyHint="No events — explore what's on near you."
+              emptyHint="No events on this day — browse what's on near you."
+              emptyActionLabel="Browse events"
+              emptyActionHref={ROUTES.events}
               compact
             />
           </div>
@@ -329,8 +397,14 @@ export function Calendar() {
           </div>
           <CalendarAgenda
             events={agendaEvents}
-            emptyTitle="Nothing coming up"
-            emptyHint="RSVP to events or create your own."
+            emptyTitle={filterMode === "mine" ? "Nothing on your schedule" : "Nothing coming up"}
+            emptyHint={
+              filterMode === "mine"
+                ? "RSVP to events and they'll appear here automatically."
+                : "Explore events near you or create your own."
+            }
+            emptyActionLabel={filterMode === "mine" ? "Find events" : "Browse events"}
+            emptyActionHref={ROUTES.events}
           />
         </div>
       )}

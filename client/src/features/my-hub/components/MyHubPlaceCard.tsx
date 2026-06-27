@@ -200,10 +200,10 @@ export function MyHubPlaceCard({
           onClick={() => onUpdatePhoto(place)}
           testId={`place-photos-${place.id}`}
         />
-        <Link href={`/messages?context=place&placeId=${place.id}`}>
+        <Link href={`/places/${place.id}`}>
           <ActionChip
             icon={MessageSquare}
-            label="Messages"
+            label="Updates"
             testId={`place-messages-${place.id}`}
           />
         </Link>

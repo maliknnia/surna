@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Clock, MapPin, Users, Zap, Plus, ChevronLeft, Filter, Trophy, Check, ArrowRight, Radio } from "lucide-react";
 import { calculateDistance } from "@/lib/geo";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
+import { ROUTES } from "@/navigation";
 
 const SPORTS = ['Football', 'Basketball', 'Tennis', 'Volleyball', 'Baseball', 'Soccer', 'Rugby', 'Cricket', 'GAA', 'Hurling', 'Hockey', 'Badminton', 'Table Tennis', 'Swimming'];
 const TIME_FILTERS = [
@@ -92,6 +93,17 @@ export default function InstantJoinHub() {
     refetchInterval: 10000,
   });
 
+  useEffect(() => {
+    const joined = new Set<string>();
+    const chats: Record<string, string> = {};
+    for (const t of teams) {
+      if (t.isMember) joined.add(t.id);
+      if (t.messengerGroupId) chats[t.id] = t.messengerGroupId;
+    }
+    setJoinedIds(joined);
+    setChatByTeamId((prev) => ({ ...prev, ...chats }));
+  }, [teams]);
+
   const joinMutation = useMutation({
     mutationFn: async (teamId: string) => {
       setJoiningId(teamId);
@@ -107,10 +119,13 @@ export default function InstantJoinHub() {
 
       toast({
         title: "You're in!",
-        description: chatCreated ? "You've joined the game and a group chat was created." : "You've joined the game",
+        description: chatCreated ? "Opening group chat…" : "You've joined the game",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/instant-teams'] });
       setJoiningId(null);
+      if (data.chatGroupId) {
+        navigate(`/messages?groupId=${encodeURIComponent(data.chatGroupId)}`);
+      }
     },
     onError: (err: Error) => {
       toast({ title: "Can't join", description: err.message, variant: "destructive" });
@@ -251,7 +266,8 @@ export default function InstantJoinHub() {
           </div>
         ) : (
           filteredTeams.map((team: any) => {
-            const isJoined = joinedIds.has(team.id);
+            const isJoined = joinedIds.has(team.id) || team.isMember;
+            const chatGroupId = chatByTeamId[team.id] || team.messengerGroupId;
             const isFull = (team.playersJoined || 0) >= team.playersNeeded;
             const isJoining = joiningId === team.id;
             const timeLabel = formatTimeUntil(team.startTime);
@@ -265,7 +281,12 @@ export default function InstantJoinHub() {
                 : null;
 
             return (
-              <div key={team.id} className="rounded-2xl overflow-hidden" style={{ background: 'var(--surna-elevated)', border: isUrgent ? '1px solid rgba(255, 59, 48, 0.3)' : '1px solid var(--surna-separator)' }}>
+              <div
+                key={team.id}
+                className="rounded-2xl overflow-hidden cursor-pointer"
+                style={{ background: 'var(--surna-elevated)', border: isUrgent ? '1px solid rgba(255, 59, 48, 0.3)' : '1px solid var(--surna-separator)' }}
+                onClick={() => navigate(ROUTES.instantTeam(team.id))}
+              >
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -332,10 +353,13 @@ export default function InstantJoinHub() {
                     <div className="flex-1 min-w-[120px]">
                       <SpotsBar joined={team.playersJoined || 0} needed={team.playersNeeded} />
                     </div>
-                    {isJoined && chatByTeamId[team.id] && (
+                    {isJoined && chatGroupId && (
                       <button
                         type="button"
-                        onClick={() => navigate("/messages")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/messages?groupId=${encodeURIComponent(chatGroupId)}`);
+                        }}
                         className="px-4 py-2 rounded-full text-sm font-semibold"
                         style={{ background: "var(--surna-surface)", color: "var(--surna-text)" }}
                       >
@@ -344,7 +368,10 @@ export default function InstantJoinHub() {
                     )}
                     <button
                       type="button"
-                      onClick={() => !isJoined && !isFull && joinMutation.mutate(team.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isJoined && !isFull) joinMutation.mutate(team.id);
+                      }}
                       disabled={isJoined || isFull || isJoining}
                       className="px-5 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-1.5"
                       style={{

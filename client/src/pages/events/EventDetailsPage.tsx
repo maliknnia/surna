@@ -30,9 +30,16 @@ import { EventFeedSection } from "@/components/events/EventFeedSection";
 import { AddToCalendarSheet } from "@/components/calendar/AddToCalendarSheet";
 import { calendarInputFromApiEvent } from "@/lib/eventCalendar";
 import { mapPath } from "@/lib/mapNavigation";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { EntityEmptyState, EntitySectionTabs } from "@/components/entity";
 import { extractDominantColor, getCachedColor } from "@/lib/extractColor";
 import EventHeader, { eventAccentColor } from "./components/EventHeader";
+import EventFormatHero from "@/components/events/EventFormatHero";
+import EventFormatBadge from "@/components/events/EventFormatBadge";
+import {
+  normalizeEventFormat,
+  resolveEventLineupFromRow,
+} from "@shared/eventFormats";
 
 type TabType = "about" | "people" | "location" | "photos" | "feed" | "ticket";
 
@@ -65,9 +72,14 @@ function getCountdownLabel(dateStr: string): string | null {
   return `Starts in ${mins}m`;
 }
 
-function getPriceLabel(ev: any): string | null {
-  const desc = (ev.description || "").toLowerCase();
-  const priceMatch = desc.match(/\$(\d+)/);
+function getPriceLabel(ev: Record<string, unknown>): string | null {
+  const ticketPrice = ev.ticket_price ?? ev.ticketPrice ?? ev.price;
+  if (ticketPrice != null && Number(ticketPrice) === 0) return "Free";
+  if (ticketPrice != null && !Number.isNaN(Number(ticketPrice))) {
+    return `€${Number(ticketPrice).toFixed(Number(ticketPrice) % 1 === 0 ? 0 : 2)}`;
+  }
+  const desc = String(ev.description || "").toLowerCase();
+  const priceMatch = desc.match(/€(\d+(?:\.\d+)?)/) || desc.match(/\$(\d+(?:\.\d+)?)/);
   if (priceMatch) return `€${priceMatch[1]}`;
   if (desc.includes("free entry") || desc.includes("free event") || desc.includes("no fee")) return "Free";
   return null;
@@ -218,10 +230,11 @@ export default function EventDetailsPage() {
 
   useEffect(() => {
     if (!ev?.sport || !id) return;
-    if (isRouteSport(String(ev.sport))) {
+    const fmt = normalizeEventFormat(ev.event_format ?? ev.eventFormat);
+    if (fmt === "route" || isRouteSport(String(ev.sport))) {
       setLocation(ROUTES.eventRoute(id), { replace: true });
     }
-  }, [ev?.sport, id, setLocation]);
+  }, [ev?.sport, ev?.event_format, ev?.eventFormat, id, setLocation]);
 
   useEffect(() => {
     if (!coverUrl) return;
@@ -291,13 +304,32 @@ export default function EventDetailsPage() {
 
   const handleShare = () => setShowShareSheet(true);
 
-  const openEventChat = () => {
+  const openEventChat = async () => {
     const chatGroupId = ev?.chat_group_id || ev?.chatGroupId;
     if (chatGroupId) {
       setLocation(`/messages?groupId=${encodeURIComponent(chatGroupId)}`);
       return;
     }
-    toast({ title: "Chat not ready", description: "Event chat is still being set up.", variant: "destructive" });
+    if (!ev?.id || isDemoEventId(String(ev.id))) {
+      toast({ title: "Chat unavailable", description: "Demo events don't have a live chat.", variant: "destructive" });
+      return;
+    }
+    try {
+      const group = (await apiRequest("POST", "/api/messenger/groups", {
+        name: ev.title || "Event chat",
+        description: `Event chat · ${ev.id}`,
+        eventId: ev.id,
+      })) as { id?: string };
+      const gid = group?.id;
+      if (gid) {
+        await queryClient.invalidateQueries({ queryKey: ["/api/events", id] });
+        setLocation(`/messages?groupId=${encodeURIComponent(gid)}`);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    toast({ title: "Chat not ready", description: "Try again in a moment after RSVPing.", variant: "destructive" });
   };
 
   const handleRsvp = (status: "going" | "interested" | "waitlist", issueTicket = false) => {
@@ -309,6 +341,7 @@ export default function EventDetailsPage() {
         onSuccess: (data: any) => {
           setRsvpStatus(status);
           if (data?.ticket?.code) setTicketCode(data.ticket.code);
+          void queryClient.invalidateQueries({ queryKey: ["/api/events", id] });
           if (status === "going" && ev?.id && !isDemoEventId(String(ev.id))) {
             apiRequest("POST", "/api/posts", {
               content: `Attending ${ev.title}${ev.location ? ` at ${ev.location}` : ""}.`,
@@ -347,17 +380,14 @@ export default function EventDetailsPage() {
 
   if (!ev) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4" style={{ background: pageBg }}>
-        <Flag size={40} className="mb-3 opacity-40" style={{ color: textSecondary }} />
-        <p style={{ color: textSecondary }}>Event not found</p>
-        <button
-          type="button"
-          onClick={() => setLocation("/events")}
-          className="mt-4 px-5 py-2.5 rounded-full text-[13px] font-bold"
-          style={{ background: btnBg, color: textPrimary }}
-        >
-          Browse events
-        </button>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: pageBg }}>
+        <EntityEmptyState
+          icon={Flag}
+          title="Event not found"
+          description="This event may have been removed or the link is invalid."
+          actionLabel="Browse events"
+          actionHref={ROUTES.events}
+        />
       </div>
     );
   }
@@ -375,6 +405,8 @@ export default function EventDetailsPage() {
   const priceLabel = getPriceLabel(ev);
   const needsTicket = priceLabel && priceLabel !== "Free";
   const sport = ev.sport || null;
+  const eventFormat = normalizeEventFormat(ev.event_format ?? ev.eventFormat);
+  const eventLineup = resolveEventLineupFromRow(ev);
   const sportConfig = getSportConfig(sport);
   const accentColor = eventAccentColor(extractedColor, sport);
   const creatorName = ev?.creator_first_name || ev?.creator_username || "Organizer";
@@ -497,9 +529,16 @@ export default function EventDetailsPage() {
         className="absolute inset-0 z-10 overflow-y-auto"
         style={{ paddingTop: "56px" }}
       >
+        <EventFormatHero
+          format={eventFormat}
+          lineup={eventLineup}
+          title={ev.title}
+          accentColor={accentColor}
+        />
         <EventHeader
           title={ev.title}
           sport={sport}
+          eventFormat={eventFormat}
           sportEmoji={sportConfig.emoji}
           accentColor={accentColor}
           coverUrl={coverUrl}
@@ -528,30 +567,13 @@ export default function EventDetailsPage() {
 
         <EventHighlights eventId={ev.id} eventTitle={ev.title} />
 
-        <nav
-          className="sticky top-0 z-20 backdrop-blur-xl"
-          style={{ background: navBg, borderBottom: `1px solid ${borderColor}` }}
-        >
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide px-4">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className="px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition-all duration-200 relative"
-                style={{ color: activeTab === tab.id ? textPrimary : textTertiary }}
-              >
-                {tab.label}
-                {activeTab === tab.id && (
-                  <div
-                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-[2px] rounded-full"
-                    style={{ background: accentColor }}
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-        </nav>
+        <EntitySectionTabs
+          tabs={tabs}
+          activeId={activeTab}
+          onChange={(id) => setActiveTab(id as TabType)}
+          stickyTop="top-0"
+          testIdPrefix="event-section"
+        />
 
         <div className="px-4 py-5 pb-32 space-y-5">
           {activeTab === "about" && (

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatDistance, getNavigationUrl, type Coordinates } from "@/lib/geo";
 import { entityPath } from "@/lib/mapNavigation";
+import { ROUTES } from "@/navigation";
 import { markNavReturn } from "@/lib/navigation";
 import { pushMapRecent } from "@/lib/mapSearchRecents";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -519,13 +520,21 @@ export default function PinSheet({ pin, userLocation, onClose, onNavigate, onVie
           onClose();
           navigate(`/challenges/${pin.id}`);
           break;
-        case "instantJoin":
-          await apiRequest("POST", `/api/instant-teams/${pin.id}/join`);
+        case "instantJoin": {
+          const res = await apiRequest("POST", `/api/instant-teams/${pin.id}/join`);
+          const data = (await res.json()) as { chatGroupId?: string };
           queryClient.invalidateQueries({ queryKey: ["/api/instant-teams"] });
           queryClient.invalidateQueries({ queryKey: ["/api/map/viewport"] });
           setActionDone("instantJoin");
           toast({ title: "You're in!", description: pin.title });
+          onClose();
+          if (data.chatGroupId) {
+            navigate(`/messages?groupId=${encodeURIComponent(data.chatGroupId)}`);
+          } else {
+            navigate(ROUTES.instantTeam(pin.id));
+          }
           break;
+        }
         case "share":
           if (navigator.share) {
             await navigator.share({

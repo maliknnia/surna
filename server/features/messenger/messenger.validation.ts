@@ -30,6 +30,7 @@ export const createGroupSchema = z.object({
   memberIds: z.array(z.string().min(1)).max(50).optional(),
   instantTeamId: z.string().min(1).optional(),
   instantGameId: z.string().min(1).optional(),
+  eventId: z.string().uuid().optional(),
 }).transform((data) => ({
   ...data,
   instantTeamId: data.instantTeamId ?? data.instantGameId,

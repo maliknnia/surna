@@ -7,7 +7,7 @@ import { markNavReturn } from "@/lib/navigation";
 import { getQueryFn } from "@/lib/queryClient";
 import { fetchCoaches } from "@/lib/coachesApi";
 import { fetchChallengesList } from "@/lib/challengesApi";
-import { mergeWithDemoChallenges } from "@/lib/demoChallenges";
+import { mergeWithDemoChallenges, isDemoChallengeId } from "@/lib/demoChallenges";
 import { mergeWithDemoTeams } from "@/lib/demoTeams";
 import { formatEventWhenShort, getEventCoverUrl } from "@/lib/eventCover";
 import {
@@ -278,7 +278,7 @@ function HappeningNearYouRow({
         subtitle: g.locationName || "Near you",
         meta: [g.sport, formatEventWhenShort(g.startTime)].filter(Boolean).join(" · "),
         imageUrl: getEventCoverUrl({ sport: g.sport, title: g.name }),
-        route: ROUTES.instantJoin,
+        route: ROUTES.instantTeam(String(g.id)),
         sport: g.sport as string | undefined,
         cardKind: "instantJoin" as const,
         attendeeEntity: {
@@ -452,7 +452,7 @@ function HomeMixedStack({
         meta: ch.type || "Open match",
         sport: ch.sport,
         cardKind: "challenge",
-        route: ROUTES.challenges,
+        route: isDemoChallengeId(String(ch.id)) ? ROUTES.challenges : ROUTES.challenge(String(ch.id)),
         imageUrl: getEventCoverUrl({ sport: ch.sport, title: ch.title }),
         cta: "Join",
         captionBelow: ch.sport ? `${ch.sport} · open now` : undefined,
@@ -520,7 +520,7 @@ function HomeMixedStack({
         title: g.name,
         subtitle: [g.locationName, g.sport].filter(Boolean).join(" · "),
         cta: "Join",
-        route: ROUTES.instantJoin,
+        route: ROUTES.instantTeam(String(g.id)),
         icon: "instant",
         cardKind: "instantJoin",
         imageUrl: getEventCoverUrl({ sport: g.sport, title: g.name }),
@@ -735,7 +735,7 @@ function FeaturedHero({
       imageUrl: getEventCoverUrl({ sport: g.sport, title: g.name }),
       sport: g.sport,
       cardKind: "instantJoin" as const,
-      route: ROUTES.instantJoin,
+      route: ROUTES.instantTeam(String(g.id)),
       attendeeEntity: { type: "instant" as const, id: String(g.id), count: g.playersJoined },
     }));
     const ranked = [...eventRows, ...instantRows].sort((a, b) => b.score - a.score);

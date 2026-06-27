@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useInView } from "react-intersection-observer";
-import { Plus, MapPin } from "lucide-react";
+import { Plus, MapPin, Building2 } from "lucide-react";
 import { FeatureFilterChips } from "@/components/panels/FeatureFilterBar";
 import {
   PanelFilterSheet,
@@ -25,6 +24,8 @@ import type { Place } from "@shared/schema";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { mergeWithDemoPlaces } from "@/lib/demoPlaces";
 import { mapPath } from "@/lib/mapNavigation";
+import { EntityEmptyState, EntityListSkeleton } from "@/components/entity";
+import { ROUTES } from "@/navigation";
 
 const CATEGORIES: { key: string; label: string; emoji: string }[] = [
   { key: "All", label: "All", emoji: "📍" },
@@ -96,7 +97,6 @@ export default function PlacesDiscovery({
   const places = useMemo(() => {
     let list = mergeWithDemoPlaces(apiPlaces, {
       skipDemo: hasActiveFilters,
-      mixDemos: !hasActiveFilters,
     });
     if (selectedCategory !== "All") {
       const cat = selectedCategory.toLowerCase();
@@ -132,9 +132,6 @@ export default function PlacesDiscovery({
   const chipBg = t.chipBg;
   const chipText = t.chipText;
   const borderColor = t.border;
-  const skeletonBg = t.chipBg;
-
-
 
   const venueCategoryChips = CATEGORIES.map((c) => ({
     key: c.key,
@@ -235,33 +232,15 @@ export default function PlacesDiscovery({
 
       <div className="px-4 pt-3">
         {isLoading ? (
-          <div className="discovery-card-list">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-[28px] overflow-hidden" style={{ background: skeletonBg }}>
-              <Skeleton className="h-[140px] w-full" style={{ background: skeletonBg }} />
-            </div>
-          ))}
-          </div>
+          <EntityListSkeleton rows={4} rowHeight={140} />
         ) : places.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4">
-              {CATEGORIES.find(c => c.key === selectedCategory)?.emoji || "📍"}
-            </div>
-            <h3 className="text-[16px] font-semibold mb-1" style={{ color: textPrimary }}>
-              {selectedCategory !== "All" ? `No ${selectedCategory}s found` : "No places found"}
-            </h3>
-            <p className="text-[13px] mb-4" style={{ color: textSecondary }}>Try adjusting your search or filters</p>
-            {user && (
-              <button
-                type="button"
-                onClick={() => setLocation("/places/create")}
-                className="px-5 py-2.5 rounded-full text-[13px] font-bold"
-                style={{ background: chipActiveBg, color: chipActiveText }}
-              >
-                Add a venue
-              </button>
-            )}
-          </div>
+          <EntityEmptyState
+            icon={Building2}
+            title={selectedCategory !== "All" ? `No ${selectedCategory.replace(/-/g, " ")}s found` : "No venues yet"}
+            description="Try adjusting your search or filters, or add the first venue in your area."
+            actionLabel={user ? "Add a venue" : undefined}
+            actionHref={user ? ROUTES.createPlace : undefined}
+          />
         ) : (
           (() => {
             const labels = DISCOVERY_SECTION_LABELS.venues;

@@ -133,11 +133,10 @@ export function mergeProfilePhotos<T extends { id: string }>(
 export function resolveProfileSports(
   fromUser: string[] | undefined | null,
   primarySport?: string | null,
-  isOwnProfile?: boolean,
+  _isOwnProfile?: boolean,
 ): string[] {
   const list = (fromUser ?? []).filter(Boolean);
   if (list.length > 0) return list;
-  if (primarySport) return [primarySport, ...OWNER_DEMO_SPORTS.filter((s) => s !== primarySport)].slice(0, 4);
-  if (isOwnProfile) return [...OWNER_DEMO_SPORTS];
+  if (primarySport) return [primarySport];
   return [];
 }

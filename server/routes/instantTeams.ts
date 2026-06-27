@@ -60,11 +60,15 @@ const inviteResponseSchema = z.object({
 instantTeamsRouter.get("/", async (req, res) => {
   try {
     const { sport, skillLevel } = req.query;
-    const teams = await storage.getInstantTeams({
-      sport: sport as string,
-      skillLevel: skillLevel as string,
-      status: 'active',
-    });
+    const viewerId = resolveRequestUserId(req) ?? undefined;
+    const teams = await storage.getInstantTeams(
+      {
+        sport: sport as string,
+        skillLevel: skillLevel as string,
+        status: "active",
+      },
+      viewerId,
+    );
     res.json(teams);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -76,7 +80,15 @@ instantTeamsRouter.get("/:id", async (req, res) => {
     const team = await storage.getInstantTeam(req.params.id);
     if (!team) return res.status(404).json({ error: "Not found" });
     const members = await storage.getInstantTeamMembers(req.params.id);
-    res.json({ ...team, members });
+    const viewerId = resolveRequestUserId(req);
+    const messengerGroupId = await storage.getInstantTeamMessengerGroupId(req.params.id);
+    res.json({
+      ...team,
+      members,
+      messengerGroupId,
+      isMember: viewerId ? members.some((m: { userId?: string }) => m.userId === viewerId) : false,
+      isCreator: viewerId ? team.creatorId === viewerId : false,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

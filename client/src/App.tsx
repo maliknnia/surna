@@ -29,8 +29,7 @@ const EventsPage = lazy(() => import("@/components/events/EventsPage"));
 const TeamPage = lazy(() => import("@/pages/team/TeamPage"));
 const TeamPlayerPage = lazy(() => import("@/pages/team/TeamPlayerPage"));
 
-// Package #5: Enhanced Person Profiles
-const PersonProfile = lazy(() => import("@/pages/profile/PersonProfile"));
+// Package #5: legacy person profile — redirects to ProfilePage via /person/:id
 
 // Keep heavy pages lazy loaded
 const Feed = lazy(() => import("@/pages/Feed"));
@@ -104,6 +103,7 @@ const Sports = lazy(() => import("@/pages/Sports"));
 // Instant Teams pages
 const InstantJoinHub = lazy(() => import("@/pages/InstantJoinHub"));
 const CreateInstantTeam = lazy(() => import("@/pages/CreateInstantTeam"));
+const InstantTeamProfile = lazy(() => import("@/pages/InstantTeamProfile"));
 
 // Coach profile page
 const CoachProfile = lazy(() => import("@/pages/CoachProfile"));
@@ -146,17 +146,36 @@ const PerformanceHub = lazy(() => import("@/pages/PerformanceHub"));
 import TermsOfService from "@/pages/TermsOfService";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 
-function ProfilePathRedirect() {
-  const [, params] = useRoute("/profile/:userId");
+function PersonProfileRedirect() {
+  const [, params] = useRoute("/person/:id");
   const [, setLocation] = useLocation();
-  const userId = params?.userId;
 
   useEffect(() => {
-    if (!userId) return;
-    setLocation(`/person/${userId}`);
-  }, [userId, setLocation]);
+    const id = params?.id;
+    if (id) setLocation(`/profile/${id}`);
+  }, [params?.id, setLocation]);
 
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surna-void)" }}>
+      <div className="w-8 h-8 border-2 border-border border-t-white rounded-full animate-spin" />
+    </div>
+  );
+}
+
+function UserProfileRedirect() {
+  const [, params] = useRoute("/user/:id");
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const id = params?.id;
+    if (id) setLocation(`/profile/${id}`);
+  }, [params?.id, setLocation]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surna-void)" }}>
+      <div className="w-8 h-8 border-2 border-border border-t-white rounded-full animate-spin" />
+    </div>
+  );
 }
 
 function JoinPathRedirect() {
@@ -266,6 +285,7 @@ function Router() {
         {/* Instant Teams */}
         <Route path="/instant-join" component={() => <ProtectedRoute component={InstantJoinHub} />} />
         <Route path="/instant-teams/create" component={() => <ProtectedRoute component={CreateInstantTeam} />} />
+        <Route path="/instant-teams/:id" component={() => <ProtectedRoute component={InstantTeamProfile} />} />
         
         {/* Places Routes */}
         <Route path="/places" component={() => <ProtectedRoute component={PlacesDiscovery} />} />
@@ -302,9 +322,9 @@ function Router() {
         <Route path="/feed" component={() => <ProtectedRoute component={Feed} />} />
         <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
         <Route path="/profile/edit" component={() => <ProtectedRoute component={ProfileEditor} />} />
-        <Route path="/profile/:userId" component={ProfilePathRedirect} />
-        <Route path="/person/:id" component={() => <ProtectedRoute component={PersonProfile} />} />
-        <Route path="/user/:id" component={() => <ProtectedRoute component={PersonProfile} />} />
+        <Route path="/profile/:userId" component={() => <ProtectedRoute component={ProfilePage} />} />
+        <Route path="/person/:id" component={PersonProfileRedirect} />
+        <Route path="/user/:id" component={UserProfileRedirect} />
         <Route path="/structure" component={AppStructure} />
         <Route path="/checkout" component={() => <ProtectedRoute component={Checkout} />} />
         <Route path="/payment-success" component={() => <ProtectedRoute component={PaymentSuccess} />} />
@@ -355,7 +375,6 @@ function Router() {
         <Route path="/goals"        component={() => <ProtectedRoute component={PerformanceHub} />} />
         <Route path="/schedule"     component={() => <ProtectedRoute component={CalendarPage} />} />
         <Route path="/leaderboards" component={() => <ProtectedRoute component={ChallengesHome} />} />
-        <Route path="/place/:id"    component={() => <ProtectedRoute component={PlaceProfile} />} />
         <Route path="/marketplace/shop/:shopId" component={() => <ProtectedRoute component={ShopProfile} />} />
         <Route path="/cart"         component={() => <ProtectedRoute component={Cart} />} />
         <Route path="/wallet"       component={() => <ProtectedRoute component={Billing} />} />

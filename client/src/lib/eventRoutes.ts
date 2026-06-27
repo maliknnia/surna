@@ -23,8 +23,12 @@ export function isRouteSport(sport: string | null | undefined): boolean {
   );
 }
 
-export function eventDetailPath(eventId: string, sport?: string | null): string {
-  if (isRouteSport(sport)) return ROUTES.eventRoute(eventId);
+export function eventDetailPath(
+  eventId: string,
+  sport?: string | null,
+  eventFormat?: string | null,
+): string {
+  if (eventFormat === "route" || isRouteSport(sport)) return ROUTES.eventRoute(eventId);
   return ROUTES.event(eventId);
 }
 

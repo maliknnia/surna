@@ -8,6 +8,9 @@ import {
   Sparkles,
   Users,
   Globe,
+  Navigation,
+  Music,
+  Swords,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +51,13 @@ import {
   formatVenueAddressShort,
   type VenueAddress,
 } from "@shared/venueAddress";
+import {
+  EVENT_FORMAT_META,
+  EVENT_FORMATS,
+  EVENT_SPORT_OPTIONS,
+  type EventFormat,
+  type EventLineup,
+} from "@shared/eventFormats";
 
 const STEPS: CreateFlowStep[] = [
   { id: 1, label: "Photo & basics", icon: Sparkles },
@@ -64,6 +74,15 @@ type EventDraft = {
   endsAt: string;
   visibility: "public" | "private" | "unlisted";
   capacity: string;
+  eventFormat: EventFormat;
+  sport: string;
+  sideA: string;
+  sideB: string;
+  sideAWeight: string;
+  sideBWeight: string;
+  headliner: string;
+  supportAct: string;
+  distanceKm: string;
 };
 
 const EMPTY_DRAFT: EventDraft = {
@@ -73,7 +92,53 @@ const EMPTY_DRAFT: EventDraft = {
   endsAt: "",
   visibility: "public",
   capacity: "",
+  eventFormat: "open",
+  sport: "",
+  sideA: "",
+  sideB: "",
+  sideAWeight: "",
+  sideBWeight: "",
+  headliner: "",
+  supportAct: "",
+  distanceKm: "",
 };
+
+const FORMAT_ICONS: Record<EventFormat, typeof Users> = {
+  open: Users,
+  versus: Swords,
+  route: Navigation,
+  lineup: Music,
+};
+
+function buildEventLineup(form: EventDraft): EventLineup | undefined {
+  if (form.eventFormat === "versus") {
+    if (!form.sideA.trim() && !form.sideB.trim()) return undefined;
+    return {
+      sides: [
+        {
+          label: form.sideA.trim() || "TBD",
+          meta: form.sideAWeight.trim() ? { weightClass: form.sideAWeight.trim() } : undefined,
+        },
+        {
+          label: form.sideB.trim() || "TBD",
+          meta: form.sideBWeight.trim() ? { weightClass: form.sideBWeight.trim() } : undefined,
+        },
+      ],
+    };
+  }
+  if (form.eventFormat === "lineup") {
+    const acts = form.supportAct.trim() ? [{ name: form.supportAct.trim() }] : [];
+    const headliner = form.headliner.trim() || undefined;
+    if (!headliner && acts.length === 0) return undefined;
+    return { headliner, acts: acts.length ? acts : undefined };
+  }
+  if (form.eventFormat === "route") {
+    const km = form.distanceKm.trim() ? Number(form.distanceKm) : undefined;
+    if (!km || Number.isNaN(km)) return undefined;
+    return { route: { distanceKm: km } };
+  }
+  return undefined;
+}
 
 export default function CreateEventWizardPage() {
   const [, navigate] = useLocation();
@@ -92,12 +157,15 @@ export default function CreateEventWizardPage() {
   });
 
   const canAdvance = (): boolean => {
-    if (step === 1) return form.title.trim().length >= 3;
+    if (step === 1) return form.title.trim().length >= 3 && form.sport.trim().length > 0;
     if (step === 2) {
       if (!form.startsAt || !form.endsAt) return false;
       return new Date(form.endsAt) > new Date(form.startsAt);
     }
     if (step === 3) return geocode !== null;
+    if (step === 4 && form.eventFormat === "versus") {
+      return form.sideA.trim().length > 0 && form.sideB.trim().length > 0;
+    }
     return true;
   };
 
@@ -128,6 +196,9 @@ export default function CreateEventWizardPage() {
         visibility: form.visibility,
         capacity: form.capacity ? Number(form.capacity) : undefined,
         coverMediaId: coverMedia?.mediaId,
+        eventFormat: form.eventFormat,
+        sport: form.sport.trim(),
+        eventLineup: buildEventLineup(form),
       });
 
       const eventId = (created as { id?: string })?.id;
@@ -168,13 +239,23 @@ export default function CreateEventWizardPage() {
         onClick={() => {
           if (!canAdvance()) {
             if (step === 1) {
-              toast({ title: "Add a title", description: "Use at least 3 characters.", variant: "destructive" });
+              toast({
+                title: "Complete basics",
+                description: "Add a title (3+ chars) and pick a sport or category.",
+                variant: "destructive",
+              });
             } else if (step === 2) {
               toast({ title: "Check your schedule", description: "End must be after start.", variant: "destructive" });
             } else if (step === 3) {
               toast({
                 title: "Pin your venue",
                 description: "Complete the address through Eircode and tap Place on map.",
+                variant: "destructive",
+              });
+            } else if (step === 4 && form.eventFormat === "versus") {
+              toast({
+                title: "Name both sides",
+                description: "Versus events need Side A and Side B.",
                 variant: "destructive",
               });
             }
@@ -223,6 +304,66 @@ export default function CreateEventWizardPage() {
               className="h-12 rounded-xl text-base font-medium border-[var(--surna-separator)]"
               data-testid="create-event-title"
             />
+          </CreateFieldGroup>
+
+          <CreateFieldGroup label="Format" required>
+            <div className="grid grid-cols-2 gap-2">
+              {EVENT_FORMATS.map((fmt) => {
+                const Icon = FORMAT_ICONS[fmt];
+                const meta = EVENT_FORMAT_META[fmt];
+                const selected = form.eventFormat === fmt;
+                return (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        eventFormat: fmt,
+                        sport:
+                          fmt === "lineup" && !f.sport
+                            ? "Entertainment"
+                            : f.sport,
+                      }))
+                    }
+                    className="rounded-xl border p-3 text-left transition-all active:scale-[0.98]"
+                    style={{
+                      borderColor: selected ? "var(--surna-accent)" : "var(--surna-separator)",
+                      background: selected ? "var(--surna-accent-soft, rgba(99,102,241,0.08))" : "var(--surna-elevated)",
+                    }}
+                    data-testid={`create-event-format-${fmt}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon size={16} style={{ color: selected ? "var(--surna-accent)" : "var(--surna-text-muted)" }} />
+                      <span className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>
+                        {meta.shortLabel}
+                      </span>
+                    </div>
+                    <p className="text-[11px] leading-snug" style={{ color: "var(--surna-text-muted)" }}>
+                      {meta.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </CreateFieldGroup>
+
+          <CreateFieldGroup label="Sport or category" required>
+            <Select
+              value={form.sport || undefined}
+              onValueChange={(sport) => setForm({ ...form, sport })}
+            >
+              <SelectTrigger className="h-12 rounded-xl" data-testid="create-event-sport">
+                <SelectValue placeholder="Pick a sport or Entertainment" />
+              </SelectTrigger>
+              <SelectContent>
+                {EVENT_SPORT_OPTIONS.map((sport) => (
+                  <SelectItem key={sport} value={sport}>
+                    {sport}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CreateFieldGroup>
         </CreateSection>
       ) : null}
@@ -280,6 +421,88 @@ export default function CreateEventWizardPage() {
           description="Optional — you can always edit these later from My Hub."
         >
           <div className="space-y-4">
+            {form.eventFormat === "versus" ? (
+              <div className="space-y-3 rounded-xl border p-4" style={{ borderColor: "var(--surna-separator)" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>
+                  Matchup
+                </p>
+                <CreateFieldGroup label="Side A" required>
+                  <Input
+                    placeholder="Home team or fighter"
+                    value={form.sideA}
+                    onChange={(e) => setForm({ ...form, sideA: e.target.value })}
+                    className="h-12 rounded-xl border-[var(--surna-separator)]"
+                    data-testid="create-event-side-a"
+                  />
+                </CreateFieldGroup>
+                <CreateFieldGroup label="Weight / note (optional)">
+                  <Input
+                    placeholder="Welterweight"
+                    value={form.sideAWeight}
+                    onChange={(e) => setForm({ ...form, sideAWeight: e.target.value })}
+                    className="h-12 rounded-xl border-[var(--surna-separator)]"
+                  />
+                </CreateFieldGroup>
+                <CreateFieldGroup label="Side B" required>
+                  <Input
+                    placeholder="Away team or fighter"
+                    value={form.sideB}
+                    onChange={(e) => setForm({ ...form, sideB: e.target.value })}
+                    className="h-12 rounded-xl border-[var(--surna-separator)]"
+                    data-testid="create-event-side-b"
+                  />
+                </CreateFieldGroup>
+                <CreateFieldGroup label="Weight / note (optional)">
+                  <Input
+                    placeholder="Welterweight"
+                    value={form.sideBWeight}
+                    onChange={(e) => setForm({ ...form, sideBWeight: e.target.value })}
+                    className="h-12 rounded-xl border-[var(--surna-separator)]"
+                  />
+                </CreateFieldGroup>
+              </div>
+            ) : null}
+
+            {form.eventFormat === "lineup" ? (
+              <div className="space-y-3 rounded-xl border p-4" style={{ borderColor: "var(--surna-separator)" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>
+                  Lineup
+                </p>
+                <CreateFieldGroup label="Headliner">
+                  <Input
+                    placeholder="Main act or main event"
+                    value={form.headliner}
+                    onChange={(e) => setForm({ ...form, headliner: e.target.value })}
+                    className="h-12 rounded-xl border-[var(--surna-separator)]"
+                    data-testid="create-event-headliner"
+                  />
+                </CreateFieldGroup>
+                <CreateFieldGroup label="Support act (optional)">
+                  <Input
+                    placeholder="Opening act or co-main"
+                    value={form.supportAct}
+                    onChange={(e) => setForm({ ...form, supportAct: e.target.value })}
+                    className="h-12 rounded-xl border-[var(--surna-separator)]"
+                  />
+                </CreateFieldGroup>
+              </div>
+            ) : null}
+
+            {form.eventFormat === "route" ? (
+              <CreateFieldGroup label="Distance (km)">
+                <Input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  placeholder="10"
+                  value={form.distanceKm}
+                  onChange={(e) => setForm({ ...form, distanceKm: e.target.value })}
+                  className="h-12 rounded-xl border-[var(--surna-separator)]"
+                  data-testid="create-event-distance"
+                />
+              </CreateFieldGroup>
+            ) : null}
+
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -352,6 +575,20 @@ export default function CreateEventWizardPage() {
             ) : null}
             <div className="p-4 space-y-3">
               <ReviewRow label="Title" value={form.title} />
+              <ReviewRow label="Format" value={EVENT_FORMAT_META[form.eventFormat].label} />
+              <ReviewRow label="Sport" value={form.sport || "—"} />
+              {form.eventFormat === "versus" && form.sideA && form.sideB ? (
+                <ReviewRow label="Matchup" value={`${form.sideA} vs ${form.sideB}`} />
+              ) : null}
+              {form.eventFormat === "lineup" && (form.headliner || form.supportAct) ? (
+                <ReviewRow
+                  label="Lineup"
+                  value={[form.headliner, form.supportAct].filter(Boolean).join(" · ")}
+                />
+              ) : null}
+              {form.eventFormat === "route" && form.distanceKm ? (
+                <ReviewRow label="Distance" value={`${form.distanceKm} km`} />
+              ) : null}
               <ReviewRow
                 label="When"
                 value={

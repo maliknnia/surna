@@ -317,6 +317,41 @@ mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
       } catch (e) { console.error('Places query error:', e); }
     }
 
+    if (enabledLayers.includes('challenges')) {
+      try {
+        const { challengesRepo } = await import("../features/challenges/challenges.repo");
+        const matches = await challengesRepo.getMatches({
+          status: "pending,live",
+          visibility: "public",
+          limit: 100,
+        });
+        for (const m of matches) {
+          const coords = normalizeCoords({ location: m.location });
+          if (!coords) continue;
+          if (coords.lat < minLat || coords.lat > maxLat || coords.lng < minLng || coords.lng > maxLng) continue;
+          entityPairs.push({ ownerType: 'challenge', ownerId: m.id });
+          items.push({
+            type: 'challenge',
+            id: m.id,
+            lat: coords.lat,
+            lng: coords.lng,
+            label: m.title || 'Challenge',
+            iconUrl: '',
+            hasStory: false,
+            storyState: 'none',
+            presence: m.status === 'live' ? 'active' : 'offline',
+            priority: m.status === 'live' ? 4 : 2,
+            meta: {
+              sport: m.sport,
+              status: m.status,
+              type: m.type,
+              location: m.location,
+            },
+          });
+        }
+      } catch (e) { console.error('Challenges query error:', e); }
+    }
+
       return { items, entityPairs, routes };
     });
 
@@ -477,7 +512,13 @@ mapRouter.get("/summary", isAuthenticated, async (req: any, res) => {
     results.forEach((result) => {
       if (result.status === 'fulfilled' && result.value) {
         const { type, data } = result.value;
-        const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+        const items = Array.isArray(data?.matches)
+          ? data.matches
+          : Array.isArray(data?.items)
+            ? data.items
+            : Array.isArray(data)
+              ? data
+              : [];
         processedData[type] = items.map((item: any) => ({ ...item, coords: normalizeCoords(item) })).filter((item: any) => item.coords);
       }
     });

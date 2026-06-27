@@ -2461,7 +2461,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
 
       if (category === "instant-join") {
         const instantTeams = await storage.getInstantTeams(
-          effectiveSport ? { sport: effectiveSport, status: "open" } : { status: "open" },
+          effectiveSport ? { sport: effectiveSport, status: "active" } : { status: "active" },
         );
         results.teams = instantTeams.slice(0, limit).map((t: any) => ({
           id: t.id,
@@ -3278,7 +3278,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       const icalData = await calendarService.exportUserEventsToICal(userId, timeframe);
       
       res.setHeader('Content-Type', 'text/calendar');
-      res.setHeader('Content-Disposition', 'attachment; filename="surna-events.ics"');
+      res.setHeader('Content-Disposition', 'attachment; filename="surna-schedule.ics"');
       res.send(icalData);
     } catch (error: unknown) {
       console.error("Error exporting calendar:", error);

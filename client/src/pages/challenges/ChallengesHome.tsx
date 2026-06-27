@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -24,6 +24,7 @@ import type { CompetitiveMatch } from "@shared/schema";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchChallengesList, fetchLeaderboard } from "@/lib/challengesApi";
+import { calculateDistance } from "@/lib/geo";
 import { useChallengesTheme } from "./challengesTheme";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import { HowChallengesWorkCard } from "./ChallengeAccessInfo";
@@ -31,7 +32,7 @@ import { HowChallengesWorkCard } from "./ChallengeAccessInfo";
 type TabId = "nearby" | "invites" | "mine" | "completed" | "leaderboards";
 
 const tabs: { id: TabId; label: string; icon: typeof MapPin }[] = [
-  { id: "nearby", label: "Nearby", icon: MapPin },
+  { id: "nearby", label: "Open", icon: MapPin },
   { id: "invites", label: "Invites", icon: Zap },
   { id: "mine", label: "Mine", icon: Swords },
   { id: "completed", label: "Done", icon: CheckCircle2 },
@@ -56,11 +57,21 @@ export default function ChallengesHome() {
       ? tabParam
       : "nearby";
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = (user as { id?: string } | null)?.id;
   const t = useChallengesTheme();
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
+    );
+  }, []);
 
   const { data: nearbyMatches, isLoading: nearbyLoading } = useQuery({
     queryKey: ["challenges-list", "nearby"],
@@ -116,6 +127,23 @@ export default function ChallengesHome() {
   };
 
   const { matches, loading } = getTabData();
+
+  const sortedMatches = useMemo(() => {
+    if (activeTab !== "nearby" || !userCoords) return matches;
+    const withDist = matches.map((m) => {
+      const loc = m.location as { lat?: number; lng?: number } | null | undefined;
+      const lat = loc?.lat;
+      const lng = loc?.lng;
+      const dist =
+        typeof lat === "number" && typeof lng === "number"
+          ? calculateDistance(userCoords, { lat, lng })
+          : Number.POSITIVE_INFINITY;
+      return { m, dist };
+    });
+    return withDist.sort((a, b) => a.dist - b.dist).map((row) => row.m);
+  }, [matches, activeTab, userCoords]);
+
+  const displayMatches = activeTab === "nearby" ? sortedMatches : matches;
 
   return (
     <div className="min-h-screen" style={{ background: t.pageBg }} {...touchHandlers}>
@@ -207,9 +235,9 @@ export default function ChallengesHome() {
           <LeaderboardsView />
         ) : loading ? (
           <LoadingSkeleton />
-        ) : matches.length > 0 ? (
+        ) : displayMatches.length > 0 ? (
           <div className="space-y-2.5">
-            {matches.map((match) => (
+            {displayMatches.map((match) => (
               <MatchCard key={match.id} match={match} showActions={activeTab === "invites"} />
             ))}
           </div>

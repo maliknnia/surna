@@ -1,21 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, Phone, Video, MoreVertical, X, BarChart2, Calendar, MapPin, Trophy,
-  Users, FileText, Target, Image as ImageIcon, ChevronRight,
+  ArrowLeft, MoreVertical, X,
+  Users, Image as ImageIcon, ChevronRight,
   Navigation, CheckCircle, Trash2, Search, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import MessageBubble from './MessageBubble';
 import ChatComposer from './ChatComposer';
-import VoiceRecorder from './VoiceRecorder';
 import MediaPicker from './MediaPicker';
 import ConversationSettings from './ConversationSettings';
 import { isDemoConversation, getDemoMessages } from './demoData';
 import { apiRequest, queryClient as qc, getQueryFn } from '@/lib/queryClient';
 import { formatDistanceToNow } from 'date-fns';
 import { getMessengerTheme } from './messengerTheme';
+import { DM_PLUS_OPTIONS, type PlusSheetOption } from './plusSheetOptions';
+import { joinDmRoom, leaveDmRoom } from '@/lib/messengerSocket';
 import { useSurnaCamera } from '@/features/camera';
 
 interface DMChatProps {
@@ -45,16 +46,7 @@ interface DMMessage {
   reaction?: string;
 }
 
-const PLUS_OPTIONS = [
-  { icon: BarChart2,  label: 'Create Poll',     action: 'poll'      },
-  { icon: Calendar,   label: 'Plan Event',       action: 'event'     },
-  { icon: MapPin,     label: 'Share Location',   action: 'location'  },
-  { icon: Trophy,     label: 'Challenge',        action: 'challenge' },
-  { icon: Users,      label: 'Add People',       action: 'people'    },
-  { icon: FileText,   label: 'Shared Notes',     action: 'notes'     },
-  { icon: Target,     label: 'Create Match',     action: 'match'     },
-  { icon: ImageIcon,  label: 'Media',            action: 'media'     },
-];
+const PLUS_OPTIONS = DM_PLUS_OPTIONS;
 
 const SMART_PLACEHOLDERS = ['Message…', 'Plan something…', 'Create a poll…', 'Invite to event…'];
 
@@ -115,7 +107,7 @@ function PlusBottomSheet({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, padding: '0 16px' }}>
-          {PLUS_OPTIONS.map((opt) => {
+          {PLUS_OPTIONS.map((opt: PlusSheetOption) => {
             const Icon = opt.icon;
             return (
               <button
@@ -511,10 +503,8 @@ export default function DMChat({ peerId, userData, onBack }: DMChatProps) {
 
   const [message, setMessage]           = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [isRecording, setIsRecording]   = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [showPlus, setShowPlus]         = useState(false);
-  const [activeAction, setActiveAction] = useState<string | null>(null);
   const [replyTo, setReplyTo]           = useState<DMMessage | null>(null);
   const [demoMsgs, setDemoMsgs]         = useState<any[]>([]);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -685,6 +675,12 @@ export default function DMChat({ peerId, userData, onBack }: DMChatProps) {
 
   useEffect(() => {
     if (!conversationId || isDemo) return;
+    joinDmRoom(conversationId);
+    return () => leaveDmRoom(conversationId);
+  }, [conversationId, isDemo]);
+
+  useEffect(() => {
+    if (!conversationId || isDemo) return;
     void apiRequest('POST', '/api/messenger/dm/read', { conversationId }).then(() => {
       queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/conversations'] });
     }).catch(() => undefined);
@@ -756,10 +752,6 @@ export default function DMChat({ peerId, userData, onBack }: DMChatProps) {
     setShowMediaPicker(false);
   };
 
-  const handleVoiceRecorded = (audioBlob: Blob) => {
-    setIsRecording(false);
-  };
-
   const handlePlusAction = (action: string) => {
     setShowPlus(false);
     if (action === 'media') { setShowMediaPicker(true); return; }
@@ -773,20 +765,6 @@ export default function DMChat({ peerId, userData, onBack }: DMChatProps) {
           else sendMessageMutation.mutate({ body: url });
         },
       });
-      return;
-    }
-    setActiveAction(action);
-  };
-
-  const handleActionSend = (msgData: any) => {
-    setActiveAction(null);
-    if (isDemo) {
-      addDemoMsg(msgData);
-      return;
-    }
-    if (msgData.kind === 'text') {
-      if (!conversationId) return;
-      sendMessageMutation.mutate({ body: msgData.body });
     }
   };
 
@@ -890,8 +868,6 @@ export default function DMChat({ peerId, userData, onBack }: DMChatProps) {
         <div style={{ display: 'flex', gap: 4 }}>
           {[
             { icon: Search, testId: 'button-search-chat', onClick: () => setChatSearchOpen((v) => !v) },
-            { icon: Phone, testId: 'button-voice-call' },
-            { icon: Video, testId: 'button-video-call' },
             { icon: MoreVertical, testId: 'button-more', onClick: () => setShowConversationSettings(true) },
           ].map(({ icon: Icon, testId, onClick }: any) => (
             <button
@@ -989,8 +965,7 @@ export default function DMChat({ peerId, userData, onBack }: DMChatProps) {
         )}
       </div>
 
-      {/* ── Voice / Media overlays ── */}
-      {isRecording && <VoiceRecorder onRecorded={handleVoiceRecorded} onCancel={() => setIsRecording(false)} />}
+      {/* ── Media overlay ── */}
       {showMediaPicker && <MediaPicker onMediaSelected={handleMediaSend} onClose={() => setShowMediaPicker(false)} />}
 
       <ChatComposer
@@ -1004,7 +979,6 @@ export default function DMChat({ peerId, userData, onBack }: DMChatProps) {
         placeholder={SMART_PLACEHOLDERS[placeholderIdx]}
         disabled={multiSelectMode}
         isPending={sendMessageMutation.isPending}
-        onVoice={() => setIsRecording(true)}
         onCamera={() => {
           if (!conversationId && !isDemo) return;
           openCamera({
@@ -1073,29 +1047,6 @@ export default function DMChat({ peerId, userData, onBack }: DMChatProps) {
 
       {/* ── Plus bottom sheet ── */}
       {showPlus && <PlusBottomSheet isDark={isDark} onSelect={handlePlusAction} onClose={() => setShowPlus(false)} />}
-
-      {/* ── Action modals ── */}
-      {activeAction === 'poll'      && <PollCreator      isDark={isDark} onSend={handleActionSend} onClose={() => setActiveAction(null)} />}
-      {activeAction === 'event'     && <EventCreator     isDark={isDark} onSend={handleActionSend} onClose={() => setActiveAction(null)} />}
-      {activeAction === 'location'  && <LocationSender   isDark={isDark} onSend={handleActionSend} onClose={() => setActiveAction(null)} />}
-      {activeAction === 'challenge' && <ChallengeCreator isDark={isDark} onSend={handleActionSend} onClose={() => setActiveAction(null)} />}
-      {activeAction === 'match'     && <MatchCreator     isDark={isDark} onSend={handleActionSend} onClose={() => setActiveAction(null)} />}
-      {activeAction === 'notes'     && (
-        <SharedNotesSheet
-          isDark={isDark}
-          peerId={peerId}
-          onClose={() => setActiveAction(null)}
-        />
-      )}
-      {activeAction === 'people'    && (
-        <div className="fixed inset-0 z-[61]" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setActiveAction(null)}>
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: isDark ? '#121212' : '#fff', borderRadius: '24px 24px 0 0', padding: '20px', paddingBottom: 'max(env(safe-area-inset-bottom),24px)' }} onClick={e => e.stopPropagation()}>
-            <p style={{ fontSize: 17, fontWeight: 700, color: isDark ? '#fff' : 'var(--surna-text)', marginBottom: 12 }}>Add People</p>
-            <p style={{ fontSize: 14, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)' }}>Group conversations are available through the Groups tab in Messages.</p>
-            <button onClick={() => setActiveAction(null)} style={{ marginTop: 20, width: '100%', height: 48, borderRadius: 14, background: '#000000', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Open Groups</button>
-          </div>
-        </div>
-      )}
 
       {showConversationSettings && (
         <ConversationSettings

@@ -4,6 +4,14 @@ import { messengerRepo, type DMConversation, type DMMessage, type GroupConversat
 export class MessengerService {
   constructor(private io: any) {}
 
+  private emitInboxSync(userIds: string[], payload: { type: "dm" | "group"; conversationId?: string; groupId?: string }) {
+    if (!this.io) return;
+    const unique = [...new Set(userIds.filter(Boolean))];
+    for (const uid of unique) {
+      this.io.to(`user:${uid}`).emit("messenger:sync", payload);
+    }
+  }
+
   // DM Services
   async ensureDMConversation(userA: string, userB: string): Promise<DMConversation> {
     if (userA === userB) {
@@ -66,6 +74,11 @@ export class MessengerService {
 
     // Emit real-time event
     this.io.to(`dm:${conversationId}`).emit("dm:new", { conversationId, message });
+
+    const conv = await messengerRepo.getDMConversationById(conversationId);
+    if (conv) {
+      this.emitInboxSync([conv.user_a, conv.user_b], { type: "dm", conversationId });
+    }
 
     return message;
   }
@@ -374,6 +387,9 @@ export class MessengerService {
 
     // Emit real-time event
     this.io.to(`group:${groupId}`).emit("group:new", { groupId, message });
+
+    const members = await messengerRepo.getGroupMembers(groupId);
+    this.emitInboxSync(members.map((m) => m.user_id), { type: "group", groupId });
 
     return message;
   }

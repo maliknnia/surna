@@ -47,7 +47,7 @@ export function entityPath(kind: MapEntityKind | string, id: string, meta?: { sp
     case "challenge":
       return ROUTES.challenge(id);
     case "instant":
-      return "/instant-join";
+      return ROUTES.instantTeam(id);
     default:
       return ROUTES.map;
   }

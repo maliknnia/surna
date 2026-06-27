@@ -626,7 +626,7 @@ export default function Search() {
                       cardBg={t.inputBg}
                       border={t.border}
                       onClick={() =>
-                        navigateTo(team.isInstant ? ROUTES.instantJoin : ROUTES.team(team.id))
+                        navigateTo(team.isInstant ? ROUTES.instantTeam(team.id) : ROUTES.team(team.id))
                       }
                     >
                       <div

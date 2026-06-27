@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProfileExtras } from "@/hooks/useProfileExtras";
 import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
 import { Link } from "wouter";
+import { Trophy } from "lucide-react";
+import { EntityEmptyState } from "@/components/entity";
 import { ROUTES } from "@/navigation";
 import { ChevronRight } from "lucide-react";
 import {
@@ -102,7 +104,22 @@ function ProfileTeamGamesList({ userId, isOwnProfile }: { userId: string; isOwnP
   const games = data?.games ?? [];
 
   if (isLoading) return <PanelFallback />;
-  if (games.length === 0) return null;
+  if (games.length === 0) {
+    return (
+      <EntityEmptyState
+        icon={Trophy}
+        title="No games logged yet"
+        description={
+          isOwnProfile
+            ? "Log match results from My Hub — wins and stats will show here."
+            : "No match history on this profile yet."
+        }
+        actionLabel={isOwnProfile ? "My teams" : undefined}
+        actionHref={isOwnProfile ? ROUTES.myHubTeams : undefined}
+        compact
+      />
+    );
+  }
 
   const sectionTitle = getSportLabels(null).profileActivityTitle;
 

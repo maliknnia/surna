@@ -10,10 +10,12 @@ import {
 import { getSportConfig } from "@/components/TeamCard";
 import { AvatarStack } from "@/components/people/AvatarStack";
 import type { ActivityPerson } from "@/lib/activityPeople";
+import EventFormatBadge from "@/components/events/EventFormatBadge";
 
 type EventHeaderProps = {
   title: string;
   sport: string | null;
+  eventFormat?: string | null;
   sportEmoji: string;
   accentColor: string;
   coverUrl: string | null;
@@ -43,6 +45,7 @@ type EventHeaderProps = {
 export default function EventHeader({
   title,
   sport,
+  eventFormat,
   sportEmoji,
   accentColor,
   coverUrl,
@@ -93,6 +96,7 @@ export default function EventHeader({
       <h1 className="text-[26px] font-extrabold leading-tight mb-2 text-foreground">{title}</h1>
 
       <div className="flex items-center gap-2 mb-3 flex-wrap justify-center">
+        <EventFormatBadge format={eventFormat} accentColor={accentColor} />
         {sport && (
           <span
             className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider"

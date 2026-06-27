@@ -22,6 +22,7 @@ export default function CreateEventForm({ onCancel }: { onCancel?: () => void })
     location: "",
     visibility: "public" as "public" | "private" | "unlisted",
     capacity: "",
+    sport: "General",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,6 +58,7 @@ export default function CreateEventForm({ onCancel }: { onCancel?: () => void })
         location: form.location || undefined,
         visibility: form.visibility,
         capacity: form.capacity ? Number(form.capacity) : undefined,
+        sport: form.sport || "General",
       };
 
       await createEvent.mutateAsync(eventData);
@@ -75,6 +77,7 @@ export default function CreateEventForm({ onCancel }: { onCancel?: () => void })
         location: "",
         visibility: "public",
         capacity: "",
+        sport: "General",
       });
 
       onCancel?.();

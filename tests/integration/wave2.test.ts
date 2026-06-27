@@ -96,6 +96,9 @@ describe.skipIf(!hasDatabase)("Wave 2 — feed, events, profile, discovery, noti
         lat: 53.3498,
         lng: -6.2603,
         visibility: "public",
+        sport: "Running",
+        eventFormat: "route",
+        eventLineup: { route: { distanceKm: 5 } },
       });
       expect(createRes.status).toBe(201);
       const eventId = createRes.body.id as string;
@@ -106,6 +109,8 @@ describe.skipIf(!hasDatabase)("Wave 2 — feed, events, profile, discovery, noti
         .set("User-Agent", "SurnaIntegrationTest/1.0")
         .expect(200);
       expect(detailRes.body.title).toContain("Wave2 Run");
+      expect(detailRes.body.sport).toBe("Running");
+      expect(detailRes.body.event_format ?? detailRes.body.eventFormat).toBe("route");
 
       const rsvpRes = await apiPost(guest.agent, `/api/events/${eventId}/rsvp`, {
         status: "going",
