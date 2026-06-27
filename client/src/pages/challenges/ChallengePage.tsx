@@ -22,11 +22,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { fetchChallengeDetail } from "@/lib/challengesApi";
+import type { ChallengeMatchView } from "@/lib/challengesApi";
 import { useSmartBack } from "@/lib/navigation";
 import { mapPath } from "@/lib/mapNavigation";
 import ScoreReporter from "./ScoreReporter";
 import ChallengeChat from "./ChallengeChat";
-import type { CompetitiveMatch, MatchParticipant, MatchResult } from "@shared/schema";
+import type { MatchParticipant, MatchResult } from "@shared/schema";
 import { useChallengesTheme } from "./challengesTheme";
 import { AccessRulesSummary } from "./ChallengeAccessInfo";
 import type { ChallengeTypeKey, VisibilityKey } from "./challengesTheme";
@@ -82,7 +83,7 @@ export default function ChallengePage() {
   const goBack = useSmartBack({ fallback: ROUTES.challenges });
 
   const { data: challengeData, isLoading, error } = useQuery<{
-    match: CompetitiveMatch;
+    match: ChallengeMatchView;
     participants: EnrichedParticipant[];
     result?: MatchResult | null;
   }>({
@@ -362,6 +363,7 @@ export default function ChallengePage() {
 
       <div className="px-4 pt-4 max-w-lg mx-auto">
         <EntityHero
+          coverUrl={challenge.coverUrl}
           avatarFallback={challenge.sport?.slice(0, 2)?.toUpperCase() || "🏆"}
           title={challenge.title}
           subtitle={`${challenge.sport} · ${challenge.type?.replace(/([A-Z])/g, " $1").trim() || "match"}`}

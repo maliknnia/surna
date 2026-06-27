@@ -576,6 +576,7 @@ export const competitiveMatches = pgTable("competitive_matches", {
   status: varchar("status").default("pending"), // 'draft', 'pending', 'invited', 'accepted', 'live', 'completed', 'disputed', 'cancelled'
   sponsored: boolean("sponsored").default(false),
   messengerGroupId: varchar("messenger_group_id"), // Package #10: Auto-created group thread for participants
+  coverMediaId: varchar("cover_media_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

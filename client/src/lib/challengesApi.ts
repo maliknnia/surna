@@ -1,5 +1,9 @@
 import type { CompetitiveMatch } from "@shared/schema";
 
+export type ChallengeMatchView = CompetitiveMatch & {
+  coverUrl?: string | null;
+};
+
 export type ChallengeListFilters = {
   status?: string;
   mine?: boolean;
@@ -25,7 +29,7 @@ export function buildChallengesListUrl(filters: ChallengeListFilters = {}): stri
 
 export async function fetchChallengesList(
   filters: ChallengeListFilters = {},
-): Promise<{ matches: CompetitiveMatch[] }> {
+): Promise<{ matches: ChallengeMatchView[] }> {
   const res = await fetch(buildChallengesListUrl(filters), { credentials: "include" });
   if (!res.ok) {
     throw new Error(`${res.status}: Failed to load challenges`);

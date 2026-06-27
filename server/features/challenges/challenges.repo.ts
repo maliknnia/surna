@@ -9,30 +9,72 @@ import {
   teams
 } from "@shared/schema";
 import { eq, and, or, desc, asc, gte, lte, sql, type SQL, inArray } from "drizzle-orm";
-import type { 
-  CompetitiveMatch, 
+import type {
+  CompetitiveMatch,
   InsertCompetitiveMatch,
   MatchParticipant,
   InsertMatchParticipant,
   MatchResult,
   InsertMatchResult,
   RatingHistory,
-  InsertRatingHistory 
+  InsertRatingHistory,
 } from "@shared/schema";
+
+let challengesCompatEnsured: Promise<void> | null = null;
+export function ensureChallengesCompatTables(): Promise<void> {
+  if (!challengesCompatEnsured) {
+    challengesCompatEnsured = db
+      .execute(sql`
+      ALTER TABLE competitive_matches ADD COLUMN IF NOT EXISTS cover_media_id text;
+    `)
+      .then(() => undefined);
+  }
+  return challengesCompatEnsured;
+}
 
 export const challengesRepo = {
   // Match CRUD
   async createMatch(data: InsertCompetitiveMatch): Promise<CompetitiveMatch> {
+    await ensureChallengesCompatTables();
     const [match] = await db.insert(competitiveMatches).values(data).returning();
     return match;
   },
 
   async getMatchById(matchId: string): Promise<CompetitiveMatch | undefined> {
+    await ensureChallengesCompatTables();
     const [match] = await db
       .select()
       .from(competitiveMatches)
       .where(eq(competitiveMatches.id, matchId));
     return match;
+  },
+
+  async attachCoverUrls<T extends { coverMediaId?: string | null }>(
+    matches: T[],
+  ): Promise<Array<T & { coverUrl: string | null }>> {
+    await ensureChallengesCompatTables();
+    if (matches.length === 0) return [];
+
+    const mediaIds = [...new Set(matches.map((m) => m.coverMediaId).filter(Boolean))] as string[];
+    if (mediaIds.length === 0) {
+      return matches.map((m) => ({ ...m, coverUrl: null }));
+    }
+
+    const q = await db.execute(sql`
+      SELECT id::text AS id,
+             COALESCE(medium_webp_url, url) AS cover_url
+        FROM media
+       WHERE id::text IN (${sql.join(mediaIds.map((id) => sql`${id}`), sql`, `)})
+    `);
+    const urlById = new Map<string, string>();
+    for (const row of q.rows as Array<{ id: string; cover_url: string | null }>) {
+      if (row.cover_url) urlById.set(row.id, row.cover_url);
+    }
+
+    return matches.map((m) => ({
+      ...m,
+      coverUrl: m.coverMediaId ? urlById.get(m.coverMediaId) ?? null : null,
+    }));
   },
 
   async getMatches(filters: {

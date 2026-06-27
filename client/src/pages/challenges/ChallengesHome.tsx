@@ -20,10 +20,9 @@ import {
   Star,
   RefreshCw,
 } from "lucide-react";
-import type { CompetitiveMatch } from "@shared/schema";
+import { fetchChallengesList, fetchLeaderboard, type ChallengeMatchView } from "@/lib/challengesApi";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchChallengesList, fetchLeaderboard } from "@/lib/challengesApi";
 import { calculateDistance } from "@/lib/geo";
 import { useChallengesTheme } from "./challengesTheme";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
@@ -111,7 +110,7 @@ export default function ChallengesHome() {
     );
   }, [activeTab]);
 
-  const getTabData = (): { matches: CompetitiveMatch[]; loading: boolean } => {
+  const getTabData = (): { matches: ChallengeMatchView[]; loading: boolean } => {
     switch (activeTab) {
       case "nearby":
         return { matches: nearbyMatches?.matches || [], loading: nearbyLoading };
@@ -253,7 +252,7 @@ function MatchCard({
   match,
   showActions = false,
 }: {
-  match: CompetitiveMatch;
+  match: ChallengeMatchView;
   showActions?: boolean;
 }) {
   const t = useChallengesTheme();
@@ -289,10 +288,14 @@ function MatchCard({
     >
       <div className="flex items-start gap-3">
         <div
-          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
           style={{ background: t.elevated }}
         >
-          <Swords size={20} style={{ color: t.iconAccent }} />
+          {match.coverUrl ? (
+            <img src={match.coverUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <Swords size={20} style={{ color: t.iconAccent }} />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">

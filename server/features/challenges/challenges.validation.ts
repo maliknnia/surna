@@ -24,6 +24,7 @@ export const createMatchSchema = z.object({
   }).optional(),
   reward: z.enum(['xp', 'badge', 'cash', 'none']).default('xp'),
   capacity: z.number().optional(),
+  coverMediaId: z.string().uuid().optional(),
 });
 
 export const updateMatchSchema = z.object({

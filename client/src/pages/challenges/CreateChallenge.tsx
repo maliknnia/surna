@@ -17,6 +17,10 @@ import {
   Lock,
   Mail,
   Zap,
+  Navigation,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import {
   Form,
@@ -58,9 +62,6 @@ const createChallengeSchema = z.object({
   visibility: z.enum(["public", "private", "invite"]).default("public"),
   timeStart: z.string().optional(),
   timeEnd: z.string().optional(),
-  locationLat: z.string().optional(),
-  locationLng: z.string().optional(),
-  locationAddress: z.string().optional(),
   entryFeeAmount: z.string().optional(),
   entryFeeCurrency: z.enum(["EUR", "USD", "GBP"]).optional(),
   reward: z.enum(["xp", "badge", "cash", "none"]).default("xp"),
@@ -113,6 +114,10 @@ export default function CreateChallenge() {
   const t = useChallengesTheme();
   const [step, setStep] = useState(1);
   const [coverMedia, setCoverMedia] = useState<CreateMediaValue>(null);
+  const [locationName, setLocationName] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   const form = useForm<CreateChallengeFormValues>({
     resolver: zodResolver(createChallengeSchema),
@@ -129,6 +134,51 @@ export default function CreateChallenge() {
     onCover: setCoverMedia,
     onTitle: (title) => form.setValue("title", title),
   });
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+    );
+  }, []);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoError("Location is not available on this device.");
+      return;
+    }
+    setLocating(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const nextCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setCoords(nextCoords);
+        if (!locationName.trim()) {
+          try {
+            const res = await apiRequest("POST", "/api/location/reverse-geocode", nextCoords);
+            const data = await res.json();
+            if (typeof data.address === "string" && data.address.trim()) {
+              setLocationName(data.address);
+            }
+          } catch {
+            // Optional label — coords are enough for the map pin
+          }
+        }
+        setLocating(false);
+      },
+      () => {
+        setGeoError("Couldn't get your location. Check permissions and try again.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -157,13 +207,14 @@ export default function CreateChallenge() {
       }
       if (data.timeStart) payload.timeStart = data.timeStart;
       if (data.timeEnd) payload.timeEnd = data.timeEnd;
-      if (data.locationLat && data.locationLng) {
+      if (coords) {
         payload.location = {
-          lat: parseFloat(data.locationLat),
-          lng: parseFloat(data.locationLng),
-          address: data.locationAddress,
+          lat: coords.lat,
+          lng: coords.lng,
+          address: locationName.trim() || undefined,
         };
       }
+      if (coverMedia?.mediaId) payload.coverMediaId = coverMedia.mediaId;
       if (data.entryFeeAmount && data.entryFeeCurrency) {
         payload.entryFee = {
           amount: parseFloat(data.entryFeeAmount),
@@ -179,9 +230,9 @@ export default function CreateChallenge() {
       queryClient.invalidateQueries({ queryKey: ["challenges-list"] });
       toast({
         title: "Challenge created!",
-        description: "Manage all your challenges from the hub.",
+        description: "Your match is live — share it or invite opponents.",
       });
-      navigate(`${ROUTES.challenges}?tab=mine`);
+      navigate(ROUTES.challenge(data.id));
     },
     onError: (error: Error) => {
       toast({
@@ -199,7 +250,7 @@ export default function CreateChallenge() {
 
   const handleNext = async () => {
     const fields =
-      step === 1 ? ["title", "type", "sport"] : step === 2 ? ["rules", "timeStart", "locationAddress"] : [];
+      step === 1 ? ["title", "type", "sport"] : step === 2 ? ["rules", "timeStart"] : [];
     const isValid = await form.trigger(fields as (keyof CreateChallengeFormValues)[]);
     if (isValid) setStep((prev) => Math.min(prev + 1, 3));
   };
@@ -425,29 +476,43 @@ export default function CreateChallenge() {
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="locationAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        className="text-[12px] font-semibold uppercase tracking-wider flex items-center gap-1.5"
-                        style={labelStyle}
-                      >
-                        <MapPin size={12} /> Location (optional)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Venue or address"
-                          {...field}
-                          className="border-0 text-[14px]"
-                          style={inputStyle}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div>
+                  <label
+                    className="text-[12px] font-semibold uppercase tracking-wider flex items-center gap-1.5 mb-2"
+                    style={labelStyle}
+                  >
+                    <MapPin size={12} /> Location (optional)
+                  </label>
+                  <Input
+                    placeholder="Venue, park, or address"
+                    value={locationName}
+                    onChange={(e) => setLocationName(e.target.value)}
+                    className="border-0 text-[14px]"
+                    style={inputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={useMyLocation}
+                    disabled={locating}
+                    className="mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
+                    style={{ background: t.secondaryBtnBg, color: t.secondaryBtnText }}
+                  >
+                    {locating ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
+                    {coords ? "Refresh my location" : "Use my location"}
+                  </button>
+                  {coords ? (
+                    <p className="mt-2 text-[11px] flex items-center gap-1.5" style={{ color: "#34C759" }}>
+                      <CheckCircle2 size={14} />
+                      Map pin set — shows on Nearby and the map
+                    </p>
+                  ) : null}
+                  {geoError ? (
+                    <p className="mt-2 text-[11px] flex items-center gap-1.5" style={{ color: "#FF3B30" }}>
+                      <AlertCircle size={14} />
+                      {geoError}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             )}
 

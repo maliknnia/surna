@@ -34,8 +34,9 @@ export function createChallengesRouter(io: any): Router {
       
       const data = createMatchSchema.parse(req.body);
       const match = await challengesService.createMatch(req.jwtUser.id, data);
-      
-      res.json(match);
+      const [enriched] = await challengesRepo.attachCoverUrls([match]);
+
+      res.json(enriched);
     } catch (error: any) {
       next(error);
     }
@@ -118,8 +119,9 @@ export function createChallengesRouter(io: any): Router {
       }
 
       const matches = await challengesRepo.getMatches(filters);
-      
-      res.json({ matches });
+      const enriched = await challengesRepo.attachCoverUrls(matches);
+
+      res.json({ matches: enriched });
     } catch (error: any) {
       next(error);
     }
@@ -140,8 +142,9 @@ export function createChallengesRouter(io: any): Router {
       );
       const results = await challengesRepo.getResultsByMatch(req.params.id);
       const result = results[0] ?? null;
+      const [matchWithCover] = await challengesRepo.attachCoverUrls([match]);
 
-      res.json({ match, participants, result });
+      res.json({ match: matchWithCover, participants, result });
     } catch (error: any) {
       next(error);
     }
