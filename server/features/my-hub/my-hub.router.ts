@@ -23,6 +23,7 @@ myHubRouter.get("/summary", isAuthenticated, async (req: any, res) => {
       upcomingEventsRow,
       activeTeamsRow,
       activePlacesRow,
+      activeChallengesRow,
       pendingRequestsRow,
       unreadDmsRow,
       unreadGroupsRow,
@@ -54,6 +55,18 @@ myHubRouter.get("/summary", isAuthenticated, async (req: any, res) => {
       // Places the user owns
       dbRead.execute(sql`
         SELECT COUNT(*)::int AS c FROM places WHERE owner_id = ${userId};
+      `),
+
+      // Competitive matches the user created or joined (not finished)
+      dbRead.execute(sql`
+        SELECT COUNT(DISTINCT m.id)::int AS c
+          FROM competitive_matches m
+          LEFT JOIN match_participants p
+            ON p.match_id = m.id
+           AND p.participant_type = 'user'
+           AND p.participant_id = ${userId}
+         WHERE m.status NOT IN ('completed', 'cancelled', 'draft')
+           AND (m.creator_id = ${userId} OR p.id IS NOT NULL);
       `),
 
       // Pending join requests on teams the user captains
@@ -91,6 +104,7 @@ myHubRouter.get("/summary", isAuthenticated, async (req: any, res) => {
     const upcomingEvents = Number(upcomingEventsRow.rows?.[0]?.c ?? 0);
     const activeTeams = Number(activeTeamsRow.rows?.[0]?.c ?? 0);
     const activePlaces = Number(activePlacesRow.rows?.[0]?.c ?? 0);
+    const activeChallenges = Number(activeChallengesRow.rows?.[0]?.c ?? 0);
     const pendingRequests = Number(pendingRequestsRow.rows?.[0]?.c ?? 0);
     const unreadDms = Number(unreadDmsRow.rows?.[0]?.c ?? 0);
     const unreadGroups = Number(unreadGroupsRow.rows?.[0]?.c ?? 0);
@@ -100,6 +114,7 @@ myHubRouter.get("/summary", isAuthenticated, async (req: any, res) => {
       upcomingEvents,
       activeTeams,
       activePlaces,
+      activeChallenges,
       pendingRequests,
       unreadMessages,
       generatedAt: new Date().toISOString(),

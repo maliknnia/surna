@@ -135,7 +135,9 @@ export function createChallengesRouter(io: any): Router {
       }
 
       // Get participants
-      const participants = await challengesRepo.getParticipants(req.params.id);
+      const participants = await challengesRepo.enrichParticipants(
+        await challengesRepo.getParticipants(req.params.id),
+      );
       const results = await challengesRepo.getResultsByMatch(req.params.id);
       const result = results[0] ?? null;
 

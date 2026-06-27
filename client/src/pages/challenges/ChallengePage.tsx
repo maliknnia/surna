@@ -3,7 +3,6 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Trophy,
-  Calendar,
   MapPin,
   Medal,
   Users,
@@ -16,11 +15,15 @@ import {
   Loader2,
   MessageCircle,
   ArrowLeft,
+  Navigation,
+  Calendar,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { fetchChallengeDetail } from "@/lib/challengesApi";
+import { useSmartBack } from "@/lib/navigation";
+import { mapPath } from "@/lib/mapNavigation";
 import ScoreReporter from "./ScoreReporter";
 import ChallengeChat from "./ChallengeChat";
 import type { CompetitiveMatch, MatchParticipant, MatchResult } from "@shared/schema";
@@ -29,13 +32,34 @@ import { AccessRulesSummary } from "./ChallengeAccessInfo";
 import type { ChallengeTypeKey, VisibilityKey } from "./challengesTheme";
 import { ROUTES } from "@/navigation";
 import { isDemoChallengeId } from "@/lib/demoChallenges";
+import {
+  EntityEmptyState,
+  EntityHero,
+  EntityQuickStats,
+  EntitySectionTabs,
+} from "@/components/entity";
+import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 
 type TabType = "details" | "participants" | "chat" | "results";
+
+type EnrichedParticipant = MatchParticipant & {
+  displayName?: string;
+  profileImageUrl?: string | null;
+};
 
 function locationAddress(loc: unknown): string | null {
   if (!loc || typeof loc !== "object") return null;
   const addr = (loc as Record<string, unknown>).address;
   return typeof addr === "string" ? addr : null;
+}
+
+function locationCoords(loc: unknown): { lat: number; lng: number } | null {
+  if (!loc || typeof loc !== "object") return null;
+  const row = loc as Record<string, unknown>;
+  const lat = Number(row.lat);
+  const lng = Number(row.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
 }
 
 function entryFeeLabel(fee: unknown): string | null {
@@ -55,10 +79,11 @@ export default function ChallengePage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const t = useChallengesTheme();
+  const goBack = useSmartBack({ fallback: ROUTES.challenges });
 
   const { data: challengeData, isLoading, error } = useQuery<{
     match: CompetitiveMatch;
-    participants: MatchParticipant[];
+    participants: EnrichedParticipant[];
     result?: MatchResult | null;
   }>({
     queryKey: ["challenge-detail", challengeId],
@@ -75,6 +100,7 @@ export default function ChallengePage() {
   const participants = challengeData?.participants || [];
   const matchResult = challengeData?.result ?? null;
   const challengeLocation = challenge ? locationAddress(challenge.location) : null;
+  const challengeCoords = challenge ? locationCoords(challenge.location) : null;
   const challengeEntryFee = challenge ? entryFeeLabel(challenge.entryFee) : null;
 
   const isParticipant =
@@ -164,22 +190,14 @@ export default function ChallengePage() {
 
   if (challengeId && isDemoChallengeId(challengeId)) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: t.pageBg }}>
-        <div className="text-center max-w-sm">
-          <Trophy size={36} className="mx-auto mb-4" style={{ color: t.iconAccent }} />
-          <h2 className="text-xl font-bold mb-2" style={{ color: t.textPrimary }}>Sample challenge</h2>
-          <p className="text-[13px] mb-5" style={{ color: t.textMuted }}>
-            This is a preview card on the home feed. Create or join a real challenge to compete.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate(ROUTES.challenges)}
-            className="px-5 py-2.5 rounded-full text-[13px] font-semibold"
-            style={{ background: t.ctaBg, color: t.ctaText }}
-          >
-            Browse challenges
-          </button>
-        </div>
+      <div className="min-h-screen px-4 py-16" style={{ background: t.pageBg }}>
+        <EntityEmptyState
+          icon={Trophy}
+          title="Sample challenge"
+          description="This is a preview card on the home feed. Create or join a real challenge to compete."
+          actionLabel="Browse challenges"
+          onAction={() => navigate(ROUTES.challenges)}
+        />
       </div>
     );
   }
@@ -194,39 +212,17 @@ export default function ChallengePage() {
 
   if (error || !challenge) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: t.pageBg }}>
-        <div className="text-center">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-            style={{ background: t.elevated }}
-          >
-            <Trophy size={28} style={{ color: t.iconMuted }} />
-          </div>
-          <h2 className="text-xl font-bold mb-1" style={{ color: t.textPrimary }}>
-            Challenge Not Found
-          </h2>
-          <p className="text-[13px] mb-5" style={{ color: t.textMuted }}>
-            This challenge doesn't exist or was removed.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate("/challenges")}
-            className="px-5 py-2.5 rounded-full text-[13px] font-semibold"
-            style={{ background: t.ctaBg, color: t.ctaText }}
-          >
-            Back to Challenges
-          </button>
-        </div>
+      <div className="min-h-screen px-4 py-16" style={{ background: t.pageBg }}>
+        <EntityEmptyState
+          icon={Trophy}
+          title="Challenge not found"
+          description="This challenge doesn't exist or was removed."
+          actionLabel="Back to challenges"
+          onAction={() => navigate(ROUTES.challenges)}
+        />
       </div>
     );
   }
-
-  const tabs: { id: TabType; label: string }[] = [
-    { id: "details", label: "Details" },
-    { id: "participants", label: "People" },
-    { id: "chat", label: "Chat" },
-    { id: "results", label: "Results" },
-  ];
 
   const canRespond = challenge.status === "pending" || challenge.status === "invited";
   const isOpenJoin =
@@ -317,179 +313,110 @@ export default function ChallengePage() {
     return null;
   };
 
-  const statCellStyle = { background: t.elevated };
+  const quickStats = [
+    { icon: Users, value: participants.length, label: "Players" },
+    {
+      icon: Calendar,
+      value: challenge.timeStart
+        ? new Date(challenge.timeStart).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        : "TBD",
+      label: "Date",
+    },
+    {
+      icon: challengeEntryFee ? DollarSign : Trophy,
+      value: challengeEntryFee || challenge.visibility || "Public",
+      label: challengeEntryFee ? "Entry" : "Visibility",
+    },
+  ];
 
   return (
     <main className="min-h-screen pb-28" style={{ background: t.pageBg }}>
       <header
-        className="sticky top-0 z-10 px-4 pt-3 pb-3"
+        className="sticky top-0 z-30 px-4 h-14 flex items-center gap-3"
         style={{
           background: t.headerBg,
           backdropFilter: "blur(20px)",
           borderBottom: `1px solid ${t.border}`,
         }}
       >
-        <div className="flex items-center gap-3">
+        <button type="button" onClick={goBack} className="p-2 -ml-2" aria-label="Go back">
+          <ArrowLeft size={20} style={{ color: t.iconAccent }} />
+        </button>
+        <span className="flex-1 text-base font-bold truncate" style={{ color: t.textPrimary }}>
+          Challenge
+        </span>
+        {challengeCoords ? (
           <button
-            onClick={() => navigate("/challenges")}
-            className="w-9 h-9 rounded-full flex items-center justify-center"
+            type="button"
+            onClick={() =>
+              navigate(mapPath({ type: "challenge", id: challenge.id, lat: challengeCoords.lat, lng: challengeCoords.lng }))
+            }
+            className="p-2 rounded-full"
             style={{ background: t.iconBtnBg }}
+            aria-label="View on map"
           >
-            <ArrowLeft size={18} style={{ color: t.iconAccent }} />
+            <Navigation size={18} style={{ color: t.iconAccent }} />
           </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-[17px] font-bold truncate" style={{ color: t.textPrimary }}>
-              {challenge.title}
-            </h1>
-            <p className="text-[11px] capitalize" style={{ color: t.textMuted }}>
-              {challenge.sport} · {challenge.status}
-            </p>
-          </div>
-        </div>
+        ) : null}
       </header>
 
-      <div className="px-4 pt-5">
-        <div className="max-w-lg mx-auto">
-          <div className="flex justify-center mb-4">
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ background: t.elevated, border: `2px solid ${t.border}` }}
-            >
-              <Trophy size={36} style={{ color: t.iconAccent }} />
-            </div>
-          </div>
-
-          <div className="text-center mb-5">
-            <div className="flex justify-center gap-1.5 mb-2 flex-wrap">
-              <span
-                className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full capitalize"
-                style={{ background: t.chipBg, color: t.accentPurple }}
-              >
-                {challenge.status}
-              </span>
-              <span
-                className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                style={{ background: t.chipBg, color: t.chipInactiveText }}
-              >
-                {challenge.sport}
-              </span>
-              {challenge.type === "teamVsTeam" && (
-                <span
-                  className="text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
-                  style={{ background: t.chipBg, color: t.chipInactiveText }}
-                >
-                  <Users size={10} /> Team
-                </span>
-              )}
-            </div>
-            <h2 className="text-[22px] font-bold mb-1" style={{ color: t.textPrimary }}>
-              {challenge.title}
-            </h2>
-            {challenge.reward && (
-              <p className="text-[13px] flex items-center justify-center gap-1.5" style={{ color: "#FFD60A" }}>
-                <Medal size={14} />
+      <div className="px-4 pt-4 max-w-lg mx-auto">
+        <EntityHero
+          avatarFallback={challenge.sport?.slice(0, 2)?.toUpperCase() || "🏆"}
+          title={challenge.title}
+          subtitle={`${challenge.sport} · ${challenge.type?.replace(/([A-Z])/g, " $1").trim() || "match"}`}
+          badge={{ label: String(challenge.status), tone: challenge.status === "live" ? "gold" : "muted" }}
+          location={challengeLocation || undefined}
+          meta={
+            challenge.reward ? (
+              <span className="text-xs font-semibold flex items-center justify-center gap-1" style={{ color: "#FFD60A" }}>
+                <Medal size={12} />
                 {String(challenge.reward)} reward
-              </p>
-            )}
-          </div>
+              </span>
+            ) : undefined
+          }
+        />
 
-          <div className="flex gap-2 mb-6">
-            {renderActionButtons()}
-            {challenge.messengerGroupId && isParticipant ? (
-              <button
-                type="button"
-                onClick={() => navigate(`/messages?groupId=${encodeURIComponent(challenge.messengerGroupId!)}`)}
-                className="px-4 py-2.5 rounded-2xl transition-all active:scale-95"
-                style={{ background: t.secondaryBtnBg, color: t.secondaryBtnText }}
-                aria-label="Open group chat"
-              >
-                <MessageCircle size={16} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setActiveTab("chat")}
-                className="px-4 py-2.5 rounded-2xl transition-all active:scale-95"
-                style={{
-                  background: activeTab === "chat" ? t.ctaBg : t.secondaryBtnBg,
-                  color: activeTab === "chat" ? t.ctaText : t.secondaryBtnText,
-                }}
-                aria-label="Open challenge chat"
-              >
-                <MessageCircle size={16} />
-              </button>
-            )}
-          </div>
+        <EntityQuickStats items={quickStats} />
 
-          <div
-            className="grid grid-cols-2 gap-2 rounded-2xl p-3 mb-6"
-            style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}
-          >
-            {challenge.timeStart && (
-              <div className="text-center p-2.5 rounded-xl" style={statCellStyle}>
-                <Calendar size={16} style={{ color: t.iconAccent }} className="mx-auto mb-1" />
-                <p className="text-[10px] mb-0.5" style={{ color: t.textMuted }}>
-                  Date
-                </p>
-                <p className="text-[12px] font-semibold" style={{ color: t.textPrimary }}>
-                  {new Date(challenge.timeStart).toLocaleDateString()}
-                </p>
-              </div>
-            )}
-            {challengeLocation && (
-                <div className="text-center p-2.5 rounded-xl" style={statCellStyle}>
-                  <MapPin size={16} style={{ color: t.iconAccent }} className="mx-auto mb-1" />
-                  <p className="text-[10px] mb-0.5" style={{ color: t.textMuted }}>
-                    Location
-                  </p>
-                  <p className="text-[12px] font-semibold truncate px-1" style={{ color: t.textPrimary }}>
-                    {challengeLocation}
-                  </p>
-                </div>
-              )}
-            {participants.length > 0 && (
-              <div className="text-center p-2.5 rounded-xl" style={statCellStyle}>
-                <Users size={16} style={{ color: t.iconAccent }} className="mx-auto mb-1" />
-                <p className="text-[10px] mb-0.5" style={{ color: t.textMuted }}>
-                  Players
-                </p>
-                <p className="text-[12px] font-semibold" style={{ color: t.textPrimary }}>
-                  {participants.length}
-                </p>
-              </div>
-            )}
-            {challengeEntryFee && (
-                <div className="text-center p-2.5 rounded-xl" style={statCellStyle}>
-                  <DollarSign size={16} style={{ color: t.iconAccent }} className="mx-auto mb-1" />
-                  <p className="text-[10px] mb-0.5" style={{ color: t.textMuted }}>
-                    Entry
-                  </p>
-                  <p className="text-[12px] font-semibold" style={{ color: t.textPrimary }}>
-                    {challengeEntryFee}
-                  </p>
-                </div>
-              )}
-          </div>
+        <div className="flex gap-2 mb-4">
+          {renderActionButtons()}
+          {challenge.messengerGroupId && isParticipant ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/messages?groupId=${encodeURIComponent(challenge.messengerGroupId!)}`)}
+              className="px-4 py-2.5 rounded-2xl transition-all active:scale-95"
+              style={{ background: t.secondaryBtnBg, color: t.secondaryBtnText }}
+              aria-label="Open group chat"
+            >
+              <MessageCircle size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setActiveTab("chat")}
+              className="px-4 py-2.5 rounded-2xl transition-all active:scale-95"
+              style={{
+                background: activeTab === "chat" ? t.ctaBg : t.secondaryBtnBg,
+                color: activeTab === "chat" ? t.ctaText : t.secondaryBtnText,
+              }}
+              aria-label="Open challenge chat"
+            >
+              <MessageCircle size={16} />
+            </button>
+          )}
+        </div>
 
-          <div
-            className="flex gap-1 mb-5 rounded-2xl p-1"
-            style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}
-          >
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className="flex-1 py-2 rounded-xl text-[12px] font-semibold transition-all"
-                style={{
-                  background: activeTab === tab.id ? t.ctaBg : "transparent",
-                  color: activeTab === tab.id ? t.ctaText : t.chipInactiveText,
-                }}
-                data-testid={`tab-${tab.id}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        <EntitySectionTabs
+          tabs={[
+            { id: "details", label: "Details" },
+            { id: "participants", label: "People" },
+            { id: "chat", label: "Chat" },
+            { id: "results", label: "Results" },
+          ]}
+          activeId={activeTab}
+          onChange={(id) => setActiveTab(id as TabType)}
+        />
 
           {activeTab === "details" && (
             <div className="space-y-4">
@@ -557,47 +484,60 @@ export default function ChallengePage() {
               className="rounded-2xl p-4"
               style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}
             >
+              <div className="mb-4">
+                <CardAttendeeStrip
+                  entityType="challenge"
+                  entityId={challenge.id}
+                  fallbackCount={participants.length}
+                />
+              </div>
               <h3 className="text-[14px] font-semibold mb-3" style={{ color: t.textPrimary }}>
                 Participants
               </h3>
               {participants.length > 0 ? (
                 <div className="space-y-2">
-                  {participants.map((p) => (
+                  {participants.map((p) => {
+                    const label = p.displayName || p.participantId;
+                    return (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => {
                         if (!p.participantId) return;
-                        if (p.participantType === "team") navigate(`/teams/${p.participantId}`);
-                        else navigate(`/person/${p.participantId}`);
+                        if (p.participantType === "team") navigate(ROUTES.team(p.participantId));
+                        else navigate(ROUTES.person(p.participantId));
                       }}
                       className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors active:opacity-70"
                       style={{ background: t.elevated }}
                     >
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center"
-                        style={{ background: t.chipBg }}
-                      >
-                        <span className="text-[12px] font-bold" style={{ color: t.iconAccent }}>
-                          {p.participantId?.charAt(0) || "P"}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[13px] font-semibold" style={{ color: t.textPrimary }}>
-                          {p.participantId}
+                      {p.profileImageUrl ? (
+                        <img src={p.profileImageUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
+                      ) : (
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center"
+                          style={{ background: t.chipBg }}
+                        >
+                          <span className="text-[12px] font-bold" style={{ color: t.iconAccent }}>
+                            {label.charAt(0) || "P"}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold truncate" style={{ color: t.textPrimary }}>
+                          {label}
                         </p>
                         <p className="text-[10px] capitalize" style={{ color: t.textMuted }}>
-                          {p.role || "Participant"}
+                          {p.role || "Participant"} · {p.participantType}
                         </p>
                       </div>
                       <span
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize shrink-0"
                         style={{ background: t.chipBg, color: t.accentPurple }}
                       >
                         {p.status}
                       </span>
                     </button>
-                  ))}
+                  );})}
                 </div>
               ) : (
                 <p className="text-center py-8 text-[13px]" style={{ color: t.textMuted }}>
@@ -676,7 +616,6 @@ export default function ChallengePage() {
               )}
             </div>
           )}
-        </div>
       </div>
 
       {challenge && (

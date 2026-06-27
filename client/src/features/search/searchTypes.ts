@@ -40,6 +40,16 @@ export interface SearchRoute {
   startsAt?: string | null;
 }
 
+export interface SearchChallenge {
+  id: string;
+  title: string;
+  sport?: string | null;
+  type?: string | null;
+  status?: string | null;
+  timeStart?: string | null;
+  location?: string | null;
+}
+
 export interface UnifiedSearchResults {
   users: User[];
   teams: SearchTeam[];
@@ -47,6 +57,7 @@ export interface UnifiedSearchResults {
   coaches: SearchCoach[];
   places: SearchPlace[];
   products: SearchProduct[];
+  challenges: SearchChallenge[];
   /** Grouped aliases from GET /api/search */
   players?: User[];
   venues?: SearchPlace[];

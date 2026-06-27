@@ -2415,6 +2415,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         coaches: [],
         places: [],
         products: [],
+        challenges: [],
       };
 
       const isBrowse = Boolean(category) && query.length < 2;
@@ -2472,6 +2473,33 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
           memberCount: t.playersJoined ?? 0,
           isInstant: true,
         }));
+        return res.json(results);
+      }
+
+      if (category === "challenges") {
+        const { challengesRepo } = await import("./features/challenges/challenges.repo");
+        let matches = await challengesRepo.getMatches({
+          status: "pending,invited,accepted,live,disputed",
+          visibility: "public",
+          sport: effectiveSport,
+          limit: limit * 2,
+        });
+        if (likeQuery) {
+          const q = likeQuery.toLowerCase();
+          matches = matches.filter((m) => m.title?.toLowerCase().includes(q));
+        }
+        results.challenges = matches.slice(0, limit).map((m: any) => {
+          const loc = m.location && typeof m.location === "object" ? m.location : null;
+          return {
+            id: m.id,
+            title: m.title,
+            sport: m.sport,
+            type: m.type,
+            status: m.status,
+            timeStart: m.timeStart ?? null,
+            location: loc?.address ?? null,
+          };
+        });
         return res.json(results);
       }
 

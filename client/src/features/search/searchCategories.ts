@@ -10,6 +10,7 @@ export type SearchCategoryId =
   | "teams"
   | "events"
   | "instant-join"
+  | "challenges"
   | "marketplace";
 
 export interface SearchCategory {
@@ -31,6 +32,7 @@ export const SEARCH_CATEGORIES: SearchCategory[] = [
   { id: "teams", label: "Teams", color: "#001a2a", emoji: "👥" },
   { id: "events", label: "Events", color: "#2a0a00", emoji: "📅" },
   { id: "instant-join", label: "Instant Join", color: "#1a003a", emoji: "⚡" },
+  { id: "challenges", label: "Challenges", color: "#2a1a00", emoji: "🏆" },
   { id: "marketplace", label: "Marketplace", color: "#1a1a1a", emoji: "🛍️" },
 ];
 

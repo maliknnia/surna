@@ -172,7 +172,7 @@ export type HubManageItem = {
   description: string;
   icon: LucideIcon;
   route: string;
-  countKey?: keyof Pick<MyHubSummary, "upcomingEvents" | "activeTeams" | "activePlaces">;
+  countKey?: keyof Pick<MyHubSummary, "upcomingEvents" | "activeTeams" | "activePlaces" | "activeChallenges">;
   badgeKey?: keyof Pick<MyHubSummary, "pendingRequests" | "unreadMessages">;
   testId?: string;
 };
@@ -213,6 +213,7 @@ export const HUB_MANAGE_ITEMS: HubManageItem[] = [
     description: "Matches you created or joined",
     icon: Target,
     route: `${ROUTES.challenges}?tab=mine`,
+    countKey: "activeChallenges",
     testId: "hub-manage-challenges",
   },
   {

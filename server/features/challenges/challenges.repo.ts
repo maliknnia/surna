@@ -163,6 +163,60 @@ export const challengesRepo = {
       .where(eq(matchParticipants.matchId, matchId));
   },
 
+  async enrichParticipants(participants: MatchParticipant[]): Promise<Array<MatchParticipant & {
+    displayName?: string;
+    profileImageUrl?: string | null;
+  }>> {
+    if (participants.length === 0) return [];
+
+    const userIds = participants
+      .filter((p) => p.participantType === "user")
+      .map((p) => p.participantId);
+    const teamIds = participants
+      .filter((p) => p.participantType === "team")
+      .map((p) => p.participantId);
+
+    const userMap = new Map<string, { displayName?: string | null; profileImageUrl?: string | null; username?: string | null }>();
+    if (userIds.length > 0) {
+      const rows = await db
+        .select({
+          id: users.id,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          username: users.username,
+        })
+        .from(users)
+        .where(inArray(users.id, userIds));
+      for (const row of rows) userMap.set(row.id, row);
+    }
+
+    const teamMap = new Map<string, { name?: string | null; logo?: string | null }>();
+    if (teamIds.length > 0) {
+      const rows = await db
+        .select({ id: teams.id, name: teams.name, logo: teams.logo })
+        .from(teams)
+        .where(inArray(teams.id, teamIds));
+      for (const row of rows) teamMap.set(row.id, row);
+    }
+
+    return participants.map((p) => {
+      if (p.participantType === "user") {
+        const u = userMap.get(p.participantId);
+        return {
+          ...p,
+          displayName: u?.displayName || u?.username || "Player",
+          profileImageUrl: u?.profileImageUrl ?? null,
+        };
+      }
+      const team = teamMap.get(p.participantId);
+      return {
+        ...p,
+        displayName: team?.name || "Team",
+        profileImageUrl: team?.logo ?? null,
+      };
+    });
+  },
+
   async updateParticipantStatus(
     matchId: string,
     participantId: string,

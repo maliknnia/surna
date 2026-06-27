@@ -10,5 +10,6 @@ export function invalidateMyHubQueries(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ["events"] }),
     queryClient.invalidateQueries({ queryKey: ["/api/teams"] }),
     queryClient.invalidateQueries({ queryKey: ["/api/places"] }),
+    queryClient.invalidateQueries({ queryKey: ["challenges-list"] }),
   ]);
 }

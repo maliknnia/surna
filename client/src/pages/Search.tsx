@@ -10,6 +10,7 @@ import {
   Users,
   Clock,
   TrendingUp,
+  Trophy,
 } from "lucide-react";
 import { useDebounce } from "@/lib/performance";
 import { ROUTES } from "@/navigation";
@@ -45,6 +46,7 @@ const DISCOVER_CATEGORY_IDS: SearchCategoryId[] = [
   "teams",
   "events",
   "instant-join",
+  "challenges",
   "marketplace",
 ];
 
@@ -60,6 +62,7 @@ const EMPTY_RESULTS: UnifiedSearchResults = {
   coaches: [],
   places: [],
   products: [],
+  challenges: [],
   routes: [],
 };
 
@@ -73,6 +76,7 @@ async function fetchSearch(params: URLSearchParams): Promise<UnifiedSearchResult
     users: data.players ?? data.users ?? [],
     places: data.venues ?? data.places ?? [],
     routes: data.routes ?? [],
+    challenges: data.challenges ?? [],
   };
 }
 
@@ -312,6 +316,7 @@ export default function Search() {
       results.coaches.length +
       results.places.length +
       results.products.length +
+      results.challenges.length +
       (results.routes?.length ?? 0),
     [results],
   );
@@ -689,6 +694,49 @@ export default function Search() {
                       </div>
                     </ResultRow>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {!loading && results.challenges.length > 0 && (
+              <section className="mb-6">
+                <SectionHeader
+                  title="Challenges"
+                  showSeeAll={results.challenges.length > 3}
+                  onSeeAll={() =>
+                    setExpandedSection(expandedSection === "challenges" ? null : "challenges")
+                  }
+                  textPrimary={t.textPrimary}
+                  textSecondary={t.textSecondary}
+                />
+                <div className="space-y-2">
+                  {results.challenges
+                    .slice(0, renderLimit("challenges", results.challenges.length))
+                    .map((challenge) => (
+                      <ResultRow
+                        key={challenge.id}
+                        cardBg={t.inputBg}
+                        border={t.border}
+                        onClick={() => navigateTo(ROUTES.challenge(challenge.id))}
+                      >
+                        <div
+                          className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center"
+                          style={{ background: iconTileBg }}
+                        >
+                          <Trophy size={20} style={{ color: t.textSecondary }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[15px] font-bold truncate" style={{ color: t.textPrimary }}>
+                            {challenge.title}
+                          </p>
+                          <p className="text-[12px] truncate" style={{ color: t.textSecondary }}>
+                            {[challenge.sport, challenge.type, challenge.location]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        </div>
+                      </ResultRow>
+                    ))}
                 </div>
               </section>
             )}

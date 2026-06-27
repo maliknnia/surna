@@ -9,6 +9,7 @@ import {
   Plus,
   PlusCircle,
   Building2,
+  Trophy,
 } from "lucide-react";
 import {
   SummaryChipRow,
@@ -50,6 +51,13 @@ export default function MyHubHome() {
       emphasis: (data?.unreadMessages ?? 0) > 0,
     },
     {
+      key: "challenges",
+      label: "Challenges",
+      value: data?.activeChallenges ?? 0,
+      icon: Trophy,
+      href: `${ROUTES.challenges}?tab=mine`,
+    },
+    {
       key: "teams",
       label: "Teams",
       value: data?.activeTeams ?? 0,
@@ -75,6 +83,7 @@ export default function MyHubHome() {
     !isLoading &&
     data &&
     data.upcomingEvents === 0 &&
+    data.activeChallenges === 0 &&
     data.activeTeams === 0 &&
     data.activePlaces === 0 &&
     data.pendingRequests === 0 &&
