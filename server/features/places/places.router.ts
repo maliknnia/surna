@@ -46,6 +46,7 @@ placesRouter.get('/me/owned', isAuthenticated, async (req: AuthedRequest, res: R
              p.bookings_count                                   AS "bookingsCount",
              p.views_count                                      AS "viewsCount",
              p.average_rating                                   AS "averageRating",
+             p.featured_highlight_ids                           AS "featuredHighlightIds",
              p.created_at                                       AS "createdAt",
              p.updated_at                                       AS "updatedAt",
              COALESCE(pend.cnt, 0)::int                         AS "pendingBookingsCount",
@@ -423,6 +424,52 @@ placesRouter.get('/:id/availability', async (req: AuthedRequest, res: Response) 
     const message = err instanceof Error ? err.message : 'Failed to load availability';
     const status = message === 'Place not found' ? 404 : 500;
     res.status(status).json({ message });
+  }
+});
+
+/**
+ * GET /api/places/:id/highlights — public venue highlight videos.
+ */
+placesRouter.get('/:id/highlights', async (req: AuthedRequest, res: Response) => {
+  try {
+    const { fetchPlaceHighlights } = await import('./places.social');
+    const highlights = await fetchPlaceHighlights(req.params.id);
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+    res.json({ highlights });
+  } catch (err) {
+    console.error('[places] highlights error', err);
+    res.status(500).json({ message: 'Failed to load highlights' });
+  }
+});
+
+const PlaceHighlightsPatchSchema = z.object({
+  featuredHighlightIds: z.array(z.string()).max(12),
+});
+
+/**
+ * PATCH /api/places/:id/highlights — owner curates featured clips.
+ */
+placesRouter.patch('/:id/highlights', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const parsed = PlaceHighlightsPatchSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'Invalid body', issues: parsed.error.issues });
+    }
+
+    const { setPlaceFeaturedHighlights } = await import('./places.social');
+    const ok = await setPlaceFeaturedHighlights(
+      req.params.id,
+      userId,
+      parsed.data.featuredHighlightIds,
+    );
+    if (!ok) return res.status(404).json({ message: 'Place not found or not owned by you' });
+    res.json({ featuredHighlightIds: parsed.data.featuredHighlightIds.slice(0, 12) });
+  } catch (err) {
+    console.error('[places] highlights patch error', err);
+    res.status(500).json({ message: 'Failed to update highlights' });
   }
 });
 

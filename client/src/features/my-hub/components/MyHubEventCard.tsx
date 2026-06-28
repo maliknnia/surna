@@ -16,6 +16,7 @@ import {
   Megaphone,
   ShieldCheck,
   Send,
+  QrCode,
 } from "lucide-react";
 import { LockedAction } from "./LockedAction";
 import { StatusPill } from "./StatusPill";
@@ -189,6 +190,11 @@ export function MyHubEventCard({ ev, variant, onEdit, onCancel, onShare, onManag
             onClick={() => onManageHighlights(ev)}
             testId={`event-highlights-${ev.id}`}
           />
+        )}
+        {!isPast && !isCancelled && (
+          <Link href={`/events/${ev.id}#scan`}>
+            <ActionChip icon={QrCode} label="Scan" testId={`event-scan-${ev.id}`} />
+          </Link>
         )}
         {!isPast && !isCancelled && (
           <ActionChip

@@ -2032,6 +2032,7 @@ export const places = pgTable("places", {
   bookingMode: varchar("booking_mode").default("request"), // slots | membership | request | none
   slotDurationMinutes: integer("slot_duration_minutes").default(60),
   slotPrice: decimal("slot_price", { precision: 10, scale: 2 }),
+  featuredHighlightIds: text("featured_highlight_ids").array().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

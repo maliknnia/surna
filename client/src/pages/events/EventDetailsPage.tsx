@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
   MapPin,
   MessageCircle,
+  QrCode as QrCodeIcon,
   Share2,
   Users,
   X,
@@ -26,6 +27,8 @@ import { getSportConfig } from "@/components/TeamCard";
 import { AvatarStack } from "@/components/people/AvatarStack";
 import { EntityShareSheet } from "@/components/teams/EntityShareSheet";
 import { EventHighlights } from "@/components/events/EventHighlights";
+import { EventTicketCard, type EventTicketView } from "@/components/events/EventTicketCard";
+import { EventTicketScanner } from "@/components/events/EventTicketScanner";
 import { EventFeedSection } from "@/components/events/EventFeedSection";
 import { AddToCalendarSheet } from "@/components/calendar/AddToCalendarSheet";
 import { calendarInputFromApiEvent } from "@/lib/eventCalendar";
@@ -33,6 +36,7 @@ import { mapPath } from "@/lib/mapNavigation";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EntityEmptyState, EntitySectionTabs } from "@/components/entity";
 import { extractDominantColor, getCachedColor } from "@/lib/extractColor";
+import { useAuth } from "@/hooks/useAuth";
 import EventHeader, { eventAccentColor } from "./components/EventHeader";
 import EventFormatHero from "@/components/events/EventFormatHero";
 import EventFormatBadge from "@/components/events/EventFormatBadge";
@@ -138,35 +142,6 @@ function getEventMedia(ev: any, coverUrl: string | null): { url: string; type: "
   return out.slice(0, 12);
 }
 
-function QRCodeSVG({ code }: { code: string }) {
-  const size = 120;
-  const grid = 15;
-  const cellSize = size / grid;
-  let hash = 0;
-  for (let i = 0; i < code.length; i++) hash = (hash << 5) - hash + code.charCodeAt(i);
-
-  const cells: { x: number; y: number }[] = [];
-  for (let r = 0; r < grid; r++) {
-    for (let c = 0; c < grid; c++) {
-      const idx = r * grid + c;
-      const borderArea = (r < 3 && c < 3) || (r < 3 && c >= grid - 3) || (r >= grid - 3 && c < 3);
-      const borderOutline = (r < 3 && (c < 3 || c >= grid - 3)) || (r >= grid - 3 && c < 3);
-      if (borderOutline || ((hash + idx * 7) % 3 === 0 && !borderArea)) {
-        cells.push({ x: c * cellSize, y: r * cellSize });
-      }
-    }
-  }
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <rect width={size} height={size} fill="white" rx={4} />
-      {cells.map((cell, i) => (
-        <rect key={i} x={cell.x + 0.5} y={cell.y + 0.5} width={cellSize - 1} height={cellSize - 1} fill="#111" rx={1} />
-      ))}
-    </svg>
-  );
-}
-
 export default function EventDetailsPage() {
   const params = useParams();
   const [, setLocation] = useLocation();
@@ -176,12 +151,14 @@ export default function EventDetailsPage() {
   const id = params.id;
   const { data: evData, isLoading: loading } = useEvent(id);
   const ev = evData as any;
+  const { user } = useAuth();
   const rsvpMutation = useRSVP(id || "");
   const { data: myRsvpsData } = useMyRSVPs();
   const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
-  const [ticketCode, setTicketCode] = useState<string | null>(null);
+  const [ticket, setTicket] = useState<EventTicketView | null>(null);
   const [saved, setSaved] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showTicketScanner, setShowTicketScanner] = useState(false);
   const [showCalendarSheet, setShowCalendarSheet] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [eventQrUrl, setEventQrUrl] = useState("");
@@ -249,7 +226,22 @@ export default function EventDetailsPage() {
 
   useEffect(() => {
     if (window.location.hash === "#attendees") setActiveTab("people");
+    if (window.location.hash === "#scan") setShowTicketScanner(true);
   }, []);
+
+  const isOrganizer =
+    !!user?.id &&
+    !!ev?.creator_id &&
+    String(user.id) === String(ev.creator_id);
+
+  const { data: myTicketData } = useQuery<{ ticket?: EventTicketView }>({
+    queryKey: ["/api/events", id, "tickets", "mine"],
+    enabled: !!id && !isDemoEventId(id) && rsvpStatus === "going" && !!user?.id,
+  });
+
+  useEffect(() => {
+    if (myTicketData?.ticket) setTicket(myTicketData.ticket);
+  }, [myTicketData]);
 
   const { data: eventPhotos = [] } = useQuery<Array<{ id: string; image_url: string; caption?: string | null }>>({
     queryKey: ["/api/events", id, "photos"],
@@ -340,8 +332,15 @@ export default function EventDetailsPage() {
       {
         onSuccess: (data: any) => {
           setRsvpStatus(status);
-          if (data?.ticket?.code) setTicketCode(data.ticket.code);
+          if (data?.ticket?.code && data?.ticket?.scanToken) {
+            setTicket({
+              code: data.ticket.code,
+              scanToken: data.ticket.scanToken,
+              status: "valid",
+            });
+          }
           void queryClient.invalidateQueries({ queryKey: ["/api/events", id] });
+          void queryClient.invalidateQueries({ queryKey: ["/api/events", id, "tickets", "mine"] });
           if (status === "going" && ev?.id && !isDemoEventId(String(ev.id))) {
             apiRequest("POST", "/api/posts", {
               content: `Attending ${ev.title}${ev.location ? ` at ${ev.location}` : ""}.`,
@@ -413,7 +412,7 @@ export default function EventDetailsPage() {
   const attendeePreview = realAttendees.slice(0, 8);
   const rsvpLoading = rsvpMutation.isPending;
   const bgOpacity = Math.max(0, 1 - scrollY / 400);
-  const hasTicket = rsvpStatus === "going" && !!ticketCode;
+  const hasTicket = rsvpStatus === "going" && !!ticket?.code && !!ticket.scanToken;
 
   const primaryCta = (() => {
     if (rsvpLoading) return "...";
@@ -627,6 +626,35 @@ export default function EventDetailsPage() {
                 )}
               </div>
 
+              {isOrganizer && !isDemoEventId(String(ev.id)) && (
+                <button
+                  type="button"
+                  onClick={() => setShowTicketScanner(true)}
+                  className="w-full p-4 rounded-2xl flex items-center justify-between gap-3 transition-all active:scale-[0.99]"
+                  style={{ background: cardBg }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ background: `${accentColor}22` }}
+                    >
+                      <QrCodeIcon size={18} style={{ color: accentColor }} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[14px] font-semibold" style={{ color: textPrimary }}>
+                        Scan tickets at door
+                      </p>
+                      <p className="text-[12px]" style={{ color: textSecondary }}>
+                        One-time check-in · see who arrived
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[13px] font-semibold" style={{ color: accentColor }}>
+                    Open →
+                  </span>
+                </button>
+              )}
+
               {ev.place_id && (
                 <button
                   type="button"
@@ -785,25 +813,16 @@ export default function EventDetailsPage() {
             </>
           )}
 
-          {activeTab === "ticket" && hasTicket && (
-            <div className="p-5 rounded-2xl" style={{ background: cardBg }}>
-              <h3 className="text-[13px] font-semibold uppercase tracking-wider mb-4" style={{ color: textTertiary }}>
-                Your ticket
-              </h3>
-              <div className="flex items-center gap-4">
-                <div className="rounded-xl shrink-0 bg-white p-1.5">
-                  <QRCodeSVG code={ticketCode!} />
-                </div>
-                <div>
-                  <p className="text-xl font-black tracking-wider" style={{ color: textPrimary }}>
-                    {ticketCode}
-                  </p>
-                  <p className="text-[13px] mt-1" style={{ color: textSecondary }}>
-                    Scan at the door
-                  </p>
-                </div>
-              </div>
-            </div>
+          {activeTab === "ticket" && hasTicket && ticket && (
+            <EventTicketCard
+              ticket={ticket}
+              eventTitle={ev.title}
+              accentColor={accentColor}
+              cardBg={cardBg}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+              textTertiary={textTertiary}
+            />
           )}
         </div>
       </div>
@@ -867,6 +886,18 @@ export default function EventDetailsPage() {
         title={ev.title}
         path={`/events/${ev.id}`}
         shareText={`${ev.title}${ev.location ? ` · ${ev.location}` : ""}`}
+      />
+
+      <EventTicketScanner
+        eventId={ev.id}
+        eventTitle={ev.title}
+        open={showTicketScanner}
+        onClose={() => setShowTicketScanner(false)}
+        accentColor={accentColor}
+        pageBg={pageBg}
+        borderColor={borderColor}
+        textPrimary={textPrimary}
+        textSecondary={textSecondary}
       />
     </div>
   );

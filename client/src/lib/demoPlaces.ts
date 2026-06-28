@@ -285,6 +285,7 @@ export function demoPlaceToApiRow(demo: DemoPlace): Place & { isDemo?: boolean }
     bookingMode: defaultBookingModeForCategory(demo.category),
     slotDurationMinutes: 60,
     slotPrice: null,
+    featuredHighlightIds: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     isDemo: true,

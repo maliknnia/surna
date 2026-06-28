@@ -4,6 +4,7 @@ import { CreateEvent, UpdateEvent, ListQuery, RSVPBody, SaveEventRoute } from ".
 import { createEvent, editEvent, rsvp, getEventRoute, saveEventRoute } from "./events.service";
 import * as repo from "./events.repo";
 import { fetchEventFeedPosts, fetchEventHighlights } from "./events.social";
+import * as ticketService from "./events.tickets";
 import { authMiddleware } from "../../middleware/auth";
 import { bridgeSessionUser } from "../../middleware/bridgeSessionUser";
 import { requireEmailVerified } from "../../middleware/requireEmailVerified";
@@ -130,6 +131,62 @@ eventsRouter.get("/me/mine", async (req: any, res, next) => {
     if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
     const data = await repo.listMineForStrip(userId);
     res.json(data);
+  } catch (e) {
+    next(e);
+  }
+});
+
+const VerifyTicketBody = z.object({
+  eventId: z.string().uuid(),
+  token: z.string().optional(),
+  code: z.string().optional(),
+});
+
+eventsRouter.get("/:id/tickets/mine", async (req: any, res, next) => {
+  try {
+    const userId = sessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const eventId = z.string().uuid().parse(req.params.id);
+    const ticket = await ticketService.getMyEventTicket(eventId, userId);
+    if (!ticket) return res.status(404).json({ error: "NOT_FOUND" });
+    res.json({ ticket });
+  } catch (e) {
+    next(e);
+  }
+});
+
+eventsRouter.get("/:id/check-ins", async (req: any, res, next) => {
+  try {
+    const userId = sessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const eventId = z.string().uuid().parse(req.params.id);
+    const out = await ticketService.listEventCheckIns(eventId, userId);
+    if (!out) return res.status(404).json({ error: "NOT_FOUND" });
+    if ("forbidden" in out) return res.status(403).json({ error: "FORBIDDEN" });
+    res.json(out);
+  } catch (e) {
+    next(e);
+  }
+});
+
+eventsRouter.post("/tickets/verify", async (req: any, res, next) => {
+  try {
+    const userId = sessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const body = VerifyTicketBody.parse(req.body ?? {});
+    if (!body.token && !body.code) {
+      return res.status(400).json({ error: "MISSING_PAYLOAD" });
+    }
+    const out = await ticketService.verifyAndRedeemTicket(body.eventId, userId, {
+      token: body.token,
+      code: body.code,
+    });
+    if (!out.ok) {
+      const status =
+        out.error === "FORBIDDEN" ? 403 : out.error === "NOT_FOUND" ? 404 : 400;
+      return res.status(status).json({ error: out.error });
+    }
+    res.json(out);
   } catch (e) {
     next(e);
   }

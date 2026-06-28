@@ -49,6 +49,21 @@ export function ensurePlaceMembershipPlans(): Promise<void> {
   return membershipEnsured;
 }
 
+let highlightsEnsured: Promise<void> | null = null;
+
+export function ensurePlaceHighlightsColumn(): Promise<void> {
+  if (!highlightsEnsured) {
+    highlightsEnsured = ensurePlacesBookingColumns()
+      .then(() =>
+        db.execute(sql`
+          ALTER TABLE places ADD COLUMN IF NOT EXISTS featured_highlight_ids text[] DEFAULT ARRAY[]::text[];
+        `),
+      )
+      .then(() => undefined);
+  }
+  return highlightsEnsured;
+}
+
 let slotBlocksEnsured: Promise<void> | null = null;
 
 export function ensurePlaceSlotBlocks(): Promise<void> {

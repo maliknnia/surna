@@ -53,6 +53,24 @@ export function ensureEventsCompatTables(): Promise<void> {
       ALTER TABLE event_rsvps ADD COLUMN IF NOT EXISTS waitlist_position integer;
       CREATE UNIQUE INDEX IF NOT EXISTS idx_event_rsvps_event_user_unique
         ON event_rsvps(event_id, user_id);
+
+      CREATE TABLE IF NOT EXISTS event_tickets (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id varchar NOT NULL,
+        user_id varchar NOT NULL,
+        code text NOT NULL UNIQUE,
+        token_hash text,
+        redeemed_at timestamptz,
+        scanned_by varchar,
+        issued_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE(event_id, user_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_event_tickets_event_id ON event_tickets(event_id, issued_at DESC);
+      ALTER TABLE event_tickets ADD COLUMN IF NOT EXISTS token_hash text;
+      ALTER TABLE event_tickets ADD COLUMN IF NOT EXISTS redeemed_at timestamptz;
+      ALTER TABLE event_tickets ADD COLUMN IF NOT EXISTS scanned_by varchar;
+      ALTER TABLE event_tickets ADD COLUMN IF NOT EXISTS issued_at timestamptz NOT NULL DEFAULT now();
     `).then(() => undefined).catch((err) => {
       eventsCompatEnsured = null;
       throw err;
@@ -363,10 +381,15 @@ export async function promoteNextWaitlisted(eventId: string): Promise<string | n
 }
 
 export async function issueTicket(eventId: string, userId: string) {
-  const code = `TKT-${Math.random().toString(36).slice(2,10).toUpperCase()}`;
+  await ensureEventsCompatTables();
+  const existing = await getEventTicket(eventId, userId);
+  if (existing) return existing;
+
+  const code = `TKT-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
   const q = await db.execute(sql`
     INSERT INTO event_tickets (event_id, user_id, code)
     VALUES (${eventId}, ${userId}, ${code})
+    ON CONFLICT (event_id, user_id) DO UPDATE SET code = event_tickets.code
     RETURNING *;
   `);
   return q.rows[0];
@@ -512,8 +535,59 @@ export async function isEventAttendee(eventId: string, userId: string): Promise<
 }
 
 export async function getEventTicket(eventId: string, userId: string) {
+  await ensureEventsCompatTables();
   const q = await dbRead.execute(sql`
     SELECT * FROM event_tickets WHERE event_id=${eventId} AND user_id=${userId} LIMIT 1;
   `);
   return q.rows[0] ?? null;
+}
+
+export async function getEventTicketById(ticketId: string, eventId: string) {
+  await ensureEventsCompatTables();
+  const q = await dbRead.execute(sql`
+    SELECT t.*, u.username, u.first_name, u.last_name, u.profile_image_url
+    FROM event_tickets t
+    LEFT JOIN users u ON u.id = t.user_id
+    WHERE t.id = ${ticketId} AND t.event_id = ${eventId}
+    LIMIT 1;
+  `);
+  return q.rows[0] ?? null;
+}
+
+export async function getEventTicketByCode(eventId: string, code: string) {
+  await ensureEventsCompatTables();
+  const q = await dbRead.execute(sql`
+    SELECT t.*, u.username, u.first_name, u.last_name, u.profile_image_url
+    FROM event_tickets t
+    LEFT JOIN users u ON u.id = t.user_id
+    WHERE t.event_id = ${eventId} AND UPPER(t.code) = UPPER(${code})
+    LIMIT 1;
+  `);
+  return q.rows[0] ?? null;
+}
+
+export async function redeemEventTicket(ticketId: string, eventId: string, scannerUserId: string) {
+  await ensureEventsCompatTables();
+  const q = await db.execute(sql`
+    UPDATE event_tickets
+       SET redeemed_at = COALESCE(redeemed_at, NOW()),
+           scanned_by = COALESCE(scanned_by, ${scannerUserId})
+     WHERE id = ${ticketId}
+       AND event_id = ${eventId}
+       AND redeemed_at IS NULL
+     RETURNING *;
+  `);
+  return q.rows[0] ?? null;
+}
+
+export async function listEventTickets(eventId: string) {
+  await ensureEventsCompatTables();
+  const q = await dbRead.execute(sql`
+    SELECT t.*, u.username, u.first_name, u.last_name, u.profile_image_url
+    FROM event_tickets t
+    LEFT JOIN users u ON u.id = t.user_id
+    WHERE t.event_id = ${eventId}
+    ORDER BY t.redeemed_at DESC NULLS LAST, t.issued_at DESC;
+  `);
+  return q.rows;
 }

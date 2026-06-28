@@ -24,6 +24,7 @@ import {
   Users,
   Building2,
   MessageSquare,
+  Video,
 } from "lucide-react";
 import { LockedAction } from "./LockedAction";
 import { StatusPill } from "./StatusPill";
@@ -49,6 +50,7 @@ export interface MyHubPlace {
   pendingBookingsCount?: number;
   upcomingBookingsCount?: number;
   photosCount?: number;
+  featuredHighlightIds?: string[];
 }
 
 interface Props {
@@ -57,6 +59,7 @@ interface Props {
   onPostUpdate: (place: MyHubPlace) => void;
   onUpdatePhoto: (place: MyHubPlace) => void;
   onUpdateDescription: (place: MyHubPlace) => void;
+  onManageHighlights?: (place: MyHubPlace) => void;
 }
 
 export function MyHubPlaceCard({
@@ -65,6 +68,7 @@ export function MyHubPlaceCard({
   onPostUpdate,
   onUpdatePhoto,
   onUpdateDescription,
+  onManageHighlights,
 }: Props) {
   const [proOpen, setProOpen] = useState(false);
   const { toast } = useToast();
@@ -213,6 +217,14 @@ export function MyHubPlaceCard({
           onClick={() => onPostUpdate(place)}
           testId={`place-post-${place.id}`}
         />
+        {onManageHighlights && (
+          <ActionChip
+            icon={Video}
+            label="Highlights"
+            onClick={() => onManageHighlights(place)}
+            testId={`place-highlights-${place.id}`}
+          />
+        )}
         <ActionChip
           icon={Power}
           label={isActive ? "Mark closed" : "Reopen"}

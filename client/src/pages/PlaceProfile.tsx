@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { deriveModernSources } from "@/lib/imageSources";
 import { PlacePhotoCarousel } from "@/components/places/PlacePhotoCarousel";
 import { PlaceBookingPanel, type PlaceBookingPayload } from "@/components/places/PlaceBookingPanel";
+import { PlaceHighlights } from "@/components/places/PlaceHighlights";
 import { useAdaptivePhotoTheme } from "@/hooks/useAdaptivePhotoTheme";
 import QRCode from "qrcode";
 import {
@@ -390,6 +391,10 @@ export default function PlaceProfile() {
             </div>
           )}
         </div>
+
+        {placeId && !isDemo && (
+          <PlaceHighlights placeId={placeId} placeName={place.name} />
+        )}
 
         <EntitySectionTabs
           tabs={tabs}

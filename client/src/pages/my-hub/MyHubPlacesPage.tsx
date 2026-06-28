@@ -5,6 +5,7 @@ import {
   SectionHeader,
   EmptyState,
   UpgradePromptCard,
+  ManagePlaceHighlightsSheet,
 } from "@/features/my-hub/components";
 import { MyHubPlaceCard, type MyHubPlace } from "@/features/my-hub/components/MyHubPlaceCard";
 import { EditPlaceSheet } from "@/features/my-hub/components/EditPlaceSheet";
@@ -28,6 +29,8 @@ export default function MyHubPlacesPage() {
   const [photoOpen, setPhotoOpen] = useState(false);
   const [descTarget, setDescTarget] = useState<MyHubPlace | null>(null);
   const [descOpen, setDescOpen] = useState(false);
+  const [highlightsTarget, setHighlightsTarget] = useState<MyHubPlace | null>(null);
+  const [highlightsOpen, setHighlightsOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery<OwnedPlacesResponse>({
     queryKey: ["/api/places/me/owned"],
@@ -53,6 +56,10 @@ export default function MyHubPlacesPage() {
   const handleUpdateDescription = (p: MyHubPlace) => {
     setDescTarget(p);
     setDescOpen(true);
+  };
+  const handleManageHighlights = (p: MyHubPlace) => {
+    setHighlightsTarget(p);
+    setHighlightsOpen(true);
   };
 
   return (
@@ -122,6 +129,7 @@ export default function MyHubPlacesPage() {
                       onPostUpdate={handlePost}
                       onUpdatePhoto={handleUpdatePhoto}
                       onUpdateDescription={handleUpdateDescription}
+                      onManageHighlights={handleManageHighlights}
                     />
                   ))}
                 </div>
@@ -143,6 +151,7 @@ export default function MyHubPlacesPage() {
                       onPostUpdate={handlePost}
                       onUpdatePhoto={handleUpdatePhoto}
                       onUpdateDescription={handleUpdateDescription}
+                      onManageHighlights={handleManageHighlights}
                     />
                   ))}
                 </div>
@@ -189,6 +198,14 @@ export default function MyHubPlacesPage() {
         onOpenChange={(o) => {
           setDescOpen(o);
           if (!o) setDescTarget(null);
+        }}
+      />
+      <ManagePlaceHighlightsSheet
+        place={highlightsTarget}
+        open={highlightsOpen}
+        onOpenChange={(o) => {
+          setHighlightsOpen(o);
+          if (!o) setHighlightsTarget(null);
         }}
       />
     </div>

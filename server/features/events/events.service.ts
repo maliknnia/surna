@@ -1,5 +1,6 @@
 import { MessengerService } from "../messenger/messenger.service";
 import * as repo from "./events.repo";
+import { signTicketToken } from "../../services/ticketTokenService";
 import type { z } from "zod";
 import type { SaveEventRoute } from "./events.validation";
 
@@ -107,7 +108,16 @@ export async function rsvp(
   }
 
   let ticket: Awaited<ReturnType<typeof repo.issueTicket>> | null = null;
-  if (status === "going" && issueTicket) ticket = await repo.issueTicket(eventId, userId);
+  if (status === "going") {
+    ticket = await repo.issueTicket(eventId, userId);
+    if (ticket) {
+      const row = ticket as { id: string; event_id: string; user_id: string; code: string };
+      ticket = {
+        ...row,
+        scanToken: signTicketToken(row.id, row.event_id, row.user_id),
+      };
+    }
+  }
 
   if (wasGoing && status !== "going") {
     const promoted = await repo.promoteNextWaitlisted(eventId);

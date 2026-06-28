@@ -18,3 +18,4 @@ export { EditPlaceSheet } from "./EditPlaceSheet";
 export { PostPlaceUpdateSheet } from "./PostPlaceUpdateSheet";
 export { UpdatePlacePhotoSheet } from "./UpdatePlacePhotoSheet";
 export { UpdatePlaceDescriptionSheet } from "./UpdatePlaceDescriptionSheet";
+export { ManagePlaceHighlightsSheet } from "./ManagePlaceHighlightsSheet";
