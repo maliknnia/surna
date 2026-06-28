@@ -28,7 +28,8 @@ export const Marketplace = {
   
   // Cart
   ensureCart: repo.ensureCart,
-  addToCart: repo.upsertCartItem,
+  addToCart: (cartId: string, productId: string, qty: number, variantId?: string) =>
+    repo.upsertCartItem(cartId, productId, qty, variantId),
   getCart: repo.getCart,
   checkout: (userId: string, cartId: string) => repo.checkout(userId, cartId, Number(process.env.TAX_RATE_BPS ?? 0)),
   

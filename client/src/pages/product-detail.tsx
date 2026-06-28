@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
 import {
@@ -7,7 +7,9 @@ import {
   marketplaceShopPath,
   normalizeProductReviews,
   normalizeProductQuestions,
+  productRequiresVariant,
 } from "@/lib/marketplaceApi";
+import type { ProductVariant } from "@shared/marketplaceVariants";
 import { 
   Star, 
   Heart, 
@@ -67,6 +69,8 @@ interface Product {
   avgRating?: number;
   reviewCount?: number;
   currentStock?: number;
+  hasVariants?: boolean;
+  variants?: ProductVariant[];
   isVerifiedSeller?: boolean;
   pricing?: ProductPricing;
   relatedProducts?: Product[];
@@ -122,6 +126,7 @@ export default function ProductDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [newReview, setNewReview] = useState({
     rating: 5,
@@ -139,6 +144,20 @@ export default function ProductDetail() {
     enabled: !!productId,
     retry: 1,
   });
+
+  useEffect(() => {
+    if (!product) return;
+    const variants = product.variants ?? [];
+    if (!productRequiresVariant(product)) {
+      setSelectedVariantId(null);
+      return;
+    }
+    setSelectedVariantId((current) => {
+      if (current && variants.some((v) => v.id === current)) return current;
+      return variants.find((v) => v.stock > 0)?.id ?? variants[0]?.id ?? null;
+    });
+    setQuantity(1);
+  }, [product?.id, product?.hasVariants]);
 
   const { data: reviewsData, isLoading: reviewsLoading } = useQuery({
     queryKey: ["marketplace-product-reviews", productId],
@@ -227,19 +246,21 @@ export default function ProductDetail() {
   });
 
   const addToCartMutation = useMutation({
-    mutationFn: () =>
-      apiRequest("POST", "/api/marketplace/cart/items", { productId, qty: quantity }),
-    onSuccess: () => {
+    mutationFn: (payload: { productId: string; qty: number; variantId?: string }) =>
+      apiRequest("POST", "/api/marketplace/cart/items", payload),
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/cart"] });
       toast({
         title: "Added to Cart",
-        description: `${quantity} item(s) added to your cart.`,
+        description: `${variables.qty} item(s) added to your cart.`,
       });
     },
-    onError: () => {
+    onError: (err: Error) => {
       toast({
-        title: "Error",
-        description: "Failed to add to cart. Please log in.",
+        title: "Could not add to cart",
+        description: err.message.includes("400")
+          ? "Select a size before adding to cart."
+          : "Failed to add to cart. Please log in.",
         variant: "destructive",
       });
     },
@@ -254,7 +275,19 @@ export default function ProductDetail() {
       });
       return;
     }
-    addToCartMutation.mutate();
+    if (product && productRequiresVariant(product) && !selectedVariantId) {
+      toast({
+        title: "Select a size",
+        description: "Choose your size before adding to cart.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addToCartMutation.mutate({
+      productId: productId!,
+      qty: quantity,
+      variantId: selectedVariantId ?? undefined,
+    });
   };
 
   const handleBuyNow = async () => {
@@ -266,8 +299,20 @@ export default function ProductDetail() {
       });
       return;
     }
+    if (product && productRequiresVariant(product) && !selectedVariantId) {
+      toast({
+        title: "Select a size",
+        description: "Choose your size before checkout.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
-      await apiRequest("POST", "/api/marketplace/cart/items", { productId, qty: quantity });
+      await apiRequest("POST", "/api/marketplace/cart/items", {
+        productId,
+        qty: quantity,
+        variantId: selectedVariantId ?? undefined,
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/cart"] });
       setLocation("/marketplace/checkout");
     } catch {
@@ -362,8 +407,17 @@ export default function ProductDetail() {
   const heroModernSources = product.mediumWebpUrl || product.mediumAvifUrl
     ? { webp: product.mediumWebpUrl, avif: product.mediumAvifUrl }
     : deriveModernSources(heroImage);
+
+  const variants = product.variants ?? [];
+  const hasVariants = productRequiresVariant(product);
+  const selectedVariant = variants.find((v) => v.id === selectedVariantId) ?? null;
+  const effectiveStock = hasVariants ? (selectedVariant?.stock ?? 0) : (product.currentStock ?? 0);
+  const variantPrice =
+    selectedVariant?.priceCents != null ? selectedVariant.priceCents / 100 : null;
   const currentPrice = Number(
-    (product.pricing as ProductPricing | undefined)?.discountedPrice ?? product.price,
+    variantPrice ??
+      (product.pricing as ProductPricing | undefined)?.discountedPrice ??
+      product.price,
   );
   const originalPrice = Number(
     (product.pricing as ProductPricing | undefined)?.originalPrice ?? product.price,
@@ -508,18 +562,55 @@ export default function ProductDetail() {
           </div>
 
           {/* Stock Status */}
-          {product.currentStock !== undefined && (
+          {effectiveStock !== undefined && (
             <div data-testid="stock-status">
-              {product.currentStock > 0 ? (
+              {effectiveStock > 0 ? (
                 <div className="text-token-text">
                   <span className="font-medium">In Stock</span>
-                  <span className="text-sm ml-2">({product.currentStock} available)</span>
+                  <span className="text-sm ml-2">({effectiveStock} available{selectedVariant ? ` · ${selectedVariant.label}` : ""})</span>
                 </div>
               ) : (
-                <div className="text-token-text font-medium">Out of Stock</div>
+                <div className="text-token-text font-medium">
+                  {hasVariants && !selectedVariant ? "Select a size" : "Out of Stock"}
+                </div>
               )}
             </div>
           )}
+
+          {hasVariants && variants.length > 0 ? (
+            <div className="space-y-2" data-testid="size-selector">
+              <Label>
+                {variants[0]?.variantType === "shoe" ? "Shoe size (EU)" : "Size"}
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {variants.map((variant) => {
+                  const active = selectedVariantId === variant.id;
+                  const disabled = variant.stock <= 0;
+                  return (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => {
+                        setSelectedVariantId(variant.id);
+                        setQuantity(1);
+                      }}
+                      className={`min-w-[2.75rem] px-3 py-2 rounded-md text-sm font-semibold border transition-colors ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : disabled
+                            ? "border-border text-muted-foreground opacity-40 cursor-not-allowed"
+                            : "border-border hover:border-primary"
+                      }`}
+                      data-testid={`size-option-${variant.label}`}
+                    >
+                      {variant.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {/* Quantity Selector */}
           <div className="flex items-center gap-4">
@@ -541,7 +632,7 @@ export default function ProductDetail() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setQuantity(quantity + 1)}
-                disabled={product.currentStock !== undefined && quantity >= product.currentStock}
+                disabled={effectiveStock !== undefined && quantity >= effectiveStock}
                 data-testid="quantity-increase"
               >
                 <Plus className="h-4 w-4" />
@@ -555,7 +646,7 @@ export default function ProductDetail() {
               size="lg" 
               className="flex-1"
               onClick={handleAddToCart}
-              disabled={!product.currentStock || product.currentStock <= 0 || addToCartMutation.isPending}
+              disabled={effectiveStock <= 0 || addToCartMutation.isPending}
               data-testid="add-to-cart-button"
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
@@ -565,7 +656,7 @@ export default function ProductDetail() {
               variant="outline"
               size="lg"
               className="flex-1 w-full"
-              disabled={!product.currentStock || product.currentStock <= 0 || addToCartMutation.isPending}
+              disabled={effectiveStock <= 0 || addToCartMutation.isPending}
               onClick={handleBuyNow}
               data-testid="buy-now-button"
             >

@@ -1,5 +1,8 @@
 /** Shared marketplace fetch helpers and API → UI normalizers. */
 
+import type { ProductVariant } from "@shared/marketplaceVariants";
+import { productRequiresVariant, totalVariantStock } from "@shared/marketplaceVariants";
+
 export function marketplaceProductPath(id: string) {
   return `/marketplace/product/${id}`;
 }
@@ -94,6 +97,9 @@ export type MarketplaceListProduct = ReturnType<typeof normalizeListProduct>;
 
 export function normalizeDetailProduct(row: Record<string, unknown>) {
   const base = normalizeListProduct(row);
+  const variants = normalizeProductVariants(row.variants);
+  const hasVariants = Boolean(row.hasVariants ?? row.has_variants) || variants.length > 0;
+  const stock = hasVariants ? totalVariantStock(variants) : base.stock;
   return {
     ...base,
     name: base.title,
@@ -103,7 +109,9 @@ export function normalizeDetailProduct(row: Record<string, unknown>) {
     mediumAvifUrl: row.mediumAvifUrl as string | undefined,
     thumbWebpUrl: row.thumbWebpUrl as string | undefined,
     thumbAvifUrl: row.thumbAvifUrl as string | undefined,
-    currentStock: base.stock,
+    currentStock: stock,
+    hasVariants,
+    variants,
     isVerifiedSeller: Boolean(row.is_verified_seller),
     pricing: row.pricing as Record<string, unknown> | undefined,
     relatedProducts: (row.relatedProducts as Record<string, unknown>[] | undefined)?.map(
@@ -111,6 +119,25 @@ export function normalizeDetailProduct(row: Record<string, unknown>) {
     ),
   };
 }
+
+export function normalizeProductVariants(raw: unknown): ProductVariant[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      id: String(r.id ?? ""),
+      productId: String(r.productId ?? r.product_id ?? ""),
+      label: String(r.label ?? ""),
+      variantType: (r.variantType ?? r.variant_type ?? "size") as ProductVariant["variantType"],
+      sku: (r.sku as string | null | undefined) ?? null,
+      stock: Number(r.stock ?? 0),
+      priceCents: r.priceCents != null ? Number(r.priceCents) : r.price_cents != null ? Number(r.price_cents) : null,
+      sortOrder: Number(r.sortOrder ?? r.sort_order ?? 0),
+    };
+  });
+}
+
+export { productRequiresVariant, totalVariantStock };
 
 export function normalizeCartPayload(data: { cartId: string; items: Record<string, unknown>[] }) {
   return {
@@ -124,14 +151,17 @@ export function normalizeCartPayload(data: { cartId: string; items: Record<strin
             ? parseFloat(row.price)
             : Number(row.price ?? 0);
       const title = (row.title ?? row.name ?? "Product") as string;
+      const variantLabel = (row.variant_label ?? row.variantLabel) as string | undefined;
       return {
         id: row.id as string,
         cart_id: data.cartId,
         product_id: row.product_id as string,
+        variant_id: (row.variant_id ?? row.variantId) as string | undefined,
+        variant_label: variantLabel,
         quantity: Number(row.qty ?? row.quantity ?? 1),
         product: {
           id: row.product_id as string,
-          name: title,
+          name: variantLabel ? `${title} (${variantLabel})` : title,
           price,
           stock: Number(row.stock ?? 99),
           imageUrl: (row.imageUrl ?? row.image_url) as string | undefined,

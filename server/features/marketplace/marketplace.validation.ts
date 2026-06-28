@@ -22,5 +22,6 @@ export const ListQuery = z.object({
 
 export const CartItemInput = z.object({
   productId: z.string(),
-  qty: z.number().int().min(1),
+  qty: z.number().int().min(0),
+  variantId: z.string().optional(),
 });

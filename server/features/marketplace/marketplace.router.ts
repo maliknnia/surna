@@ -115,11 +115,24 @@ marketplaceRouter.get("/cart", requireAuth(), async (req: any, res, next) => {
 marketplaceRouter.post("/cart/items", requireAuth(), async (req: any, res, next) => {
   try {
     const cartId = await MP.ensureCart(req.jwtUser.id);
-    const { productId, qty } = CartItemInput.parse(req.body);
-    await MP.addToCart(cartId, productId, qty);
+    const { productId, qty, variantId } = CartItemInput.parse(req.body);
+    await MP.addToCart(cartId, productId, qty, variantId);
     const items = await MP.getCart(cartId);
     res.status(201).json({ cartId, items });
-  } catch(e) { next(e); }
+  } catch (e) {
+    if (e instanceof Error) {
+      if (e.message === "VARIANT_REQUIRED") {
+        return res.status(400).json({ error: "Select a size before adding to cart" });
+      }
+      if (e.message === "VARIANT_NOT_FOUND") {
+        return res.status(404).json({ error: "Size option not found" });
+      }
+      if (e.message === "INSUFFICIENT_STOCK") {
+        return res.status(409).json({ error: "Not enough stock for that size" });
+      }
+    }
+    next(e);
+  }
 });
 
 // AUTH: checkout (stub â€“ records order, reduces stock, clears cart)

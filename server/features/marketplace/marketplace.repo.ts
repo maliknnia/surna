@@ -1,7 +1,49 @@
 import { db } from "../../db";
 import { sql } from "drizzle-orm";
+import { variantLabelsForCategory } from "@shared/marketplaceVariants";
+import { ensureMarketplaceSchema } from "./ensureMarketplaceSchema";
 
-// Adapt to existing products table schema:
+function mapVariantRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    productId: String(row.product_id),
+    label: String(row.label),
+    variantType: String(row.variant_type ?? "size"),
+    sku: row.sku as string | null | undefined,
+    stock: Number(row.stock ?? 0),
+    priceCents: row.price_cents != null ? Number(row.price_cents) : null,
+    sortOrder: Number(row.sort_order ?? 0),
+  };
+}
+
+export async function getProductVariants(productId: string) {
+  await ensureMarketplaceSchema();
+  const q = await db.execute(sql`
+    SELECT id, product_id, label, variant_type, sku, stock, price_cents, sort_order
+    FROM product_variants
+    WHERE product_id = ${productId} AND is_active = true
+    ORDER BY sort_order ASC, label ASC;
+  `);
+  return q.rows.map((row) => mapVariantRow(row as Record<string, unknown>));
+}
+
+export async function ensureCatalogVariants(productId: string, category: string | null) {
+  const existing = await getProductVariants(productId);
+  if (existing.length > 0) return existing;
+
+  const def = variantLabelsForCategory(category);
+  if (!def) return [];
+
+  for (let i = 0; i < def.labels.length; i++) {
+    const label = def.labels[i];
+    await db.execute(sql`
+      INSERT INTO product_variants (product_id, label, variant_type, stock, sort_order)
+      VALUES (${productId}, ${label}, ${def.variantType}, ${12}, ${i});
+    `);
+  }
+  await db.execute(sql`UPDATE products SET has_variants = true WHERE id = ${productId}`);
+  return getProductVariants(productId);
+}
 // name -> title, price -> price_cents conversion, is_active -> status mapping
 
 export async function createProduct(sellerId: string, p: any) {
@@ -50,6 +92,7 @@ export async function updateProduct(sellerId: string, id: string, p: any) {
 }
 
 export async function getProduct(id: string) {
+  await ensureMarketplaceSchema();
   const q = await db.execute(sql`
     SELECT 
       p.id, 
@@ -61,6 +104,7 @@ export async function getProduct(id: string) {
       p.seller_id,
       p.category,
       p.brand,
+      p.has_variants,
       p.image_url AS "imageUrl",
       p.created_at,
       ps.id as shop_id,
@@ -83,6 +127,14 @@ export async function getProduct(id: string) {
   `);
   const row = q.rows[0] as any;
   if (!row) return null;
+
+  let variants = await getProductVariants(id);
+  if (variants.length === 0 && !row.has_variants) {
+    variants = await ensureCatalogVariants(id, row.category ?? null);
+  }
+
+  const variantStock = variants.reduce((s, v) => s + v.stock, 0);
+  const hasVariants = variants.length > 0 || Boolean(row.has_variants);
   
   return {
     ...row,
@@ -90,6 +142,9 @@ export async function getProduct(id: string) {
     status: (row.is_active as boolean) ? 'active' : 'hidden',
     avgRating: parseFloat(row.avg_rating || 0),
     reviewCount: parseInt(row.review_count || 0, 10),
+    hasVariants,
+    variants,
+    stock: hasVariants ? variantStock : Number(row.stock ?? 0),
     shop: row.shop_id ? {
       id: row.shop_id,
       name: row.shop_name,
@@ -149,28 +204,69 @@ export async function listPublic(qs: { q?: string, cursorCreatedAt?: string, cur
 }
 
 export async function ensureCart(userId: string) {
+  await ensureMarketplaceSchema();
   const got = await db.execute(sql`SELECT id FROM carts WHERE user_id=${userId} LIMIT 1;`);
   if (got.rows[0]) return got.rows[0].id as string;
   const ins = await db.execute(sql`INSERT INTO carts (user_id) VALUES (${userId}) RETURNING id;`);
   return ins.rows[0].id as string;
 }
 
-export async function upsertCartItem(cartId: string, productId: string, qty: number) {
-  // copy price snapshot from product (convert to cents)
-  const p = await db.execute(sql`SELECT price FROM products WHERE id=${productId} LIMIT 1;`);
-  const price = p.rows[0] as any;
-  const priceCents = Math.round((price.price as number) * 100);
-  
+export async function upsertCartItem(cartId: string, productId: string, qty: number, variantId?: string) {
+  await ensureMarketplaceSchema();
+
+  if (qty <= 0) {
+    const variantKey = variantId ?? "";
+    await db.execute(sql`
+      DELETE FROM cart_items
+      WHERE cart_id = ${cartId} AND product_id = ${productId} AND variant_key = ${variantKey};
+    `);
+    return;
+  }
+
+  let priceCents: number;
+  let variantLabel: string | null = null;
+  const variantKey = variantId ?? "";
+
+  if (variantId) {
+    const v = await db.execute(sql`
+      SELECT pv.label, pv.price_cents, pv.stock, p.price
+      FROM product_variants pv
+      JOIN products p ON p.id = pv.product_id
+      WHERE pv.id = ${variantId} AND pv.product_id = ${productId} AND pv.is_active = true
+      LIMIT 1;
+    `);
+    const row = v.rows[0] as { label: string; price_cents: number | null; stock: number; price: number } | undefined;
+    if (!row) throw new Error("VARIANT_NOT_FOUND");
+    if (Number(row.stock) < qty) throw new Error("INSUFFICIENT_STOCK");
+    priceCents = row.price_cents != null ? Number(row.price_cents) : Math.round(Number(row.price) * 100);
+    variantLabel = row.label;
+  } else {
+    const p = await db.execute(sql`
+      SELECT price, has_variants FROM products WHERE id=${productId} LIMIT 1;
+    `);
+    const row = p.rows[0] as { price: number; has_variants: boolean } | undefined;
+    if (!row) throw new Error("PRODUCT_NOT_FOUND");
+    if (row.has_variants) throw new Error("VARIANT_REQUIRED");
+    priceCents = Math.round(Number(row.price) * 100);
+  }
+
   await db.execute(sql`
-    INSERT INTO cart_items (cart_id, product_id, qty, unit_price_cents, currency)
-    VALUES (${cartId}, ${productId}, ${qty}, ${priceCents}, 'USD')
-    ON CONFLICT (cart_id, product_id) DO UPDATE SET qty = cart_items.qty + EXCLUDED.qty;
+    INSERT INTO cart_items (cart_id, product_id, variant_id, variant_label, variant_key, qty, unit_price_cents, currency)
+    VALUES (${cartId}, ${productId}, ${variantId ?? null}, ${variantLabel}, ${variantKey}, ${qty}, ${priceCents}, 'USD')
+    ON CONFLICT (cart_id, product_id, variant_key)
+    DO UPDATE SET
+      qty = EXCLUDED.qty,
+      unit_price_cents = EXCLUDED.unit_price_cents,
+      variant_label = EXCLUDED.variant_label,
+      variant_id = EXCLUDED.variant_id;
   `);
 }
 
 export async function getCart(cartId: string) {
+  await ensureMarketplaceSchema();
   const items = await db.execute(sql`
-    SELECT ci.id, ci.product_id, ci.qty, ci.unit_price_cents, ci.currency, p.name AS title, p.seller_id
+    SELECT ci.id, ci.product_id, ci.variant_id, ci.variant_label, ci.variant_key,
+           ci.qty, ci.unit_price_cents, ci.currency, p.name AS title, p.seller_id
     FROM cart_items ci JOIN products p ON p.id = ci.product_id
     WHERE ci.cart_id=${cartId};
   `); 
@@ -182,6 +278,7 @@ export async function clearCart(cartId: string) {
 }
 
 export async function checkout(userId: string, cartId: string, taxBps: number) {
+  await ensureMarketplaceSchema();
   // compute totals
   const items = await getCart(cartId);
   const subtotal = items.reduce((s,i:any)=>s + (i.unit_price_cents as number)*(i.qty as number), 0);
@@ -200,14 +297,24 @@ export async function checkout(userId: string, cartId: string, taxBps: number) {
   for (const i of items) {
     const priceDecimal = ((i.unit_price_cents as number) / 100).toFixed(2);
     const lineTotal = ((i.unit_price_cents as number) * (i.qty as number) / 100).toFixed(2);
+    const title = i.variant_label
+      ? `${i.title as string} (${i.variant_label as string})`
+      : (i.title as string);
     await db.execute(sql`
-      INSERT INTO order_items (order_id, product_id, seller_id, title, qty, unit_price_cents, currency, quantity, price, total)
-      VALUES (${orderId}, ${i.product_id}, ${i.seller_id}, ${i.title}, ${i.qty as number}, ${i.unit_price_cents}, ${i.currency}, ${i.qty as number}, ${priceDecimal}, ${lineTotal});
+      INSERT INTO order_items (order_id, product_id, seller_id, title, qty, unit_price_cents, currency, quantity, price, total, variant_id, variant_label)
+      VALUES (${orderId}, ${i.product_id}, ${i.seller_id}, ${title}, ${i.qty as number}, ${i.unit_price_cents}, ${i.currency}, ${i.qty as number}, ${priceDecimal}, ${lineTotal}, ${i.variant_id ?? null}, ${i.variant_label ?? null});
     `);
-    await db.execute(sql`
-      UPDATE products SET stock = GREATEST(stock - ${i.qty as number}, 0)
-      WHERE id=${i.product_id};
-    `);
+    if (i.variant_id) {
+      await db.execute(sql`
+        UPDATE product_variants SET stock = GREATEST(stock - ${i.qty as number}, 0)
+        WHERE id=${i.variant_id};
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE products SET stock = GREATEST(stock - ${i.qty as number}, 0)
+        WHERE id=${i.product_id};
+      `);
+    }
   }
 
   await clearCart(cartId);
