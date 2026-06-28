@@ -1,8 +1,9 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
-import { placeBookings, places } from "@shared/schema";
+import { placeBookings, placeSlotBlocks, places } from "@shared/schema";
 import type { PlaceAvailabilitySlot, PlaceSlotCalendarEntry, PlaceSlotCalendarState } from "@shared/placeBooking";
-import { ensurePlacesBookingColumns } from "../features/places/places.compat";
+import { ensurePlaceSlotBlocks, ensurePlacesBookingColumns } from "../features/places/places.compat";
+import { BadRequest, Forbidden, NotFound } from "../core/errors";
 
 const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 
@@ -48,6 +49,46 @@ function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart < bEnd && aEnd > bStart;
 }
 
+function exactSlotMatch(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
+  return aStart.getTime() === bStart.getTime() && aEnd.getTime() === bEnd.getTime();
+}
+
+async function fetchDayBookingsAndBlocks(placeId: string, dayStart: Date, dayEnd: Date) {
+  await ensurePlaceSlotBlocks();
+
+  const [bookings, blocks] = await Promise.all([
+    db
+      .select()
+      .from(placeBookings)
+      .where(
+        and(
+          eq(placeBookings.placeId, placeId),
+          inArray(placeBookings.status, ["pending", "confirmed"]),
+          sql`${placeBookings.startTime} < ${dayEnd}`,
+          sql`${placeBookings.endTime} > ${dayStart}`,
+        ),
+      ),
+    db
+      .select()
+      .from(placeSlotBlocks)
+      .where(
+        and(
+          eq(placeSlotBlocks.placeId, placeId),
+          sql`${placeSlotBlocks.startTime} < ${dayEnd}`,
+          sql`${placeSlotBlocks.endTime} > ${dayStart}`,
+        ),
+      ),
+  ]);
+
+  return { bookings, blocks };
+}
+
+async function assertPlaceOwner(placeId: string, userId: string): Promise<void> {
+  const [place] = await db.select({ ownerId: places.ownerId }).from(places).where(eq(places.id, placeId)).limit(1);
+  if (!place) throw NotFound("Place not found");
+  if (place.ownerId !== userId) throw Forbidden("Owner access only");
+}
+
 export async function getPlaceAvailability(
   placeId: string,
   dateIso: string,
@@ -76,26 +117,19 @@ export async function getPlaceAvailability(
   const dayStart = new Date(`${dateIso}T00:00:00`);
   const dayEnd = new Date(`${dateIso}T23:59:59`);
 
-  const existing = await db
-    .select()
-    .from(placeBookings)
-    .where(
-      and(
-        eq(placeBookings.placeId, placeId),
-        inArray(placeBookings.status, ["pending", "confirmed"]),
-        sql`${placeBookings.startTime} < ${dayEnd}`,
-        sql`${placeBookings.endTime} > ${dayStart}`,
-      ),
-    );
+  const { bookings: existing, blocks } = await fetchDayBookingsAndBlocks(placeId, dayStart, dayEnd);
 
   const slots: PlaceAvailabilitySlot[] = [];
+  const now = new Date();
   for (let startMin = window.startMinutes; startMin + duration <= window.endMinutes; startMin += duration) {
     const start = dateAtLocalMinutes(day, startMin);
     const end = dateAtLocalMinutes(day, startMin + duration);
-    const taken = existing.some((b) =>
+    const takenByBooking = existing.some((b) =>
       overlaps(start, end, new Date(b.startTime), new Date(b.endTime)),
     );
-    const now = new Date();
+    const takenByBlock = blocks.some((b) =>
+      overlaps(start, end, new Date(b.startTime), new Date(b.endTime)),
+    );
     const inPast = end <= now;
 
     slots.push({
@@ -103,14 +137,14 @@ export async function getPlaceAvailability(
       endTime: end.toISOString(),
       label: start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
       price: slotPrice,
-      available: !taken && !inPast,
+      available: !takenByBooking && !takenByBlock && !inPast,
     });
   }
 
   return { slots, bookingMode };
 }
 
-/** Owner calendar view — slots enriched with booking status for a single day. */
+/** Owner calendar view — slots enriched with booking/block status for a single day. */
 export async function getOwnerSlotCalendar(
   placeId: string,
   dateIso: string,
@@ -142,17 +176,7 @@ export async function getOwnerSlotCalendar(
   const dayStart = new Date(`${dateIso}T00:00:00`);
   const dayEnd = new Date(`${dateIso}T23:59:59`);
 
-  const existing = await db
-    .select()
-    .from(placeBookings)
-    .where(
-      and(
-        eq(placeBookings.placeId, placeId),
-        inArray(placeBookings.status, ["pending", "confirmed"]),
-        sql`${placeBookings.startTime} < ${dayEnd}`,
-        sql`${placeBookings.endTime} > ${dayStart}`,
-      ),
-    );
+  const { bookings: existing, blocks } = await fetchDayBookingsAndBlocks(placeId, dayStart, dayEnd);
 
   const now = new Date();
   const entries: PlaceSlotCalendarEntry[] = [];
@@ -163,13 +187,24 @@ export async function getOwnerSlotCalendar(
     const booking = existing.find((b) =>
       overlaps(start, end, new Date(b.startTime), new Date(b.endTime)),
     );
+    const block = !booking
+      ? blocks.find((b) => exactSlotMatch(start, end, new Date(b.startTime), new Date(b.endTime)))
+      : undefined;
     const inPast = end <= now;
 
     let state: PlaceSlotCalendarState = "available";
-    if (inPast) {
-      state = booking ? (booking.status === "pending" ? "pending" : "booked") : "past";
-    } else if (booking) {
-      state = booking.status === "pending" ? "pending" : "booked";
+    if (booking) {
+      state = inPast
+        ? booking.status === "pending"
+          ? "pending"
+          : "booked"
+        : booking.status === "pending"
+          ? "pending"
+          : "booked";
+    } else if (block) {
+      state = "blocked";
+    } else if (inPast) {
+      state = "past";
     }
 
     entries.push({
@@ -177,15 +212,68 @@ export async function getOwnerSlotCalendar(
       endTime: end.toISOString(),
       label: start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
       price: slotPrice,
-      available: !booking && !inPast,
+      available: !booking && !block && !inPast,
       state,
       bookingId: booking?.id,
       bookingTitle: booking?.title,
       bookingStatus: booking?.status ?? undefined,
+      blockId: block?.id,
+      blockReason: block?.reason ?? undefined,
     });
   }
 
   return { entries, bookingMode, closed: false };
+}
+
+export async function blockPlaceSlot(
+  placeId: string,
+  ownerId: string,
+  startTime: Date,
+  endTime: Date,
+  reason?: string,
+) {
+  await assertPlaceOwner(placeId, ownerId);
+
+  if (startTime >= endTime) {
+    throw BadRequest("End time must be after start time");
+  }
+
+  const dateIso = startTime.toISOString().slice(0, 10);
+  const { entries } = await getOwnerSlotCalendar(placeId, dateIso);
+  const match = entries.find(
+    (e) =>
+      e.state === "available" &&
+      new Date(e.startTime).getTime() === startTime.getTime() &&
+      new Date(e.endTime).getTime() === endTime.getTime(),
+  );
+  if (!match) {
+    throw BadRequest("That slot cannot be blocked — it may be booked, already blocked, or in the past");
+  }
+
+  const [block] = await db
+    .insert(placeSlotBlocks)
+    .values({
+      placeId,
+      createdBy: ownerId,
+      startTime,
+      endTime,
+      reason: reason?.trim() || null,
+    })
+    .returning();
+
+  return block;
+}
+
+export async function unblockPlaceSlot(placeId: string, ownerId: string, blockId: string): Promise<void> {
+  await assertPlaceOwner(placeId, ownerId);
+
+  const result = await db
+    .delete(placeSlotBlocks)
+    .where(and(eq(placeSlotBlocks.id, blockId), eq(placeSlotBlocks.placeId, placeId)));
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw NotFound("Block not found");
+  }
 }
 
 export async function assertSlotAvailable(

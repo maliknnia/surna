@@ -52,11 +52,13 @@ export interface PlaceAvailabilitySlot {
   available: boolean;
 }
 
-export type PlaceSlotCalendarState = "available" | "booked" | "pending" | "past" | "closed";
+export type PlaceSlotCalendarState = "available" | "booked" | "pending" | "blocked" | "past" | "closed";
 
 export interface PlaceSlotCalendarEntry extends PlaceAvailabilitySlot {
   state: PlaceSlotCalendarState;
   bookingId?: string;
   bookingTitle?: string;
   bookingStatus?: string;
+  blockId?: string;
+  blockReason?: string;
 }

@@ -92,6 +92,65 @@ const MembershipEnquireSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+const SlotBlockSchema = z.object({
+  startTime: z.string().datetime(),
+  endTime: z.string().datetime(),
+  reason: z.string().max(500).optional(),
+});
+
+/**
+ * POST /api/places/:id/slot-blocks — owner blocks an open slot.
+ */
+placesRouter.post('/:id/slot-blocks', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const parsed = SlotBlockSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'Invalid block data', issues: parsed.error.issues });
+    }
+
+    const { blockPlaceSlot } = await import('../../services/placeAvailabilityService');
+    const block = await blockPlaceSlot(
+      req.params.id,
+      userId,
+      new Date(parsed.data.startTime),
+      new Date(parsed.data.endTime),
+      parsed.data.reason,
+    );
+    res.status(201).json(block);
+  } catch (err) {
+    if (err && typeof err === 'object' && 'status' in err) {
+      const appErr = err as { status: number; message: string };
+      return res.status(appErr.status).json({ message: appErr.message });
+    }
+    console.error('[places] slot-block create error', err);
+    res.status(500).json({ message: 'Failed to block slot' });
+  }
+});
+
+/**
+ * DELETE /api/places/:id/slot-blocks/:blockId — owner unblocks a slot.
+ */
+placesRouter.delete('/:id/slot-blocks/:blockId', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const { unblockPlaceSlot } = await import('../../services/placeAvailabilityService');
+    await unblockPlaceSlot(req.params.id, userId, req.params.blockId);
+    res.json({ success: true });
+  } catch (err) {
+    if (err && typeof err === 'object' && 'status' in err) {
+      const appErr = err as { status: number; message: string };
+      return res.status(appErr.status).json({ message: appErr.message });
+    }
+    console.error('[places] slot-block delete error', err);
+    res.status(500).json({ message: 'Failed to unblock slot' });
+  }
+});
+
 /**
  * GET /api/places/:id/membership-plans — public active plans (before /:id/availability).
  */

@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Calendar, CheckCircle, XCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Calendar, CheckCircle, XCircle, Ban, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { PlaceSlotCalendarEntry } from "@shared/placeBooking";
 
 interface PlaceOwnerSlotCalendarProps {
@@ -54,6 +57,11 @@ const STATE_STYLES: Record<
     text: "text-amber-600 dark:text-amber-400",
     label: "Pending",
   },
+  blocked: {
+    bg: "bg-red-500/15 border-red-500/30",
+    text: "text-red-600 dark:text-red-400",
+    label: "Blocked",
+  },
   past: {
     bg: "bg-token-text/5 border-token-text/10",
     text: "text-token-text-muted",
@@ -72,21 +80,64 @@ export function PlaceOwnerSlotCalendar({
   onUpdateBooking,
   isUpdating,
 }: PlaceOwnerSlotCalendarProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const dates = useMemo(() => nextDates(14), []);
   const [selectedDate, setSelectedDate] = useState(dates[0]);
   const [selectedEntry, setSelectedEntry] = useState<PlaceSlotCalendarEntry | null>(null);
+  const [blockReason, setBlockReason] = useState("");
 
-  const { data, isLoading, refetch } = useQuery<{
+  const calendarKey = ["/api/places", placeId, "slot-calendar", selectedDate] as const;
+
+  const { data, isLoading } = useQuery<{
     entries: PlaceSlotCalendarEntry[];
     closed: boolean;
     bookingMode: string;
   }>({
-    queryKey: ["/api/places", placeId, "slot-calendar", selectedDate],
+    queryKey: calendarKey,
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/places/${placeId}/slot-calendar?date=${selectedDate}`);
       return res.json();
     },
     enabled: !!placeId,
+  });
+
+  const invalidateCalendar = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/places", placeId, "slot-calendar"] });
+  };
+
+  const blockMutation = useMutation({
+    mutationFn: async (entry: PlaceSlotCalendarEntry) => {
+      const res = await apiRequest("POST", `/api/places/${placeId}/slot-blocks`, {
+        startTime: entry.startTime,
+        endTime: entry.endTime,
+        reason: blockReason.trim() || undefined,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setSelectedEntry(null);
+      setBlockReason("");
+      invalidateCalendar();
+      toast({ title: "Slot blocked", description: "Guests can no longer book this time." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Could not block slot", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const unblockMutation = useMutation({
+    mutationFn: async (blockId: string) => {
+      await apiRequest("DELETE", `/api/places/${placeId}/slot-blocks/${blockId}`);
+    },
+    onSuccess: () => {
+      setSelectedEntry(null);
+      invalidateCalendar();
+      toast({ title: "Slot unblocked", description: "This time is open for booking again." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Could not unblock slot", description: err.message, variant: "destructive" });
+    },
   });
 
   const entries = data?.entries ?? [];
@@ -96,15 +147,18 @@ export function PlaceOwnerSlotCalendar({
     const open = entries.filter((e) => e.state === "available").length;
     const booked = entries.filter((e) => e.state === "booked").length;
     const pending = entries.filter((e) => e.state === "pending").length;
-    return { open, booked, pending };
+    const blocked = entries.filter((e) => e.state === "blocked").length;
+    return { open, booked, pending, blocked };
   }, [entries]);
 
   const handleAction = (status: "confirmed" | "cancelled") => {
     if (!selectedEntry?.bookingId || !onUpdateBooking) return;
     onUpdateBooking(selectedEntry.bookingId, status);
     setSelectedEntry(null);
-    void refetch();
+    invalidateCalendar();
   };
+
+  const slotBusy = blockMutation.isPending || unblockMutation.isPending;
 
   return (
     <div className="space-y-4">
@@ -116,10 +170,10 @@ export function PlaceOwnerSlotCalendar({
           </h3>
           <p className="text-sm text-token-text-muted mt-1">
             {slotDurationMinutes ? `${slotDurationMinutes}-minute slots · ` : ""}
-            tap a slot to view booking details
+            tap open slots to block, blocked slots to reopen
           </p>
         </div>
-        <div className="flex gap-2 text-xs">
+        <div className="flex gap-2 text-xs flex-wrap">
           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
             {stats.open} open
           </Badge>
@@ -129,6 +183,11 @@ export function PlaceOwnerSlotCalendar({
           {stats.pending > 0 ? (
             <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
               {stats.pending} pending
+            </Badge>
+          ) : null}
+          {stats.blocked > 0 ? (
+            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">
+              {stats.blocked} blocked
             </Badge>
           ) : null}
         </div>
@@ -171,17 +230,23 @@ export function PlaceOwnerSlotCalendar({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {entries.map((entry) => {
             const style = STATE_STYLES[entry.state];
-            const clickable = entry.bookingId != null || entry.state === "available";
+            const clickable =
+              entry.state === "available" ||
+              entry.state === "blocked" ||
+              entry.bookingId != null;
             return (
               <button
                 key={entry.startTime}
                 type="button"
-                disabled={!clickable && entry.state === "past"}
+                disabled={!clickable}
                 onClick={() => {
-                  if (entry.bookingId) setSelectedEntry(entry);
+                  if (clickable) {
+                    setBlockReason(entry.blockReason ?? "");
+                    setSelectedEntry(entry);
+                  }
                 }}
                 className={`p-3 rounded-xl border text-left transition-all ${style.bg} ${
-                  entry.bookingId ? "hover:opacity-90 cursor-pointer" : "cursor-default"
+                  clickable ? "hover:opacity-90 cursor-pointer" : "cursor-default opacity-70"
                 }`}
                 data-testid={`owner-slot-${entry.label.replace(/\s/g, "-")}`}
               >
@@ -189,6 +254,9 @@ export function PlaceOwnerSlotCalendar({
                 <p className={`text-[11px] mt-1 ${style.text} opacity-80`}>{style.label}</p>
                 {entry.bookingTitle ? (
                   <p className="text-[10px] mt-1 text-token-text-muted truncate">{entry.bookingTitle}</p>
+                ) : null}
+                {entry.blockReason ? (
+                  <p className="text-[10px] mt-1 text-token-text-muted truncate">{entry.blockReason}</p>
                 ) : null}
               </button>
             );
@@ -220,6 +288,7 @@ export function PlaceOwnerSlotCalendar({
                   })}
                 </p>
               </div>
+
               {selectedEntry.bookingTitle ? (
                 <div>
                   <p className="text-sm text-token-text-muted">Booking</p>
@@ -227,6 +296,47 @@ export function PlaceOwnerSlotCalendar({
                   <Badge className="mt-2 capitalize">{selectedEntry.bookingStatus}</Badge>
                 </div>
               ) : null}
+
+              {selectedEntry.state === "blocked" && selectedEntry.blockReason ? (
+                <div>
+                  <p className="text-sm text-token-text-muted">Block reason</p>
+                  <p className="text-sm text-token-text">{selectedEntry.blockReason}</p>
+                </div>
+              ) : null}
+
+              {selectedEntry.state === "available" ? (
+                <div className="space-y-2 pt-1">
+                  <Label htmlFor="block-reason">Reason (optional)</Label>
+                  <Input
+                    id="block-reason"
+                    value={blockReason}
+                    onChange={(e) => setBlockReason(e.target.value)}
+                    placeholder="Private event, maintenance…"
+                  />
+                  <Button
+                    className="w-full"
+                    variant="destructive"
+                    onClick={() => blockMutation.mutate(selectedEntry)}
+                    disabled={slotBusy}
+                  >
+                    <Ban className="w-4 h-4 mr-1" />
+                    {blockMutation.isPending ? "Blocking…" : "Block this slot"}
+                  </Button>
+                </div>
+              ) : null}
+
+              {selectedEntry.state === "blocked" && selectedEntry.blockId ? (
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => unblockMutation.mutate(selectedEntry.blockId!)}
+                  disabled={slotBusy}
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  {unblockMutation.isPending ? "Unblocking…" : "Unblock slot"}
+                </Button>
+              ) : null}
+
               {selectedEntry.bookingStatus === "pending" && selectedEntry.bookingId && onUpdateBooking ? (
                 <div className="flex gap-2 pt-2">
                   <Button

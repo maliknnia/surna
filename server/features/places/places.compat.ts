@@ -46,3 +46,28 @@ export function ensurePlaceMembershipPlans(): Promise<void> {
   }
   return membershipEnsured;
 }
+
+let slotBlocksEnsured: Promise<void> | null = null;
+
+export function ensurePlaceSlotBlocks(): Promise<void> {
+  if (!slotBlocksEnsured) {
+    slotBlocksEnsured = ensurePlacesBookingColumns()
+      .then(() =>
+        db.execute(sql`
+          CREATE TABLE IF NOT EXISTS place_slot_blocks (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            place_id varchar NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+            created_by varchar NOT NULL REFERENCES users(id),
+            start_time timestamp NOT NULL,
+            end_time timestamp NOT NULL,
+            reason text,
+            created_at timestamp DEFAULT now()
+          );
+          CREATE INDEX IF NOT EXISTS place_slot_blocks_place_start_idx
+            ON place_slot_blocks (place_id, start_time);
+        `),
+      )
+      .then(() => undefined);
+  }
+  return slotBlocksEnsured;
+}

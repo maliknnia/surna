@@ -2089,6 +2089,19 @@ export const placeMembershipPlans = pgTable("place_membership_plans", {
   placeOrderIdx: index("place_membership_plans_place_order_idx").on(table.placeId, table.displayOrder),
 }));
 
+/** Owner-closed slots (maintenance, private event) — hidden from public availability. */
+export const placeSlotBlocks = pgTable("place_slot_blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  placeId: varchar("place_id").notNull().references(() => places.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  placeStartIdx: index("place_slot_blocks_place_start_idx").on(table.placeId, table.startTime),
+}));
+
 // Place bookings
 export const placeBookings = pgTable("place_bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2159,6 +2172,8 @@ export type PlaceReview = typeof placeReviews.$inferSelect;
 export type InsertPlaceReview = typeof placeReviews.$inferInsert;
 export type PlaceMembershipPlan = typeof placeMembershipPlans.$inferSelect;
 export type InsertPlaceMembershipPlan = typeof placeMembershipPlans.$inferInsert;
+export type PlaceSlotBlock = typeof placeSlotBlocks.$inferSelect;
+export type InsertPlaceSlotBlock = typeof placeSlotBlocks.$inferInsert;
 export type PlaceBooking = typeof placeBookings.$inferSelect;
 export type InsertPlaceBooking = typeof placeBookings.$inferInsert;
 export type PlacePost = typeof placePosts.$inferSelect;
@@ -2244,6 +2259,10 @@ export const insertPlaceMembershipPlanSchema = createInsertSchema(placeMembershi
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+export const insertPlaceSlotBlockSchema = createInsertSchema(placeSlotBlocks).omit({
+  id: true,
+  createdAt: true,
 });
 export const insertPlaceBookingSchema = createInsertSchema(placeBookings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPlacePostSchema = createInsertSchema(placePosts).omit({ 
