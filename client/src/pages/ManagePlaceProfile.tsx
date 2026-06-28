@@ -28,6 +28,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ManagePlaceMembershipPlans } from "@/components/places/ManagePlaceMembershipPlans";
 import type { Place, PlaceBooking, PlaceReview, PlacePost } from "@shared/schema";
 
 export default function ManagePlaceProfile() {
@@ -219,6 +220,9 @@ export default function ManagePlaceProfile() {
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
             <TabsTrigger value="posts" data-testid="tab-posts">Posts</TabsTrigger>
             <TabsTrigger value="bookings" data-testid="tab-bookings">Bookings</TabsTrigger>
+            {(place?.bookingMode ?? "request") === "membership" ? (
+              <TabsTrigger value="memberships" data-testid="tab-memberships">Memberships</TabsTrigger>
+            ) : null}
             <TabsTrigger value="reviews" data-testid="tab-reviews">Reviews</TabsTrigger>
           </TabsList>
 
@@ -377,6 +381,12 @@ export default function ManagePlaceProfile() {
               </div>
             )}
           </TabsContent>
+
+          {(place?.bookingMode ?? "request") === "membership" ? (
+            <TabsContent value="memberships" className="mt-4">
+              {placeId ? <ManagePlaceMembershipPlans placeId={placeId} /> : null}
+            </TabsContent>
+          ) : null}
 
           {/* Reviews Tab */}
           <TabsContent value="reviews" className="space-y-4 mt-4">

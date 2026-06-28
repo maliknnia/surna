@@ -30,6 +30,7 @@ import {
   placeFollowers,
   placeReviews,
   placeBookings,
+  placeMembershipPlans,
   placePosts,
   placePostLikes,
   placePostComments,
@@ -78,6 +79,8 @@ import {
   type InsertPlaceFollower,
   type PlaceReview,
   type InsertPlaceReview,
+  type PlaceMembershipPlan,
+  type InsertPlaceMembershipPlan,
   type PlaceBooking,
   type InsertPlaceBooking,
   type PlacePost,
@@ -273,6 +276,13 @@ export interface IStorage {
   getPlaceBookings(placeId: string, ownerId: string, limit?: number, offset?: number): Promise<PlaceBooking[]>;
   getUserBookings(userId: string, limit?: number, offset?: number): Promise<PlaceBooking[]>;
   cancelBooking(bookingId: string, userId: string, reason?: string): Promise<boolean>;
+
+  // Place membership plans
+  getPlaceMembershipPlans(placeId: string, activeOnly?: boolean): Promise<PlaceMembershipPlan[]>;
+  createPlaceMembershipPlan(placeId: string, ownerId: string, data: InsertPlaceMembershipPlan): Promise<PlaceMembershipPlan>;
+  updatePlaceMembershipPlan(planId: string, placeId: string, ownerId: string, data: Partial<InsertPlaceMembershipPlan>): Promise<PlaceMembershipPlan | null>;
+  deletePlaceMembershipPlan(planId: string, placeId: string, ownerId: string): Promise<boolean>;
+  getPlaceMembershipPlan(planId: string, placeId: string): Promise<PlaceMembershipPlan | null>;
   
   // Place posts operations
   createPlacePost(placeId: string, authorId: string, postData: InsertPlacePost): Promise<PlacePost>;
@@ -2243,6 +2253,97 @@ export class DatabaseStorage implements IStorage {
       .from(placeBookings)
       .where(eq(placeBookings.id, bookingId));
     return booking ?? null;
+  }
+
+  private async assertPlaceOwner(placeId: string, ownerId: string): Promise<boolean> {
+    const [place] = await db
+      .select({ ownerId: places.ownerId })
+      .from(places)
+      .where(eq(places.id, placeId))
+      .limit(1);
+    return place?.ownerId === ownerId;
+  }
+
+  async getPlaceMembershipPlans(placeId: string, activeOnly = false): Promise<PlaceMembershipPlan[]> {
+    const { ensurePlaceMembershipPlans } = await import("./features/places/places.compat");
+    await ensurePlaceMembershipPlans();
+
+    const conditions = [eq(placeMembershipPlans.placeId, placeId)];
+    if (activeOnly) {
+      conditions.push(eq(placeMembershipPlans.isActive, true));
+    }
+
+    return db
+      .select()
+      .from(placeMembershipPlans)
+      .where(and(...conditions))
+      .orderBy(asc(placeMembershipPlans.displayOrder), asc(placeMembershipPlans.createdAt));
+  }
+
+  async getPlaceMembershipPlan(planId: string, placeId: string): Promise<PlaceMembershipPlan | null> {
+    const { ensurePlaceMembershipPlans } = await import("./features/places/places.compat");
+    await ensurePlaceMembershipPlans();
+
+    const [plan] = await db
+      .select()
+      .from(placeMembershipPlans)
+      .where(and(eq(placeMembershipPlans.id, planId), eq(placeMembershipPlans.placeId, placeId)))
+      .limit(1);
+    return plan ?? null;
+  }
+
+  async createPlaceMembershipPlan(
+    placeId: string,
+    ownerId: string,
+    data: InsertPlaceMembershipPlan,
+  ): Promise<PlaceMembershipPlan> {
+    const { ensurePlaceMembershipPlans } = await import("./features/places/places.compat");
+    await ensurePlaceMembershipPlans();
+
+    if (!(await this.assertPlaceOwner(placeId, ownerId))) {
+      throw new Error("Not authorized to manage this place");
+    }
+
+    const [plan] = await db
+      .insert(placeMembershipPlans)
+      .values({ ...data, placeId })
+      .returning();
+    return plan;
+  }
+
+  async updatePlaceMembershipPlan(
+    planId: string,
+    placeId: string,
+    ownerId: string,
+    data: Partial<InsertPlaceMembershipPlan>,
+  ): Promise<PlaceMembershipPlan | null> {
+    const { ensurePlaceMembershipPlans } = await import("./features/places/places.compat");
+    await ensurePlaceMembershipPlans();
+
+    if (!(await this.assertPlaceOwner(placeId, ownerId))) {
+      throw new Error("Not authorized to manage this place");
+    }
+
+    const [plan] = await db
+      .update(placeMembershipPlans)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(placeMembershipPlans.id, planId), eq(placeMembershipPlans.placeId, placeId)))
+      .returning();
+    return plan ?? null;
+  }
+
+  async deletePlaceMembershipPlan(planId: string, placeId: string, ownerId: string): Promise<boolean> {
+    const { ensurePlaceMembershipPlans } = await import("./features/places/places.compat");
+    await ensurePlaceMembershipPlans();
+
+    if (!(await this.assertPlaceOwner(placeId, ownerId))) {
+      throw new Error("Not authorized to manage this place");
+    }
+
+    const result = await db
+      .delete(placeMembershipPlans)
+      .where(and(eq(placeMembershipPlans.id, planId), eq(placeMembershipPlans.placeId, placeId)));
+    return (result.rowCount ?? 0) > 0;
   }
 
   async cancelBooking(bookingId: string, userId: string, reason?: string): Promise<boolean> {

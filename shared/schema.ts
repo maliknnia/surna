@@ -2071,11 +2071,30 @@ export const placeReviews = pgTable("place_reviews", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Gym / club membership tiers (Venues V3)
+export const placeMembershipPlans = pgTable("place_membership_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  placeId: varchar("place_id").notNull().references(() => places.id, { onDelete: "cascade" }),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  billingInterval: varchar("billing_interval").notNull().default("monthly"), // monthly | annual | once
+  features: text("features").array().default(sql`ARRAY[]::text[]`),
+  isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  stripePriceId: varchar("stripe_price_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  placeOrderIdx: index("place_membership_plans_place_order_idx").on(table.placeId, table.displayOrder),
+}));
+
 // Place bookings
 export const placeBookings = pgTable("place_bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   placeId: varchar("place_id").notNull().references(() => places.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id),
+  membershipPlanId: varchar("membership_plan_id").references(() => placeMembershipPlans.id, { onDelete: "set null" }),
   bookingType: varchar("booking_type").notNull(), // 'session', 'court', 'class', 'membership'
   title: varchar("title").notNull(),
   description: text("description"),
@@ -2138,6 +2157,8 @@ export type PlaceFollower = typeof placeFollowers.$inferSelect;
 export type InsertPlaceFollower = typeof placeFollowers.$inferInsert;
 export type PlaceReview = typeof placeReviews.$inferSelect;
 export type InsertPlaceReview = typeof placeReviews.$inferInsert;
+export type PlaceMembershipPlan = typeof placeMembershipPlans.$inferSelect;
+export type InsertPlaceMembershipPlan = typeof placeMembershipPlans.$inferInsert;
 export type PlaceBooking = typeof placeBookings.$inferSelect;
 export type InsertPlaceBooking = typeof placeBookings.$inferInsert;
 export type PlacePost = typeof placePosts.$inferSelect;
@@ -2219,6 +2240,11 @@ export const insertPlaceSchema = createInsertSchema(places).omit({
 export const insertPlacePhotoSchema = createInsertSchema(placePhotos).omit({ id: true, createdAt: true });
 export const insertPlaceFollowerSchema = createInsertSchema(placeFollowers).omit({ id: true, createdAt: true });
 export const insertPlaceReviewSchema = createInsertSchema(placeReviews).omit({ id: true, createdAt: true, updatedAt: true, helpfulCount: true });
+export const insertPlaceMembershipPlanSchema = createInsertSchema(placeMembershipPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export const insertPlaceBookingSchema = createInsertSchema(placeBookings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPlacePostSchema = createInsertSchema(placePosts).omit({ 
   id: true, 

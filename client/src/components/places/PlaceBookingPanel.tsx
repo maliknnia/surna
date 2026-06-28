@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Calendar, Clock, Phone } from "lucide-react";
 import type { PlaceAvailabilitySlot, PlaceBookingMode } from "@shared/placeBooking";
+import type { PlaceBooking, PlaceMembershipPlan } from "@shared/schema";
+import { formatMembershipPrice } from "@shared/placeMembership";
+import { apiRequest } from "@/lib/queryClient";
 
 export interface PlaceBookingTheme {
   accentColor: string;
@@ -35,6 +38,7 @@ interface PlaceBookingPanelProps {
   theme: PlaceBookingTheme;
   onBook: (payload: PlaceBookingPayload) => void;
   onRequestModal?: () => void;
+  onMembershipSuccess?: (booking: PlaceBooking) => void;
 }
 
 function formatDateChip(iso: string): { weekday: string; day: string; month: string } {
@@ -72,6 +76,7 @@ export function PlaceBookingPanel({
   theme,
   onBook,
   onRequestModal,
+  onMembershipSuccess,
 }: PlaceBookingPanelProps) {
   const mode = (bookingMode || "request") as PlaceBookingMode;
   const dates = useMemo(() => nextDates(14), []);
@@ -110,6 +115,70 @@ export function PlaceBookingPanel({
 
   const slots = isDemo ? demoSlots : (availability?.slots ?? []);
   const openSlots = slots.filter((s) => s.available);
+
+  const { data: membershipData, isLoading: plansLoading } = useQuery<{ plans: PlaceMembershipPlan[] }>({
+    queryKey: ["/api/places", placeId, "membership-plans"],
+    queryFn: async () => {
+      const res = await fetch(`/api/places/${placeId}/membership-plans`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load plans");
+      return res.json();
+    },
+    enabled: mode === "membership" && !!placeId && !isDemo,
+  });
+
+  const membershipPlans = membershipData?.plans ?? [];
+  const [enquiringPlanId, setEnquiringPlanId] = useState<string | null>(null);
+
+  const enquireMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/places/${placeId}/membership-plans/${planId}/enquire`,
+        {},
+      );
+      return res.json() as Promise<PlaceBooking>;
+    },
+    onSuccess: (booking) => {
+      setEnquiringPlanId(null);
+      onMembershipSuccess?.(booking);
+    },
+  });
+
+  const demoPlans = useMemo((): PlaceMembershipPlan[] => {
+    if (!isDemo || mode !== "membership") return [];
+    return [
+      {
+        id: "demo-plan-monthly",
+        placeId: placeId ?? "",
+        name: "Monthly unlimited",
+        description: "Full gym floor + classes",
+        price: "49.00",
+        billingInterval: "monthly",
+        features: ["24/7 access", "Group classes", "Locker room"],
+        isActive: true,
+        displayOrder: 0,
+        stripePriceId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: "demo-plan-day",
+        placeId: placeId ?? "",
+        name: "Day pass",
+        description: "Single visit",
+        price: "15.00",
+        billingInterval: "once",
+        features: ["Gym floor", "Same-day only"],
+        isActive: true,
+        displayOrder: 1,
+        stripePriceId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+  }, [isDemo, mode, placeId]);
+
+  const visiblePlans = isDemo ? demoPlans : membershipPlans;
 
   const pricingEntries =
     pricing && typeof pricing === "object"
@@ -153,28 +222,89 @@ export function PlaceBookingPanel({
     return (
       <div className="space-y-4">
         <div className="p-5 rounded-2xl" style={{ background: cardBg }}>
-          <h3 className="text-[16px] font-bold mb-1" style={{ color: textPrimary }}>Membership</h3>
+          <h3 className="text-[16px] font-bold mb-1" style={{ color: textPrimary }}>Membership plans</h3>
           <p className="text-[13px] mb-4" style={{ color: textTertiary }}>
-            Enquire about plans and join {placeName}.
+            Choose a plan — {placeName} will confirm your enquiry.
           </p>
-          {pricingEntries.length > 0 && (
-            <div className="space-y-1.5 mb-4">
-              {pricingEntries.map(([key, val]) => (
-                <div key={key} className="flex justify-between text-[13px] py-1">
-                  <span style={{ color: textSecondary }}>{key}</span>
-                  <span className="font-medium" style={{ color: textPrimary }}>{String(val)}</span>
+
+          {plansLoading && !isDemo ? (
+            <p className="text-[13px] py-4 text-center" style={{ color: textTertiary }}>Loading plans…</p>
+          ) : visiblePlans.length > 0 ? (
+            <div className="space-y-3">
+              {visiblePlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="p-4 rounded-xl"
+                  style={{
+                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[14px] font-bold" style={{ color: textPrimary }}>{plan.name}</p>
+                      <p className="text-[13px] font-semibold mt-0.5" style={{ color: accentColor }}>
+                        {formatMembershipPrice(plan.price ?? "0", plan.billingInterval ?? "monthly")}
+                      </p>
+                      {plan.description ? (
+                        <p className="text-[12px] mt-1" style={{ color: textSecondary }}>{plan.description}</p>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isDemo) {
+                          onBook({
+                            bookingType: "membership",
+                            title: `${placeName} — ${plan.name}`,
+                            startTime: new Date().toISOString(),
+                            endTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                            price: plan.price != null ? String(plan.price) : undefined,
+                          });
+                          return;
+                        }
+                        setEnquiringPlanId(plan.id);
+                        enquireMutation.mutate(plan.id);
+                      }}
+                      disabled={enquiringPlanId === plan.id && enquireMutation.isPending}
+                      className="shrink-0 px-4 h-9 rounded-full text-[12px] font-bold transition-all active:scale-[0.96] disabled:opacity-60"
+                      style={{ background: accentColor, color: "#fff" }}
+                    >
+                      {enquiringPlanId === plan.id && enquireMutation.isPending ? "Sending…" : "Enquire"}
+                    </button>
+                  </div>
+                  {(plan.features ?? []).length > 0 ? (
+                    <ul className="mt-2 space-y-0.5 text-[11px] list-disc pl-4" style={{ color: textTertiary }}>
+                      {plan.features!.map((f) => (
+                        <li key={f}>{f}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
               ))}
             </div>
+          ) : (
+            <>
+              {pricingEntries.length > 0 && (
+                <div className="space-y-1.5 mb-4">
+                  {pricingEntries.map(([key, val]) => (
+                    <div key={key} className="flex justify-between text-[13px] py-1">
+                      <span style={{ color: textSecondary }}>{key}</span>
+                      <span className="font-medium" style={{ color: textPrimary }}>{String(val)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={onRequestModal}
+                className="w-full h-11 rounded-full text-[14px] font-bold transition-all active:scale-[0.96]"
+                style={{ background: accentColor, color: "#fff" }}
+              >
+                Enquire to join
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            onClick={onRequestModal}
-            className="w-full h-11 rounded-full text-[14px] font-bold transition-all active:scale-[0.96]"
-            style={{ background: accentColor, color: "#fff" }}
-          >
-            Enquire to join
-          </button>
         </div>
         {hoursBlock(hours, cardBg, textPrimary, textSecondary, textTertiary, accentColor, isDark)}
         {phoneBlock(phone, cardBg, textTertiary, accentColor, isDark)}

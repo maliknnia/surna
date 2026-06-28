@@ -178,6 +178,29 @@ export default function PlaceProfile() {
     },
   });
 
+  const confirmBooking = useCallback(async (booking: PlaceBooking) => {
+    setShowBookingModal(false);
+    setConfirmedBooking(booking);
+    try {
+      const qrUrl = await QRCode.toDataURL(JSON.stringify({
+        bookingId: booking.id, placeId: booking.placeId, title: booking.title, startTime: booking.startTime,
+      }), { width: 300, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
+      setQrCodeUrl(qrUrl);
+    } catch {}
+    setShowConfirmationModal(true);
+    setBookingData({ bookingType: "session", title: "", startTime: "", endTime: "" });
+    const confirmed = booking.status === "confirmed";
+    const isMembership = booking.bookingType === "membership";
+    toast({
+      title: confirmed ? "Slot booked!" : isMembership ? "Enquiry sent!" : "Booking requested!",
+      description: confirmed
+        ? "You're confirmed for this time"
+        : isMembership
+          ? "The venue will follow up on your membership enquiry"
+          : "The owner will review your request",
+    });
+  }, [toast]);
+
   const bookingMutation = useMutation({
     mutationFn: async (data: any) => {
       if (isDemo) {
@@ -194,23 +217,7 @@ export default function PlaceProfile() {
       const response = await apiRequest("POST", `/api/places/${placeId}/bookings`, data);
       return response.json();
     },
-    onSuccess: async (booking: PlaceBooking) => {
-      setShowBookingModal(false);
-      setConfirmedBooking(booking);
-      try {
-        const qrUrl = await QRCode.toDataURL(JSON.stringify({
-          bookingId: booking.id, placeId: booking.placeId, title: booking.title, startTime: booking.startTime,
-        }), { width: 300, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
-        setQrCodeUrl(qrUrl);
-      } catch {}
-      setShowConfirmationModal(true);
-      setBookingData({ bookingType: "session", title: "", startTime: "", endTime: "" });
-      const confirmed = booking.status === "confirmed";
-      toast({
-        title: confirmed ? "Slot booked!" : "Booking requested!",
-        description: confirmed ? "You're confirmed for this time" : "The owner will review your request",
-      });
-    },
+    onSuccess: confirmBooking,
   });
 
   if (isLoading) {
@@ -588,6 +595,7 @@ export default function PlaceProfile() {
               theme={bookingTheme}
               onBook={handleBookPayload}
               onRequestModal={() => setShowBookingModal(true)}
+              onMembershipSuccess={confirmBooking}
             />
           )}
         </div>
