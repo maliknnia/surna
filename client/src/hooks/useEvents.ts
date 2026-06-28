@@ -145,6 +145,10 @@ export function useCreateEvent() {
       eventFormat?: "open" | "versus" | "route" | "lineup";
       sport: string;
       eventLineup?: Record<string, unknown>;
+      recurrenceRule?: {
+        frequency: "once" | "daily" | "weekly";
+        occurrenceCount?: number;
+      };
     }) => {
       const payload = { ...eventData };
       if (payload.coverMediaId && !/^[0-9a-f-]{36}$/i.test(payload.coverMediaId)) {

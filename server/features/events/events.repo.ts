@@ -71,6 +71,11 @@ export function ensureEventsCompatTables(): Promise<void> {
       ALTER TABLE event_tickets ADD COLUMN IF NOT EXISTS redeemed_at timestamptz;
       ALTER TABLE event_tickets ADD COLUMN IF NOT EXISTS scanned_by varchar;
       ALTER TABLE event_tickets ADD COLUMN IF NOT EXISTS issued_at timestamptz NOT NULL DEFAULT now();
+
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS series_id varchar;
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS is_series_master boolean NOT NULL DEFAULT false;
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS recurrence_rule jsonb;
+      CREATE INDEX IF NOT EXISTS idx_events_series_id ON events(series_id);
     `).then(() => undefined).catch((err) => {
       eventsCompatEnsured = null;
       throw err;
@@ -89,24 +94,54 @@ export async function insertEvent(creatorId: string, e: any) {
   const eventType = e.eventType ?? e.category ?? "training";
   const eventFormat = e.eventFormat ?? "open";
   const eventLineup = e.eventLineup ? JSON.stringify(e.eventLineup) : null;
+  const recurrenceRule = e.recurrenceRule ? JSON.stringify(e.recurrenceRule) : null;
   const q = await db.execute(sql`
     INSERT INTO events (
       creator_id, organizer_id, title, description, event_type, sport,
       event_format, event_lineup,
       starts_at, ends_at, start_date, end_date,
-      location, visibility, capacity, cover_media_id, lat, lng, location_detail, route_coordinates
+      location, visibility, capacity, cover_media_id, lat, lng, location_detail, route_coordinates,
+      series_id, is_series_master, recurrence_rule
     )
     VALUES (
       ${creatorId}, ${creatorId}, ${e.title}, ${e.description ?? ''}, ${eventType}, ${e.sport ?? null},
       ${eventFormat}, ${eventLineup}::jsonb,
       ${e.startsAt}, ${e.endsAt}, ${e.startsAt}, ${e.endsAt},
       ${e.location ?? ''}, ${e.visibility ?? 'public'}, ${e.capacity ?? null}, ${e.coverMediaId ?? null},
-      ${e.lat ?? null}, ${e.lng ?? null}, ${locationDetail}::jsonb, ${routeCoordinates}::jsonb
+      ${e.lat ?? null}, ${e.lng ?? null}, ${locationDetail}::jsonb, ${routeCoordinates}::jsonb,
+      ${e.seriesId ?? null}, ${e.isSeriesMaster ?? false}, ${recurrenceRule}::jsonb
     )
     RETURNING *;
   `);
   await bustEventListCaches();
   return q.rows[0];
+}
+
+export async function markEventSeriesMaster(
+  eventId: string,
+  seriesId: string,
+  recurrenceRule: Record<string, unknown>,
+) {
+  await ensureEventsCompatTables();
+  const q = await db.execute(sql`
+    UPDATE events
+       SET series_id = ${seriesId},
+           is_series_master = true,
+           recurrence_rule = ${JSON.stringify(recurrenceRule)}::jsonb
+     WHERE id = ${eventId}
+     RETURNING *;
+  `);
+  await bustEventListCaches();
+  return q.rows[0] ?? null;
+}
+
+export async function setSeriesChatGroup(seriesId: string, chatGroupId: string) {
+  await ensureEventsCompatTables();
+  await db.execute(sql`
+    UPDATE events
+       SET chat_group_id = ${chatGroupId}
+     WHERE series_id = ${seriesId};
+  `);
 }
 
 export async function setEventChatGroupId(eventId: string, chatGroupId: string) {

@@ -6,6 +6,7 @@ import {
   type EventFormat,
   type EventLineup,
 } from "@shared/eventFormats";
+import { EventRecurrenceRuleSchema } from "@shared/eventRecurrence";
 
 const venueAddressSchema = z.object({
   venueName: z.string().max(120).optional(),
@@ -32,6 +33,7 @@ const CreateEventFields = z.object({
   eventFormat: z.enum(EVENT_FORMATS).default("open"),
   sport: z.string().min(1).max(80),
   eventLineup: EventLineupSchema.optional(),
+  recurrenceRule: EventRecurrenceRuleSchema.optional(),
 });
 
 export const CreateEvent = CreateEventFields.superRefine((data, ctx) => {

@@ -1,6 +1,11 @@
 import { MessengerService } from "../messenger/messenger.service";
 import * as repo from "./events.repo";
 import { signTicketToken } from "../../services/ticketTokenService";
+import {
+  buildOccurrenceTimes,
+  normalizeRecurrenceRule,
+  type EventRecurrenceRule,
+} from "@shared/eventRecurrence";
 import type { z } from "zod";
 import type { SaveEventRoute } from "./events.validation";
 
@@ -13,7 +18,44 @@ function normalizeRoutePoints(coords: RoutePoint[]): [number, number][] {
 export async function createEvent(creatorId: string, e: any) {
   if (new Date(e.endsAt) <= new Date(e.startsAt)) throw new Error("END_BEFORE_START");
   await repo.ensureEventsCompatTables();
-  const ev = await repo.insertEvent(creatorId, e);
+
+  const recurrenceRule = normalizeRecurrenceRule(e.recurrenceRule as EventRecurrenceRule | undefined);
+  const occurrences = buildOccurrenceTimes(
+    new Date(e.startsAt),
+    new Date(e.endsAt),
+    recurrenceRule,
+  );
+
+  const basePayload = { ...e };
+  delete basePayload.recurrenceRule;
+
+  const master = await repo.insertEvent(creatorId, {
+    ...basePayload,
+    startsAt: occurrences[0].startsAt.toISOString(),
+    endsAt: occurrences[0].endsAt.toISOString(),
+    isSeriesMaster: recurrenceRule.frequency !== "once",
+    recurrenceRule: recurrenceRule.frequency !== "once" ? recurrenceRule : null,
+  });
+
+  const masterId = String((master as { id: string }).id);
+  const createdIds = [masterId];
+
+  if (recurrenceRule.frequency !== "once") {
+    await repo.markEventSeriesMaster(masterId, masterId, recurrenceRule);
+
+    for (let i = 1; i < occurrences.length; i++) {
+      const child = await repo.insertEvent(creatorId, {
+        ...basePayload,
+        startsAt: occurrences[i].startsAt.toISOString(),
+        endsAt: occurrences[i].endsAt.toISOString(),
+        seriesId: masterId,
+        isSeriesMaster: false,
+      });
+      createdIds.push(String((child as { id: string }).id));
+    }
+  }
+
+  let ev = master;
 
   let recommendations: Record<string, unknown> | null = null;
   try {
@@ -47,10 +89,27 @@ export async function createEvent(creatorId: string, e: any) {
       eventId,
     });
     await repo.setEventChatGroupId(eventId, group.id);
-    return { ...ev, chat_group_id: group.id, chatGroupId: group.id, recommendations };
+    if (recurrenceRule.frequency !== "once") {
+      await repo.setSeriesChatGroup(masterId, group.id);
+    }
+    return {
+      ...ev,
+      chat_group_id: group.id,
+      chatGroupId: group.id,
+      recommendations,
+      seriesId: recurrenceRule.frequency !== "once" ? masterId : null,
+      occurrenceCount: occurrences.length,
+      occurrenceIds: createdIds,
+    };
   } catch (err) {
     console.error("[Events] Failed to create event group chat:", err);
-    return { ...ev, recommendations };
+    return {
+      ...ev,
+      recommendations,
+      seriesId: recurrenceRule.frequency !== "once" ? masterId : null,
+      occurrenceCount: occurrences.length,
+      occurrenceIds: createdIds,
+    };
   }
 }
 

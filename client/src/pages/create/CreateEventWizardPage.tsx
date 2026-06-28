@@ -58,6 +58,11 @@ import {
   type EventFormat,
   type EventLineup,
 } from "@shared/eventFormats";
+import {
+  EVENT_RECURRENCE_FREQUENCIES,
+  recurrenceSummary,
+  type EventRecurrenceFrequency,
+} from "@shared/eventRecurrence";
 
 const STEPS: CreateFlowStep[] = [
   { id: 1, label: "Photo & basics", icon: Sparkles },
@@ -83,6 +88,8 @@ type EventDraft = {
   headliner: string;
   supportAct: string;
   distanceKm: string;
+  recurrenceFrequency: EventRecurrenceFrequency;
+  occurrenceCount: string;
 };
 
 const EMPTY_DRAFT: EventDraft = {
@@ -101,6 +108,8 @@ const EMPTY_DRAFT: EventDraft = {
   headliner: "",
   supportAct: "",
   distanceKm: "",
+  recurrenceFrequency: "once",
+  occurrenceCount: "8",
 };
 
 const FORMAT_ICONS: Record<EventFormat, typeof Users> = {
@@ -160,7 +169,12 @@ export default function CreateEventWizardPage() {
     if (step === 1) return form.title.trim().length >= 3 && form.sport.trim().length > 0;
     if (step === 2) {
       if (!form.startsAt || !form.endsAt) return false;
-      return new Date(form.endsAt) > new Date(form.startsAt);
+      if (new Date(form.endsAt) <= new Date(form.startsAt)) return false;
+      if (form.recurrenceFrequency !== "once") {
+        const n = Number(form.occurrenceCount);
+        return Number.isInteger(n) && n >= 2 && n <= 52;
+      }
+      return true;
     }
     if (step === 3) return geocode !== null;
     if (step === 4 && form.eventFormat === "versus") {
@@ -183,6 +197,14 @@ export default function CreateEventWizardPage() {
     const startsAt = new Date(form.startsAt);
     const endsAt = new Date(form.endsAt);
 
+    const recurrenceRule =
+      form.recurrenceFrequency === "once"
+        ? { frequency: "once" as const, occurrenceCount: 1 }
+        : {
+            frequency: form.recurrenceFrequency,
+            occurrenceCount: Number(form.occurrenceCount) || 8,
+          };
+
     try {
       const created = await createEvent.mutateAsync({
         title: form.title.trim(),
@@ -199,9 +221,11 @@ export default function CreateEventWizardPage() {
         eventFormat: form.eventFormat,
         sport: form.sport.trim(),
         eventLineup: buildEventLineup(form),
+        recurrenceRule,
       });
 
       const eventId = (created as { id?: string })?.id;
+      const occurrenceCount = (created as { occurrenceCount?: number })?.occurrenceCount ?? 1;
 
       try {
         const creatorId = (user as { id?: string })?.id;
@@ -215,8 +239,11 @@ export default function CreateEventWizardPage() {
       }
 
       toast({
-        title: "Event is live",
-        description: "Opening the map at your venue.",
+        title: occurrenceCount > 1 ? `${occurrenceCount} sessions are live` : "Event is live",
+        description:
+          occurrenceCount > 1
+            ? "Your recurring series is on the map — first session selected."
+            : "Opening the map at your venue.",
       });
 
       await invalidateMyHubQueries(queryClient);
@@ -245,7 +272,11 @@ export default function CreateEventWizardPage() {
                 variant: "destructive",
               });
             } else if (step === 2) {
-              toast({ title: "Check your schedule", description: "End must be after start.", variant: "destructive" });
+              toast({
+                title: "Check your schedule",
+                description: "End must be after start. For repeats, pick at least 2 sessions.",
+                variant: "destructive",
+              });
             } else if (step === 3) {
               toast({
                 title: "Pin your venue",
@@ -395,6 +426,64 @@ export default function CreateEventWizardPage() {
                 data-testid="create-event-ends-at"
               />
             </CreateFieldGroup>
+
+            <CreateFieldGroup label="Repeats" required>
+              <div className="grid grid-cols-3 gap-2">
+                {EVENT_RECURRENCE_FREQUENCIES.map((freq) => {
+                  const selected = form.recurrenceFrequency === freq;
+                  const label =
+                    freq === "once" ? "Once" : freq === "daily" ? "Daily" : "Weekly";
+                  return (
+                    <button
+                      key={freq}
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          recurrenceFrequency: freq,
+                          occurrenceCount: freq === "once" ? "1" : f.occurrenceCount || "8",
+                        }))
+                      }
+                      className="h-11 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98]"
+                      style={{
+                        borderColor: selected ? "var(--surna-accent)" : "var(--surna-separator)",
+                        background: selected ? "var(--surna-accent-soft, rgba(99,102,241,0.08))" : "var(--surna-elevated)",
+                        color: selected ? "var(--surna-accent)" : "var(--surna-text)",
+                      }}
+                      data-testid={`create-event-recurrence-${freq}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </CreateFieldGroup>
+
+            {form.recurrenceFrequency !== "once" ? (
+              <CreateFieldGroup
+                label={`How many ${form.recurrenceFrequency === "daily" ? "days" : "weeks"}?`}
+                required
+              >
+                <Select
+                  value={form.occurrenceCount}
+                  onValueChange={(occurrenceCount) => setForm({ ...form, occurrenceCount })}
+                >
+                  <SelectTrigger className="h-12 rounded-xl" data-testid="create-event-occurrence-count">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[4, 6, 8, 10, 12, 16, 26, 52].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n} sessions
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[12px] mt-2" style={{ color: "var(--surna-text-muted)" }}>
+                  Same time and venue each {form.recurrenceFrequency === "daily" ? "day" : "week"} — each session gets its own listing and RSVPs.
+                </p>
+              </CreateFieldGroup>
+            ) : null}
           </div>
         </CreateSection>
       ) : null}
@@ -596,6 +685,16 @@ export default function CreateEventWizardPage() {
                     ? `${new Date(form.startsAt).toLocaleString()} → ${new Date(form.endsAt).toLocaleString()}`
                     : "—"
                 }
+              />
+              <ReviewRow
+                label="Repeats"
+                value={recurrenceSummary({
+                  frequency: form.recurrenceFrequency,
+                  occurrenceCount:
+                    form.recurrenceFrequency === "once"
+                      ? 1
+                      : Number(form.occurrenceCount) || 8,
+                })}
               />
               <ReviewRow label="Venue" value={formatVenueAddressShort(venue)} />
               <ReviewRow label="Address" value={formatVenueAddress(venue)} />
