@@ -3,6 +3,7 @@ import { challengesRepo } from "./challenges.repo";
 import type { CompetitiveMatch, MatchResult } from "@shared/schema";
 import { createChallengePost } from "../feed/feed.service";
 import type { MessengerService } from "../messenger/messenger.service";
+import { Forbidden, NotFound } from "../../core/errors";
 
 // ELO Rating calculation
 const K_FACTOR = 32; // Sensitivity of rating changes
@@ -46,7 +47,7 @@ export class ChallengesService {
       const { canUserChallenge } = await import("../../services/challengePrivacyService");
       const allowed = await canUserChallenge(data.opponentId, userId);
       if (!allowed) {
-        throw new Error("This user does not accept challenges from you");
+        throw Forbidden("This user does not accept challenges from you");
       }
     }
 
@@ -132,7 +133,7 @@ export class ChallengesService {
   async acceptChallenge(matchId: string, userId: string): Promise<CompetitiveMatch> {
     const match = await challengesRepo.getMatchById(matchId);
     if (!match) {
-      throw new Error('Match not found');
+      throw NotFound("Match not found");
     }
 
     const participants = await challengesRepo.getParticipants(matchId);
@@ -180,7 +181,7 @@ export class ChallengesService {
 
     const match = await challengesRepo.getMatchById(matchId);
     if (!match) {
-      throw new Error('Match not found');
+      throw NotFound("Match not found");
     }
 
     // Get all accepted participants (skip declined/pending)
@@ -265,7 +266,7 @@ export class ChallengesService {
   async joinOpenChallenge(matchId: string, userId: string): Promise<void> {
     const match = await challengesRepo.getMatchById(matchId);
     if (!match) {
-      throw new Error('Match not found');
+      throw NotFound("Match not found");
     }
 
     const participants = await challengesRepo.getParticipants(matchId);
@@ -307,12 +308,12 @@ export class ChallengesService {
   async startMatch(matchId: string, userId: string): Promise<CompetitiveMatch> {
     const match = await challengesRepo.getMatchById(matchId);
     if (!match) {
-      throw new Error('Match not found');
+      throw NotFound("Match not found");
     }
 
     // Verify user is creator or admin
     if (match.creatorId !== userId) {
-      throw new Error('Only the creator can start the match');
+      throw Forbidden("Only the creator can start the match");
     }
 
     const challengeType =
@@ -338,7 +339,7 @@ export class ChallengesService {
   async reportResult(matchId: string, userId: string, data: any): Promise<MatchResult> {
     const match = await challengesRepo.getMatchById(matchId);
     if (!match) {
-      throw new Error('Match not found');
+      throw NotFound("Match not found");
     }
 
     // Create result
@@ -360,7 +361,7 @@ export class ChallengesService {
   async confirmResult(resultId: string, userId: string): Promise<MatchResult> {
     const result = await challengesRepo.getResultById(resultId);
     if (!result) {
-      throw new Error('Result not found');
+      throw NotFound("Result not found");
     }
 
     // Update result
@@ -373,7 +374,7 @@ export class ChallengesService {
     // Get match details
     const match = await challengesRepo.getMatchById(confirmedResult.matchId);
     if (!match) {
-      throw new Error('Match not found');
+      throw NotFound("Match not found");
     }
 
     // Update match status

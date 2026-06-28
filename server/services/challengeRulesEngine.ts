@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { teams } from "@shared/schema";
 import type { CompetitiveMatch, MatchParticipant } from "@shared/schema";
+import { BadRequest, Conflict, Forbidden } from "../core/errors";
 
 export type ChallengeMatchType = "solo" | "player1v1" | "teamVsTeam" | "open";
 export type ChallengeVisibility = "public" | "private" | "invite";
@@ -20,43 +21,43 @@ export function validateMatchForm(input: MatchFormInput): void {
 
   if (type === "solo") {
     if (visibility === "public") {
-      throw new Error("Solo challenges must be private — they are personal goals, not public listings");
+      throw BadRequest("Solo challenges must be private — they are personal goals, not public listings");
     }
     if (opponentId) {
-      throw new Error("Solo challenges cannot include an opponent");
+      throw BadRequest("Solo challenges cannot include an opponent");
     }
     return;
   }
 
   if (type === "player1v1") {
     if (opponentType && opponentType !== "user") {
-      throw new Error("1v1 challenges require a player opponent");
+      throw BadRequest("1v1 challenges require a player opponent");
     }
     if (visibility === "invite" && !opponentId) {
-      throw new Error("Invite-only 1v1 challenges require a named opponent");
+      throw BadRequest("Invite-only 1v1 challenges require a named opponent");
     }
     if (opponentId && opponentType === "user" && visibility === "public") {
-      throw new Error("Direct player challenges should be invite-only or private, not public listings");
+      throw BadRequest("Direct player challenges should be invite-only or private, not public listings");
     }
     return;
   }
 
   if (type === "teamVsTeam") {
     if (!opponentId || opponentType !== "team") {
-      throw new Error("Team vs team challenges require an opponent team");
+      throw BadRequest("Team vs team challenges require an opponent team");
     }
     if (visibility === "public") {
-      throw new Error("Team vs team challenges should be invite-only or private, not public open listings");
+      throw BadRequest("Team vs team challenges should be invite-only or private, not public open listings");
     }
     return;
   }
 
   if (type === "open") {
     if (visibility === "invite") {
-      throw new Error("Open challenges cannot be invite-only — use 1v1 or team vs team for direct invites");
+      throw BadRequest("Open challenges cannot be invite-only — use 1v1 or team vs team for direct invites");
     }
     if (opponentId) {
-      throw new Error("Open challenges cannot name a single opponent — anyone can join");
+      throw BadRequest("Open challenges cannot name a single opponent — anyone can join");
     }
   }
 }
@@ -82,24 +83,24 @@ export async function assertCanJoinOpenChallenge(
   participants: MatchParticipant[],
 ): Promise<void> {
   if (match.type !== "open") {
-    throw new Error("Only open challenges can be joined");
+    throw BadRequest("Only open challenges can be joined");
   }
 
   if (match.visibility !== "public") {
-    throw new Error("This challenge is not open for public join");
+    throw BadRequest("This challenge is not open for public join");
   }
 
   if (match.status === "completed" || match.status === "cancelled") {
-    throw new Error("This challenge is no longer accepting players");
+    throw BadRequest("This challenge is no longer accepting players");
   }
 
   const active = participants.filter((p) => p.status !== "declined");
   if (active.some((p) => p.participantType === "user" && p.participantId === userId)) {
-    throw new Error("You are already in this challenge");
+    throw Conflict("You are already in this challenge");
   }
 
   if (match.capacity != null && match.capacity > 0 && active.length >= match.capacity) {
-    throw new Error("This challenge is full");
+    throw Conflict("This challenge is full");
   }
 }
 
@@ -109,7 +110,7 @@ export async function assertCanAcceptChallenge(
   participants: MatchParticipant[],
 ): Promise<void> {
   if (match.status === "completed" || match.status === "cancelled") {
-    throw new Error("This challenge is no longer active");
+    throw BadRequest("This challenge is no longer active");
   }
 
   const guest = participants.find(
@@ -117,12 +118,12 @@ export async function assertCanAcceptChallenge(
   );
 
   if (!guest) {
-    throw new Error("There is no pending invite on this challenge");
+    throw BadRequest("There is no pending invite on this challenge");
   }
 
   if (guest.participantType === "user") {
     if (guest.participantId !== userId) {
-      throw new Error("Only the invited player can accept this challenge");
+      throw Forbidden("Only the invited player can accept this challenge");
     }
     return;
   }
@@ -134,7 +135,7 @@ export async function assertCanAcceptChallenge(
       .where(eq(teams.id, guest.participantId))
       .limit(1);
     if (!team?.captainId || team.captainId !== userId) {
-      throw new Error("Only the challenged team's captain can accept");
+      throw Forbidden("Only the challenged team's captain can accept");
     }
   }
 }

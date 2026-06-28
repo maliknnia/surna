@@ -221,7 +221,8 @@ describe.skipIf(!hasDatabase)("Wave 3 — marketplace, coaches, challenges, inst
         sport: "Running",
         visibility: "public",
       });
-      expect(soloPublic.status).toBeGreaterThanOrEqual(400);
+      expect(soloPublic.status).toBe(400);
+      expect(soloPublic.body.message).toMatch(/solo/i);
 
       const openInvite = await apiPost(creator.agent, "/api/competitive-challenges", {
         title: "Bad open",
@@ -229,7 +230,7 @@ describe.skipIf(!hasDatabase)("Wave 3 — marketplace, coaches, challenges, inst
         sport: "Tennis",
         visibility: "invite",
       });
-      expect(openInvite.status).toBeGreaterThanOrEqual(400);
+      expect(openInvite.status).toBe(400);
 
       const createOpen = await apiPost(creator.agent, "/api/competitive-challenges", {
         title: `Open cap ${Date.now().toString(36)}`,
@@ -245,11 +246,11 @@ describe.skipIf(!hasDatabase)("Wave 3 — marketplace, coaches, challenges, inst
       expect(join1.status).toBe(200);
 
       const joinDup = await apiPost(joiner.agent, `/api/competitive-challenges/${openId}/join`, {});
-      expect(joinDup.status).toBeGreaterThanOrEqual(400);
+      expect(joinDup.status).toBe(409);
 
       const filler = await readyTestUser(app, "RulesFiller");
       const joinFull = await apiPost(filler.agent, `/api/competitive-challenges/${openId}/join`, {});
-      expect(joinFull.status).toBeGreaterThanOrEqual(400);
+      expect(joinFull.status).toBe(409);
     });
   });
 

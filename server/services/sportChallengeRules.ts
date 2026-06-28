@@ -1,6 +1,7 @@
 import { sql, eq } from "drizzle-orm";
 import { db } from "../db";
 import { teams } from "@shared/schema";
+import { BadRequest, NotFound } from "../core/errors";
 
 export type ChallengeType = "open" | "structured" | "contact";
 
@@ -53,7 +54,7 @@ async function getTeamSize(teamId: string, sport: string): Promise<number> {
     .from(teams)
     .where(eq(teams.id, teamId))
     .limit(1);
-  if (!team) throw new Error("Team not found");
+  if (!team) throw NotFound("Team not found");
   const explicit = expectedTeamSize(sport, team.maxMembers);
   return explicit > 0 ? explicit : team.currentMembers ?? team.maxMembers ?? 0;
 }
@@ -73,14 +74,14 @@ export async function validateChallengeCreation(params: {
     const hostTeamId =
       params.hostTeamId ?? (params.creatorType === "team" ? params.creatorId : null);
     if (!hostTeamId) {
-      throw new Error(
+      throw BadRequest(
         "Structured team sports require you to challenge as a team — captain a matching roster first",
       );
     }
     const hostSize = await getTeamSize(hostTeamId, params.sport);
     const guestSize = await getTeamSize(params.opponentId, params.sport);
     if (hostSize !== guestSize) {
-      throw new Error(`Team sizes must match for ${params.sport} (${hostSize} vs ${guestSize})`);
+      throw BadRequest(`Team sizes must match for ${params.sport} (${hostSize} vs ${guestSize})`);
     }
   }
 
@@ -96,10 +97,10 @@ export async function validateContactMatchUsers(userA: string, userB: string): P
   const weightA = parseWeightKg(a?.weight_class);
   const weightB = parseWeightKg(b?.weight_class);
   if (weightA == null || weightB == null) {
-    throw new Error("Both fighters must have a weight class on their profile");
+    throw BadRequest("Both fighters must have a weight class on their profile");
   }
   if (Math.abs(weightA - weightB) > 5) {
-    throw new Error(`Weight classes must be within 5kg (difference: ${Math.abs(weightA - weightB).toFixed(1)}kg)`);
+    throw BadRequest(`Weight classes must be within 5kg (difference: ${Math.abs(weightA - weightB).toFixed(1)}kg)`);
   }
 
   const now = new Date();
@@ -109,7 +110,7 @@ export async function validateContactMatchUsers(userA: string, userB: string): P
   ] as const) {
     const expiry = profile?.medical_clearance_expiry ? new Date(profile.medical_clearance_expiry) : null;
     if (!expiry || expiry <= now) {
-      throw new Error(`Medical clearance must be on file and valid for user ${id}`);
+      throw BadRequest(`Medical clearance must be on file and valid for user ${id}`);
     }
   }
 }
@@ -122,11 +123,11 @@ export async function validateContactManagerConsent(matchId: string): Promise<vo
   `);
   const participants = rows.rows as { participant_id: string; manager_consent: boolean }[];
   if (participants.length < 2) {
-    throw new Error("Both managers must consent before this contact sport match can proceed");
+    throw BadRequest("Both managers must consent before this contact sport match can proceed");
   }
   const missing = participants.filter((p) => !p.manager_consent);
   if (missing.length > 0) {
-    throw new Error("Both managers must consent before this contact sport match can proceed");
+    throw BadRequest("Both managers must consent before this contact sport match can proceed");
   }
 }
 
