@@ -111,6 +111,7 @@ import { enrichUserRow, mergeUserProfile } from "./lib/userProfile";
 import { toPublicCoachRow, toPublicUser } from "./lib/publicData";
 import { sanitizePlainText } from "./lib/sanitizeContent";
 import { parseUserProfile, profileCompletionPercent } from "@shared/userProfile";
+import { gearProfileSchema, mergeGearProfile } from "@shared/gearProfile";
 import { messengerRepo } from "./features/messenger/messenger.repo";
 import { authUserId } from "./lib/authUser";
 import { csrfProtection } from "./middleware/csrfMiddleware";
@@ -2780,6 +2781,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       .optional(),
     markSetupComplete: z.boolean().optional(),
     onboardingSkipped: z.boolean().optional(),
+    gearProfile: gearProfileSchema.optional(),
     weightClass: z.string().max(40).optional(),
     fightRecordWins: z.number().int().min(0).optional(),
     fightRecordLosses: z.number().int().min(0).optional(),
@@ -2896,6 +2898,9 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (patch.socialLinks !== undefined) profilePatch.socialLinks = patch.socialLinks;
       if (patch.media !== undefined) profilePatch.media = patch.media;
       if (patch.onboardingSkipped !== undefined) profilePatch.onboardingSkipped = patch.onboardingSkipped;
+      if (patch.gearProfile !== undefined) {
+        profilePatch.gearProfile = mergeGearProfile(currentProfile.gearProfile, patch.gearProfile);
+      }
       if (patch.markSetupComplete) {
         profilePatch.profileSetupCompletedAt = new Date().toISOString();
       }
@@ -2925,6 +2930,9 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         userUpdates.medicalClearanceExpiry = new Date(patch.medicalClearanceExpiry);
       }
       if (patch.gymAffiliation !== undefined) userUpdates.gymAffiliation = patch.gymAffiliation;
+      if (patch.gearProfile?.heightCm !== undefined) {
+        userUpdates.heightCm = patch.gearProfile.heightCm;
+      }
 
       const [updated] = await db.update(users).set(userUpdates).where(eq(users.id, userId)).returning();
       const enriched = enrichUserRow(updated as any);

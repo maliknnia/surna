@@ -38,5 +38,6 @@ export function mergeUserProfile(current: UserProfileExtras, patch: Partial<User
     favoriteTeams: patch.favoriteTeams ?? current.favoriteTeams,
     socialLinks: patch.socialLinks ?? current.socialLinks,
     media: patch.media ?? current.media,
+    gearProfile: patch.gearProfile ?? current.gearProfile,
   };
 }

@@ -1128,6 +1128,80 @@ teamsRouter.get('/:id', isAuthenticated, async (req: AuthedRequest, res: Respons
   }
 });
 
+/**
+ * GET /api/teams/:id/sizing-roster — kit sizing summary for team merch orders.
+ * Captains/co-captains see full roster sizes; members see their own row + readiness counts.
+ */
+teamsRouter.get('/:id/sizing-roster', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const teamId = req.params.id;
+    const [viewerMembership] = await db
+      .select({ status: teamMembers.status })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
+      .limit(1);
+
+    const canManage = await viewerCanManageTeam(teamId, userId);
+    const isTeammate = viewerMembership?.status === 'active';
+    if (!canManage && !isTeammate) {
+      return res.status(403).json({ message: 'Join this team to view sizing roster' });
+    }
+
+    const { parseUserProfile } = await import('@shared/userProfile');
+    const {
+      canViewerSeeGearProfile,
+      gearProfileMissingFields,
+      gearProfileSummary,
+      isGearProfileReadyForKit,
+    } = await import('@shared/gearProfile');
+
+    const rows = await db
+      .select({ member: teamMembers, user: users })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.userId, users.id))
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.status, 'active')));
+
+    const roster = rows.map(({ member, user }) => {
+      const profile = parseUserProfile(user.profileJson, user);
+      const gear = profile.gearProfile;
+      const subjectUserId = user.id;
+      const canSeeGear = canViewerSeeGearProfile({
+        gear,
+        viewerUserId: userId,
+        subjectUserId,
+        viewerIsTeamManager: canManage,
+        viewerIsTeammate: isTeammate,
+      });
+
+      return {
+        memberId: member.id,
+        userId: subjectUserId,
+        role: member.role,
+        name: authorDisplayName(user),
+        profileImageUrl: user.profileImageUrl,
+        kitReady: isGearProfileReadyForKit(gear),
+        missingFields: canSeeGear ? gearProfileMissingFields(gear) : undefined,
+        gear: canSeeGear ? gearProfileSummary(gear) : null,
+      };
+    });
+
+    const readyCount = roster.filter((r) => r.kitReady).length;
+
+    res.json({
+      canManage,
+      readyCount,
+      totalCount: roster.length,
+      roster,
+    });
+  } catch (err) {
+    console.error('[teams] sizing-roster error', err);
+    res.status(500).json({ message: 'Failed to fetch sizing roster' });
+  }
+});
+
 teamsRouter.get('/:id/members', isAuthenticated, async (req: AuthedRequest, res: Response) => {
   try {
     const userId = getUserId(req);

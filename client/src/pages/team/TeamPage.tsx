@@ -194,7 +194,13 @@ export default function TeamPage() {
             </div>
           }>
             {activeTab === 'about' && <TeamAbout team={team} />}
-            {activeTab === 'members' && <TeamMembers teamId={teamId!} teamName={(team as any).name} />}
+            {activeTab === 'members' && (
+              <TeamMembers
+                teamId={teamId!}
+                teamName={(team as any).name}
+                canManage={!!teamAny.canManage || !!teamAny.isCaptain}
+              />
+            )}
             {activeTab === 'challenges' && <TeamChallenges teamId={teamId!} />}
             {activeTab === 'schedule' && (
               <TeamSchedule teamId={teamId!} canManage={!!teamAny.canManage || !!teamAny.isCaptain} />

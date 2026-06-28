@@ -1,5 +1,8 @@
 /** Rich athlete/person showcase (stored in users.profile_json). */
 
+import type { GearProfile } from "./gearProfile";
+import { parseGearProfile } from "./gearProfile";
+
 export type UserHighlight = {
   id: string;
   title: string;
@@ -37,6 +40,8 @@ export type UserProfileExtras = {
   profileSetupCompletedAt?: string;
   onboardingSkipped?: boolean;
   profilePathChosenAt?: string;
+  /** Kit / merch sizing — used for team bulk orders */
+  gearProfile?: GearProfile;
 };
 
 export const DEFAULT_USER_PROFILE: UserProfileExtras = {
@@ -63,6 +68,7 @@ type UserLike = {
   position?: string | null;
   profileImageUrl?: string | null;
   verified?: boolean | null;
+  heightCm?: number | null;
 };
 
 export function parseUserProfile(raw: unknown, user?: UserLike): UserProfileExtras {
@@ -75,6 +81,7 @@ export function parseUserProfile(raw: unknown, user?: UserLike): UserProfileExtr
     if (o.sports) base.sports = o.sports;
     if (o.activities) base.activities = o.activities;
     if (o.media) base.media = o.media;
+    if (o.gearProfile) base.gearProfile = parseGearProfile(o.gearProfile);
   }
 
   if (user) {
@@ -88,6 +95,9 @@ export function parseUserProfile(raw: unknown, user?: UserLike): UserProfileExtr
     }
     if (!base.lookingFor?.length && user.lookingFor) {
       base.lookingFor = user.lookingFor.split(/[,|]+/).map((s) => s.trim()).filter(Boolean);
+    }
+    if (!base.gearProfile?.heightCm && user.heightCm) {
+      base.gearProfile = { ...(base.gearProfile ?? {}), heightCm: user.heightCm };
     }
   }
 

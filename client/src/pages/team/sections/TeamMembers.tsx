@@ -2,12 +2,15 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Users, Crown, Star } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import TeamSizingRoster from "../components/TeamSizingRoster";
 import TeamMemberProfileSheet, { type TeamMemberRow } from "../components/TeamMemberProfileSheet";
 import { getDemoTeamMembers, isDemoTeamId, normalizeDemoTeamId } from "@/lib/demoTeams";
 
 interface TeamMembersProps {
   teamId: string;
   teamName?: string;
+  canManage?: boolean;
 }
 
 function memberDisplayName(member: TeamMemberRow): string {
@@ -18,8 +21,10 @@ function memberDisplayName(member: TeamMemberRow): string {
   return full || "Member";
 }
 
-export default function TeamMembers({ teamId, teamName }: TeamMembersProps) {
+export default function TeamMembers({ teamId, teamName, canManage = false }: TeamMembersProps) {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const viewerUserId = (user as { id?: string } | null)?.id;
   const [selectedMember, setSelectedMember] = useState<TeamMemberRow | null>(null);
   const normalizedId = normalizeDemoTeamId(teamId);
   const { data, isLoading } = useQuery<{ members?: TeamMemberRow[] }>({
@@ -67,6 +72,7 @@ export default function TeamMembers({ teamId, teamName }: TeamMembersProps) {
 
   return (
     <>
+      <TeamSizingRoster teamId={teamId} canManage={canManage} viewerUserId={viewerUserId} />
       <div className="grid grid-cols-2 gap-3">
         {members.map((member) => {
           const avatar = member.user?.profileImageUrl;

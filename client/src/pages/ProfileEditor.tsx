@@ -8,6 +8,13 @@ import { ROUTES } from "@/navigation";
 import { fetchMyProfile, updateMyProfile } from "@/lib/userProfileApi";
 import type { UserHighlight } from "@shared/userProfile";
 import { SPORTS_CATEGORIES, POPULAR_SPORTS } from "@shared/sportsData";
+import {
+  GEAR_VISIBILITY_LABELS,
+  SHIRT_SIZES,
+  SHOE_SIZES_EU,
+  type GearProfile,
+  type GearProfileVisibility,
+} from "@shared/gearProfile";
 
 const INTEREST_SUGGESTIONS = [
   "Fitness", "Nutrition", "Travel", "Music", "Photography", "Gaming",
@@ -24,7 +31,9 @@ const LOOKING_FOR_OPTIONS = [
   "Local events", "Coaching", "Team tryouts",
 ];
 
-type Section = "about" | "sports" | "interests" | "highlights" | "goals";
+type Section = "about" | "sports" | "gear" | "interests" | "highlights" | "goals";
+
+const EMPTY_GEAR: GearProfile = { visibility: "team_managers" };
 
 export default function ProfileEditor() {
   const { toast } = useToast();
@@ -47,6 +56,8 @@ export default function ProfileEditor() {
   const [lookingFor, setLookingFor] = useState<string[]>([]);
   const [highlights, setHighlights] = useState<UserHighlight[]>([]);
   const [customInterest, setCustomInterest] = useState("");
+  const [gear, setGear] = useState<GearProfile>(EMPTY_GEAR);
+  const [shortsSameAsShirt, setShortsSameAsShirt] = useState(false);
 
   useEffect(() => {
     if (!data) return;
@@ -58,6 +69,9 @@ export default function ProfileEditor() {
     setActivities(data.profile.activities || []);
     setLookingFor(data.profile.lookingFor || []);
     setHighlights(data.profile.highlights || []);
+    const g = data.profile.gearProfile ?? EMPTY_GEAR;
+    setGear(g);
+    setShortsSameAsShirt(!!g.shirtSize && g.shortsSize === g.shirtSize);
   }, [data]);
 
   const saveMutation = useMutation({
@@ -89,6 +103,7 @@ export default function ProfileEditor() {
   const sections: { id: Section; label: string }[] = [
     { id: "about", label: "About" },
     { id: "sports", label: "Sports" },
+    { id: "gear", label: "Kit & sizing" },
     { id: "interests", label: "Interests" },
     { id: "highlights", label: "Highlights" },
     { id: "goals", label: "Goals" },
@@ -163,6 +178,158 @@ export default function ProfileEditor() {
               ))}
             </div>
             <SaveButton loading={saveMutation.isPending} onClick={() => saveMutation.mutate({ sports, primarySport: sports[0] })} />
+          </div>
+        )}
+
+        {section === "gear" && (
+          <div className="space-y-3">
+            <p className="text-[12px]" style={{ color: "var(--surna-text-muted)" }}>
+              Used when your team orders kit or merch — captains see this on the sizing roster.
+            </p>
+
+            <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Height (cm)</label>
+            <input
+              style={inputStyle}
+              type="number"
+              min={100}
+              max={250}
+              value={gear.heightCm ?? ""}
+              onChange={(e) =>
+                setGear((g) => ({
+                  ...g,
+                  heightCm: e.target.value ? Number(e.target.value) : undefined,
+                }))
+              }
+              placeholder="e.g. 178"
+            />
+
+            <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Shirt / jersey size</label>
+            <select
+              style={inputStyle}
+              value={gear.shirtSize ?? ""}
+              onChange={(e) => {
+                const shirtSize = e.target.value || undefined;
+                setGear((g) => ({
+                  ...g,
+                  shirtSize,
+                  shortsSize: shortsSameAsShirt ? shirtSize : g.shortsSize,
+                }));
+              }}
+            >
+              <option value="">Select size</option>
+              {SHIRT_SIZES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+
+            <label className="flex items-center gap-2 text-[12px]" style={{ color: "var(--surna-text-muted)" }}>
+              <input
+                type="checkbox"
+                checked={shortsSameAsShirt}
+                onChange={(e) => {
+                  setShortsSameAsShirt(e.target.checked);
+                  if (e.target.checked && gear.shirtSize) {
+                    setGear((g) => ({ ...g, shortsSize: g.shirtSize }));
+                  }
+                }}
+              />
+              Shorts same as shirt
+            </label>
+
+            {!shortsSameAsShirt ? (
+              <>
+                <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Shorts size</label>
+                <select
+                  style={inputStyle}
+                  value={gear.shortsSize ?? ""}
+                  onChange={(e) => setGear((g) => ({ ...g, shortsSize: e.target.value || undefined }))}
+                >
+                  <option value="">Select size</option>
+                  {SHIRT_SIZES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </>
+            ) : null}
+
+            <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Shoe size (EU)</label>
+            <select
+              style={inputStyle}
+              value={gear.shoeSizeEu ?? ""}
+              onChange={(e) => setGear((g) => ({ ...g, shoeSizeEu: e.target.value || undefined }))}
+            >
+              <option value="">Select size</option>
+              {SHOE_SIZES_EU.map((s) => (
+                <option key={s} value={s}>EU {s}</option>
+              ))}
+            </select>
+
+            <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Preferred jersey number</label>
+            <input
+              style={inputStyle}
+              type="number"
+              min={0}
+              max={99}
+              value={gear.preferredJerseyNumber ?? ""}
+              onChange={(e) =>
+                setGear((g) => ({
+                  ...g,
+                  preferredJerseyNumber: e.target.value ? Number(e.target.value) : undefined,
+                }))
+              }
+              placeholder="e.g. 10"
+            />
+
+            <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Dominant side</label>
+            <select
+              style={inputStyle}
+              value={gear.dominantSide ?? ""}
+              onChange={(e) =>
+                setGear((g) => ({
+                  ...g,
+                  dominantSide: (e.target.value || undefined) as GearProfile["dominantSide"],
+                }))
+              }
+            >
+              <option value="">Prefer not to say</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+              <option value="ambidextrous">Ambidextrous</option>
+            </select>
+
+            <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Kit notes</label>
+            <textarea
+              style={{ ...inputStyle, minHeight: 72 }}
+              value={gear.kitNotes ?? ""}
+              onChange={(e) => setGear((g) => ({ ...g, kitNotes: e.target.value || undefined }))}
+              placeholder="Tall fit, allergy, etc."
+              maxLength={500}
+            />
+
+            <label className="text-[12px] font-semibold" style={{ color: "var(--surna-text-muted)" }}>Who can see my sizes</label>
+            <select
+              style={inputStyle}
+              value={gear.visibility ?? "team_managers"}
+              onChange={(e) =>
+                setGear((g) => ({ ...g, visibility: e.target.value as GearProfileVisibility }))
+              }
+            >
+              {(Object.entries(GEAR_VISIBILITY_LABELS) as [GearProfileVisibility, string][]).map(([k, label]) => (
+                <option key={k} value={k}>{label}</option>
+              ))}
+            </select>
+
+            <SaveButton
+              loading={saveMutation.isPending}
+              onClick={() =>
+                saveMutation.mutate({
+                  gearProfile: {
+                    ...gear,
+                    shortsSize: shortsSameAsShirt ? gear.shirtSize : gear.shortsSize,
+                  },
+                })
+              }
+            />
           </div>
         )}
 

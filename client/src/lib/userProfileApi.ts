@@ -1,4 +1,5 @@
 import type { UserProfileExtras } from "@shared/userProfile";
+import type { GearProfile } from "@shared/gearProfile";
 import { apiRequest } from "@/lib/queryClient";
 
 export type UserWithProfile = {
@@ -38,6 +39,7 @@ export type UserProfilePatch = Partial<UserProfileExtras> & {
   lookingForTags?: string[];
   markSetupComplete?: boolean;
   onboardingSkipped?: boolean;
+  gearProfile?: GearProfile;
 };
 
 export async function fetchMyProfile(): Promise<UserWithProfile> {
