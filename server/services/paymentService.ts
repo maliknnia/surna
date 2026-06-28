@@ -346,6 +346,11 @@ export class PaymentService {
       await fulfillPlaceMembershipCheckout(session);
       return;
     }
+    if (session.metadata?.type === "event_ticket") {
+      const { fulfillEventTicketCheckout } = await import("./eventTicketCheckoutService");
+      await fulfillEventTicketCheckout(session);
+      return;
+    }
     const { syncCheckoutSessionCompleted } = await import("./proSubscriptionSync");
     await syncCheckoutSessionCompleted(session);
   }

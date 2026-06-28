@@ -90,6 +90,7 @@ type EventDraft = {
   distanceKm: string;
   recurrenceFrequency: EventRecurrenceFrequency;
   occurrenceCount: string;
+  ticketPrice: string;
 };
 
 const EMPTY_DRAFT: EventDraft = {
@@ -110,6 +111,7 @@ const EMPTY_DRAFT: EventDraft = {
   distanceKm: "",
   recurrenceFrequency: "once",
   occurrenceCount: "8",
+  ticketPrice: "",
 };
 
 const FORMAT_ICONS: Record<EventFormat, typeof Users> = {
@@ -222,6 +224,7 @@ export default function CreateEventWizardPage() {
         sport: form.sport.trim(),
         eventLineup: buildEventLineup(form),
         recurrenceRule,
+        ticketPrice: form.ticketPrice.trim() ? Number(form.ticketPrice) : undefined,
       });
 
       const eventId = (created as { id?: string })?.id;
@@ -620,23 +623,39 @@ export default function CreateEventWizardPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5">
-                  <Globe size={14} /> Visibility
+                <Label htmlFor="ticketPrice" className="flex items-center gap-1.5">
+                  Ticket price (€)
                 </Label>
-                <Select
-                  value={form.visibility}
-                  onValueChange={(v: EventDraft["visibility"]) => setForm({ ...form, visibility: v })}
-                >
-                  <SelectTrigger className="h-12 rounded-xl" data-testid="create-event-visibility">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="public">Public</SelectItem>
-                    <SelectItem value="unlisted">Unlisted</SelectItem>
-                    <SelectItem value="private">Invite only</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="ticketPrice"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  placeholder="Free"
+                  value={form.ticketPrice}
+                  onChange={(e) => setForm({ ...form, ticketPrice: e.target.value })}
+                  className="h-12 rounded-xl border-[var(--surna-separator)]"
+                  data-testid="create-event-ticket-price"
+                />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Globe size={14} /> Visibility
+              </Label>
+              <Select
+                value={form.visibility}
+                onValueChange={(v: EventDraft["visibility"]) => setForm({ ...form, visibility: v })}
+              >
+                <SelectTrigger className="h-12 rounded-xl" data-testid="create-event-visibility">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="unlisted">Unlisted</SelectItem>
+                  <SelectItem value="private">Invite only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CreateSection>
@@ -700,6 +719,11 @@ export default function CreateEventWizardPage() {
               <ReviewRow label="Address" value={formatVenueAddress(venue)} />
               <ReviewRow label="Visibility" value={form.visibility} />
               {form.capacity ? <ReviewRow label="Capacity" value={form.capacity} /> : null}
+              {form.ticketPrice.trim() ? (
+                <ReviewRow label="Ticket" value={`€${Number(form.ticketPrice).toFixed(2)}`} />
+              ) : (
+                <ReviewRow label="Ticket" value="Free" />
+              )}
               {form.description ? <ReviewRow label="About" value={form.description} /> : null}
             </div>
           </div>

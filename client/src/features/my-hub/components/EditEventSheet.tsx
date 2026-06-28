@@ -32,6 +32,7 @@ export function EditEventSheet({ event, open, onOpenChange }: Props) {
   const [endsAt, setEndsAt] = useState("");
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [ticketPrice, setTicketPrice] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private" | "unlisted">("public");
 
   useEffect(() => {
@@ -42,6 +43,11 @@ export function EditEventSheet({ event, open, onOpenChange }: Props) {
       setEndsAt(toLocalInput(event.ends_at));
       setLocation(event.location ?? "");
       setCapacity(event.capacity != null ? String(event.capacity) : "");
+      setTicketPrice(
+        (event as { ticket_price?: number | string | null }).ticket_price != null
+          ? String((event as { ticket_price?: number | string }).ticket_price)
+          : "",
+      );
       setVisibility((event.visibility as "public" | "private" | "unlisted") || "public");
     }
   }, [event]);
@@ -62,6 +68,12 @@ export function EditEventSheet({ event, open, onOpenChange }: Props) {
       const cap = capacity.trim() ? parseInt(capacity, 10) : null;
       if (cap !== (event.capacity ?? null)) body.capacity = cap && cap > 0 ? cap : undefined;
       if (visibility !== (event.visibility ?? "public")) body.visibility = visibility;
+      const priceRaw = ticketPrice.trim();
+      const priceNum = priceRaw ? parseFloat(priceRaw) : null;
+      const prevPrice = (event as { ticket_price?: number | null }).ticket_price ?? null;
+      if (priceNum !== prevPrice && (priceNum == null || (!Number.isNaN(priceNum) && priceNum >= 0))) {
+        body.ticketPrice = priceNum && priceNum > 0 ? priceNum : 0;
+      }
       const res = await apiRequest("PATCH", `/api/events/${event.id}`, body);
       return res.json();
     },
@@ -142,6 +154,19 @@ export function EditEventSheet({ event, open, onOpenChange }: Props) {
               onChange={(e) => setCapacity(e.target.value)}
               placeholder="Unlimited"
               data-testid="edit-event-capacity"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ev-ticket-price" style={{ color: "var(--surna-text)" }}>Ticket price € (optional)</Label>
+            <Input
+              id="ev-ticket-price"
+              type="number"
+              min={0}
+              step={0.01}
+              value={ticketPrice}
+              onChange={(e) => setTicketPrice(e.target.value)}
+              placeholder="Free"
+              data-testid="edit-event-ticket-price"
             />
           </div>
           <div className="space-y-1.5">

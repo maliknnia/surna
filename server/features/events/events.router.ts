@@ -100,6 +100,11 @@ eventsRouter.get("/:id", async (req, res, next) => {
   }
 });
 
+eventsRouter.get("/ticket-checkout/status", async (_req, res) => {
+  const { isEventTicketCheckoutAvailable } = await import("../../services/eventTicketCheckoutService");
+  res.json({ available: isEventTicketCheckoutAvailable() });
+});
+
 eventsRouter.use(authMiddleware());
 eventsRouter.use(bridgeSessionUser);
 
@@ -192,6 +197,63 @@ eventsRouter.post("/tickets/verify", async (req: any, res, next) => {
   }
 });
 
+const TicketCheckoutBody = z.object({
+  successUrl: z.string().url(),
+  cancelUrl: z.string().url(),
+});
+
+const TicketActivateBody = z.object({
+  sessionId: z.string().min(1),
+  eventId: z.string().uuid().optional(),
+  orderId: z.string().optional(),
+});
+
+eventsRouter.post("/ticket-checkout/activate", async (req: any, res, next) => {
+  try {
+    const userId = sessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const body = TicketActivateBody.parse(req.body ?? {});
+    const { activateEventTicketFromCheckout } = await import("../../services/eventTicketCheckoutService");
+    const result = await activateEventTicketFromCheckout(
+      body.sessionId,
+      userId,
+      body.eventId,
+      body.orderId,
+    );
+    res.json(result);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Activation failed";
+    const status = message.includes("not configured") ? 503 : 400;
+    res.status(status).json({ error: message, message });
+  }
+});
+
+eventsRouter.post("/:id/ticket-checkout", requireEmailVerified, async (req: any, res, next) => {
+  try {
+    const userId = sessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+    const eventId = z.string().uuid().parse(req.params.id);
+    const body = TicketCheckoutBody.parse(req.body ?? {});
+    const { createEventTicketCheckout } = await import("../../services/eventTicketCheckoutService");
+    const result = await createEventTicketCheckout({
+      eventId,
+      userId,
+      successUrl: body.successUrl,
+      cancelUrl: body.cancelUrl,
+    });
+    res.json(result);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Checkout failed";
+    const status =
+      message.includes("not configured") || message.includes("not sell")
+        ? 400
+        : message.includes("sold out") || message.includes("already")
+          ? 409
+          : 500;
+    res.status(status).json({ error: message, message });
+  }
+});
+
 eventsRouter.delete("/photos/:photoId", csrfProtection, async (req: any, res, next) => {
   try {
     const userId = sessionUserId(req);
@@ -266,6 +328,9 @@ eventsRouter.post("/:id/rsvp", requireEmailVerified, async (req: any, res, next)
     const out = await rsvp(id, userId, status, issueTicket);
     res.status(201).json(out);
   } catch (e) {
+    if (e instanceof Error && e.message === "TICKET_PAYMENT_REQUIRED") {
+      return res.status(402).json({ error: "TICKET_PAYMENT_REQUIRED", message: "Pay for a ticket before RSVP" });
+    }
     next(e);
   }
 });

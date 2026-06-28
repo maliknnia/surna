@@ -14,6 +14,7 @@ import SpotifyPlaylistCard from "@/components/cards/SpotifyPlaylistCard";
 import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
 import { isLightHex } from "@/lib/colorUtils";
 import { normalizeEventFormat, EVENT_FORMAT_META } from "@shared/eventFormats";
+import { eventTicketPriceLabel, isPaidTicketEvent } from "@shared/eventTicketPricing";
 
 function formatEventWhen(dateStr: string): string | null {
   const d = new Date(dateStr);
@@ -39,11 +40,7 @@ function getCountdownLabel(dateStr: string): string | null {
 }
 
 function getPriceLabel(ev: any): string | null {
-  const desc = (ev.description || "").toLowerCase();
-  const priceMatch = desc.match(/\$(\d+)/);
-  if (priceMatch) return `€${priceMatch[1]}`;
-  if (desc.includes("free entry") || desc.includes("free event") || desc.includes("no fee")) return "Free";
-  return null;
+  return eventTicketPriceLabel(ev);
 }
 
 function inferSport(ev: any): string | null {
@@ -137,7 +134,7 @@ export default function EventCard({ ev }: { ev: any }) {
   const primaryLabel = (() => {
     if (rsvp.isPending) return "...";
     if (isFull) return "Join waitlist";
-    if (priceLabel && priceLabel !== "Free") return `Get tickets · ${priceLabel}`;
+    if (isPaidTicketEvent(ev)) return `Get tickets · ${priceLabel ?? "Paid"}`;
     return "I'm going";
   })();
 
@@ -206,7 +203,7 @@ export default function EventCard({ ev }: { ev: any }) {
             e.stopPropagation();
             rsvp.mutate({
               status: isFull ? "waitlist" : "going",
-              issueTicket: !isFull && !!priceLabel && priceLabel !== "Free",
+              issueTicket: !isFull && isPaidTicketEvent(ev),
             });
           },
           disabled: rsvp.isPending,

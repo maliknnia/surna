@@ -6,6 +6,7 @@ import {
   normalizeRecurrenceRule,
   type EventRecurrenceRule,
 } from "@shared/eventRecurrence";
+import { getEventTicketPrice } from "@shared/eventTicketPricing";
 import type { z } from "zod";
 import type { SaveEventRoute } from "./events.validation";
 
@@ -128,16 +129,31 @@ export async function editEvent(creatorId: string, id: string, e: any) {
   return ev;
 }
 
+export async function rsvpAfterTicketPayment(eventId: string, userId: string, _orderId: string) {
+  return rsvp(eventId, userId, "going", true, { skipPaymentGate: true });
+}
+
 export async function rsvp(
   eventId: string,
   userId: string,
   status: "going" | "interested" | "not_going" | "waitlist",
   issueTicket: boolean,
+  opts?: { skipPaymentGate?: boolean },
 ) {
   const ev = await repo.getEvent(eventId);
   if (!ev) throw new Error("EVENT_NOT_FOUND");
   if ((ev as { status?: string }).status && (ev as { status?: string }).status !== "active") {
     throw new Error("EVENT_NOT_ACTIVE");
+  }
+
+  const ticketPrice = getEventTicketPrice(ev as Record<string, unknown>);
+  if (
+    !opts?.skipPaymentGate &&
+    status === "going" &&
+    ticketPrice != null &&
+    issueTicket
+  ) {
+    throw new Error("TICKET_PAYMENT_REQUIRED");
   }
 
   const capacity = (ev as { capacity?: number }).capacity;

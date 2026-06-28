@@ -76,12 +76,33 @@ export function ensureEventsCompatTables(): Promise<void> {
       ALTER TABLE events ADD COLUMN IF NOT EXISTS is_series_master boolean NOT NULL DEFAULT false;
       ALTER TABLE events ADD COLUMN IF NOT EXISTS recurrence_rule jsonb;
       CREATE INDEX IF NOT EXISTS idx_events_series_id ON events(series_id);
+
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS ticket_price numeric(10, 2);
+
+      CREATE TABLE IF NOT EXISTS event_ticket_orders (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id varchar NOT NULL,
+        user_id varchar NOT NULL,
+        amount_cents integer NOT NULL,
+        currency varchar NOT NULL DEFAULT 'eur',
+        status varchar NOT NULL DEFAULT 'pending',
+        stripe_checkout_session_id varchar,
+        stripe_payment_intent_id varchar,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        paid_at timestamptz
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_event_ticket_orders_event ON event_ticket_orders(event_id, created_at DESC);
     `).then(() => undefined).catch((err) => {
       eventsCompatEnsured = null;
       throw err;
     });
   }
   return eventsCompatEnsured;
+}
+
+export function ensureEventTicketOrdersTable(): Promise<void> {
+  return ensureEventsCompatTables();
 }
 
 async function bustEventListCaches() {
@@ -95,13 +116,14 @@ export async function insertEvent(creatorId: string, e: any) {
   const eventFormat = e.eventFormat ?? "open";
   const eventLineup = e.eventLineup ? JSON.stringify(e.eventLineup) : null;
   const recurrenceRule = e.recurrenceRule ? JSON.stringify(e.recurrenceRule) : null;
+  const ticketPrice = e.ticketPrice != null ? e.ticketPrice : null;
   const q = await db.execute(sql`
     INSERT INTO events (
       creator_id, organizer_id, title, description, event_type, sport,
       event_format, event_lineup,
       starts_at, ends_at, start_date, end_date,
       location, visibility, capacity, cover_media_id, lat, lng, location_detail, route_coordinates,
-      series_id, is_series_master, recurrence_rule
+      series_id, is_series_master, recurrence_rule, ticket_price
     )
     VALUES (
       ${creatorId}, ${creatorId}, ${e.title}, ${e.description ?? ''}, ${eventType}, ${e.sport ?? null},
@@ -109,7 +131,8 @@ export async function insertEvent(creatorId: string, e: any) {
       ${e.startsAt}, ${e.endsAt}, ${e.startsAt}, ${e.endsAt},
       ${e.location ?? ''}, ${e.visibility ?? 'public'}, ${e.capacity ?? null}, ${e.coverMediaId ?? null},
       ${e.lat ?? null}, ${e.lng ?? null}, ${locationDetail}::jsonb, ${routeCoordinates}::jsonb,
-      ${e.seriesId ?? null}, ${e.isSeriesMaster ?? false}, ${recurrenceRule}::jsonb
+      ${e.seriesId ?? null}, ${e.isSeriesMaster ?? false}, ${recurrenceRule}::jsonb,
+      ${ticketPrice}
     )
     RETURNING *;
   `);
@@ -185,6 +208,7 @@ export async function updateEvent(creatorId: string, id: string, e: any) {
       event_format = COALESCE(${e.eventFormat ?? null}, event_format),
       event_lineup = COALESCE(${eventLineup ?? null}::jsonb, event_lineup),
       featured_highlight_ids = COALESCE(${featuredIds ?? null}, featured_highlight_ids),
+      ticket_price = COALESCE(${e.ticketPrice ?? null}, ticket_price),
       status = COALESCE(${status}, status),
       cancelled_at = ${cancelledAtClause}
     WHERE id=${id} AND creator_id=${creatorId}
@@ -321,6 +345,7 @@ export async function listOrganizedByUser(userId: string) {
     SELECT e.id, e.title, e.description, e.starts_at, e.ends_at,
            e.location, e.visibility, e.capacity, e.creator_id,
            e.chat_group_id, e.featured_highlight_ids,
+           e.ticket_price,
            COALESCE(e.status, 'active') AS status,
            e.cancelled_at,
            m.original_url AS cover_url,

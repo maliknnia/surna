@@ -44,6 +44,10 @@ import {
   normalizeEventFormat,
   resolveEventLineupFromRow,
 } from "@shared/eventFormats";
+import {
+  eventTicketPriceLabel,
+  isPaidTicketEvent,
+} from "@shared/eventTicketPricing";
 
 type TabType = "about" | "people" | "location" | "photos" | "feed" | "ticket";
 
@@ -77,16 +81,7 @@ function getCountdownLabel(dateStr: string): string | null {
 }
 
 function getPriceLabel(ev: Record<string, unknown>): string | null {
-  const ticketPrice = ev.ticket_price ?? ev.ticketPrice ?? ev.price;
-  if (ticketPrice != null && Number(ticketPrice) === 0) return "Free";
-  if (ticketPrice != null && !Number.isNaN(Number(ticketPrice))) {
-    return `€${Number(ticketPrice).toFixed(Number(ticketPrice) % 1 === 0 ? 0 : 2)}`;
-  }
-  const desc = String(ev.description || "").toLowerCase();
-  const priceMatch = desc.match(/€(\d+(?:\.\d+)?)/) || desc.match(/\$(\d+(?:\.\d+)?)/);
-  if (priceMatch) return `€${priceMatch[1]}`;
-  if (desc.includes("free entry") || desc.includes("free event") || desc.includes("no fee")) return "Free";
-  return null;
+  return eventTicketPriceLabel(ev);
 }
 
 const fallbackImages: Record<string, string> = {
@@ -159,6 +154,7 @@ export default function EventDetailsPage() {
   const [saved, setSaved] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showTicketScanner, setShowTicketScanner] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [showCalendarSheet, setShowCalendarSheet] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [eventQrUrl, setEventQrUrl] = useState("");
@@ -228,6 +224,51 @@ export default function EventDetailsPage() {
     if (window.location.hash === "#attendees") setActiveTab("people");
     if (window.location.hash === "#scan") setShowTicketScanner(true);
   }, []);
+
+  useEffect(() => {
+    if (!id || isDemoEventId(id)) return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    const orderId = params.get("order_id");
+    if (!sessionId || !orderId) return;
+
+    void (async () => {
+      try {
+        const res = await apiRequest("POST", "/api/events/ticket-checkout/activate", {
+          sessionId,
+          eventId: id,
+          orderId,
+        });
+        const data = await res.json();
+        if (data?.confirmed) {
+          setRsvpStatus("going");
+          if (data.ticket?.code && data.ticket?.scanToken) {
+            setTicket({
+              code: data.ticket.code,
+              scanToken: data.ticket.scanToken,
+              status: data.ticket.status === "used" ? "used" : "valid",
+              redeemedAt: data.ticket.redeemedAt,
+            });
+            setActiveTab("ticket");
+          }
+          toast({ title: "Ticket confirmed", description: "You're going — show your QR at the door." });
+          void queryClient.invalidateQueries({ queryKey: ["/api/events", id] });
+          void queryClient.invalidateQueries({ queryKey: ["/api/events", id, "tickets", "mine"] });
+        }
+      } catch (err: unknown) {
+        toast({
+          title: "Ticket still processing",
+          description: err instanceof Error ? err.message : "Try refreshing in a moment.",
+          variant: "destructive",
+        });
+      } finally {
+        params.delete("session_id");
+        params.delete("order_id");
+        const qs = params.toString();
+        window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+      }
+    })();
+  }, [id, toast]);
 
   const isOrganizer =
     !!user?.id &&
@@ -402,7 +443,7 @@ export default function EventDetailsPage() {
   const isFull = spotsLeft === 0;
   const fillPercent = capacity > 0 ? Math.min((goingCount / capacity) * 100, 100) : 0;
   const priceLabel = getPriceLabel(ev);
-  const needsTicket = priceLabel && priceLabel !== "Free";
+  const needsTicket = isPaidTicketEvent(ev);
   const sport = ev.sport || null;
   const eventFormat = normalizeEventFormat(ev.event_format ?? ev.eventFormat);
   const eventLineup = resolveEventLineupFromRow(ev);
@@ -410,7 +451,7 @@ export default function EventDetailsPage() {
   const accentColor = eventAccentColor(extractedColor, sport);
   const creatorName = ev?.creator_first_name || ev?.creator_username || "Organizer";
   const attendeePreview = realAttendees.slice(0, 8);
-  const rsvpLoading = rsvpMutation.isPending;
+  const rsvpLoading = rsvpMutation.isPending || checkoutLoading;
   const bgOpacity = Math.max(0, 1 - scrollY / 400);
   const hasTicket = rsvpStatus === "going" && !!ticket?.code && !!ticket.scanToken;
 
@@ -423,9 +464,35 @@ export default function EventDetailsPage() {
     return "I'm going";
   })();
 
+  const startTicketCheckout = async () => {
+    if (!id || !ev?.id || isDemoEventId(String(ev.id))) return;
+    setCheckoutLoading(true);
+    try {
+      const origin = window.location.origin;
+      const res = await apiRequest("POST", `/api/events/${id}/ticket-checkout`, {
+        successUrl: `${origin}/events/${id}`,
+        cancelUrl: `${origin}/events/${id}`,
+      });
+      const data = await res.json();
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error(data?.message ?? "Could not start checkout");
+    } catch (err: unknown) {
+      toast({
+        title: "Checkout unavailable",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   const onPrimaryClick = () => {
     if (needsTicket && rsvpStatus !== "going") {
-      handleRsvp(isFull ? "waitlist" : "going", true);
+      void startTicketCheckout();
       return;
     }
     handleRsvp(isFull ? "waitlist" : "going", false);

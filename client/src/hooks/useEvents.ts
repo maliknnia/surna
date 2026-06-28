@@ -149,6 +149,7 @@ export function useCreateEvent() {
         frequency: "once" | "daily" | "weekly";
         occurrenceCount?: number;
       };
+      ticketPrice?: number;
     }) => {
       const payload = { ...eventData };
       if (payload.coverMediaId && !/^[0-9a-f-]{36}$/i.test(payload.coverMediaId)) {

@@ -34,6 +34,7 @@ const CreateEventFields = z.object({
   sport: z.string().min(1).max(80),
   eventLineup: EventLineupSchema.optional(),
   recurrenceRule: EventRecurrenceRuleSchema.optional(),
+  ticketPrice: z.number().min(0).max(9999).optional(),
 });
 
 export const CreateEvent = CreateEventFields.superRefine((data, ctx) => {
