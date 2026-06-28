@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { CreateProduct, UpdateProduct, ListQuery, CartItemInput } from "./marketplace.validation";
+import { CreateProduct, UpdateProduct, ListQuery, CartItemInput, TeamBulkPreviewQuery, TeamBulkAddToCartBody } from "./marketplace.validation";
 import { Marketplace as MP } from "./marketplace.service";
 import { authMiddleware, requireAuth } from "../../middleware/auth";
 import { bridgeSessionUser } from "../../middleware/bridgeSessionUser";
@@ -10,6 +10,60 @@ marketplaceRouter.use(authMiddleware());
 marketplaceRouter.use(bridgeSessionUser);
 
 // ===== PUBLIC ROUTES (AUTH OPTIONAL - req.jwtUser populated if authenticated) =====
+
+// ===== TEAM BULK ORDER (captain orders kit for roster) =====
+
+marketplaceRouter.get("/team-orders/preview", requireAuth(), async (req: any, res, next) => {
+  try {
+    const q = TeamBulkPreviewQuery.parse(req.query);
+    const { previewTeamBulkOrder } = await import("../../services/teamBulkOrderService");
+    const preview = await previewTeamBulkOrder({
+      productId: q.productId,
+      teamId: q.teamId,
+      managerUserId: req.jwtUser.id,
+    });
+    res.json(preview);
+  } catch (e) {
+    if (e instanceof Error) {
+      if (e.message === "FORBIDDEN") return res.status(403).json({ error: "Only team captains can bulk order" });
+      if (e.message === "TEAM_BULK_REQUIRES_VARIANTS") {
+        return res.status(400).json({ error: "This product needs size options for team orders" });
+      }
+      if (e.message === "PRODUCT_NOT_FOUND" || e.message === "TEAM_NOT_FOUND") {
+        return res.status(404).json({ error: e.message });
+      }
+    }
+    next(e);
+  }
+});
+
+marketplaceRouter.post("/team-orders/add-to-cart", requireAuth(), async (req: any, res, next) => {
+  try {
+    const body = TeamBulkAddToCartBody.parse(req.body ?? {});
+    const { addTeamBulkOrderToCart } = await import("../../services/teamBulkOrderService");
+    const result = await addTeamBulkOrderToCart({
+      productId: body.productId,
+      teamId: body.teamId,
+      managerUserId: req.jwtUser.id,
+      memberUserIds: body.memberUserIds,
+    });
+    res.status(201).json(result);
+  } catch (e) {
+    if (e instanceof Error) {
+      if (e.message === "FORBIDDEN") return res.status(403).json({ error: "Only team captains can bulk order" });
+      if (e.message === "NO_LINES_ADDED") {
+        return res.status(400).json({ error: "No players were ready — check sizing roster first" });
+      }
+      if (e.message === "INSUFFICIENT_STOCK") {
+        return res.status(409).json({ error: "Not enough stock for one or more sizes" });
+      }
+      if (e.message === "TEAM_BULK_REQUIRES_VARIANTS") {
+        return res.status(400).json({ error: "This product needs size options for team orders" });
+      }
+    }
+    next(e);
+  }
+});
 
 // PUBLIC: list/search products
 marketplaceRouter.get("/products", async (req: any, res, next) => {
@@ -115,8 +169,8 @@ marketplaceRouter.get("/cart", requireAuth(), async (req: any, res, next) => {
 marketplaceRouter.post("/cart/items", requireAuth(), async (req: any, res, next) => {
   try {
     const cartId = await MP.ensureCart(req.jwtUser.id);
-    const { productId, qty, variantId } = CartItemInput.parse(req.body);
-    await MP.addToCart(cartId, productId, qty, variantId);
+    const { productId, qty, variantId, variantKey } = CartItemInput.parse(req.body);
+    await MP.addToCart(cartId, productId, qty, variantId, { variantKey });
     const items = await MP.getCart(cartId);
     res.status(201).json({ cartId, items });
   } catch (e) {

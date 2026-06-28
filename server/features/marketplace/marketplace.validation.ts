@@ -24,4 +24,16 @@ export const CartItemInput = z.object({
   productId: z.string(),
   qty: z.number().int().min(0),
   variantId: z.string().optional(),
+  variantKey: z.string().max(120).optional(),
+});
+
+export const TeamBulkPreviewQuery = z.object({
+  productId: z.string().min(1),
+  teamId: z.string().min(1),
+});
+
+export const TeamBulkAddToCartBody = z.object({
+  productId: z.string().min(1),
+  teamId: z.string().min(1),
+  memberUserIds: z.array(z.string()).optional(),
 });

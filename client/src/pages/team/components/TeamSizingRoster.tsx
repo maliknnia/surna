@@ -166,7 +166,7 @@ export default function TeamSizingRoster({
 
       {showFullTable && data.readyCount < data.totalCount ? (
         <p className="text-[11px] text-muted-foreground">
-          Team bulk ordering from the marketplace is coming next — this roster feeds straight into it.
+          Captains can bulk-order kit from the marketplace product page — sizes auto-fill from this roster.
         </p>
       ) : null}
     </div>

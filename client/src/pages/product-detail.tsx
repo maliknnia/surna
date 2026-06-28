@@ -10,6 +10,7 @@ import {
   productRequiresVariant,
 } from "@/lib/marketplaceApi";
 import type { ProductVariant } from "@shared/marketplaceVariants";
+import TeamBulkOrderSheet from "@/components/marketplace/TeamBulkOrderSheet";
 import { 
   Star, 
   Heart, 
@@ -20,7 +21,8 @@ import {
   Plus, 
   Minus,
   Share2,
-  MessageCircle
+  MessageCircle,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -127,6 +129,7 @@ export default function ProductDetail() {
   const queryClient = useQueryClient();
   const [quantity, setQuantity] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [teamBulkOpen, setTeamBulkOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [newReview, setNewReview] = useState({
     rating: 5,
@@ -158,6 +161,16 @@ export default function ProductDetail() {
     });
     setQuantity(1);
   }, [product?.id, product?.hasVariants]);
+
+  const { data: managedTeams } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/teams/me/managed"],
+    queryFn: async () => {
+      const res = await fetch("/api/teams/me/managed", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAuthenticated && !!product && productRequiresVariant(product),
+  });
 
   const { data: reviewsData, isLoading: reviewsLoading } = useQuery({
     queryKey: ["marketplace-product-reviews", productId],
@@ -423,6 +436,10 @@ export default function ProductDetail() {
     (product.pricing as ProductPricing | undefined)?.originalPrice ?? product.price,
   );
   const hasDiscount = Boolean((product.pricing as ProductPricing | undefined)?.hasDiscount);
+  const canTeamBulkOrder =
+    isAuthenticated &&
+    hasVariants &&
+    (managedTeams?.length ?? 0) > 0;
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -663,6 +680,27 @@ export default function ProductDetail() {
               Buy Now
             </Button>
           </div>
+
+          {canTeamBulkOrder ? (
+            <Button
+              variant="secondary"
+              size="lg"
+              className="w-full"
+              onClick={() => setTeamBulkOpen(true)}
+              data-testid="team-bulk-order-button"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Order for my team
+            </Button>
+          ) : null}
+
+          <TeamBulkOrderSheet
+            open={teamBulkOpen}
+            onClose={() => setTeamBulkOpen(false)}
+            productId={productId!}
+            productTitle={product.name}
+          />
+
           <Button
             variant="outline"
             size="lg"

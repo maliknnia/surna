@@ -17,6 +17,7 @@ interface CartItem {
   cart_id: string;
   product_id: string;
   variant_id?: string;
+  variant_key?: string;
   variant_label?: string;
   quantity: number;
   product: {
@@ -52,8 +53,17 @@ export default function Cart() {
 
   // Update cart item quantity mutation
   const updateQuantityMutation = useMutation({
-    mutationFn: ({ productId, qty, variantId }: { productId: string; qty: number; variantId?: string }) =>
-      apiRequest("POST", "/api/marketplace/cart/items", { productId, qty, variantId }),
+    mutationFn: ({
+      productId,
+      qty,
+      variantId,
+      variantKey,
+    }: {
+      productId: string;
+      qty: number;
+      variantId?: string;
+      variantKey?: string;
+    }) => apiRequest("POST", "/api/marketplace/cart/items", { productId, qty, variantId, variantKey }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/marketplace/cart'] });
     },
@@ -68,8 +78,15 @@ export default function Cart() {
 
   // Remove from cart mutation
   const removeFromCartMutation = useMutation({
-    mutationFn: ({ productId, variantId }: { productId: string; variantId?: string }) =>
-      apiRequest("POST", "/api/marketplace/cart/items", { productId, qty: 0, variantId }),
+    mutationFn: ({
+      productId,
+      variantId,
+      variantKey,
+    }: {
+      productId: string;
+      variantId?: string;
+      variantKey?: string;
+    }) => apiRequest("POST", "/api/marketplace/cart/items", { productId, qty: 0, variantId, variantKey }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/marketplace/cart'] });
       toast({
@@ -217,6 +234,7 @@ export default function Cart() {
                                   productId: item.product_id,
                                   qty: item.quantity - 1,
                                   variantId: item.variant_id,
+                                  variantKey: item.variant_key,
                                 })
                               }
                               disabled={item.quantity <= 1 || updateQuantityMutation.isPending}
@@ -235,6 +253,7 @@ export default function Cart() {
                                   productId: item.product_id,
                                   qty: item.quantity + 1,
                                   variantId: item.variant_id,
+                                  variantKey: item.variant_key,
                                 })
                               }
                               disabled={
@@ -254,6 +273,7 @@ export default function Cart() {
                               removeFromCartMutation.mutate({
                                 productId: item.product_id,
                                 variantId: item.variant_id,
+                                variantKey: item.variant_key,
                               })
                             }
                             disabled={removeFromCartMutation.isPending}

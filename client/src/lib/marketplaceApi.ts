@@ -157,6 +157,7 @@ export function normalizeCartPayload(data: { cartId: string; items: Record<strin
         cart_id: data.cartId,
         product_id: row.product_id as string,
         variant_id: (row.variant_id ?? row.variantId) as string | undefined,
+        variant_key: (row.variant_key ?? row.variantKey) as string | undefined,
         variant_label: variantLabel,
         quantity: Number(row.qty ?? row.quantity ?? 1),
         product: {

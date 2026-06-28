@@ -211,11 +211,18 @@ export async function ensureCart(userId: string) {
   return ins.rows[0].id as string;
 }
 
-export async function upsertCartItem(cartId: string, productId: string, qty: number, variantId?: string) {
+export async function upsertCartItem(
+  cartId: string,
+  productId: string,
+  qty: number,
+  variantId?: string,
+  opts?: { variantKey?: string; variantLabel?: string },
+) {
   await ensureMarketplaceSchema();
 
+  const variantKey = opts?.variantKey ?? variantId ?? "";
+
   if (qty <= 0) {
-    const variantKey = variantId ?? "";
     await db.execute(sql`
       DELETE FROM cart_items
       WHERE cart_id = ${cartId} AND product_id = ${productId} AND variant_key = ${variantKey};
@@ -224,8 +231,7 @@ export async function upsertCartItem(cartId: string, productId: string, qty: num
   }
 
   let priceCents: number;
-  let variantLabel: string | null = null;
-  const variantKey = variantId ?? "";
+  let variantLabel: string | null = opts?.variantLabel ?? null;
 
   if (variantId) {
     const v = await db.execute(sql`
@@ -239,7 +245,7 @@ export async function upsertCartItem(cartId: string, productId: string, qty: num
     if (!row) throw new Error("VARIANT_NOT_FOUND");
     if (Number(row.stock) < qty) throw new Error("INSUFFICIENT_STOCK");
     priceCents = row.price_cents != null ? Number(row.price_cents) : Math.round(Number(row.price) * 100);
-    variantLabel = row.label;
+    if (!variantLabel) variantLabel = row.label;
   } else {
     const p = await db.execute(sql`
       SELECT price, has_variants FROM products WHERE id=${productId} LIMIT 1;
