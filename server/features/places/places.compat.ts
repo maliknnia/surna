@@ -40,6 +40,8 @@ export function ensurePlaceMembershipPlans(): Promise<void> {
             ON place_membership_plans (place_id, display_order);
           ALTER TABLE place_bookings ADD COLUMN IF NOT EXISTS membership_plan_id varchar
             REFERENCES place_membership_plans(id) ON DELETE SET NULL;
+          ALTER TABLE place_bookings ADD COLUMN IF NOT EXISTS stripe_checkout_session_id varchar;
+          ALTER TABLE place_bookings ADD COLUMN IF NOT EXISTS stripe_subscription_id varchar;
         `),
       )
       .then(() => undefined);

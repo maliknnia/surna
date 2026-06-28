@@ -341,6 +341,11 @@ export class PaymentService {
   }
 
   private static async handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
+    if (session.metadata?.type === "place_membership") {
+      const { fulfillPlaceMembershipCheckout } = await import("./placeMembershipCheckoutService");
+      await fulfillPlaceMembershipCheckout(session);
+      return;
+    }
     const { syncCheckoutSessionCompleted } = await import("./proSubscriptionSync");
     await syncCheckoutSessionCompleted(session);
   }

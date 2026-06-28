@@ -84,6 +84,49 @@ placesRouter.get('/me/owned', isAuthenticated, async (req: AuthedRequest, res: R
   }
 });
 
+/**
+ * GET /api/places/membership-checkout/status — whether Stripe checkout is configured.
+ */
+placesRouter.get('/membership-checkout/status', async (_req: AuthedRequest, res: Response) => {
+  const { isPlaceMembershipCheckoutAvailable } = await import('../../services/placeMembershipCheckoutService');
+  res.json({ available: isPlaceMembershipCheckoutAvailable() });
+});
+
+const MembershipActivateSchema = z.object({
+  sessionId: z.string().min(1),
+  bookingId: z.string().optional(),
+});
+
+/**
+ * POST /api/places/membership-checkout/activate — confirm membership after Stripe redirect.
+ */
+placesRouter.post('/membership-checkout/activate', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const parsed = MembershipActivateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'Invalid request', issues: parsed.error.issues });
+    }
+
+    const { activatePlaceMembershipFromCheckout } = await import('../../services/placeMembershipCheckoutService');
+    const result = await activatePlaceMembershipFromCheckout(
+      parsed.data.sessionId,
+      userId,
+      parsed.data.bookingId,
+    );
+    res.json(result);
+  } catch (err) {
+    if (err && typeof err === 'object' && 'status' in err) {
+      const appErr = err as { status: number; message: string };
+      return res.status(appErr.status).json({ message: appErr.message });
+    }
+    console.error('[places] membership activate error', err);
+    res.status(500).json({ message: 'Failed to activate membership' });
+  }
+});
+
 const ToggleSchema = z.object({
   isActive: z.boolean(),
 });
@@ -296,6 +339,40 @@ placesRouter.post('/:id/membership-plans/:planId/enquire', isAuthenticated, asyn
   } catch (err) {
     console.error('[places] membership enquire error', err);
     res.status(500).json({ message: 'Failed to submit membership enquiry' });
+  }
+});
+
+/**
+ * POST /api/places/:id/membership-plans/:planId/checkout — Stripe checkout for a plan.
+ */
+placesRouter.post('/:id/membership-plans/:planId/checkout', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const successUrl = typeof req.body?.successUrl === 'string' ? req.body.successUrl : `${baseUrl}/payment-success`;
+    const cancelUrl =
+      typeof req.body?.cancelUrl === 'string'
+        ? req.body.cancelUrl
+        : `${baseUrl}/places/${req.params.id}?tab=book`;
+
+    const { createPlaceMembershipCheckout } = await import('../../services/placeMembershipCheckoutService');
+    const result = await createPlaceMembershipCheckout({
+      placeId: req.params.id,
+      planId: req.params.planId,
+      userId,
+      successUrl,
+      cancelUrl,
+    });
+    res.json(result);
+  } catch (err) {
+    if (err && typeof err === 'object' && 'status' in err) {
+      const appErr = err as { status: number; message: string };
+      return res.status(appErr.status).json({ message: appErr.message });
+    }
+    console.error('[places] membership checkout error', err);
+    res.status(500).json({ message: 'Failed to start checkout' });
   }
 });
 

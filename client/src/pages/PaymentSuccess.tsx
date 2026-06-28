@@ -2,11 +2,19 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, ArrowLeft, Loader2, Crown, Package } from "lucide-react";
+import { CheckCircle, ArrowLeft, Loader2, Crown, Package, MapPin } from "lucide-react";
 import { Link } from "wouter";
 import { activateProSubscription, invalidateProEntitlement } from "@/hooks/useProEntitlement";
 
-type Status = "idle" | "activating" | "pro_active" | "payment_only" | "marketplace" | "error";
+type Status =
+  | "idle"
+  | "activating"
+  | "pro_active"
+  | "membership_active"
+  | "membership_pending"
+  | "payment_only"
+  | "marketplace"
+  | "error";
 
 type OrderConfirmation = {
   id: string;
@@ -22,6 +30,7 @@ export default function PaymentSuccess() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paymentIntent, setPaymentIntent] = useState<string | null>(null);
   const [order, setOrder] = useState<OrderConfirmation | null>(null);
+  const [membershipPlaceId, setMembershipPlaceId] = useState<string | null>(null);
 
   const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const piFromUrl = params?.get("payment_intent");
@@ -50,8 +59,37 @@ export default function PaymentSuccess() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const sessionId = searchParams.get("session_id");
+    const bookingId = searchParams.get("booking_id");
+    const placeId = searchParams.get("place_id");
     const pi = searchParams.get("payment_intent");
     if (pi) setPaymentIntent(pi);
+
+    if (sessionId && bookingId) {
+      setStatus("activating");
+      fetch("/api/places/membership-checkout/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ sessionId, bookingId }),
+      })
+        .then(async (res) => {
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.message ?? "Activation failed");
+          return json as { confirmed: boolean; placeId?: string };
+        })
+        .then((result) => {
+          if (result.placeId || placeId) setMembershipPlaceId(result.placeId ?? placeId);
+          setStatus(result.confirmed ? "membership_active" : "membership_pending");
+          if (!result.confirmed) {
+            setErrorMessage("Payment received — your membership is still processing. Check back shortly.");
+          }
+        })
+        .catch((err: Error) => {
+          setStatus("error");
+          setErrorMessage(err.message);
+        });
+      return;
+    }
 
     if (sessionId) {
       setStatus("activating");
@@ -84,8 +122,12 @@ export default function PaymentSuccess() {
   }, [queryClient]);
 
   const isPro = status === "pro_active";
+  const isMembership = status === "membership_active" || status === "membership_pending";
   const isMarketplace = status === "marketplace";
-  const loading = status === "idle" || status === "activating" || (status === "payment_only" && orderLoading && !!piFromUrl);
+  const loading =
+    status === "idle" ||
+    status === "activating" ||
+    (status === "payment_only" && orderLoading && !!piFromUrl);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -96,6 +138,8 @@ export default function PaymentSuccess() {
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             ) : isPro ? (
               <Crown className="w-8 h-8 text-primary" />
+            ) : isMembership ? (
+              <MapPin className="w-8 h-8 text-primary" />
             ) : isMarketplace ? (
               <Package className="w-8 h-8 text-primary" />
             ) : (
@@ -107,7 +151,11 @@ export default function PaymentSuccess() {
               ? "Confirming your order…"
               : isPro
                 ? "Welcome to SURNA Pro"
-                : isMarketplace
+                : isMembership
+                  ? status === "membership_active"
+                    ? "Membership confirmed"
+                    : "Membership processing"
+                  : isMarketplace
                   ? "Order confirmed"
                   : "Payment successful"}
           </CardTitle>
@@ -116,7 +164,11 @@ export default function PaymentSuccess() {
               ? "Finalizing your purchase."
               : isPro
                 ? "Your Pro tools are live in the main app and the Pro dashboard."
-                : isMarketplace
+                : isMembership
+                  ? status === "membership_active"
+                    ? "You're all set — the venue has your paid membership on file."
+                    : "Your payment went through; confirmation may take a moment."
+                  : isMarketplace
                   ? "Your marketplace order has been fulfilled. The seller has been notified."
                   : "Your payment has been processed."}
           </CardDescription>
@@ -153,6 +205,14 @@ export default function PaymentSuccess() {
             </div>
           )}
           <div className="space-y-2">
+            {isMembership && membershipPlaceId && (
+              <Link href={`/places/${membershipPlaceId}`}>
+                <Button className="w-full gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Back to venue
+                </Button>
+              </Link>
+            )}
             {isPro && (
               <Link href="/pro">
                 <Button className="w-full gap-2" data-testid="button-open-pro">
@@ -173,7 +233,7 @@ export default function PaymentSuccess() {
                 Billing & subscription
               </Button>
             </Link>
-            {!isPro && (
+            {!isPro && !isMembership && (
               <Link href="/marketplace">
                 <Button variant="outline" className="w-full" data-testid="button-marketplace">
                   Continue shopping

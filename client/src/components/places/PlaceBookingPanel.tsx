@@ -5,6 +5,7 @@ import type { PlaceAvailabilitySlot, PlaceBookingMode } from "@shared/placeBooki
 import type { PlaceBooking, PlaceMembershipPlan } from "@shared/schema";
 import { formatMembershipPrice } from "@shared/placeMembership";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export interface PlaceBookingTheme {
   accentColor: string;
@@ -78,6 +79,7 @@ export function PlaceBookingPanel({
   onRequestModal,
   onMembershipSuccess,
 }: PlaceBookingPanelProps) {
+  const { toast } = useToast();
   const mode = (bookingMode || "request") as PlaceBookingMode;
   const dates = useMemo(() => nextDates(14), []);
   const [selectedDate, setSelectedDate] = useState(dates[0]);
@@ -128,6 +130,19 @@ export function PlaceBookingPanel({
 
   const membershipPlans = membershipData?.plans ?? [];
   const [enquiringPlanId, setEnquiringPlanId] = useState<string | null>(null);
+  const [checkingOutPlanId, setCheckingOutPlanId] = useState<string | null>(null);
+
+  const { data: checkoutStatus } = useQuery<{ available: boolean }>({
+    queryKey: ["/api/places/membership-checkout/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/places/membership-checkout/status", { credentials: "include" });
+      if (!res.ok) return { available: false };
+      return res.json();
+    },
+    enabled: mode === "membership" && !isDemo,
+    staleTime: 60_000,
+  });
+  const checkoutAvailable = checkoutStatus?.available ?? false;
 
   const enquireMutation = useMutation({
     mutationFn: async (planId: string) => {
@@ -141,6 +156,28 @@ export function PlaceBookingPanel({
     onSuccess: (booking) => {
       setEnquiringPlanId(null);
       onMembershipSuccess?.(booking);
+    },
+    onError: (err: Error) => {
+      setEnquiringPlanId(null);
+      toast({ title: "Enquiry failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const checkoutMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/places/${placeId}/membership-plans/${planId}/checkout`,
+        { cancelUrl: `${window.location.origin}/places/${placeId}` },
+      );
+      return res.json() as Promise<{ url: string }>;
+    },
+    onSuccess: (data) => {
+      window.location.href = data.url;
+    },
+    onError: (err: Error) => {
+      setCheckingOutPlanId(null);
+      toast({ title: "Checkout unavailable", description: err.message, variant: "destructive" });
     },
   });
 
@@ -224,7 +261,9 @@ export function PlaceBookingPanel({
         <div className="p-5 rounded-2xl" style={{ background: cardBg }}>
           <h3 className="text-[16px] font-bold mb-1" style={{ color: textPrimary }}>Membership plans</h3>
           <p className="text-[13px] mb-4" style={{ color: textTertiary }}>
-            Choose a plan — {placeName} will confirm your enquiry.
+            {checkoutAvailable
+              ? `Pay online or send an enquiry — ${placeName} will get your details either way.`
+              : `Choose a plan — ${placeName} will confirm your enquiry.`}
           </p>
 
           {plansLoading && !isDemo ? (
@@ -250,28 +289,48 @@ export function PlaceBookingPanel({
                         <p className="text-[12px] mt-1" style={{ color: textSecondary }}>{plan.description}</p>
                       ) : null}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isDemo) {
-                          onBook({
-                            bookingType: "membership",
-                            title: `${placeName} — ${plan.name}`,
-                            startTime: new Date().toISOString(),
-                            endTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                            price: plan.price != null ? String(plan.price) : undefined,
-                          });
-                          return;
-                        }
-                        setEnquiringPlanId(plan.id);
-                        enquireMutation.mutate(plan.id);
-                      }}
-                      disabled={enquiringPlanId === plan.id && enquireMutation.isPending}
-                      className="shrink-0 px-4 h-9 rounded-full text-[12px] font-bold transition-all active:scale-[0.96] disabled:opacity-60"
-                      style={{ background: accentColor, color: "#fff" }}
-                    >
-                      {enquiringPlanId === plan.id && enquireMutation.isPending ? "Sending…" : "Enquire"}
-                    </button>
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      {checkoutAvailable && parseFloat(String(plan.price ?? "0")) > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCheckingOutPlanId(plan.id);
+                            checkoutMutation.mutate(plan.id);
+                          }}
+                          disabled={checkingOutPlanId === plan.id && checkoutMutation.isPending}
+                          className="px-4 h-9 rounded-full text-[12px] font-bold transition-all active:scale-[0.96] disabled:opacity-60"
+                          style={{ background: accentColor, color: "#fff" }}
+                        >
+                          {checkingOutPlanId === plan.id && checkoutMutation.isPending ? "Redirecting…" : "Pay now"}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isDemo) {
+                            onBook({
+                              bookingType: "membership",
+                              title: `${placeName} — ${plan.name}`,
+                              startTime: new Date().toISOString(),
+                              endTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                              price: plan.price != null ? String(plan.price) : undefined,
+                            });
+                            return;
+                          }
+                          setEnquiringPlanId(plan.id);
+                          enquireMutation.mutate(plan.id);
+                        }}
+                        disabled={enquiringPlanId === plan.id && enquireMutation.isPending}
+                        className="px-4 h-9 rounded-full text-[12px] font-semibold transition-all active:scale-[0.96] disabled:opacity-60 border"
+                        style={{
+                          background: checkoutAvailable ? "transparent" : accentColor,
+                          color: checkoutAvailable ? textSecondary : "#fff",
+                          borderColor: borderColor,
+                        }}
+                      >
+                        {enquiringPlanId === plan.id && enquireMutation.isPending ? "Sending…" : "Enquire"}
+                      </button>
+                    </div>
                   </div>
                   {(plan.features ?? []).length > 0 ? (
                     <ul className="mt-2 space-y-0.5 text-[11px] list-disc pl-4" style={{ color: textTertiary }}>

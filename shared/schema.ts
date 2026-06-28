@@ -2116,6 +2116,8 @@ export const placeBookings = pgTable("place_bookings", {
   status: varchar("status").default("pending"), // 'pending', 'confirmed', 'cancelled', 'completed'
   price: decimal("price", { precision: 10, scale: 2 }),
   paymentStatus: varchar("payment_status").default("unpaid"), // 'unpaid', 'paid', 'refunded'
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
   notes: text("notes"),
   cancellationReason: text("cancellation_reason"),
   createdAt: timestamp("created_at").defaultNow(),
