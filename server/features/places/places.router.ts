@@ -241,6 +241,36 @@ placesRouter.post('/:id/membership-plans/:planId/enquire', isAuthenticated, asyn
 });
 
 /**
+ * GET /api/places/:id/slot-calendar?date=YYYY-MM-DD — owner slot grid (before /:id/availability).
+ */
+placesRouter.get('/:id/slot-calendar', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const date = typeof req.query.date === 'string' ? req.query.date : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'date query required (YYYY-MM-DD)' });
+    }
+
+    const ownerCheck = await db.execute(sql`
+      SELECT owner_id AS "ownerId" FROM places WHERE id = ${req.params.id} LIMIT 1
+    `);
+    const ownerId = (ownerCheck.rows?.[0] as { ownerId?: string } | undefined)?.ownerId;
+    if (!ownerId) return res.status(404).json({ message: 'Place not found' });
+    if (ownerId !== userId) return res.status(403).json({ message: 'Owner access only' });
+
+    const { getOwnerSlotCalendar } = await import('../../services/placeAvailabilityService');
+    const result = await getOwnerSlotCalendar(req.params.id, date);
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to load slot calendar';
+    const status = message === 'Place not found' ? 404 : 500;
+    res.status(status).json({ message });
+  }
+});
+
+/**
  * GET /api/places/:id/availability?date=YYYY-MM-DD
  * Open time slots for slot-based venues (before /:id/status).
  */

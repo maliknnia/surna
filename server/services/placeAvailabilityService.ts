@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { placeBookings, places } from "@shared/schema";
-import type { PlaceAvailabilitySlot } from "@shared/placeBooking";
+import type { PlaceAvailabilitySlot, PlaceSlotCalendarEntry, PlaceSlotCalendarState } from "@shared/placeBooking";
 import { ensurePlacesBookingColumns } from "../features/places/places.compat";
 
 const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
@@ -108,6 +108,84 @@ export async function getPlaceAvailability(
   }
 
   return { slots, bookingMode };
+}
+
+/** Owner calendar view — slots enriched with booking status for a single day. */
+export async function getOwnerSlotCalendar(
+  placeId: string,
+  dateIso: string,
+): Promise<{ entries: PlaceSlotCalendarEntry[]; bookingMode: string; closed: boolean }> {
+  await ensurePlacesBookingColumns();
+
+  const [place] = await db.select().from(places).where(eq(places.id, placeId)).limit(1);
+  if (!place) throw new Error("Place not found");
+
+  const bookingMode = (place as { bookingMode?: string }).bookingMode ?? "request";
+  if (bookingMode !== "slots") {
+    return { entries: [], bookingMode, closed: false };
+  }
+
+  const day = new Date(`${dateIso}T12:00:00`);
+  if (Number.isNaN(day.getTime())) throw new Error("Invalid date");
+
+  const hours = (place.hours ?? {}) as Record<string, string>;
+  const dayKey = DAY_NAMES[day.getDay()];
+  const window = parseDayHours(hours[dayKey]);
+  if (!window) {
+    return { entries: [], bookingMode, closed: true };
+  }
+
+  const duration = (place as { slotDurationMinutes?: number }).slotDurationMinutes ?? 60;
+  const slotPriceRaw = (place as { slotPrice?: string | null }).slotPrice;
+  const slotPrice = slotPriceRaw != null ? parseFloat(String(slotPriceRaw)) : null;
+
+  const dayStart = new Date(`${dateIso}T00:00:00`);
+  const dayEnd = new Date(`${dateIso}T23:59:59`);
+
+  const existing = await db
+    .select()
+    .from(placeBookings)
+    .where(
+      and(
+        eq(placeBookings.placeId, placeId),
+        inArray(placeBookings.status, ["pending", "confirmed"]),
+        sql`${placeBookings.startTime} < ${dayEnd}`,
+        sql`${placeBookings.endTime} > ${dayStart}`,
+      ),
+    );
+
+  const now = new Date();
+  const entries: PlaceSlotCalendarEntry[] = [];
+
+  for (let startMin = window.startMinutes; startMin + duration <= window.endMinutes; startMin += duration) {
+    const start = dateAtLocalMinutes(day, startMin);
+    const end = dateAtLocalMinutes(day, startMin + duration);
+    const booking = existing.find((b) =>
+      overlaps(start, end, new Date(b.startTime), new Date(b.endTime)),
+    );
+    const inPast = end <= now;
+
+    let state: PlaceSlotCalendarState = "available";
+    if (inPast) {
+      state = booking ? (booking.status === "pending" ? "pending" : "booked") : "past";
+    } else if (booking) {
+      state = booking.status === "pending" ? "pending" : "booked";
+    }
+
+    entries.push({
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+      label: start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+      price: slotPrice,
+      available: !booking && !inPast,
+      state,
+      bookingId: booking?.id,
+      bookingTitle: booking?.title,
+      bookingStatus: booking?.status ?? undefined,
+    });
+  }
+
+  return { entries, bookingMode, closed: false };
 }
 
 export async function assertSlotAvailable(

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ManagePlaceMembershipPlans } from "@/components/places/ManagePlaceMembershipPlans";
+import { PlaceOwnerSlotCalendar } from "@/components/places/PlaceOwnerSlotCalendar";
 import type { Place, PlaceBooking, PlaceReview, PlacePost } from "@shared/schema";
 
 export default function ManagePlaceProfile() {
@@ -55,7 +56,7 @@ export default function ManagePlaceProfile() {
 
   const { data: bookings = [] } = useQuery<PlaceBooking[]>({
     queryKey: ["/api/places", placeId, "bookings"],
-    enabled: !!placeId && activeTab === "bookings",
+    enabled: !!placeId && (activeTab === "bookings" || activeTab === "calendar"),
   });
 
   const { data: reviews = [] } = useQuery<PlaceReview[]>({
@@ -119,6 +120,7 @@ export default function ManagePlaceProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/places", placeId, "bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/places", placeId, "slot-calendar"] });
       toast({ title: "Success!", description: "Booking updated" });
     },
   });
@@ -220,6 +222,9 @@ export default function ManagePlaceProfile() {
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
             <TabsTrigger value="posts" data-testid="tab-posts">Posts</TabsTrigger>
             <TabsTrigger value="bookings" data-testid="tab-bookings">Bookings</TabsTrigger>
+            {(place.bookingMode ?? "request") === "slots" ? (
+              <TabsTrigger value="calendar" data-testid="tab-calendar">Slot calendar</TabsTrigger>
+            ) : null}
             {(place?.bookingMode ?? "request") === "membership" ? (
               <TabsTrigger value="memberships" data-testid="tab-memberships">Memberships</TabsTrigger>
             ) : null}
@@ -381,6 +386,21 @@ export default function ManagePlaceProfile() {
               </div>
             )}
           </TabsContent>
+
+          {(place.bookingMode ?? "request") === "slots" ? (
+            <TabsContent value="calendar" className="mt-4">
+              {placeId ? (
+                <PlaceOwnerSlotCalendar
+                  placeId={placeId}
+                  slotDurationMinutes={place.slotDurationMinutes}
+                  isUpdating={updateBookingMutation.isPending}
+                  onUpdateBooking={(bookingId, status) =>
+                    updateBookingMutation.mutate({ bookingId, status })
+                  }
+                />
+              ) : null}
+            </TabsContent>
+          ) : null}
 
           {(place?.bookingMode ?? "request") === "membership" ? (
             <TabsContent value="memberships" className="mt-4">
