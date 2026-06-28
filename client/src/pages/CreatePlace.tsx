@@ -35,6 +35,10 @@ import {
   isVenueAddressComplete,
   type VenueAddress,
 } from "@shared/venueAddress";
+import {
+  PLACE_BOOKING_MODES,
+  defaultBookingModeForCategory,
+} from "@shared/placeBooking";
 
 const STEPS: CreateFlowStep[] = [
   { id: 1, label: "Photos & info", icon: Sparkles },
@@ -52,13 +56,18 @@ const SPORTS = [
 const CATEGORIES = [
   { value: "gym", label: "Gym" },
   { value: "court", label: "Court" },
-  { value: "field", label: "Field" },
+  { value: "field", label: "Field / Pitch" },
   { value: "gaa-pitch", label: "GAA Pitch" },
   { value: "rugby-pitch", label: "Rugby Pitch" },
   { value: "cricket-pitch", label: "Cricket Pitch" },
   { value: "studio", label: "Studio" },
   { value: "pool", label: "Pool" },
   { value: "track", label: "Track" },
+  { value: "club", label: "Sports Club" },
+  { value: "nightlife", label: "Nightlife" },
+  { value: "bar", label: "Bar" },
+  { value: "cafe", label: "Café / Coffee" },
+  { value: "restaurant", label: "Restaurant" },
   { value: "other", label: "Other" },
 ];
 
@@ -86,6 +95,9 @@ export default function CreatePlace() {
     country: "Ireland",
     amenities: [],
     pricing: {},
+    bookingMode: "membership",
+    slotDurationMinutes: 60,
+    slotPrice: undefined,
   });
   const [hours, setHours] = useState<Record<string, string>>(
     DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: "9:00 AM - 5:00 PM" }), {}),
@@ -109,18 +121,33 @@ export default function CreatePlace() {
     }
   }, [formData.name, venue.venueName]);
 
+  useEffect(() => {
+    if (formData.category) {
+      setFormData((f) => ({
+        ...f,
+        bookingMode: defaultBookingModeForCategory(formData.category!),
+      }));
+    }
+  }, [formData.category]);
+
   const createMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
       const response = await apiRequest("POST", "/api/places", data);
-      return response.json();
+      const place = await response.json() as { id: string };
+      await Promise.all(
+        galleryUrls.map((imageUrl, displayOrder) =>
+          apiRequest("POST", `/api/places/${place.id}/photos`, { imageUrl, displayOrder }),
+        ),
+      );
+      return place;
     },
-    onSuccess: async () => {
+    onSuccess: async (place: { id: string }) => {
       toast({
         title: "Venue is live",
         description: "Manage it anytime from My Hub.",
       });
       await invalidateMyHubQueries(queryClient);
-      setLocation(ROUTES.myHubPlaces);
+      setLocation(ROUTES.place(place.id));
     },
     onError: (error: Error) => {
       toast({
@@ -165,6 +192,9 @@ export default function CreatePlace() {
       latitude: geocode.lat,
       longitude: geocode.lng,
       hours,
+      slotPrice: formData.bookingMode === "slots" && formData.slotPrice != null
+        ? String(formData.slotPrice)
+        : undefined,
     });
   };
 
@@ -369,6 +399,63 @@ export default function CreatePlace() {
             ))}
           </div>
           <div className="space-y-2 mt-6">
+            <Label>How guests book</Label>
+            <div className="space-y-2">
+              {PLACE_BOOKING_MODES.map((mode) => {
+                const active = formData.bookingMode === mode.value;
+                return (
+                  <button
+                    key={mode.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, bookingMode: mode.value })}
+                    className="w-full text-left p-3 rounded-xl border transition-colors"
+                    style={{
+                      borderColor: active ? "var(--surna-accent)" : "var(--surna-separator)",
+                      background: active ? "var(--surna-elevated)" : "transparent",
+                    }}
+                  >
+                    <p className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>{mode.label}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--surna-text-muted)" }}>{mode.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {formData.bookingMode === "slots" ? (
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <CreateFieldGroup label="Slot length (minutes)">
+                <Input
+                  type="number"
+                  min={15}
+                  step={15}
+                  value={formData.slotDurationMinutes ?? 60}
+                  onChange={(e) =>
+                    setFormData({ ...formData, slotDurationMinutes: parseInt(e.target.value, 10) || 60 })
+                  }
+                  className="h-11 rounded-xl border-[var(--surna-separator)]"
+                />
+              </CreateFieldGroup>
+              <CreateFieldGroup label="Price per slot (€)">
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  placeholder="25"
+                  value={formData.slotPrice ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      slotPrice: e.target.value === "" ? undefined : e.target.value,
+                    })
+                  }
+                  className="h-11 rounded-xl border-[var(--surna-separator)]"
+                />
+              </CreateFieldGroup>
+            </div>
+          ) : null}
+
+          <div className="space-y-2 mt-6">
             <Label>Amenities</Label>
             <div className="grid grid-cols-2 gap-2">
               {AMENITIES.map((amenity) => (
@@ -420,6 +507,16 @@ export default function CreatePlace() {
             <div className="p-4 space-y-3">
               <ReviewRow label="Name" value={formData.name || "—"} />
               <ReviewRow label="Category" value={CATEGORIES.find((c) => c.value === formData.category)?.label || "—"} />
+              <ReviewRow
+                label="Booking"
+                value={PLACE_BOOKING_MODES.find((m) => m.value === formData.bookingMode)?.label || "—"}
+              />
+              {formData.bookingMode === "slots" ? (
+                <ReviewRow
+                  label="Slots"
+                  value={`${formData.slotDurationMinutes ?? 60} min${formData.slotPrice ? ` · €${formData.slotPrice}` : ""}`}
+                />
+              ) : null}
               <ReviewRow label="Sports" value={(formData.sports || []).join(", ") || "—"} />
               <ReviewRow label="Venue" value={formatVenueAddressShort(venue)} />
               <ReviewRow label="Address" value={formatVenueAddress(venue)} />

@@ -3,6 +3,7 @@
  */
 
 import type { Place } from "@shared/schema";
+import { defaultBookingModeForCategory } from "@shared/placeBooking";
 
 export type DemoPlace = {
   id: string;
@@ -281,6 +282,9 @@ export function demoPlaceToApiRow(demo: DemoPlace): Place & { isDemo?: boolean }
     averageRating: demo.averageRating ?? "0",
     bookingsCount: 0,
     viewsCount: 0,
+    bookingMode: defaultBookingModeForCategory(demo.category),
+    slotDurationMinutes: 60,
+    slotPrice: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     isDemo: true,

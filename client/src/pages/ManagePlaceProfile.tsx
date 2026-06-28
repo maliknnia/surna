@@ -111,7 +111,7 @@ export default function ManagePlaceProfile() {
 
   const updateBookingMutation = useMutation({
     mutationFn: async ({ bookingId, status }: { bookingId: string; status: string }) => {
-      const response = await apiRequest("PATCH", `/api/places/${placeId}/bookings/${bookingId}`, {
+      const response = await apiRequest("PUT", `/api/places/bookings/${bookingId}`, {
         status,
       });
       return response.json();

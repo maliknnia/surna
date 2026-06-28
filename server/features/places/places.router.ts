@@ -87,6 +87,26 @@ const ToggleSchema = z.object({
 });
 
 /**
+ * GET /api/places/:id/availability?date=YYYY-MM-DD
+ * Open time slots for slot-based venues (before /:id/status).
+ */
+placesRouter.get('/:id/availability', async (req: AuthedRequest, res: Response) => {
+  try {
+    const date = typeof req.query.date === 'string' ? req.query.date : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'date query required (YYYY-MM-DD)' });
+    }
+    const { getPlaceAvailability } = await import('../../services/placeAvailabilityService');
+    const result = await getPlaceAvailability(req.params.id, date);
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to load availability';
+    const status = message === 'Place not found' ? 404 : 500;
+    res.status(status).json({ message });
+  }
+});
+
+/**
  * PATCH /api/places/:id/status
  * Light-touch open/closed toggle for owners. Keeps the heavier
  * full-record PUT /api/places/:id route untouched. Owner-only.

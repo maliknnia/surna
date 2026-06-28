@@ -282,6 +282,55 @@ mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
     }
 
     if (enabledLayers.includes('places')) {
+      const seenPlaceIds = new Set<string>();
+      try {
+        const { dbRead } = await import("../dbRead");
+        const { sql } = await import("drizzle-orm");
+        const surnaQ = await dbRead.execute(sql`
+          SELECT id, name, category, sports, cover_image_url, profile_image_url,
+                 latitude, longitude, city, average_rating, bio, pricing
+            FROM places
+           WHERE is_active = true
+             AND latitude IS NOT NULL
+             AND longitude IS NOT NULL
+             AND latitude::float BETWEEN ${minLat} AND ${maxLat}
+             AND longitude::float BETWEEN ${minLng} AND ${maxLng}
+           LIMIT 40
+        `);
+        for (const row of surnaQ.rows as Array<Record<string, unknown>>) {
+          const lat = Number(row.latitude);
+          const lng = Number(row.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+          const id = String(row.id);
+          if (seenPlaceIds.has(id)) continue;
+          seenPlaceIds.add(id);
+          entityPairs.push({ ownerType: 'place', ownerId: id });
+          items.push({
+            type: 'place',
+            id,
+            lat,
+            lng,
+            label: String(row.name || 'Venue'),
+            iconUrl: String(row.profile_image_url || row.cover_image_url || ''),
+            hasStory: false,
+            storyState: 'none',
+            presence: 'offline',
+            priority: 3,
+            meta: {
+              source: 'surna',
+              category: row.category,
+              sports: row.sports,
+              rating: row.average_rating,
+              city: row.city,
+              description: row.bio,
+              coverImageUrl: row.cover_image_url || row.profile_image_url,
+            },
+          });
+        }
+      } catch (e) {
+        console.error('Surna places query error:', e);
+      }
+
       try {
         const data = await internalAPI(`/api/location/nearby`, req, 'POST', {
           lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2, radius: 5000, type: 'gym,field,court,stadium'
@@ -290,6 +339,9 @@ mapRouter.get("/viewport", isAuthenticated, async (req: any, res) => {
         for (const p of placeItems) {
           const coords = normalizeCoords(p);
           if (!coords) continue;
+          const pid = String(p.id);
+          if (seenPlaceIds.has(pid)) continue;
+          seenPlaceIds.add(pid);
           entityPairs.push({ ownerType: 'place', ownerId: p.id });
           items.push({
             type: 'place',

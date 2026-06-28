@@ -2029,6 +2029,9 @@ export const places = pgTable("places", {
   averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default('0'),
   bookingsCount: integer("bookings_count").default(0),
   viewsCount: integer("views_count").default(0),
+  bookingMode: varchar("booking_mode").default("request"), // slots | membership | request | none
+  slotDurationMinutes: integer("slot_duration_minutes").default(60),
+  slotPrice: decimal("slot_price", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

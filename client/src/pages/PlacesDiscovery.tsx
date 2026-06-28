@@ -38,6 +38,9 @@ const CATEGORIES: { key: string; label: string; emoji: string }[] = [
   { key: "studio", label: "Studio", emoji: "🧘" },
   { key: "pool", label: "Pool", emoji: "🏊" },
   { key: "track", label: "Track", emoji: "🏃" },
+  { key: "club", label: "Club", emoji: "🏟️" },
+  { key: "nightlife", label: "Nightlife", emoji: "🌙" },
+  { key: "cafe", label: "Café", emoji: "☕" },
 ];
 
 interface PlacesResponse {

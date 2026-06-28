@@ -496,7 +496,14 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
-      const place = await storage.createPlace(userId, req.body);
+      const { ensurePlacesBookingColumns } = await import("./features/places/places.compat");
+      const { defaultBookingModeForCategory } = await import("@shared/placeBooking");
+      await ensurePlacesBookingColumns();
+      const payload = { ...req.body };
+      if (!payload.bookingMode && payload.category) {
+        payload.bookingMode = defaultBookingModeForCategory(String(payload.category));
+      }
+      const place = await storage.createPlace(userId, payload);
       res.status(201).json(place);
     } catch (error: unknown) {
       console.error("Error creating place:", error);
@@ -837,11 +844,42 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
-      const booking = await storage.createPlaceBooking(userId, { ...req.body, placeId: req.params.id });
+      const placeId = req.params.id;
+      const startTime = new Date(req.body.startTime);
+      const endTime = new Date(req.body.endTime);
+      if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+        return res.status(400).json({ message: "Invalid start or end time" });
+      }
+
+      const { assertSlotAvailable } = await import("./services/placeAvailabilityService");
+      await assertSlotAvailable(placeId, startTime, endTime);
+
+      const [placeRow] = await db.select().from(places).where(eq(places.id, placeId)).limit(1);
+      if (!placeRow) {
+        return res.status(404).json({ message: "Place not found" });
+      }
+      const bookingMode = (placeRow as { bookingMode?: string }).bookingMode ?? "request";
+      if (bookingMode === "none") {
+        return res.status(400).json({ message: "This venue does not accept online bookings" });
+      }
+
+      const slotPrice = (placeRow as { slotPrice?: string | null }).slotPrice;
+      const status = bookingMode === "slots" ? "confirmed" : "pending";
+      const booking = await storage.createPlaceBooking(userId, {
+        ...req.body,
+        placeId,
+        status,
+        price: req.body.price ?? (slotPrice != null ? String(slotPrice) : undefined),
+      });
       res.status(201).json(booking);
     } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to create booking";
+      const isClient =
+        message.includes("available") ||
+        message.includes("Invalid") ||
+        message.includes("does not accept");
       console.error("Error creating booking:", error);
-      res.status(500).json({ message: "Failed to create booking" });
+      res.status(isClient ? 409 : 500).json({ message });
     }
   });
 
