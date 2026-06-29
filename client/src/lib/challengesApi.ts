@@ -43,12 +43,20 @@ export function buildLeaderboardUrl(scope: "user" | "team", sport?: string): str
   return `/api/competitive-challenges/leaderboards?${params.toString()}`;
 }
 
+export type LeaderboardEntry = {
+  entityId: string;
+  rating: number;
+  sport: string;
+  displayName: string;
+  imageUrl: string | null;
+};
+
 export async function fetchLeaderboard(scope: "user" | "team", sport?: string) {
   const res = await fetch(buildLeaderboardUrl(scope, sport), { credentials: "include" });
   if (!res.ok) {
     throw new Error(`${res.status}: Failed to load leaderboard`);
   }
-  return res.json() as Promise<{ leaderboard: Array<{ entityId: string; rating: number; sport: string }> }>;
+  return res.json() as Promise<{ leaderboard: LeaderboardEntry[] }>;
 }
 
 export async function fetchChallengeDetail(challengeId: string) {

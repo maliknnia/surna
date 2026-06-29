@@ -64,6 +64,23 @@ export function ensurePlaceHighlightsColumn(): Promise<void> {
   return highlightsEnsured;
 }
 
+let checkInEnsured: Promise<void> | null = null;
+
+export function ensurePlaceBookingCheckInColumns(): Promise<void> {
+  if (!checkInEnsured) {
+    checkInEnsured = ensurePlacesBookingColumns()
+      .then(() =>
+        db.execute(sql`
+          ALTER TABLE place_bookings ADD COLUMN IF NOT EXISTS checked_in_at timestamp;
+          ALTER TABLE place_bookings ADD COLUMN IF NOT EXISTS checked_in_by varchar
+            REFERENCES users(id) ON DELETE SET NULL;
+        `),
+      )
+      .then(() => undefined);
+  }
+  return checkInEnsured;
+}
+
 let slotBlocksEnsured: Promise<void> | null = null;
 
 export function ensurePlaceSlotBlocks(): Promise<void> {

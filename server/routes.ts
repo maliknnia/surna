@@ -872,7 +872,9 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         status,
         price: req.body.price ?? (slotPrice != null ? String(slotPrice) : undefined),
       });
-      res.status(201).json(booking);
+      const { bookingScanTokenForRow } = await import("./services/placeBookingCheckInService");
+      const scanToken = bookingScanTokenForRow(booking);
+      res.status(201).json(scanToken ? { ...booking, scanToken } : booking);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to create booking";
       const isClient =
@@ -2720,6 +2722,10 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         postsCount,
       } as any);
       userWithStats.profileCompletion = profileCompletionPercent(user, userWithStats.profile);
+
+      if (currentUserId !== userId && userWithStats.profile?.gearProfile) {
+        userWithStats.profile = { ...userWithStats.profile, gearProfile: undefined };
+      }
 
       if (currentUserId !== userId) {
         try {

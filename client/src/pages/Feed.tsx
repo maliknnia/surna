@@ -2,14 +2,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
 import NotificationPeekSheet from "@/components/notifications/NotificationPeekSheet";
-import { Heart, MessageCircle, Share2, Users, Zap, TrendingUp, UserPlus, Camera, Play, Trophy, ArrowLeft, Bell, User as UserProfile, Loader2, Plus, Calendar, MapPin, RefreshCw, Bookmark } from "lucide-react";
+import { MessageCircle, Users, TrendingUp, UserPlus, Camera, Play, ArrowLeft, Bell, User as UserProfile, Loader2, Plus, Calendar, MapPin, RefreshCw } from "lucide-react";
 import { NavHomeIcon } from "@/components/icons/NavHomeIcon";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,6 +30,7 @@ import { AddStoryModal } from "@/components/stories/AddStoryModal";
 import { ShareModal } from "@/components/ShareModal";
 import { CommentsSheet } from "@/components/comments/CommentsSheet";
 import { cn } from "@/lib/utils";
+import { EntityEmptyState, entityBtnClass, entityBtnSurface, entityCardStyle } from "@/components/entity";
 import { markNavReturn } from "@/lib/navigation";
 import { entityPath, mapPath, resolveContentLinks } from "@/lib/mapNavigation";
 import { ROUTES } from "@/navigation";
@@ -84,17 +81,17 @@ function PostSkeleton() {
   return (
     <div className="border-b pb-4" style={{ borderColor: "var(--surna-border)" }} data-testid="post-skeleton">
       <div className="flex items-center gap-3 px-3 py-2.5">
-        <Skeleton className="h-9 w-9 rounded-full bg-token-text/10" />
-        <div className="space-y-1">
-          <Skeleton className="h-4 w-28 bg-token-text/10" />
-          <Skeleton className="h-3 w-16 bg-token-text/10" />
+        <div className="h-9 w-9 rounded-full animate-pulse" style={{ background: "var(--surna-elevated)" }} />
+        <div className="space-y-1.5">
+          <div className="h-3.5 w-28 rounded animate-pulse" style={{ background: "var(--surna-elevated)" }} />
+          <div className="h-3 w-16 rounded animate-pulse" style={{ background: "var(--surna-elevated)" }} />
         </div>
       </div>
-      <Skeleton className="aspect-[4/5] w-full rounded-none bg-token-text/10" />
+      <div className="aspect-[4/5] w-full animate-pulse" style={{ background: "var(--surna-elevated)" }} />
       <div className="flex gap-3 px-3 py-2">
-        <Skeleton className="h-6 w-6 rounded bg-token-text/10" />
-        <Skeleton className="h-6 w-6 rounded bg-token-text/10" />
-        <Skeleton className="h-6 w-6 rounded bg-token-text/10" />
+        <div className="h-6 w-6 rounded animate-pulse" style={{ background: "var(--surna-elevated)" }} />
+        <div className="h-6 w-6 rounded animate-pulse" style={{ background: "var(--surna-elevated)" }} />
+        <div className="h-6 w-6 rounded animate-pulse" style={{ background: "var(--surna-elevated)" }} />
       </div>
     </div>
   );
@@ -137,72 +134,96 @@ function normalizeFeedBottomTab(tab: string): FeedSwipeTab {
 function Sidebar({ suggestedUsers, trendingHashtags, onFollowUser, onHashtagClick, onUserClick, followingUserIds }: SidebarProps) {
   return (
     <div className="hidden lg:block w-80 fixed right-4 top-20 h-[calc(100vh-6rem)] overflow-y-auto">
-      <div className="space-y-6">
-        {/* Suggested Friends */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <UserPlus className="h-4 w-4 text-token-text" />
-              <h3 className="font-semibold text-sm text-token-text">Suggested Friends</h3>
-            </div>
-            <div className="space-y-3">
-              {suggestedUsers.slice(0, 5).map((user) => (
+      <div className="space-y-4">
+        <div className="p-4 rounded-2xl" style={entityCardStyle}>
+          <div className="flex items-center gap-2 mb-4">
+            <UserPlus className="h-4 w-4" style={{ color: "var(--surna-gold)" }} />
+            <h3 className="font-semibold text-[13px]" style={{ color: "var(--surna-text)" }}>
+              Suggested friends
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {suggestedUsers.slice(0, 5).map((user) => {
+              const following = followingUserIds.has(user.id);
+              return (
                 <div key={user.id} className="flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => onUserClick(user.id)}
-                    className="flex items-center gap-2 text-left min-w-0 flex-1"
+                    className="flex items-center gap-2 text-left min-w-0 flex-1 active:opacity-80"
                   >
-                    <Avatar className="h-6 w-6">
+                    <Avatar className="h-7 w-7">
                       <AvatarImage src={user.profileImageUrl || ""} />
-                      <AvatarFallback className="text-xs bg-card border border-border text-foreground">
-                        {user.firstName?.[0]}{user.lastName?.[0]}
+                      <AvatarFallback
+                        className="text-[10px]"
+                        style={{ background: "var(--surna-bg-highlight)", color: "var(--surna-text)" }}
+                      >
+                        {user.firstName?.[0]}
+                        {user.lastName?.[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="text-sm font-medium text-token-text">{user.displayName || `${user.firstName} ${user.lastName}`}</p>
-                      <p className="text-xs text-token-text-muted truncate">{user.username}</p>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold truncate" style={{ color: "var(--surna-text)" }}>
+                        {user.displayName || `${user.firstName} ${user.lastName}`}
+                      </p>
+                      <p className="text-[11px] truncate" style={{ color: "var(--surna-text-secondary)" }}>
+                        {user.username}
+                      </p>
                     </div>
                   </button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs h-6 px-2 shrink-0"
-                    disabled={followingUserIds.has(user.id)}
+                  <button
+                    type="button"
+                    className={cn(entityBtnClass, "shrink-0 !flex-none h-7 px-3 text-[11px]")}
+                    style={following ? entityBtnSurface : { background: "var(--surna-gold)", color: "#000" }}
+                    disabled={following}
                     onClick={() => onFollowUser(user.id)}
                   >
-                    {followingUserIds.has(user.id) ? "Following" : "Follow"}
-                  </Button>
+                    {following ? "Following" : "Follow"}
+                  </button>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              );
+            })}
+            {suggestedUsers.length === 0 ? (
+              <p className="text-[12px] text-center py-2" style={{ color: "var(--surna-text-secondary)" }}>
+                No suggestions right now
+              </p>
+            ) : null}
+          </div>
+        </div>
 
-        {/* Trending Hashtags */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-token-text" />
-              <h3 className="font-semibold text-sm text-token-text">Trending Hashtags</h3>
-            </div>
-            <div className="space-y-2">
-              {trendingHashtags.slice(0, 8).map((hashtag) => (
-                <button
-                  key={hashtag.id}
-                  type="button"
-                  onClick={() => onHashtagClick(hashtag.tag)}
-                  className="flex items-center justify-between w-full text-left hover:opacity-80"
+        <div className="p-4 rounded-2xl" style={entityCardStyle}>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="h-4 w-4" style={{ color: "var(--surna-gold)" }} />
+            <h3 className="font-semibold text-[13px]" style={{ color: "var(--surna-text)" }}>
+              Trending hashtags
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {trendingHashtags.slice(0, 8).map((hashtag) => (
+              <button
+                key={hashtag.id}
+                type="button"
+                onClick={() => onHashtagClick(hashtag.tag)}
+                className="flex items-center justify-between w-full text-left rounded-lg px-2 py-1.5 active:opacity-80 hover:bg-[var(--surna-bg-highlight)]"
+              >
+                <span
+                  className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: "var(--surna-bg-highlight)", color: "var(--surna-text)" }}
                 >
-                  <Badge variant="secondary" className="text-xs">
-                    #{hashtag.tag}
-                  </Badge>
-                  <span className="text-xs text-token-text-muted">{hashtag.usageCount} posts</span>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                  #{hashtag.tag}
+                </span>
+                <span className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
+                  {hashtag.usageCount} posts
+                </span>
+              </button>
+            ))}
+            {trendingHashtags.length === 0 ? (
+              <p className="text-[12px] text-center py-2" style={{ color: "var(--surna-text-secondary)" }}>
+                No trending tags yet
+              </p>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -490,10 +511,14 @@ export default function Feed() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-token-text">Please log in to view the social feed.</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surna-base)" }}>
+        <EntityEmptyState
+          icon={UserProfile}
+          title="Sign in to view your feed"
+          description="Follow athletes, see stories, and stay up with your sports community."
+          actionLabel="Sign in"
+          actionHref="/login"
+        />
       </div>
     );
   }
@@ -665,21 +690,29 @@ export default function Feed() {
                       )}
                       {!isLoading && feedEntries.length > 0 && (
                         <div ref={loadMoreRef} className="py-4 flex justify-center" data-testid="load-more-trigger">
-                          {isFetchingNextPage
-                            ? <Loader2 className="h-6 w-6 animate-spin text-token-text" />
-                            : hasNextPage
-                              ? <p className="text-sm text-token-text">Scroll for more</p>
-                              : <p className="text-sm text-token-text opacity-30">You've reached the end</p>
-                          }
+                          {isFetchingNextPage ? (
+                            <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--surna-gold)" }} />
+                          ) : hasNextPage ? (
+                            <p className="text-[13px]" style={{ color: "var(--surna-text-secondary)" }}>
+                              Scroll for more
+                            </p>
+                          ) : (
+                            <p className="text-[13px]" style={{ color: "var(--surna-text-secondary)", opacity: 0.5 }}>
+                              You&apos;ve reached the end
+                            </p>
+                          )}
                         </div>
                       )}
                       {!isLoading && feedEntries.length === 0 && (
-                        <div className="py-6 px-3 space-y-4">
+                        <div className="px-2">
                           {feedTab === "Following" && (
                             <>
-                              <p className="text-center text-sm" style={{ color: "var(--surna-text-secondary)" }}>
-                                Follow athletes to see their posts here first.
-                              </p>
+                              <EntityEmptyState
+                                icon={Users}
+                                title="No posts from people you follow"
+                                description="Follow more athletes to fill this tab."
+                                compact
+                              />
                               <FeedDiscoverPeople
                                 suggestedUsers={suggestedUsers}
                                 followingIds={followingIds}
@@ -690,48 +723,36 @@ export default function Feed() {
                             </>
                           )}
                           {feedTab === "Events" && (
-                            <div className="py-4 px-3 text-center text-token-text-muted space-y-3">
-                              <p>No event posts in your feed yet.</p>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="rounded-full"
-                                onClick={() => navigateFromFeed(ROUTES.events)}
-                              >
-                                Browse events
-                              </Button>
-                            </div>
+                            <EntityEmptyState
+                              icon={Calendar}
+                              title="No event posts yet"
+                              description="Games, meetups, and match days will show up here."
+                              actionLabel="Browse events"
+                              onAction={() => navigateFromFeed(ROUTES.events)}
+                            />
                           )}
                           {feedTab === "Nearby" && (
-                            <div className="py-4 px-3 text-center text-token-text-muted space-y-3">
-                              <p>No nearby posts right now. Check the map for places and games around you.</p>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="rounded-full"
-                                onClick={() => navigateFromFeed(mapPath())}
-                              >
-                                Open map
-                              </Button>
-                            </div>
+                            <EntityEmptyState
+                              icon={MapPin}
+                              title="No nearby posts right now"
+                              description="Check the map for places and games around you."
+                              actionLabel="Open map"
+                              onAction={() => navigateFromFeed(mapPath())}
+                            />
                           )}
                           {feedTab === "For You" && (
-                            <div className="py-4 px-3 text-center space-y-3">
-                              <p className="text-sm" style={{ color: "var(--surna-text-secondary)" }}>
-                                {needsDiscover
-                                  ? "Follow a few athletes below — your For You feed ranks posts from people you follow and your sports."
-                                  : "Nothing here yet — pull down to refresh."}
-                              </p>
-                              {!needsDiscover && (
-                                <Button
-                                  type="button"
-                                  className="rounded-full"
-                                  onClick={() => setComposerOpen(true)}
-                                >
-                                  Create a post
-                                </Button>
-                              )}
-                            </div>
+                            <EntityEmptyState
+                              icon={RefreshCw}
+                              title={needsDiscover ? "Your feed is warming up" : "Nothing here yet"}
+                              description={
+                                needsDiscover
+                                  ? "Follow athletes from the suggestions above — For You ranks posts from people you follow and your sports."
+                                  : "Pull down to refresh, or share your first moment."
+                              }
+                              actionLabel={needsDiscover ? undefined : "Create a post"}
+                              onAction={needsDiscover ? undefined : () => setComposerOpen(true)}
+                              compact={needsDiscover}
+                            />
                           )}
                         </div>
                       )}

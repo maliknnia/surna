@@ -1129,8 +1129,8 @@ teamsRouter.get('/:id', isAuthenticated, async (req: AuthedRequest, res: Respons
 });
 
 /**
- * GET /api/teams/:id/sizing-roster — kit sizing summary for team merch orders.
- * Captains/co-captains see full roster sizes; members see their own row + readiness counts.
+ * GET /api/teams/:id/sizing-roster — kit sizing for team merch orders.
+ * Captains/co-captains only see full roster sizes; teammates get a private readiness flag only.
  */
 teamsRouter.get('/:id/sizing-roster', isAuthenticated, async (req: AuthedRequest, res: Response) => {
   try {
@@ -1190,8 +1190,17 @@ teamsRouter.get('/:id/sizing-roster', isAuthenticated, async (req: AuthedRequest
 
     const readyCount = roster.filter((r) => r.kitReady).length;
 
+    if (!canManage) {
+      const viewerRow = roster.find((r) => r.userId === userId);
+      return res.json({
+        canManage: false,
+        viewerKitReady: viewerRow?.kitReady ?? false,
+        viewerNeedsKit: viewerRow ? !viewerRow.kitReady : false,
+      });
+    }
+
     res.json({
-      canManage,
+      canManage: true,
       readyCount,
       totalCount: roster.length,
       roster,

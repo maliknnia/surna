@@ -543,9 +543,9 @@ function LeaderboardsView() {
                       : "none",
                 }}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
                     style={{
                       background:
                         index < 3 ? `${medalColors[index]}20` : t.chipBg,
@@ -554,11 +554,19 @@ function LeaderboardsView() {
                   >
                     {index + 1}
                   </div>
-                  <div>
-                    <p className="text-[13px] font-semibold" style={{ color: t.textPrimary }}>
-                      {entry.entityId}
+                  {entry.imageUrl ? (
+                    <img
+                      src={entry.imageUrl}
+                      alt=""
+                      className="w-8 h-8 rounded-full object-cover shrink-0"
+                      style={{ border: `1px solid ${t.divider}` }}
+                    />
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold truncate" style={{ color: t.textPrimary }}>
+                      {entry.displayName}
                     </p>
-                    <p className="text-[11px]" style={{ color: t.textMuted }}>
+                    <p className="text-[11px] truncate" style={{ color: t.textMuted }}>
                       {entry.sport || "All Sports"}
                     </p>
                   </div>

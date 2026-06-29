@@ -3,7 +3,8 @@ import { useInView } from "react-intersection-observer";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 import { useLocation } from "wouter";
-import { Plus } from "lucide-react";
+import { Plus, Trophy } from "lucide-react";
+import { EntityEmptyState, EntityListSkeleton } from "@/components/entity";
 import { FeatureFilterChips } from "@/components/panels/FeatureFilterBar";
 import {
   PanelFilterSheet,
@@ -384,38 +385,23 @@ export default function Teams({
             )}
           </>
         ) : (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4">🏆</div>
-            <h3 className="text-[15px] font-semibold mb-1" style={{ color: textPrimary }}>
-              {(teams?.length ?? 0) > 0 ? "No teams match your filters" : "No teams found"}
-            </h3>
-            <p className="text-[13px] mb-6" style={{ color: textSecondary }}>
-              {(teams?.length ?? 0) > 0
+          <EntityEmptyState
+            icon={Trophy}
+            title={(teams?.length ?? 0) > 0 ? "No teams match your filters" : "No teams found"}
+            description={
+              (teams?.length ?? 0) > 0
                 ? "Try a different sport filter."
                 : sportFilter !== "All"
                   ? `No ${sportFilter} teams yet. Be the first!`
-                  : "Be the first to create a team and build your sports community!"}
-            </p>
-            {(teams?.length ?? 0) > 0 ? (
-              <button
-                type="button"
-                onClick={() => setSportFilter("All")}
-                className="px-6 py-2.5 rounded-full text-[13px] font-bold active:scale-95 transition-all"
-                style={{ background: chipBg, color: chipText, border: `1px solid ${borderColor}` }}
-              >
-                Clear filters
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setLocation(createHubPath("team"))}
-                className="px-6 py-2.5 rounded-full text-[13px] font-bold active:scale-95 transition-all"
-                style={{ background: chipActiveBg, color: chipActiveText }}
-              >
-                Create First Team
-              </button>
-            )}
-          </div>
+                  : "Create a team and build your sports community."
+            }
+            actionLabel={(teams?.length ?? 0) > 0 ? "Clear filters" : "Create team"}
+            onAction={
+              (teams?.length ?? 0) > 0
+                ? () => setSportFilter("All")
+                : () => setLocation(createHubPath("team"))
+            }
+          />
         )}
       </div>
     </div>

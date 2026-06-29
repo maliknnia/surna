@@ -1,16 +1,17 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Users, Crown, Star } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import TeamSizingRoster from "../components/TeamSizingRoster";
-import TeamMemberProfileSheet, { type TeamMemberRow } from "../components/TeamMemberProfileSheet";
+import { Users, Crown, Star, UserPlus } from "lucide-react";
+import { EntityEmptyState, EntityListSkeleton, entityCardStyle } from "@/components/entity";
 import { getDemoTeamMembers, isDemoTeamId, normalizeDemoTeamId } from "@/lib/demoTeams";
+import TeamSizingRoster from "../components/TeamSizingRoster";
+import { useTeamPageAccent } from "../TeamPageTheme";
+import type { TeamMemberRow } from "../components/TeamMemberProfileSheet";
 
 interface TeamMembersProps {
   teamId: string;
   teamName?: string;
   canManage?: boolean;
+  isMember?: boolean;
 }
 
 function memberDisplayName(member: TeamMemberRow): string {
@@ -21,12 +22,15 @@ function memberDisplayName(member: TeamMemberRow): string {
   return full || "Member";
 }
 
-export default function TeamMembers({ teamId, teamName, canManage = false }: TeamMembersProps) {
+export default function TeamMembers({
+  teamId,
+  canManage = false,
+  isMember = false,
+}: TeamMembersProps) {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
-  const viewerUserId = (user as { id?: string } | null)?.id;
-  const [selectedMember, setSelectedMember] = useState<TeamMemberRow | null>(null);
+  const accent = useTeamPageAccent();
   const normalizedId = normalizeDemoTeamId(teamId);
+
   const { data, isLoading } = useQuery<{ members?: TeamMemberRow[] }>({
     queryKey: ["/api/teams", normalizedId, "members"],
     queryFn: async () => {
@@ -43,24 +47,21 @@ export default function TeamMembers({ teamId, teamName, canManage = false }: Tea
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="glass-card animate-pulse">
-            <div className="w-16 h-16 bg-muted/40 rounded-full mx-auto mb-3" />
-            <div className="h-4 bg-muted/40 rounded mb-2" />
-            <div className="h-3 bg-muted/40 rounded w-2/3 mx-auto" />
-          </div>
-        ))}
+      <div className="px-1">
+        <EntityListSkeleton rows={4} rowHeight={140} />
       </div>
     );
   }
 
   if (members.length === 0) {
     return (
-      <div className="glass-card text-center py-8">
-        <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-        <p className="text-muted-foreground text-[14px]">No members found</p>
-      </div>
+      <EntityEmptyState
+        icon={Users}
+        title="No members yet"
+        description="Be the first to join, or invite teammates from My Hub."
+        actionLabel={canManage ? "Invite from My Hub" : undefined}
+        actionHref={canManage ? "/teams/manage" : undefined}
+      />
     );
   }
 
@@ -70,74 +71,103 @@ export default function TeamMembers({ teamId, teamName, canManage = false }: Tea
     return null;
   };
 
+  const openProfile = (member: TeamMemberRow) => {
+    const userId = member.userId || member.user?.id;
+    if (userId) setLocation(`/profile/${userId}?from=${encodeURIComponent(`/teams/${teamId}`)}`);
+  };
+
   return (
-    <>
-      <TeamSizingRoster teamId={teamId} canManage={canManage} viewerUserId={viewerUserId} />
-      <div className="grid grid-cols-2 gap-3">
+    <div className="space-y-3 px-1">
+      <TeamSizingRoster teamId={teamId} canManage={canManage} isMember={isMember} />
+      <div className="grid grid-cols-2 gap-2.5">
         {members.map((member) => {
           const avatar = member.user?.profileImageUrl;
           const name = memberDisplayName(member);
+          const isLead = member.role === "captain" || member.role === "co-captain";
           return (
-            <div
+            <button
               key={member.id}
-              className="glass-card cursor-pointer active:scale-[0.97] transition-transform"
-              onClick={() => setSelectedMember(member)}
+              type="button"
+              className="rounded-2xl p-3 text-left active:scale-[0.97] transition-transform"
+              style={{
+                ...entityCardStyle,
+                ...(isLead ? { boxShadow: `inset 0 0 0 1px ${accent}44` } : {}),
+              }}
+              onClick={() => openProfile(member)}
             >
-              <div className="relative w-16 h-16 mx-auto mb-3">
+              <div className="relative w-14 h-14 mx-auto mb-2.5">
                 {avatar ? (
-                  <img src={avatar} alt={name} className="w-full h-full rounded-full object-cover" />
+                  <img src={avatar} alt="" className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  <div className="w-full h-full rounded-full bg-muted/40 flex items-center justify-center">
-                    <Users size={24} className="text-muted-foreground" />
+                  <div
+                    className="w-full h-full rounded-full flex items-center justify-center"
+                    style={{ background: "var(--surna-bg-highlight)" }}
+                  >
+                    <Users size={22} style={{ color: "var(--surna-text-secondary)" }} />
                   </div>
                 )}
-                {getRoleIcon(member.role || "") && (
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-background/60 backdrop-blur-sm rounded-full flex items-center justify-center border border-border">
+                {getRoleIcon(member.role || "") ? (
+                  <div
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ background: "var(--surna-base)", border: "1px solid var(--surna-border)" }}
+                  >
                     {getRoleIcon(member.role || "")}
                   </div>
-                )}
+                ) : null}
               </div>
 
-              <h4 className="text-center text-foreground text-[14px] font-semibold mb-1.5 truncate">
+              <h4
+                className="text-center text-[13px] font-semibold mb-1 truncate"
+                style={{ color: "var(--surna-text)" }}
+              >
                 {name}
               </h4>
 
               <div className="text-center">
-                <span className="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize bg-muted/40 text-muted-foreground">
+                <span
+                  className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize"
+                  style={{ background: `${accent}18`, color: accent }}
+                >
                   {member.role}
                 </span>
               </div>
 
-              <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2 text-center">
+              <div
+                className="mt-2.5 pt-2.5 grid grid-cols-2 gap-1 text-center"
+                style={{ borderTop: "1px solid var(--surna-border)" }}
+              >
                 <div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Games</div>
-                  <div className="text-[14px] font-bold text-foreground">{member.gamesPlayed || 0}</div>
+                  <div className="text-[9px] uppercase tracking-wider" style={{ color: "var(--surna-text-muted)" }}>
+                    Games
+                  </div>
+                  <div className="text-[13px] font-bold" style={{ color: "var(--surna-text)" }}>
+                    {member.gamesPlayed || 0}
+                  </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Level</div>
-                  <div className="text-[14px] font-bold text-foreground/70 capitalize">{member.skillLevel || "N/A"}</div>
+                  <div className="text-[9px] uppercase tracking-wider" style={{ color: "var(--surna-text-muted)" }}>
+                    Level
+                  </div>
+                  <div className="text-[13px] font-bold capitalize" style={{ color: "var(--surna-text-secondary)" }}>
+                    {member.skillLevel || "—"}
+                  </div>
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
-
-      <TeamMemberProfileSheet
-        open={!!selectedMember}
-        member={selectedMember}
-        teamId={teamId}
-        teamName={teamName}
-        onClose={() => setSelectedMember(null)}
-        onPersonalProfile={(userId) => {
-          setSelectedMember(null);
-          setLocation(`/person/${userId}`);
-        }}
-        onTeamProfile={(userId) => {
-          setSelectedMember(null);
-          setLocation(`/teams/${teamId}/player/${userId}`);
-        }}
-      />
-    </>
+      {canManage ? (
+        <button
+          type="button"
+          onClick={() => setLocation("/teams/manage")}
+          className="w-full h-10 rounded-xl text-[13px] font-semibold inline-flex items-center justify-center gap-2 active:opacity-80"
+          style={{ ...entityCardStyle, color: "var(--surna-text-secondary)" }}
+        >
+          <UserPlus size={16} />
+          Invite players
+        </button>
+      ) : null}
+    </div>
   );
 }

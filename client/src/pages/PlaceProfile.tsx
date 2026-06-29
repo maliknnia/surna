@@ -13,11 +13,13 @@ import { deriveModernSources } from "@/lib/imageSources";
 import { PlacePhotoCarousel } from "@/components/places/PlacePhotoCarousel";
 import { PlaceBookingPanel, type PlaceBookingPayload } from "@/components/places/PlaceBookingPanel";
 import { PlaceHighlights } from "@/components/places/PlaceHighlights";
+import { PlaceBookingScanner } from "@/components/places/PlaceBookingScanner";
 import { useAdaptivePhotoTheme } from "@/hooks/useAdaptivePhotoTheme";
 import QRCode from "qrcode";
+import { bookingQrPayload } from "@shared/placeBookingQr";
 import {
   ArrowLeft, Heart, Share2, Star, MapPin, Phone, Mail, Globe, Clock, Calendar,
-  ThumbsUp, CheckCircle2, Download, X,
+  ThumbsUp, CheckCircle2, Download, X, QrCode,
 } from "lucide-react";
 import type { PlaceBookingMode } from "@shared/placeBooking";
 import type { Place, PlaceReview, PlacePhoto, PlaceBooking } from "@shared/schema";
@@ -55,6 +57,7 @@ export default function PlaceProfile() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState({ bookingType: "session", title: "", startTime: "", endTime: "" });
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [showBookingScanner, setShowBookingScanner] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -76,6 +79,10 @@ export default function PlaceProfile() {
       return () => el.removeEventListener('scroll', handleScroll);
     }
   }, [handleScroll]);
+
+  useEffect(() => {
+    if (window.location.hash === "#scan") setShowBookingScanner(true);
+  }, []);
 
   const { data: place, isLoading } = usePlace(placeId);
 
@@ -179,15 +186,31 @@ export default function PlaceProfile() {
     },
   });
 
-  const confirmBooking = useCallback(async (booking: PlaceBooking) => {
+  const confirmBooking = useCallback(async (booking: PlaceBooking & { scanToken?: string }) => {
     setShowBookingModal(false);
     setConfirmedBooking(booking);
     try {
-      const qrUrl = await QRCode.toDataURL(JSON.stringify({
-        bookingId: booking.id, placeId: booking.placeId, title: booking.title, startTime: booking.startTime,
-      }), { width: 300, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
-      setQrCodeUrl(qrUrl);
-    } catch {}
+      if (booking.status === "confirmed") {
+        const payload = booking.scanToken
+          ? bookingQrPayload(booking.scanToken)
+          : JSON.stringify({
+              bookingId: booking.id,
+              placeId: booking.placeId,
+              title: booking.title,
+              startTime: booking.startTime,
+            });
+        const qrUrl = await QRCode.toDataURL(payload, {
+          width: 300,
+          margin: 2,
+          color: { dark: "#000000", light: "#FFFFFF" },
+        });
+        setQrCodeUrl(qrUrl);
+      } else {
+        setQrCodeUrl("");
+      }
+    } catch {
+      setQrCodeUrl("");
+    }
     setShowConfirmationModal(true);
     setBookingData({ bookingType: "session", title: "", startTime: "", endTime: "" });
     const confirmed = booking.status === "confirmed";
@@ -248,6 +271,8 @@ export default function PlaceProfile() {
   const hours = place.hours as Record<string, string> | null;
   const bookingMode = ((place as Place & { bookingMode?: string }).bookingMode ?? "request") as PlaceBookingMode;
   const acceptsOnlineBooking = bookingMode !== "none";
+  const isOwner =
+    !!user?.id && !!place.ownerId && String(user.id) === String(place.ownerId);
 
   const bookingTheme = { accentColor, cardBg, textPrimary, textSecondary, textTertiary, borderColor, isDark };
 
@@ -394,6 +419,37 @@ export default function PlaceProfile() {
 
         {placeId && !isDemo && (
           <PlaceHighlights placeId={placeId} placeName={place.name} />
+        )}
+
+        {isOwner && !isDemo && placeId && (
+          <div className="px-4 pb-2">
+            <button
+              type="button"
+              onClick={() => setShowBookingScanner(true)}
+              className="w-full p-4 rounded-2xl flex items-center justify-between gap-3 transition-all active:scale-[0.99]"
+              style={{ background: cardBg, border: `1px solid ${borderColor}` }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ background: `${accentColor}22` }}
+                >
+                  <QrCode size={18} style={{ color: accentColor }} />
+                </div>
+                <div className="text-left">
+                  <p className="text-[14px] font-semibold" style={{ color: textPrimary }}>
+                    Scan bookings at door
+                  </p>
+                  <p className="text-[12px]" style={{ color: textSecondary }}>
+                    One-time check-in · see who arrived
+                  </p>
+                </div>
+              </div>
+              <span className="text-[13px] font-semibold" style={{ color: accentColor }}>
+                Open →
+              </span>
+            </button>
+          </div>
         )}
 
         <EntitySectionTabs
@@ -740,6 +796,19 @@ export default function PlaceProfile() {
         path={`/places/${placeId}`}
         shareText={`${place.name}${place.city ? ` · ${place.city}` : ""}`}
       />
+      {placeId && (
+        <PlaceBookingScanner
+          placeId={placeId}
+          placeName={place.name}
+          open={showBookingScanner}
+          onClose={() => setShowBookingScanner(false)}
+          accentColor={accentColor}
+          pageBg={pageBg}
+          borderColor={borderColor}
+          textPrimary={textPrimary}
+          textSecondary={textSecondary}
+        />
+      )}
     </div>
   );
 }

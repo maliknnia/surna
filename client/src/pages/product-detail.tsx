@@ -11,33 +11,35 @@ import {
 } from "@/lib/marketplaceApi";
 import type { ProductVariant } from "@shared/marketplaceVariants";
 import TeamBulkOrderSheet from "@/components/marketplace/TeamBulkOrderSheet";
-import { 
-  Star, 
-  Heart, 
-  ShoppingCart, 
-  Truck, 
-  Shield, 
-  ArrowLeft, 
-  Plus, 
+import {
+  Star,
+  Heart,
+  ShoppingCart,
+  Truck,
+  Shield,
+  ArrowLeft,
+  Plus,
   Minus,
   Share2,
   MessageCircle,
   Users,
+  Package,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { deriveModernSources, deriveLqipPlaceholder } from "@/lib/imageSources";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import {
+  EntityEmptyState,
+  EntityListSkeleton,
+  EntitySectionTabs,
+  entityBtnClass,
+  entityBtnSurface,
+  entityCardStyle,
+} from "@/components/entity";
+import { useSmartBack } from "@/lib/navigation";
+import { cn } from "@/lib/utils";
 
 interface ProductPricing {
   originalPrice: number;
@@ -137,6 +139,14 @@ export default function ProductDetail() {
     text: ""
   });
   const [newQuestion, setNewQuestion] = useState("");
+  const [detailTab, setDetailTab] = useState<"description" | "reviews" | "qa" | "specs">("description");
+  const goBack = useSmartBack({ fallback: "/marketplace" });
+
+  const inputStyle = {
+    background: "var(--surna-bg-highlight)",
+    border: "1px solid var(--surna-border)",
+    color: "var(--surna-text)",
+  } as const;
 
   const productId = params?.id;
 
@@ -370,44 +380,40 @@ export default function ProductDetail() {
   };
 
   if (!productId) {
-    return <div>Product not found</div>;
+    return (
+      <div className="min-h-screen max-w-md mx-auto" style={{ background: "var(--surna-base)" }}>
+        <EntityEmptyState icon={Package} title="Product not found" actionLabel="Back to Marketplace" actionHref="/marketplace" />
+      </div>
+    );
   }
 
   if (productLoading) {
     return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Skeleton className="aspect-square w-full" />
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="h-10 w-1/3" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        </div>
+      <div className="min-h-screen max-w-md mx-auto px-4 pt-6" style={{ background: "var(--surna-base)" }}>
+        <div className="aspect-square rounded-2xl mb-4 animate-pulse" style={{ background: "var(--surna-elevated)" }} />
+        <EntityListSkeleton rows={5} rowHeight={72} />
       </div>
     );
   }
 
   if (productError) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
-        <h1 className="text-2xl font-bold mb-2">Couldn&apos;t load product</h1>
-        <p className="text-muted-foreground mb-6">Check your connection and try again.</p>
-        <Link href="/marketplace">
-          <Button>Back to Marketplace</Button>
-        </Link>
+      <div className="min-h-screen max-w-md mx-auto" style={{ background: "var(--surna-base)" }}>
+        <EntityEmptyState
+          icon={Package}
+          title="Couldn't load product"
+          description="Check your connection and try again."
+          actionLabel="Back to Marketplace"
+          actionHref="/marketplace"
+        />
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="container mx-auto px-4 py-6 text-center">
-        <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
-        <Link href="/marketplace">
-          <Button>Back to Marketplace</Button>
-        </Link>
+      <div className="min-h-screen max-w-md mx-auto" style={{ background: "var(--surna-base)" }}>
+        <EntityEmptyState icon={Package} title="Product not found" actionLabel="Back to Marketplace" actionHref="/marketplace" />
       </div>
     );
   }
@@ -441,687 +447,636 @@ export default function ProductDetail() {
     hasVariants &&
     (managedTeams?.length ?? 0) > 0;
 
+  const detailTabs = [
+    { id: "description", label: "Details" },
+    { id: "reviews", label: `Reviews (${product.reviewCount || 0})` },
+    { id: "qa", label: "Q&A" },
+    { id: "specs", label: "Specs" },
+  ];
+
+  const chipBtn =
+    "w-9 h-9 rounded-full flex items-center justify-center active:scale-[0.96] transition-transform";
+  const chipStyle = {
+    background: "var(--surna-elevated)",
+    border: "1px solid var(--surna-border)",
+  } as const;
+
   return (
-    <div className="container mx-auto px-4 py-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link href="/marketplace" className="hover:underline" data-testid="breadcrumb-marketplace">
-          Marketplace
-        </Link>
-        <span>/</span>
-        <Link href={`/marketplace?categories=${product.category}`} className="hover:underline" data-testid="breadcrumb-category">
-          {product.category}
-        </Link>
-        <span>/</span>
-        <span className="text-foreground" data-testid="breadcrumb-product">{product.name}</span>
+    <div
+      className="min-h-screen max-w-md mx-auto relative"
+      style={{ background: "var(--surna-base)", color: "var(--surna-text)" }}
+    >
+      <header
+        className="sticky top-0 z-40 flex items-center gap-3 px-4 h-14 backdrop-blur-md border-b"
+        style={{
+          background: "color-mix(in srgb, var(--surna-base) 92%, transparent)",
+          borderColor: "var(--surna-border)",
+        }}
+      >
+        <button type="button" onClick={goBack} className={chipBtn} style={chipStyle} aria-label="Go back">
+          <ArrowLeft size={18} />
+        </button>
+        <p className="flex-1 text-[14px] font-semibold truncate" data-testid="breadcrumb-product">
+          {product.name}
+        </p>
+        <button
+          type="button"
+          className={chipBtn}
+          style={chipStyle}
+          onClick={() => addToWishlistMutation.mutate()}
+          disabled={!isAuthenticated || addToWishlistMutation.isPending}
+          data-testid="wishlist-button"
+          aria-label="Add to wishlist"
+        >
+          <Heart size={16} />
+        </button>
+        <button type="button" className={chipBtn} style={chipStyle} data-testid="share-button" aria-label="Share">
+          <Share2 size={16} />
+        </button>
+      </header>
+
+      <div className="aspect-square w-full overflow-hidden" style={{ background: "var(--surna-elevated)" }}>
+        <LazyImage
+          src={images[selectedImage]}
+          alt={product.name}
+          sources={selectedImage === 0 ? heroModernSources : deriveModernSources(images[selectedImage])}
+          placeholder={deriveLqipPlaceholder(images[selectedImage])}
+          wrapperClassName="block w-full h-full"
+          className="w-full h-full object-cover"
+          data-testid="product-main-image"
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-        {/* Product Images */}
-        <div className="space-y-4">
-          <div className="aspect-square bg-transparent border border-border rounded-lg overflow-hidden">
-            <LazyImage
-              src={images[selectedImage]}
-              alt={product.name}
-              sources={selectedImage === 0 ? heroModernSources : deriveModernSources(images[selectedImage])}
-              placeholder={deriveLqipPlaceholder(images[selectedImage])}
-              wrapperClassName="block w-full h-full"
-              className="w-full h-full object-cover"
-              data-testid="product-main-image"
-            />
-          </div>
-          
-          {images.length > 1 && (
-            <div className="flex gap-2">
-              {images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`w-20 h-20 rounded-lg overflow-hidden  ${
-                    selectedImage === index ? '' : ''
-                  }`}
-                  data-testid={`product-thumbnail-${index}`}
-                >
-                  <LazyImage
-                    src={image}
-                    alt={`${product.name} ${index + 1}`}
-                    sources={deriveModernSources(image)}
-                    placeholder={deriveLqipPlaceholder(image)}
-                    wrapperClassName="block w-full h-full"
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
+      <div className="px-4 pt-5 pb-2 space-y-4">
+        <div className="flex items-center gap-2 text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
+          <Link href="/marketplace" className="hover:underline" data-testid="breadcrumb-marketplace">
+            Marketplace
+          </Link>
+          <span>/</span>
+          <Link
+            href={`/marketplace?categories=${product.category}`}
+            className="hover:underline capitalize"
+            data-testid="breadcrumb-category"
+          >
+            {(product.category ?? "").replace(/-/g, " ")}
+          </Link>
         </div>
 
-        {/* Product Info */}
-        <div className="space-y-6">
-          <div>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold mb-2" data-testid="product-title">{product.name}</h1>
-                <p className="text-lg text-muted-foreground" data-testid="product-brand">{product.brand}</p>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => addToWishlistMutation.mutate()}
-                  disabled={!isAuthenticated || addToWishlistMutation.isPending}
-                  data-testid="wishlist-button"
-                >
-                  <Heart className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" data-testid="share-button">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+        <div>
+          <h1 className="text-[22px] font-extrabold leading-tight mb-1" data-testid="product-title">
+            {product.name}
+          </h1>
+          {product.brand ? (
+            <p className="text-[14px]" style={{ color: "var(--surna-text-secondary)" }} data-testid="product-brand">
+              {product.brand}
+            </p>
+          ) : null}
+          {product.isVerifiedSeller ? (
+            <span
+              className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+              style={{ background: "var(--surna-bg-highlight)", color: "var(--surna-gold)" }}
+              data-testid="verified-seller-badge"
+            >
+              <Shield size={12} />
+              Verified Seller
+            </span>
+          ) : null}
+        </div>
 
-            {product.isVerifiedSeller && (
-              <Badge variant="secondary" className="mt-2" data-testid="verified-seller-badge">
-                <Shield className="h-3 w-3 mr-1" />
-                Verified Seller
-              </Badge>
+        {product.avgRating ? (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center" data-testid="product-rating">
+              <div className="flex items-center mr-2">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className="h-3.5 w-3.5"
+                    style={{
+                      fill: i < Math.floor(product.avgRating!) ? "var(--surna-gold)" : "transparent",
+                      color: i < Math.floor(product.avgRating!) ? "var(--surna-gold)" : "var(--surna-border)",
+                    }}
+                  />
+                ))}
+              </div>
+              <span className="text-[14px] font-semibold">{product.avgRating.toFixed(1)}</span>
+            </div>
+            <span className="text-[13px]" style={{ color: "var(--surna-text-secondary)" }} data-testid="review-count">
+              ({product.reviewCount} reviews)
+            </span>
+          </div>
+        ) : null}
+
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <span className="text-[28px] font-extrabold" style={{ color: "var(--surna-gold)" }} data-testid="current-price">
+            €{currentPrice}
+          </span>
+          {hasDiscount ? (
+            <>
+              <span className="text-[16px] line-through" style={{ color: "var(--surna-text-secondary)" }} data-testid="original-price">
+                €{originalPrice}
+              </span>
+              <span
+                className="px-2 py-0.5 rounded-full text-[11px] font-bold"
+                style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}
+                data-testid="discount-badge"
+              >
+                {(product.pricing as ProductPricing | undefined)?.discountPercentage}% OFF
+              </span>
+            </>
+          ) : null}
+        </div>
+
+        {(product.pricing as ProductPricing | undefined)?.flashSale ? (
+          <p className="text-[13px] font-semibold" style={{ color: "var(--surna-gold)" }} data-testid="flash-sale-notice">
+            Flash sale — limited time
+          </p>
+        ) : null}
+
+        {effectiveStock !== undefined ? (
+          <div className="text-[13px]" data-testid="stock-status">
+            {effectiveStock > 0 ? (
+              <span style={{ color: "#22c55e" }}>
+                In stock · {effectiveStock} available
+                {selectedVariant ? ` · ${selectedVariant.label}` : ""}
+              </span>
+            ) : (
+              <span style={{ color: "#ef4444" }}>
+                {hasVariants && !selectedVariant ? "Select a size" : "Out of stock"}
+              </span>
             )}
           </div>
+        ) : null}
 
-          {/* Rating */}
-          {product.avgRating && (
-            <div className="flex items-center gap-4">
-              <div className="flex items-center" data-testid="product-rating">
-                <div className="flex items-center mr-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      className={`h-4 w-4 ${
-                        i < Math.floor(product.avgRating!) 
-                          ? 'fill-token-text text-token-text' 
-                          : 'text-token-text-muted'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="font-medium">{product.avgRating.toFixed(1)}</span>
-              </div>
-              <span className="text-muted-foreground" data-testid="review-count">
-                ({product.reviewCount} reviews)
-              </span>
+        {hasVariants && variants.length > 0 ? (
+          <div className="space-y-2" data-testid="size-selector">
+            <p className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: "var(--surna-text-secondary)" }}>
+              {variants[0]?.variantType === "shoe" ? "Shoe size (EU)" : "Size"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {variants.map((variant) => {
+                const active = selectedVariantId === variant.id;
+                const disabled = variant.stock <= 0;
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      setSelectedVariantId(variant.id);
+                      setQuantity(1);
+                    }}
+                    className={cn(
+                      "min-w-[2.75rem] px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors",
+                      disabled && "opacity-40 cursor-not-allowed",
+                    )}
+                    style={{
+                      background: active ? "var(--surna-gold)" : "var(--surna-bg-highlight)",
+                      border: `1px solid ${active ? "var(--surna-gold)" : "var(--surna-border)"}`,
+                      color: active ? "#000" : "var(--surna-text)",
+                    }}
+                    data-testid={`size-option-${variant.label}`}
+                  >
+                    {variant.label}
+                  </button>
+                );
+              })}
             </div>
-          )}
-
-          {/* Pricing */}
-          <div className="space-y-2">
-            <div className="flex items-baseline gap-4">
-              <span className="text-3xl font-bold text-token-text" data-testid="current-price">
-                €{currentPrice}
-              </span>
-              {hasDiscount && (
-                <>
-                  <span className="text-xl text-muted-foreground line-through" data-testid="original-price">
-                    €{originalPrice}
-                  </span>
-                  <Badge variant="destructive" data-testid="discount-badge">
-                    {(product.pricing as ProductPricing | undefined)?.discountPercentage}% OFF
-                  </Badge>
-                </>
-              )}
-            </div>
-            
-            {(product.pricing as ProductPricing | undefined)?.flashSale && (
-              <div className="text-sm text-token-text font-medium" data-testid="flash-sale-notice">
-                🔥 Flash Sale - Limited Time Only!
-              </div>
-            )}
           </div>
+        ) : null}
 
-          {/* Stock Status */}
-          {effectiveStock !== undefined && (
-            <div data-testid="stock-status">
-              {effectiveStock > 0 ? (
-                <div className="text-token-text">
-                  <span className="font-medium">In Stock</span>
-                  <span className="text-sm ml-2">({effectiveStock} available{selectedVariant ? ` · ${selectedVariant.label}` : ""})</span>
-                </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-medium" style={{ color: "var(--surna-text-secondary)" }}>
+            Quantity
+          </span>
+          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--surna-border)" }}>
+            <button
+              type="button"
+              className="w-10 h-10 flex items-center justify-center active:opacity-70"
+              style={{ background: "var(--surna-bg-highlight)" }}
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              disabled={quantity <= 1}
+              data-testid="quantity-decrease"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="px-4 min-w-[3rem] text-center text-[15px] font-semibold" data-testid="quantity-display">
+              {quantity}
+            </span>
+            <button
+              type="button"
+              className="w-10 h-10 flex items-center justify-center active:opacity-70"
+              style={{ background: "var(--surna-bg-highlight)" }}
+              onClick={() => setQuantity(quantity + 1)}
+              disabled={effectiveStock !== undefined && quantity >= effectiveStock}
+              data-testid="quantity-increase"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {canTeamBulkOrder ? (
+          <button
+            type="button"
+            className={cn(entityBtnClass, "w-full")}
+            style={entityBtnSurface}
+            onClick={() => setTeamBulkOpen(true)}
+            data-testid="team-bulk-order-button"
+          >
+            <Users className="h-4 w-4" />
+            Order for my team
+          </button>
+        ) : null}
+
+        <TeamBulkOrderSheet
+          open={teamBulkOpen}
+          onClose={() => setTeamBulkOpen(false)}
+          productId={productId!}
+          productTitle={product.name}
+        />
+
+        {product.shop ? (
+          <div className="p-4 rounded-2xl" style={entityCardStyle}>
+            <div className="flex items-center gap-3">
+              {product.shop.logoUrl ? (
+                <img
+                  src={product.shop.logoUrl}
+                  alt={product.shop.name}
+                  className="w-11 h-11 rounded-full object-cover"
+                  data-testid="shop-logo"
+                />
               ) : (
-                <div className="text-token-text font-medium">
-                  {hasVariants && !selectedVariant ? "Select a size" : "Out of Stock"}
+                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "var(--surna-bg-highlight)" }}>
+                  <Package size={18} style={{ color: "var(--surna-text-secondary)" }} />
                 </div>
               )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] uppercase tracking-wider" style={{ color: "var(--surna-text-secondary)" }}>
+                  Sold by
+                </p>
+                <Link href={marketplaceShopPath(product.shop.id)}>
+                  <p className="text-[14px] font-semibold truncate" data-testid="shop-name-link">
+                    {product.shop.name}
+                  </p>
+                </Link>
+              </div>
+              <Link href={marketplaceShopPath(product.shop.id)}>
+                <span className="text-[13px] font-semibold shrink-0" style={{ color: "var(--surna-gold)" }} data-testid="view-shop-button">
+                  Shop →
+                </span>
+              </Link>
             </div>
-          )}
+            {product.seller_id ? (
+              <button
+                type="button"
+                className={cn(entityBtnClass, "w-full mt-3")}
+                style={entityBtnSurface}
+                onClick={() => setLocation(`/messages?userId=${encodeURIComponent(product.seller_id!)}`)}
+                data-testid="message-seller-button"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Message seller
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
-          {hasVariants && variants.length > 0 ? (
-            <div className="space-y-2" data-testid="size-selector">
-              <Label>
-                {variants[0]?.variantType === "shoe" ? "Shoe size (EU)" : "Size"}
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {variants.map((variant) => {
-                  const active = selectedVariantId === variant.id;
-                  const disabled = variant.stock <= 0;
+        <div className="space-y-2.5 pb-2">
+          <div className="flex items-center gap-3 text-[13px]" style={{ color: "var(--surna-text-secondary)" }}>
+            <Truck className="h-4 w-4 shrink-0" style={{ color: "var(--surna-gold)" }} />
+            <span>Free shipping on orders over €50</span>
+          </div>
+          <div className="flex items-center gap-3 text-[13px]" style={{ color: "var(--surna-text-secondary)" }}>
+            <Shield className="h-4 w-4 shrink-0" style={{ color: "var(--surna-gold)" }} />
+            <span>30-day return policy</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4">
+        <EntitySectionTabs
+          tabs={detailTabs}
+          activeId={detailTab}
+          onChange={(id) => setDetailTab(id as typeof detailTab)}
+          stickyTop="top-14"
+          testIdPrefix="tab"
+        />
+      </div>
+
+      <div className="px-4 pb-36 space-y-4">
+        {detailTab === "description" ? (
+          <div className="p-4 rounded-2xl" style={entityCardStyle}>
+            <p className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--surna-text-secondary)" }} data-testid="product-description">
+              {product.description || "No description available."}
+            </p>
+          </div>
+        ) : null}
+
+        {detailTab === "reviews" ? (
+          <div className="space-y-4">
+            {isAuthenticated ? (
+              <div className="p-4 rounded-2xl space-y-4" style={entityCardStyle}>
+                <p className="text-[14px] font-semibold">Write a review</p>
+                <form onSubmit={handleSubmitReview} className="space-y-4">
+                  <div>
+                    <p className="text-[12px] mb-2" style={{ color: "var(--surna-text-secondary)" }}>Rating</p>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <button
+                          key={rating}
+                          type="button"
+                          onClick={() => setNewReview((prev) => ({ ...prev, rating }))}
+                          data-testid={`rating-star-${rating}`}
+                        >
+                          <Star
+                            className="h-6 w-6"
+                            style={{
+                              fill: rating <= newReview.rating ? "var(--surna-gold)" : "transparent",
+                              color: rating <= newReview.rating ? "var(--surna-gold)" : "var(--surna-border)",
+                            }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <input
+                    id="review-title"
+                    value={newReview.title}
+                    onChange={(e) => setNewReview((prev) => ({ ...prev, title: e.target.value }))}
+                    placeholder="Review title"
+                    className="w-full px-3 py-2.5 rounded-lg text-[14px] outline-none"
+                    style={inputStyle}
+                    data-testid="review-title-input"
+                  />
+                  <textarea
+                    id="review-text"
+                    value={newReview.text}
+                    onChange={(e) => setNewReview((prev) => ({ ...prev, text: e.target.value }))}
+                    placeholder="Share your experience"
+                    rows={4}
+                    className="w-full px-3 py-2.5 rounded-lg text-[14px] outline-none resize-none"
+                    style={inputStyle}
+                    data-testid="review-text-input"
+                  />
+                  <button
+                    type="submit"
+                    disabled={createReviewMutation.isPending}
+                    className={cn(entityBtnClass, "w-full")}
+                    style={{ ...entityBtnSurface, background: "var(--surna-gold)", color: "#000" }}
+                    data-testid="submit-review-button"
+                  >
+                    Submit review
+                  </button>
+                </form>
+              </div>
+            ) : null}
+
+            {reviewsLoading ? (
+              <EntityListSkeleton rows={3} rowHeight={88} />
+            ) : reviewsData && reviewsData.length > 0 ? (
+              <div className="space-y-3" data-testid="reviews-list">
+                {reviewsData.map((reviewItem: { review: { id: string; rating: number; reviewTitle: string; reviewText: string; isVerifiedPurchase: boolean; createdAt: string }; user: { id: string; firstName: string; profileImageUrl?: string } }) => {
+                  const review = reviewItem.review;
+                  const user = reviewItem.user;
                   return (
-                    <button
-                      key={variant.id}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => {
-                        setSelectedVariantId(variant.id);
-                        setQuantity(1);
-                      }}
-                      className={`min-w-[2.75rem] px-3 py-2 rounded-md text-sm font-semibold border transition-colors ${
-                        active
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : disabled
-                            ? "border-border text-muted-foreground opacity-40 cursor-not-allowed"
-                            : "border-border hover:border-primary"
-                      }`}
-                      data-testid={`size-option-${variant.label}`}
-                    >
-                      {variant.label}
-                    </button>
+                    <div key={review.id} className="p-4 rounded-2xl" style={entityCardStyle}>
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={user.profileImageUrl || "/api/placeholder/48/48"}
+                          alt={user.firstName}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-[14px] font-semibold">{user.firstName}</span>
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className="h-3 w-3"
+                                  style={{
+                                    fill: i < review.rating ? "var(--surna-gold)" : "transparent",
+                                    color: i < review.rating ? "var(--surna-gold)" : "var(--surna-border)",
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            {review.isVerifiedPurchase ? (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--surna-bg-highlight)", color: "var(--surna-text-secondary)" }}>
+                                Verified
+                              </span>
+                            ) : null}
+                          </div>
+                          <h4 className="text-[14px] font-medium mb-1">{review.reviewTitle}</h4>
+                          <p className="text-[13px] leading-relaxed" style={{ color: "var(--surna-text-secondary)" }}>
+                            {review.reviewText}
+                          </p>
+                          <p className="text-[11px] mt-2" style={{ color: "var(--surna-text-secondary)" }}>
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
-            </div>
-          ) : null}
+            ) : (
+              <EntityEmptyState icon={Star} title="No reviews yet" description="Be the first to review this product." compact />
+            )}
+          </div>
+        ) : null}
 
-          {/* Quantity Selector */}
-          <div className="flex items-center gap-4">
-            <Label htmlFor="quantity">Quantity:</Label>
-            <div className="flex items-center rounded-md">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={quantity <= 1}
-                data-testid="quantity-decrease"
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="px-4 py-2 min-w-[3rem] text-center" data-testid="quantity-display">
-                {quantity}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setQuantity(quantity + 1)}
-                disabled={effectiveStock !== undefined && quantity >= effectiveStock}
-                data-testid="quantity-increase"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+        {detailTab === "qa" ? (
+          <div className="space-y-4">
+            {isAuthenticated ? (
+              <div className="p-4 rounded-2xl space-y-4" style={entityCardStyle}>
+                <p className="text-[14px] font-semibold">Ask a question</p>
+                <form onSubmit={handleSubmitQuestion} className="space-y-3">
+                  <textarea
+                    value={newQuestion}
+                    onChange={(e) => setNewQuestion(e.target.value)}
+                    placeholder="Ask about sizing, materials, or delivery..."
+                    rows={3}
+                    className="w-full px-3 py-2.5 rounded-lg text-[14px] outline-none resize-none"
+                    style={inputStyle}
+                    data-testid="question-input"
+                  />
+                  <button
+                    type="submit"
+                    disabled={createQuestionMutation.isPending || !newQuestion.trim()}
+                    className={cn(entityBtnClass, "w-full")}
+                    style={{ ...entityBtnSurface, background: "var(--surna-gold)", color: "#000" }}
+                    data-testid="submit-question-button"
+                  >
+                    Submit question
+                  </button>
+                </form>
+              </div>
+            ) : null}
+
+            {questionsLoading ? (
+              <EntityListSkeleton rows={2} rowHeight={96} />
+            ) : questions && questions.length > 0 ? (
+              <div className="space-y-3" data-testid="questions-list">
+                {questions.map((question: Question) => (
+                  <div key={question.id} className="p-4 rounded-2xl" style={entityCardStyle}>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <MessageCircle className="h-4 w-4" style={{ color: "var(--surna-gold)" }} />
+                          <span className="text-[13px] font-semibold">Question</span>
+                          <span className="text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
+                            · {question.user.firstName}
+                          </span>
+                        </div>
+                        <p className="text-[14px]">{question.question}</p>
+                        <p className="text-[11px] mt-1" style={{ color: "var(--surna-text-secondary)" }}>
+                          {new Date(question.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+
+                      {question.answers && question.answers.length > 0 ? (
+                        <div className="space-y-3 pl-4 border-l-2" style={{ borderColor: "var(--surna-border)" }}>
+                          {question.answers.map((answer) => (
+                            <div key={answer.id}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[13px] font-semibold">{answer.user.firstName}</span>
+                                {answer.isFromSeller ? (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--surna-bg-highlight)", color: "var(--surna-gold)" }}>
+                                    Seller
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="text-[13px]" style={{ color: "var(--surna-text-secondary)" }}>
+                                {answer.answer}
+                              </p>
+                              <div className="flex items-center gap-3 mt-1 text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
+                                <span>{new Date(answer.createdAt).toLocaleDateString()}</span>
+                                <span>{answer.helpfulVotes} found helpful</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EntityEmptyState icon={MessageCircle} title="No questions yet" description="Be the first to ask about this product." compact />
+            )}
+          </div>
+        ) : null}
+
+        {detailTab === "specs" ? (
+          <div className="p-4 rounded-2xl space-y-4" style={entityCardStyle}>
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--surna-text-secondary)" }}>
+                Basic info
+              </p>
+              <dl className="space-y-2 text-[13px]">
+                <div className="flex justify-between gap-4">
+                  <dt style={{ color: "var(--surna-text-secondary)" }}>Brand</dt>
+                  <dd className="font-medium">{product.brand || "N/A"}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt style={{ color: "var(--surna-text-secondary)" }}>Category</dt>
+                  <dd className="font-medium capitalize">{(product.category ?? "").replace(/-/g, " ")}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt style={{ color: "var(--surna-text-secondary)" }}>Product ID</dt>
+                  <dd className="font-medium text-right break-all">{product.id}</dd>
+                </div>
+              </dl>
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--surna-text-secondary)" }}>
+                Availability
+              </p>
+              <dl className="space-y-2 text-[13px]">
+                <div className="flex justify-between gap-4">
+                  <dt style={{ color: "var(--surna-text-secondary)" }}>Stock</dt>
+                  <dd className="font-medium">{product.currentStock || 0} available</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt style={{ color: "var(--surna-text-secondary)" }}>Shipping</dt>
+                  <dd className="font-medium">Free on orders €50+</dd>
+                </div>
+              </dl>
             </div>
           </div>
+        ) : null}
 
-          {/* Add to Cart */}
-          <div className="flex gap-4">
-            <Button 
-              size="lg" 
-              className="flex-1"
+        {product.relatedProducts && product.relatedProducts.length > 0 ? (
+          <div className="pt-2">
+            <h2 className="text-[16px] font-bold mb-3" data-testid="related-products-title">
+              Frequently bought together
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              {product.relatedProducts.map((relatedProduct) => (
+                <Link key={relatedProduct.id} href={marketplaceProductPath(relatedProduct.id)} data-testid={`related-product-${relatedProduct.id}`}>
+                  <div className="rounded-2xl overflow-hidden" style={entityCardStyle}>
+                    <div className="aspect-square overflow-hidden">
+                      <LazyImage
+                        src={relatedProduct.imageUrl || "/api/placeholder/200/200"}
+                        alt={relatedProduct.name}
+                        sources={deriveModernSources(relatedProduct.imageUrl)}
+                        placeholder={deriveLqipPlaceholder(relatedProduct.imageUrl)}
+                        wrapperClassName="block w-full h-full"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <h3 className="text-[13px] font-medium truncate">{relatedProduct.name}</h3>
+                      <p className="text-[15px] font-bold mt-0.5" style={{ color: "var(--surna-gold)" }}>
+                        €{relatedProduct.price}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="fixed bottom-0 inset-x-0 z-50 pointer-events-none">
+        <div
+          className="max-w-md mx-auto pointer-events-auto px-4 pt-3 pb-5 border-t backdrop-blur-md"
+          style={{
+            background: "color-mix(in srgb, var(--surna-base) 94%, transparent)",
+            borderColor: "var(--surna-border)",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="shrink-0">
+              <p className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>Total</p>
+              <p className="text-[20px] font-extrabold" style={{ color: "var(--surna-gold)" }}>
+                €{(currentPrice * quantity).toFixed(2)}
+              </p>
+            </div>
+            <button
+              type="button"
+              className={cn(entityBtnClass, "shrink-0 px-4")}
+              style={entityBtnSurface}
               onClick={handleAddToCart}
               disabled={effectiveStock <= 0 || addToCartMutation.isPending}
               data-testid="add-to-cart-button"
             >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Add to Cart
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1 w-full"
+              <ShoppingCart className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className={cn(entityBtnClass, "flex-[2]")}
+              style={{ background: "var(--surna-gold)", color: "#000" }}
               disabled={effectiveStock <= 0 || addToCartMutation.isPending}
               onClick={handleBuyNow}
               data-testid="buy-now-button"
             >
-              Buy Now
-            </Button>
-          </div>
-
-          {canTeamBulkOrder ? (
-            <Button
-              variant="secondary"
-              size="lg"
-              className="w-full"
-              onClick={() => setTeamBulkOpen(true)}
-              data-testid="team-bulk-order-button"
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Order for my team
-            </Button>
-          ) : null}
-
-          <TeamBulkOrderSheet
-            open={teamBulkOpen}
-            onClose={() => setTeamBulkOpen(false)}
-            productId={productId!}
-            productTitle={product.name}
-          />
-
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-full"
-            onClick={() => {
-              if (product.seller_id) {
-                setLocation(`/messages?userId=${encodeURIComponent(product.seller_id)}`);
-              }
-            }}
-            disabled={!product.seller_id}
-            data-testid="message-seller-below-cart-button"
-          >
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Message Seller
-          </Button>
-
-          {/* Shop & Seller Actions */}
-          {product.shop && (
-            <Card className="bg-muted/40 border-border">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {product.shop.logoUrl && (
-                      <img
-                        src={product.shop.logoUrl}
-                        alt={product.shop.name}
-                        className="w-12 h-12 rounded-full object-cover"
-                        data-testid="shop-logo"
-                      />
-                    )}
-                    <div>
-                      <p className="text-sm text-muted-foreground">Sold by</p>
-                      <Link href={marketplaceShopPath(product.shop.id)}>
-                        <p className="font-medium hover:text-token-text transition-colors" data-testid="shop-name-link">
-                          {product.shop.name}
-                        </p>
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link href={`/marketplace/shop/${product.shop.id}`}>
-                      <Button variant="outline" size="sm" data-testid="view-shop-button">
-                        View Shop
-                      </Button>
-                    </Link>
-                    <Link href={`/messages?userId=${product.seller_id}`}>
-                      <Button variant="outline" size="sm" data-testid="message-seller-button">
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        Message Seller
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Delivery & Features */}
-          <div className="space-y-3 pt-4 ">
-            <div className="flex items-center gap-3 text-sm">
-              <Truck className="h-4 w-4 text-token-text" />
-              <span>Free shipping on orders over €50</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Shield className="h-4 w-4 text-token-text" />
-              <span>30-day return policy</span>
-            </div>
+              Buy now
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Product Tabs */}
-      <Tabs defaultValue="description" className="mb-12">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="description" data-testid="tab-description">Description</TabsTrigger>
-          <TabsTrigger value="reviews" data-testid="tab-reviews">
-            Reviews ({product.reviewCount || 0})
-          </TabsTrigger>
-          <TabsTrigger value="qa" data-testid="tab-qa">Q&A</TabsTrigger>
-          <TabsTrigger value="specifications" data-testid="tab-specifications">Specifications</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="description" className="mt-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="prose max-w-none" data-testid="product-description">
-                {product.description || "No description available."}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reviews" className="mt-6">
-          <div className="space-y-6">
-            {/* Write Review */}
-            {isAuthenticated && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Write a Review</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmitReview} className="space-y-4">
-                    <div>
-                      <Label>Rating</Label>
-                      <div className="flex items-center gap-1 mt-1">
-                        {[1, 2, 3, 4, 5].map((rating) => (
-                          <button
-                            key={rating}
-                            type="button"
-                            onClick={() => setNewReview(prev => ({ ...prev, rating }))}
-                            data-testid={`rating-star-${rating}`}
-                          >
-                            <Star 
-                              className={`h-6 w-6 ${
-                                rating <= newReview.rating 
-                                  ? 'fill-token-text text-token-text' 
-                                  : 'text-token-text-muted'
-                              }`}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="review-title">Title</Label>
-                      <Input
-                        id="review-title"
-                        value={newReview.title}
-                        onChange={(e) => setNewReview(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Summarize your review in a few words"
-                        data-testid="review-title-input"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="review-text">Review</Label>
-                      <Textarea
-                        id="review-text"
-                        value={newReview.text}
-                        onChange={(e) => setNewReview(prev => ({ ...prev, text: e.target.value }))}
-                        placeholder="Tell others about your experience with this product"
-                        rows={4}
-                        data-testid="review-text-input"
-                      />
-                    </div>
-                    
-                    <Button 
-                      type="submit" 
-                      disabled={createReviewMutation.isPending}
-                      data-testid="submit-review-button"
-                    >
-                      Submit Review
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Reviews List */}
-            {reviewsLoading ? (
-              <div className="space-y-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <Skeleton className="w-12 h-12 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-3 w-24" />
-                          <Skeleton className="h-16 w-full" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : reviewsData && reviewsData.length > 0 ? (
-              <div className="space-y-4" data-testid="reviews-list">
-                {reviewsData.map((reviewItem: any) => {
-                  const review = reviewItem.review;
-                  const user = reviewItem.user;
-                  return (
-                    <Card key={review.id}>
-                      <CardContent className="p-6">
-                        <div className="flex items-start gap-4">
-                          <img
-                            src={user.profileImageUrl || '/api/placeholder/48/48'}
-                            alt={user.firstName}
-                            className="w-12 h-12 rounded-full"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4 mb-2">
-                              <span className="font-medium">{user.firstName}</span>
-                              <div className="flex items-center">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star 
-                                    key={i} 
-                                    className={`h-3 w-3 ${
-                                      i < review.rating 
-                                        ? 'fill-token-text text-token-text' 
-                                        : 'text-token-text-muted'
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                              {review.isVerifiedPurchase && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Verified Purchase
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            <h4 className="font-medium mb-2">{review.reviewTitle}</h4>
-                            <p className="text-muted-foreground text-sm">{review.reviewText}</p>
-                            
-                            <div className="text-xs text-muted-foreground mt-2">
-                              {new Date(review.createdAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground">No reviews yet. Be the first to review this product!</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="qa" className="mt-6">
-          <div className="space-y-6">
-            {/* Ask Question */}
-            {isAuthenticated && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ask a Question</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmitQuestion} className="space-y-4">
-                    <Textarea
-                      value={newQuestion}
-                      onChange={(e) => setNewQuestion(e.target.value)}
-                      placeholder="Ask about product details, specifications, or usage..."
-                      rows={3}
-                      data-testid="question-input"
-                    />
-                    <Button 
-                      type="submit" 
-                      disabled={createQuestionMutation.isPending || !newQuestion.trim()}
-                      data-testid="submit-question-button"
-                    >
-                      Submit Question
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Questions List */}
-            {questionsLoading ? (
-              <div className="space-y-4">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-6">
-                      <Skeleton className="h-4 w-full mb-4" />
-                      <Skeleton className="h-16 w-full" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : questions && questions.length > 0 ? (
-              <div className="space-y-4" data-testid="questions-list">
-                {questions.map((question: Question) => (
-                  <Card key={question.id}>
-                    <CardContent className="p-6">
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <MessageCircle className="h-4 w-4 text-token-text" />
-                            <span className="font-medium">Question</span>
-                            <span className="text-sm text-muted-foreground">
-                              by {question.user.firstName}
-                            </span>
-                          </div>
-                          <p className="text-sm">{question.question}</p>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {new Date(question.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-
-                        {question.answers && question.answers.length > 0 && (
-                          <div className="space-y-3 pl-6  /20">
-                            {question.answers.map((answer) => (
-                              <div key={answer.id}>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="font-medium text-sm">
-                                    {answer.user.firstName}
-                                  </span>
-                                  {answer.isFromSeller && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      Seller
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">{answer.answer}</p>
-                                <div className="flex items-center gap-4 mt-2">
-                                  <div className="text-xs text-muted-foreground">
-                                    {new Date(answer.createdAt).toLocaleDateString()}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {answer.helpfulVotes} found this helpful
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground">No questions yet. Be the first to ask!</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="specifications" className="mt-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Basic Information</h4>
-                    <dl className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Brand:</dt>
-                        <dd>{product.brand || 'N/A'}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Category:</dt>
-                        <dd>{product.category}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Product ID:</dt>
-                        <dd>{product.id}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium mb-2">Availability</h4>
-                    <dl className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Stock:</dt>
-                        <dd>{product.currentStock || 0} available</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Shipping:</dt>
-                        <dd>Free on orders €50+</dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Related Products */}
-      {product.relatedProducts && product.relatedProducts.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold mb-6" data-testid="related-products-title">
-            Frequently Bought Together
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {product.relatedProducts.map((relatedProduct) => (
-              <Link key={relatedProduct.id} href={marketplaceProductPath(relatedProduct.id)}>
-                <Card className="hover:shadow-lg transition-shadow" data-testid={`related-product-${relatedProduct.id}`}>
-                  <div className="aspect-square bg-transparent border border-border overflow-hidden">
-                    <LazyImage
-                      src={relatedProduct.imageUrl || '/api/placeholder/200/200'}
-                      alt={relatedProduct.name}
-                      sources={deriveModernSources(relatedProduct.imageUrl)}
-                      placeholder={deriveLqipPlaceholder(relatedProduct.imageUrl)}
-                      wrapperClassName="block w-full h-full"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-medium text-sm truncate">{relatedProduct.name}</h3>
-                    <p className="text-lg font-bold text-token-text mt-1">€{relatedProduct.price}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Back to Marketplace */}
-      <div className="mt-12 text-center">
-        <Link href="/marketplace">
-          <Button variant="outline" data-testid="back-to-marketplace">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Marketplace
-          </Button>
-        </Link>
       </div>
     </div>
   );

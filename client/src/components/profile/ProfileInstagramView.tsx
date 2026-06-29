@@ -295,8 +295,16 @@ export function ProfileInstagramView({
               type="button"
               onClick={onFollowToggle}
               disabled={socialLoading}
-              className={cn(igBtn, user.isFollowing ? "" : "bg-primary text-primary-foreground")}
-              style={user.isFollowing ? { ...btnSurface, border: "none" } : undefined}
+              className={cn(
+                entityBtnClass,
+                "flex-1",
+                !user.isFollowing && "border-0",
+              )}
+              style={
+                user.isFollowing
+                  ? entityBtnSurface
+                  : { background: "var(--surna-text)", color: "var(--surna-base)" }
+              }
             >
               {socialLoading ? (
                 <div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" />
@@ -309,8 +317,13 @@ export function ProfileInstagramView({
                 </>
               )}
             </button>
-            <button type="button" onClick={onMessage} className={cn(igBtn, "gap-1.5")} style={btnSurface}>
-              <MessageCircle className="w-4 h-4" strokeWidth={2} style={{ color: "var(--surna-text)" }} />
+            <button
+              type="button"
+              onClick={onMessage}
+              className={cn(entityBtnClass, "flex-1 gap-1.5")}
+              style={entityBtnSurface}
+            >
+              <MessageCircle className="w-4 h-4" strokeWidth={2} />
               Message
             </button>
           </>

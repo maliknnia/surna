@@ -17,6 +17,9 @@ import type { PostWithAuthor } from "@shared/schema";
 import { discoverPeoplePath } from "@/lib/socialPeopleApi";
 import { useProfileExtras } from "@/hooks/useProfileExtras";
 import { ROUTES } from "@/navigation";
+import { useSmartBack } from "@/lib/navigation";
+import { cn } from "@/lib/utils";
+import { entityBtnClass, entityBtnSurface } from "@/components/entity/entityStyles";
 
 export default function ProfilePage() {
   const { user, isLoading } = useAuth();
@@ -30,6 +33,10 @@ export default function ProfilePage() {
   const viewingUserId = params?.userId || (user as { id?: string })?.id;
   const isOwnProfile = !params?.userId || viewingUserId === (user as { id?: string })?.id;
   const [, setLocation] = useLocation();
+  const fromParam = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("from")
+    : null;
+  const goBack = useSmartBack({ fallback: fromParam || "/feed" });
 
   const { data: userStats, isLoading: statsLoading, isError: statsError } = useQuery<UserWithProfile | null>({
     queryKey: ["/api/users", viewingUserId],
@@ -140,7 +147,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) {
+  if (!user && isOwnProfile) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6" style={{ background: "var(--surna-void)" }}>
         <p style={{ color: "var(--surna-text-secondary)" }}>Please log in to view your profile.</p>
@@ -173,11 +180,9 @@ export default function ProfilePage() {
         }}
       >
         <div className="max-w-md mx-auto px-3 h-11 flex items-center justify-between">
-          <Link href="/feed">
-            <button type="button" className="p-2 -ml-1 active:opacity-60" aria-label="Back">
-              <ArrowLeft className="w-6 h-6" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
-            </button>
-          </Link>
+          <button type="button" onClick={goBack} className="p-2 -ml-1 active:opacity-60" aria-label="Back">
+            <ArrowLeft className="w-6 h-6" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
+          </button>
           <h1 className="text-[16px] font-semibold truncate max-w-[50%]" style={{ color: "var(--surna-text)" }}>
             {isOwnProfile ? "Profile" : username.replace(/^@+/, "")}
           </h1>

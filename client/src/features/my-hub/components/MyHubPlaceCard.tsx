@@ -25,6 +25,7 @@ import {
   Building2,
   MessageSquare,
   Video,
+  QrCode,
 } from "lucide-react";
 import { LockedAction } from "./LockedAction";
 import { StatusPill } from "./StatusPill";
@@ -225,6 +226,9 @@ export function MyHubPlaceCard({
             testId={`place-highlights-${place.id}`}
           />
         )}
+        <Link href={`/places/${place.id}#scan`}>
+          <ActionChip icon={QrCode} label="Scan" testId={`place-scan-${place.id}`} />
+        </Link>
         <ActionChip
           icon={Power}
           label={isActive ? "Mark closed" : "Reopen"}
@@ -249,6 +253,24 @@ export function MyHubPlaceCard({
         </button>
         {proOpen && (
           <div className="mt-3 space-y-2" data-testid={`place-pro-actions-${place.id}`}>
+            <Link href={`/places/${place.id}#scan`}>
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.99]"
+                style={{ background: "var(--surna-bg-highlight)" }}
+                data-testid={`place-pro-scan-${place.id}`}
+              >
+                <QrCode className="w-4 h-4 shrink-0" style={{ color: "var(--surna-text)" }} />
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--surna-text)" }}>
+                    Scan at door
+                  </p>
+                  <p className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
+                    Verify guest booking QR codes · one-time check-in
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 shrink-0" style={{ color: "var(--surna-text-muted)" }} />
+              </div>
+            </Link>
             <LockedAction
               icon={CalendarCheck}
               label={pending > 0 ? `Bookings · ${pending} pending` : "Bookings"}

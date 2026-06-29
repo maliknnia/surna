@@ -371,7 +371,7 @@ export const challengesRepo = {
     scope: 'user' | 'team',
     sport?: string,
     limit: number = 100
-  ): Promise<Array<{ entityId: string; rating: number; sport: string }>> {
+  ): Promise<Array<{ entityId: string; rating: number; sport: string; displayName: string; imageUrl: string | null }>> {
     // Get latest rating for each entity
     const subquery = db
       .select({
@@ -401,10 +401,62 @@ export const challengesRepo = {
       );
 
     if (sport) {
-      query = query.where(eq(ratingHistory.sport, sport)) as any;
+      query = query.where(eq(ratingHistory.sport, sport)) as typeof query;
     }
 
-    return query.orderBy(desc(ratingHistory.newRating)).limit(limit);
+    const entries = await query.orderBy(desc(ratingHistory.newRating)).limit(limit);
+    if (entries.length === 0) return [];
+
+    const ids = [...new Set(entries.map((e) => e.entityId))];
+
+    if (scope === 'user') {
+      const profiles =
+        ids.length > 0
+          ? await db
+              .select({
+                id: users.id,
+                displayName: users.displayName,
+                firstName: users.firstName,
+                lastName: users.lastName,
+                username: users.username,
+                profileImageUrl: users.profileImageUrl,
+              })
+              .from(users)
+              .where(inArray(users.id, ids))
+          : [];
+
+      const byId = new Map(profiles.map((p) => [p.id, p]));
+
+      return entries.map((entry) => {
+        const profile = byId.get(entry.entityId);
+        const displayName =
+          profile?.displayName?.trim() ||
+          `${profile?.firstName ?? ""} ${profile?.lastName ?? ""}`.trim() ||
+          profile?.username ||
+          entry.entityId.slice(0, 8);
+        return {
+          ...entry,
+          displayName,
+          imageUrl: profile?.profileImageUrl ?? null,
+        };
+      });
+    }
+
+    const teamRows =
+      ids.length > 0
+        ? await db
+            .select({ id: teams.id, name: teams.name, logo: teams.logo })
+            .from(teams)
+            .where(inArray(teams.id, ids))
+        : [];
+
+    const teamsById = new Map(teamRows.map((t) => [t.id, t]));
+
+    return entries.map((entry) => ({
+      ...entry,
+      displayName: teamsById.get(entry.entityId)?.name ?? entry.entityId.slice(0, 8),
+      imageUrl: teamsById.get(entry.entityId)?.logo ?? null,
+    }));
   },
 
   // Package #10: Get all ratings by sport for a specific user/team

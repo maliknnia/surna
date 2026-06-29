@@ -6,7 +6,9 @@ import { getSportLabels } from '@/lib/sportLabels';
 import TeamHeader from './components/TeamHeader';
 import TeamHighlights from './sections/TeamHighlights';
 import { EntityShareSheet } from '@/components/teams/EntityShareSheet';
-import { Loader2, ArrowLeft, Share2, QrCode, X } from 'lucide-react';
+import { TeamPageThemeProvider } from './TeamPageTheme';
+import { EntityEmptyState, EntityListSkeleton, EntitySectionTabs } from '@/components/entity';
+import { Loader2, ArrowLeft, Share2, QrCode, X, Trophy } from 'lucide-react';
 import { useDiscoveryCardBg } from '@/hooks/useDiscoveryCardBg';
 import { teamLogoUrl } from '@/lib/teamLogo';
 import { useSmartBack } from '@/lib/navigation';
@@ -22,6 +24,22 @@ const TeamChat = lazy(() => import('./sections/TeamChat'));
 const TeamProPublic = lazy(() => import('./sections/TeamProPublic'));
 const TeamChallenges = lazy(() => import('./sections/TeamChallenges'));
 type TabType = 'about' | 'members' | 'schedule' | 'photos' | 'sponsors' | 'feed' | 'challenges' | 'chat' | 'roster';
+
+type TeamAboutPropsTeam = {
+  id?: string;
+  sport?: string;
+  description?: string | null;
+  city?: string | null;
+  currentMembers?: number;
+  maxMembers?: number;
+  createdAt?: string | Date | null;
+  placeName?: string | null;
+  placeId?: string | null;
+  record?: { W?: number; L?: number; D?: number };
+  isPublic?: boolean;
+  canManage?: boolean;
+  isCaptain?: boolean;
+};
 
 export default function TeamPage() {
   const params = useParams();
@@ -73,22 +91,22 @@ export default function TeamPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surna-base)" }}>
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--surna-text-secondary)" }} />
       </div>
     );
   }
 
   if (error || !team) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Team Not Found</h2>
-          <p className="text-sm text-muted-foreground">The team you're looking for doesn't exist.</p>
-          <button onClick={() => setLocation('/teams')} className="mt-4 px-6 py-2 rounded-full text-sm font-semibold bg-muted/40 text-foreground">
-            Back to Teams
-          </button>
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6" style={{ background: "var(--surna-base)" }}>
+        <EntityEmptyState
+          icon={Trophy}
+          title="Team not found"
+          description="This team may have been removed or the link is invalid."
+          actionLabel="Browse teams"
+          actionHref="/teams"
+        />
       </div>
     );
   }
@@ -165,40 +183,41 @@ export default function TeamPage() {
           <TeamHighlights teamId={teamId!} teamName={(team as any).name} />
         </div>
 
-        {/* Sticky tab bar */}
-        <nav className="spotify-tab-bar">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide px-4">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition-all duration-200 relative ${
-                  activeTab === tab.id ? 'text-foreground' : 'text-muted-foreground'
-                }`}
-              >
-                {tab.label}
-                {activeTab === tab.id && (
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-[2px] rounded-full"
-                    style={{ background: extractedColor || config.ringColor }} />
-                )}
-              </button>
-            ))}
-          </div>
-        </nav>
+        {/* Sticky tab bar — entity tabs with sport accent */}
+        <div className="px-2" style={{ background: "var(--surna-base)" }}>
+          <EntitySectionTabs
+            tabs={tabs}
+            activeId={activeTab}
+            onChange={(id) => setActiveTab(id as TabType)}
+            stickyTop="top-0"
+            accentColor={topColor}
+            testIdPrefix="team-section"
+          />
+        </div>
 
-        {/* Floating section cards */}
-        <div className="spotify-sections">
-          <Suspense fallback={
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          }>
-            {activeTab === 'about' && <TeamAbout team={team} />}
+        {/* Tab content */}
+        <TeamPageThemeProvider accentColor={topColor}>
+          <div className="spotify-sections pb-8">
+            <Suspense fallback={
+              <div className="px-3 py-6">
+                <EntityListSkeleton rows={3} rowHeight={120} />
+              </div>
+            }>
+              {activeTab === 'about' && (
+                <TeamAbout
+                  team={{
+                    ...(teamAny as TeamAboutPropsTeam),
+                    canManage: !!(teamAny.canManage || teamAny.isCaptain),
+                    isCaptain: !!teamAny.isCaptain,
+                  }}
+                />
+              )}
             {activeTab === 'members' && (
               <TeamMembers
                 teamId={teamId!}
                 teamName={(team as any).name}
                 canManage={!!teamAny.canManage || !!teamAny.isCaptain}
+                isMember={!!teamAny.isMember || !!teamAny.hasJoined}
               />
             )}
             {activeTab === 'challenges' && <TeamChallenges teamId={teamId!} />}
@@ -212,8 +231,9 @@ export default function TeamPage() {
             )}
             {activeTab === 'roster' && <TeamProPublic teamId={teamId!} />}
             {activeTab === 'sponsors' && <TeamSponsors sponsors={sponsors} />}
-          </Suspense>
-        </div>
+            </Suspense>
+          </div>
+        </TeamPageThemeProvider>
       </div>
 
       {showQrModal && (

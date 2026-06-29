@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Search, X, UserPlus, UserMinus, MessageCircle } from "lucide-react";
+import { ArrowLeft, Search, X, UserPlus, UserMinus, MessageCircle, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  EntityEmptyState,
+  EntityListSkeleton,
+  EntitySectionTabs,
+} from "@/components/entity";
+import { useSmartBack } from "@/lib/navigation";
 import {
   fetchFollowers,
   fetchFollowing,
@@ -109,7 +115,7 @@ function PersonRow({
                     color: "var(--surna-text-secondary)",
                     borderColor: "var(--surna-border)",
                   }
-                : { background: "#000" }
+                : { background: "var(--surna-gold)", color: "#000" }
             }
           >
             {followLoading ? (
@@ -136,6 +142,7 @@ export default function DiscoverPeople() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const goBack = useSmartBack({ fallback: "/" });
   const queryClient = useQueryClient();
   const { tab: initialTab, userId: paramUserId } = usePeopleTabParams();
 
@@ -236,108 +243,104 @@ export default function DiscoverPeople() {
   const listPeople: SocialPerson[] =
     tab === "followers" ? followers : tab === "following" ? following : discoverList;
 
+  const peopleTabs = [
+    { id: "following", label: "Following" },
+    { id: "followers", label: "Followers" },
+    { id: "discover", label: "Discover" },
+  ];
+
   return (
-    <div className="min-h-screen pb-24" style={{ background: "var(--surna-void)" }}>
+    <div className="min-h-screen pb-24 max-w-md mx-auto" style={{ background: "var(--surna-base)", color: "var(--surna-text)" }}>
       <header
-        className="sticky top-0 z-40 glass-effect border-b"
-        style={{ borderColor: "var(--surna-border)" }}
+        className="sticky top-0 z-40 border-b backdrop-blur-md"
+        style={{
+          background: "color-mix(in srgb, var(--surna-base) 92%, transparent)",
+          borderColor: "var(--surna-border)",
+        }}
       >
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="px-4 py-3 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => (window.history.length > 1 ? window.history.back() : navigate("/"))}
-            className="p-2 rounded-xl hover:bg-muted/40 active:scale-95"
+            onClick={goBack}
+            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-[0.96] transition-transform"
+            style={{ background: "var(--surna-elevated)", border: "1px solid var(--surna-border)" }}
             aria-label="Go back"
           >
-            <ArrowLeft className="w-5 h-5" style={{ color: "var(--surna-text)" }} />
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="flex-1 text-base font-semibold" style={{ color: "var(--surna-text)" }}>
-            {listTitle}
-          </h1>
+          <h1 className="flex-1 text-[16px] font-semibold truncate">{listTitle}</h1>
         </div>
-
-        <div className="max-w-md mx-auto px-4 pb-2 flex gap-1">
-          {(
-            [
-              { id: "following" as const, label: "Following" },
-              { id: "followers" as const, label: "Followers" },
-              { id: "discover" as const, label: "Discover" },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTabAndUrl(t.id)}
-              className={cn(
-                "flex-1 py-2 text-xs font-semibold rounded-lg transition-colors",
-                tab === t.id ? "text-white" : "",
-              )}
-              style={
-                tab === t.id
-                  ? { background: "#000" }
-                  : { color: "var(--surna-text-secondary)", background: "var(--surna-elevated)" }
-              }
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {tab === "discover" ? (
-          <div className="max-w-md mx-auto px-4 pb-3">
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ background: "var(--surna-elevated)", border: "0.5px solid var(--surna-border)" }}
-            >
-              <Search className="w-4 h-4 shrink-0" style={{ color: "var(--surna-text-muted)" }} />
-              <input
-                type="search"
-                placeholder="Search athletes by name…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent border-none outline-none text-sm"
-                style={{ color: "var(--surna-text)" }}
-              />
-              {searchQuery ? (
-                <button type="button" onClick={() => setSearchQuery("")} className="p-1">
-                  <X className="w-4 h-4" style={{ color: "var(--surna-text-muted)" }} />
-                </button>
-              ) : null}
-            </div>
-        </div>
-        ) : null}
       </header>
 
-      <div className="max-w-md mx-auto px-4">
-        {listLoading ? (
-          <div className="py-16 flex justify-center">
-            <div className="w-8 h-8 border-2 border-border border-t-foreground rounded-full animate-spin" />
-                    </div>
-        ) : listPeople.length === 0 ? (
-          <div className="py-16 text-center px-4">
-            <p className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>
-              {tab === "followers"
-                ? "No followers yet"
-                : tab === "following"
-                  ? "Not following anyone yet"
-                  : searchQuery
-                    ? "No one matched your search"
-                    : "No suggestions right now"}
-            </p>
-            <p className="text-xs mt-2" style={{ color: "var(--surna-text-secondary)" }}>
-              {tab === "discover"
-                ? "Try searching by name or check back later."
-                : "When people follow you, they'll show up here."}
-            </p>
-            {tab !== "discover" ? (
-              <button
-                type="button"
-                onClick={() => setTabAndUrl("discover")}
-                className="mt-4 text-xs font-semibold underline"
-                style={{ color: "var(--surna-text-secondary)" }}
-              >
-                Find people to follow
+      <EntitySectionTabs
+        tabs={peopleTabs}
+        activeId={tab}
+        onChange={(id) => setTabAndUrl(id as PeopleTab)}
+        stickyTop="top-[52px]"
+        testIdPrefix="people-section"
+      />
+
+      {tab === "discover" ? (
+        <div className="px-4 pb-3">
+          <div
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+            style={{ background: "var(--surna-bg-highlight)", border: "1px solid var(--surna-border)" }}
+          >
+            <Search className="w-4 h-4 shrink-0" style={{ color: "var(--surna-text-secondary)" }} />
+            <input
+              type="search"
+              placeholder="Search athletes by name…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-[14px]"
+              style={{ color: "var(--surna-text)" }}
+            />
+            {searchQuery ? (
+              <button type="button" onClick={() => setSearchQuery("")} className="p-1 active:opacity-70" aria-label="Clear search">
+                <X className="w-4 h-4" style={{ color: "var(--surna-text-secondary)" }} />
               </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="px-4">
+        {listLoading ? (
+          <div className="py-4">
+            <EntityListSkeleton rows={8} rowHeight={72} />
+          </div>
+        ) : listPeople.length === 0 ? (
+          <div className="py-4">
+            {tab === "followers" ? (
+              <EntityEmptyState
+                icon={Users}
+                title="No followers yet"
+                description={isOwnLists ? "When people follow you, they'll show up here." : "This athlete doesn't have followers yet."}
+                actionLabel="Find people to follow"
+                onAction={() => setTabAndUrl("discover")}
+              />
+            ) : null}
+            {tab === "following" ? (
+              <EntityEmptyState
+                icon={UserPlus}
+                title={isOwnLists ? "Not following anyone yet" : "Not following anyone"}
+                description="Discover athletes in your sports and build your feed."
+                actionLabel="Discover people"
+                onAction={() => setTabAndUrl("discover")}
+              />
+            ) : null}
+            {tab === "discover" ? (
+              <EntityEmptyState
+                icon={Search}
+                title={searchQuery.trim().length >= 2 ? "No one matched your search" : "No suggestions right now"}
+                description={
+                  searchQuery.trim().length >= 2
+                    ? "Try a different name or spelling."
+                    : "Check back later or search by name above."
+                }
+                actionLabel={searchQuery.trim().length >= 2 ? "Clear search" : undefined}
+                onAction={searchQuery.trim().length >= 2 ? () => setSearchQuery("") : undefined}
+              />
             ) : null}
           </div>
         ) : (
@@ -363,8 +366,8 @@ export default function DiscoverPeople() {
               />
             ))}
           </div>
-                  )}
-                </div>
+        )}
+      </div>
     </div>
   );
 }

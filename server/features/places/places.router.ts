@@ -142,6 +142,67 @@ const SlotBlockSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+const VerifyBookingBody = z.object({
+  placeId: z.string().min(1),
+  token: z.string().optional(),
+  bookingId: z.string().optional(),
+  raw: z.string().optional(),
+});
+
+/**
+ * POST /api/places/bookings/verify — owner scans a guest booking QR at the door.
+ * Static path registered before /bookings/:id in legacy routes.
+ */
+placesRouter.post('/bookings/verify', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const parsed = VerifyBookingBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'Invalid body', issues: parsed.error.issues });
+    }
+    if (!parsed.data.token && !parsed.data.bookingId && !parsed.data.raw) {
+      return res.status(400).json({ message: 'MISSING_PAYLOAD' });
+    }
+
+    const { verifyAndCheckInBooking } = await import('../../services/placeBookingCheckInService');
+    const out = await verifyAndCheckInBooking(parsed.data.placeId, userId, {
+      token: parsed.data.token,
+      bookingId: parsed.data.bookingId,
+      raw: parsed.data.raw,
+    });
+
+    if (!out.ok) {
+      const status =
+        out.error === 'FORBIDDEN' ? 403 : out.error === 'NOT_FOUND' ? 404 : 400;
+      return res.status(status).json({ error: out.error });
+    }
+    res.json(out);
+  } catch (err) {
+    console.error('[places] booking verify error', err);
+    res.status(500).json({ message: 'Failed to verify booking' });
+  }
+});
+
+/**
+ * GET /api/places/:id/booking-check-ins — today's and upcoming confirmed bookings for door staff.
+ */
+placesRouter.get('/:id/booking-check-ins', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const { listPlaceBookingCheckIns } = await import('../../services/placeBookingCheckInService');
+    const out = await listPlaceBookingCheckIns(req.params.id, userId);
+    if ('forbidden' in out) return res.status(403).json({ error: 'FORBIDDEN' });
+    res.json(out);
+  } catch (err) {
+    console.error('[places] booking check-ins error', err);
+    res.status(500).json({ message: 'Failed to load check-ins' });
+  }
+});
+
 /**
  * POST /api/places/:id/slot-blocks — owner blocks an open slot.
  */

@@ -1,39 +1,43 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { AlertCircle, CheckCircle2, Shirt, User } from "lucide-react";
+import { AlertCircle, CheckCircle2, Shirt } from "lucide-react";
 import { ROUTES } from "@/navigation";
-import { formatHeightCm, isGearProfileReadyForKit } from "@shared/gearProfile";
+import { EntityListSkeleton } from "@/components/entity";
 import { isDemoTeamId, normalizeDemoTeamId } from "@/lib/demoTeams";
-import type { GearProfileSummary } from "@shared/gearProfile";
-
-export type SizingRosterRow = {
-  memberId: string;
-  userId: string;
-  role?: string | null;
-  name: string;
-  profileImageUrl?: string | null;
-  kitReady: boolean;
-  missingFields?: string[];
-  gear: GearProfileSummary | null;
-};
+import { TeamSectionCard } from "./TeamSectionCard";
 
 type SizingRosterResponse = {
   canManage: boolean;
-  readyCount: number;
-  totalCount: number;
-  roster: SizingRosterRow[];
+  readyCount?: number;
+  totalCount?: number;
+  viewerNeedsKit?: boolean;
+  roster?: Array<{
+    memberId: string;
+    userId: string;
+    role?: string | null;
+    name: string;
+    kitReady: boolean;
+    gear: {
+      heightCm?: number;
+      shirtSize?: string;
+      shoeSizeEu?: string;
+      preferredJerseyNumber?: number;
+    } | null;
+  }>;
 };
 
-function demoSizingRoster(teamId: string): SizingRosterResponse {
+function demoSizingRoster(canManage: boolean): SizingRosterResponse {
+  if (!canManage) {
+    return { canManage: false, viewerNeedsKit: true, roster: [] };
+  }
   const sizes = ["S", "M", "L", "XL"] as const;
   const shoes = ["40", "41", "42", "43", "44"] as const;
-  const roster: SizingRosterRow[] = Array.from({ length: 8 }, (_, i) => ({
-    memberId: `${teamId}-m-${i}`,
+  const roster = Array.from({ length: 8 }, (_, i) => ({
+    memberId: `demo-m-${i}`,
     userId: `demo-user-${i}`,
     role: i === 0 ? "captain" : "member",
     name: `Player ${i + 1}`,
     kitReady: i !== 3 && i !== 6,
-    missingFields: i === 3 ? ["shirt size", "shoe size"] : i === 6 ? ["height"] : undefined,
     gear:
       i === 3 || i === 6
         ? null
@@ -52,74 +56,55 @@ function demoSizingRoster(teamId: string): SizingRosterResponse {
   };
 }
 
+/** Kit sizing — captains/managers only. Teammates get a private add-sizes CTA. */
 export default function TeamSizingRoster({
   teamId,
   canManage = false,
-  viewerUserId,
+  isMember = false,
 }: {
   teamId: string;
   canManage?: boolean;
-  viewerUserId?: string;
+  isMember?: boolean;
 }) {
   const normalizedId = normalizeDemoTeamId(teamId);
+  const showBlock = canManage || isMember;
+  if (!showBlock) return null;
 
   const { data, isLoading } = useQuery<SizingRosterResponse>({
     queryKey: ["/api/teams", normalizedId, "sizing-roster"],
     queryFn: async () => {
-      if (isDemoTeamId(normalizedId)) return demoSizingRoster(normalizedId);
+      if (isDemoTeamId(normalizedId)) return demoSizingRoster(canManage);
       const res = await fetch(`/api/teams/${normalizedId}/sizing-roster`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load sizing roster");
       return res.json();
     },
+    enabled: showBlock,
   });
 
-  if (isLoading) {
-    return (
-      <div className="glass-card animate-pulse h-24 mb-4" />
-    );
-  }
+  if (isLoading) return <EntityListSkeleton rows={1} rowHeight={72} />;
 
   if (!data) return null;
 
-  const showFullTable = data.canManage || canManage;
-  const viewerRow = viewerUserId
-    ? data.roster.find((r) => r.userId === viewerUserId)
-    : undefined;
-  const viewerNeedsKit = viewerRow && !isGearProfileReadyForKit(viewerRow.gear);
+  const managerView = canManage || data.canManage;
 
-  return (
-    <div className="glass-card mb-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Shirt size={16} className="text-muted-foreground" />
-            <h3 className="text-[14px] font-bold text-foreground">Kit & sizing</h3>
-          </div>
-          <p className="text-[12px] text-muted-foreground">
-            {data.readyCount}/{data.totalCount} players kit-ready for team orders
-          </p>
-        </div>
-        {viewerNeedsKit ? (
-          <Link href={ROUTES.profileEdit}>
-            <span className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-primary text-primary-foreground">
-              Add my sizes
-            </span>
-          </Link>
-        ) : null}
-      </div>
+  if (managerView) {
+    const roster = data.roster ?? [];
+    const readyCount = data.readyCount ?? roster.filter((r) => r.kitReady).length;
+    const totalCount = data.totalCount ?? roster.length;
 
-      {viewerNeedsKit && !showFullTable ? (
-        <p className="text-[12px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-          <AlertCircle size={14} />
-          Add shirt & shoe size so your captain can order team kit for you.
-        </p>
-      ) : null}
-
-      {showFullTable ? (
+    return (
+      <TeamSectionCard
+        title="Kit & sizing"
+        action={
+          <span className="text-[11px] font-semibold" style={{ color: "var(--surna-text-secondary)" }}>
+            {readyCount}/{totalCount} ready
+          </span>
+        }
+      >
         <div className="overflow-x-auto -mx-1">
           <table className="w-full text-[11px] min-w-[480px]">
             <thead>
-              <tr className="text-muted-foreground border-b border-border">
+              <tr style={{ color: "var(--surna-text-muted)", borderBottom: "1px solid var(--surna-border)" }}>
                 <th className="text-left py-2 px-1 font-semibold">Player</th>
                 <th className="text-left py-2 px-1 font-semibold">Shirt</th>
                 <th className="text-left py-2 px-1 font-semibold">Shoe</th>
@@ -129,20 +114,30 @@ export default function TeamSizingRoster({
               </tr>
             </thead>
             <tbody>
-              {data.roster.map((row) => (
-                <tr key={row.memberId} className="border-b border-border/50 last:border-0">
-                  <td className="py-2 px-1 font-medium text-foreground truncate max-w-[100px]">{row.name}</td>
-                  <td className="py-2 px-1 text-foreground">{row.gear?.shirtSize ?? "—"}</td>
-                  <td className="py-2 px-1 text-foreground">{row.gear?.shoeSizeEu ? `EU ${row.gear.shoeSizeEu}` : "—"}</td>
-                  <td className="py-2 px-1 text-muted-foreground">{formatHeightCm(row.gear?.heightCm)}</td>
-                  <td className="py-2 px-1 text-muted-foreground">{row.gear?.preferredJerseyNumber ?? "—"}</td>
+              {roster.map((row) => (
+                <tr key={row.memberId} style={{ borderBottom: "1px solid var(--surna-border)" }}>
+                  <td className="py-2 px-1 font-medium truncate max-w-[100px]" style={{ color: "var(--surna-text)" }}>
+                    {row.name}
+                  </td>
+                  <td className="py-2 px-1" style={{ color: "var(--surna-text)" }}>
+                    {row.gear?.shirtSize ?? "—"}
+                  </td>
+                  <td className="py-2 px-1" style={{ color: "var(--surna-text)" }}>
+                    {row.gear?.shoeSizeEu ? `EU ${row.gear.shoeSizeEu}` : "—"}
+                  </td>
+                  <td className="py-2 px-1" style={{ color: "var(--surna-text-secondary)" }}>
+                    {row.gear?.heightCm ? `${row.gear.heightCm} cm` : "—"}
+                  </td>
+                  <td className="py-2 px-1" style={{ color: "var(--surna-text-secondary)" }}>
+                    {row.gear?.preferredJerseyNumber ?? "—"}
+                  </td>
                   <td className="py-2 px-1">
                     {row.kitReady ? (
-                      <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400">
+                      <span className="inline-flex items-center gap-0.5 text-emerald-500">
                         <CheckCircle2 size={12} /> Ready
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
+                      <span className="inline-flex items-center gap-0.5 text-amber-500">
                         <AlertCircle size={12} /> Missing
                       </span>
                     )}
@@ -152,23 +147,35 @@ export default function TeamSizingRoster({
             </tbody>
           </table>
         </div>
-      ) : viewerRow?.gear ? (
-        <div className="rounded-xl p-3 bg-muted/30 border border-border text-[12px] space-y-1">
-          <p className="font-semibold text-foreground flex items-center gap-1.5">
-            <User size={14} /> Your sizing
-          </p>
-          <p className="text-muted-foreground">
-            Shirt {viewerRow.gear.shirtSize ?? "—"} · Shoe EU {viewerRow.gear.shoeSizeEu ?? "—"} ·{" "}
-            {formatHeightCm(viewerRow.gear.heightCm)}
-          </p>
-        </div>
-      ) : null}
+      </TeamSectionCard>
+    );
+  }
 
-      {showFullTable && data.readyCount < data.totalCount ? (
-        <p className="text-[11px] text-muted-foreground">
-          Captains can bulk-order kit from the marketplace product page — sizes auto-fill from this roster.
-        </p>
-      ) : null}
-    </div>
-  );
+  if (data.viewerNeedsKit) {
+    return (
+      <TeamSectionCard>
+        <div className="flex items-start gap-2">
+          <Shirt size={16} className="shrink-0 mt-0.5" style={{ color: "var(--surna-text-secondary)" }} />
+          <div>
+            <p className="text-[13px] font-medium" style={{ color: "var(--surna-text)" }}>
+              Add your kit sizes
+            </p>
+            <p className="text-[12px] mt-1" style={{ color: "var(--surna-text-secondary)" }}>
+              Shirt & shoe size so your captain can order team kit.
+            </p>
+            <Link href={ROUTES.profileEdit} className="inline-block mt-2">
+              <span
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full"
+                style={{ background: "var(--surna-text)", color: "var(--surna-base)" }}
+              >
+                Add my sizes
+              </span>
+            </Link>
+          </div>
+        </div>
+      </TeamSectionCard>
+    );
+  }
+
+  return null;
 }
