@@ -3,6 +3,10 @@
 import type { CoachAchievement, CoachMediaItem, CoachPricingPlan, CoachSocialLink } from "../shared/coachProfile";
 import { actionPhotoUrl } from "./seedImages";
 
+function IMG(id: string, w: number, h: number): string {
+  return actionPhotoUrl(`coach-${id}`, w, h);
+}
+
 export type FakeCoachPersona = {
   userIndex: number;
   username: string;
