@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -821,11 +822,13 @@ export function FeedVideoViewer({
     if (currentIdx >= safeVideos.length - 1 && currentIdx > 0) goTo(currentIdx - 1);
   }, [activeVideo, currentIdx, safeVideos.length]);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <>
       <div
         style={{
-          position: "fixed", inset: 0, zIndex: 150, background: "#000",
+          position: "fixed", inset: 0, zIndex: 9999, background: "#000",
           transform: visible ? `translateY(${dragY}px)` : "translateY(100%)",
           transition: isDragging.current ? "none" : "transform 260ms cubic-bezier(0.32,0.72,0,1)",
           display: "flex", flexDirection: "column", overflow: "hidden",
@@ -942,6 +945,7 @@ export function FeedVideoViewer({
         onShare={() => activeVideo && handleShare(activeVideo.id)}
         saved={activeVideo ? savedSet.has(activeVideo.id) : false}
       />
-    </>
+    </>,
+    document.body,
   );
 }

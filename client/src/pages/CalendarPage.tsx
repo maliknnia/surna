@@ -25,10 +25,10 @@ export default function CalendarPage() {
         </button>
         <div>
           <h1 className="text-[17px] font-bold leading-tight" style={{ color: "var(--surna-text)" }}>
-            Schedule
+            What's on
           </h1>
           <p className="text-[11px]" style={{ color: "var(--surna-text-secondary)" }}>
-            Your RSVPs · training · discover
+            Discover by location · set reminders · see your week
           </p>
         </div>
       </header>

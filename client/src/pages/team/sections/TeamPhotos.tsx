@@ -18,9 +18,11 @@ interface TeamPhoto {
 
 interface TeamPhotosProps {
   teamId: string;
+  /** Only captains / managers can upload team gallery photos. */
+  canUpload?: boolean;
 }
 
-export default function TeamPhotos({ teamId }: TeamPhotosProps) {
+export default function TeamPhotos({ teamId, canUpload = false }: TeamPhotosProps) {
   const { toast } = useToast();
   const { user } = useAuth() as any;
   const currentUserId: string | undefined = user?.id;
@@ -95,7 +97,7 @@ export default function TeamPhotos({ teamId }: TeamPhotosProps) {
 
   return (
     <div>
-      {currentUserId && (
+      {canUpload && currentUserId && (
         <div className="mb-4">
           <input
             ref={fileInputRef}
@@ -121,7 +123,7 @@ export default function TeamPhotos({ teamId }: TeamPhotosProps) {
         <div className="text-center py-12">
           <ImageIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">No team photos yet</p>
-          <p className="text-muted-foreground/60 text-sm mt-2">Members can share match shots and team moments here.</p>
+          <p className="text-muted-foreground/60 text-sm mt-2">Match shots and team moments from captains appear here.</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-1">

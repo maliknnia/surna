@@ -92,7 +92,7 @@ function lighten(hex: string, amount: number): string {
 
 function darken(hex: string, amount: number): string {
   const [h, s, l] = hexToHSL(hex);
-  return hslToHex(h, Math.min(s + 5, 100), Math.max(l - amount, 8));
+  return hslToHex(h, Math.min(s + 3, 100), Math.max(l - amount, 22));
 }
 
 export interface SportColorResult {
@@ -104,19 +104,19 @@ export interface SportColorResult {
 
 export function getSportColor(sport: string | null | undefined): SportColorResult {
   if (!sport) {
-    return { base: DEFAULT_COLOR, light: lighten(DEFAULT_COLOR, 5), dark: darken(DEFAULT_COLOR, 15), emoji: DEFAULT_EMOJI };
+    return { base: DEFAULT_COLOR, light: lighten(DEFAULT_COLOR, 8), dark: darken(DEFAULT_COLOR, 10), emoji: DEFAULT_EMOJI };
   }
   const key = sport.toLowerCase().replace(/[\s\-\.]/g, "_");
   const entry = sportColorMap[key];
   if (entry) {
-    return { base: entry.base, light: lighten(entry.base, 5), dark: darken(entry.base, 15), emoji: entry.emoji };
+    return { base: entry.base, light: lighten(entry.base, 8), dark: darken(entry.base, 10), emoji: entry.emoji };
   }
   for (const [mapKey, val] of Object.entries(sportColorMap)) {
     if (key.includes(mapKey) || mapKey.includes(key)) {
-      return { base: val.base, light: lighten(val.base, 5), dark: darken(val.base, 15), emoji: val.emoji };
+      return { base: val.base, light: lighten(val.base, 8), dark: darken(val.base, 10), emoji: val.emoji };
     }
   }
-  return { base: DEFAULT_COLOR, light: lighten(DEFAULT_COLOR, 5), dark: darken(DEFAULT_COLOR, 15), emoji: DEFAULT_EMOJI };
+  return { base: DEFAULT_COLOR, light: lighten(DEFAULT_COLOR, 8), dark: darken(DEFAULT_COLOR, 10), emoji: DEFAULT_EMOJI };
 }
 
 export function sportCardBg(sport: string | null | undefined, mode: "light" | "dark"): string {

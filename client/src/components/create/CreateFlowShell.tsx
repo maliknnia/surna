@@ -1,5 +1,4 @@
-import { ChevronLeft, Check, Loader2 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -41,88 +40,71 @@ export function CreateFlowShell({
       style={{ background: "var(--surna-base, var(--background))" }}
     >
       <header
-        className="sticky top-0 z-30 border-b"
+        className="sticky top-0 z-30"
         style={{
-          background: "var(--glass-bg, var(--background))",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderColor: "var(--surna-separator, var(--border))",
+          background: "color-mix(in srgb, var(--surna-base) 88%, transparent)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
         }}
       >
-        <div className="flex items-center gap-2 px-4 h-12 max-w-lg mx-auto">
+        <div className="flex items-center gap-2 px-4 h-14 max-w-lg mx-auto">
           <button
             type="button"
             onClick={onBack}
             className="p-2 -ml-2 rounded-full active:scale-95 transition-transform"
             aria-label="Go back"
           >
-            <ChevronLeft size={22} style={{ color: "var(--surna-text)" }} />
+            <ChevronLeft size={24} style={{ color: "var(--surna-text)" }} />
           </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate" style={{ color: "var(--surna-text)" }}>
+          <div className="flex-1 min-w-0 text-center -ml-8">
+            <p className="text-[17px] font-bold truncate" style={{ color: "var(--surna-text)" }}>
               {title}
             </p>
             {subtitle ? (
-              <p className="text-[11px] truncate" style={{ color: "var(--surna-text-secondary)" }}>
+              <p className="text-[12px] truncate" style={{ color: "var(--surna-text-secondary)" }}>
                 {subtitle}
               </p>
             ) : null}
           </div>
-          <span
-            className="text-xs font-semibold tabular-nums shrink-0"
-            style={{ color: "var(--surna-text-secondary)" }}
-          >
-            {currentStep}/{total}
-          </span>
         </div>
 
-        <div className="px-4 pb-3 max-w-lg mx-auto space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-medium">
-            <span style={{ color: "var(--surna-text-secondary)" }}>
-              Step {currentStep}: {steps[currentStep - 1]?.label}
-            </span>
-            <span style={{ color: "var(--surna-text)" }}>{displayPercent}%</span>
+        <div className="px-4 pb-4 max-w-lg mx-auto">
+          <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--surna-elevated)" }}>
+            <div
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${displayPercent}%`,
+                background: "var(--surna-text)",
+              }}
+            />
           </div>
-          <Progress value={displayPercent} className="h-1.5" />
-          <div className="flex justify-between gap-1 pt-1">
+          <div className="flex justify-center gap-1.5 pt-3">
             {steps.map((step) => {
               const done = currentStep > step.id;
               const active = currentStep === step.id;
-              const Icon = step.icon;
               return (
-                <div key={step.id} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                  <div
-                    className={cn(
-                      "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
-                      done && "opacity-100",
-                      !done && !active && "opacity-40",
-                    )}
-                    style={{
-                      background: done || active ? "var(--surna-text)" : "var(--surna-elevated)",
-                      color: done || active ? "var(--surna-base)" : "var(--surna-text-secondary)",
-                      border: active ? "2px solid var(--surna-text)" : "1px solid var(--surna-separator)",
-                      boxShadow: active ? "0 4px 14px rgba(0,0,0,0.12)" : undefined,
-                    }}
-                  >
-                    {done ? <Check size={14} /> : Icon ? <Icon size={14} /> : step.id}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-[9px] font-medium text-center truncate w-full",
-                      active ? "opacity-100" : "opacity-50",
-                    )}
-                    style={{ color: "var(--surna-text)" }}
-                  >
-                    {step.label}
-                  </span>
-                </div>
+                <div
+                  key={step.id}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all duration-300",
+                    active ? "w-6" : "w-1.5",
+                  )}
+                  style={{
+                    background: done || active ? "var(--surna-text)" : "var(--surna-border)",
+                    opacity: !done && !active ? 0.45 : 1,
+                  }}
+                  aria-hidden
+                />
               );
             })}
           </div>
+          <p className="text-center text-[12px] font-medium mt-2" style={{ color: "var(--surna-text-secondary)" }}>
+            Step {currentStep} of {total} · {steps[currentStep - 1]?.label}
+          </p>
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-5 max-w-lg mx-auto w-full pb-32">{children}</main>
+      <main className="flex-1 px-4 py-6 max-w-lg mx-auto w-full pb-32">{children}</main>
 
       {footer ? (
         <div
@@ -163,11 +145,12 @@ export function FlowFooterButton({
       type="button"
       onClick={onClick}
       disabled={disabled || loading}
-      className="w-full py-3.5 rounded-2xl text-base font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+      className="w-full py-4 rounded-2xl text-[16px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
       style={{
-        background: isPrimary ? "var(--surna-text)" : "var(--surna-elevated)",
+        background: isPrimary ? "var(--surna-text)" : "transparent",
         color: isPrimary ? "var(--surna-base)" : "var(--surna-text)",
         border: isPrimary ? "none" : "1px solid var(--surna-separator)",
+        boxShadow: isPrimary ? "0 8px 24px rgba(0,0,0,0.12)" : undefined,
       }}
     >
       {loading ? <Loader2 size={18} className="animate-spin" /> : null}

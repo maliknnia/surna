@@ -2,6 +2,8 @@ import { MapPin, Calendar, Users, Trophy, Map as MapIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { entityPath, mapPath } from "@/lib/mapNavigation";
 import { getSportLabels } from "@/lib/sportLabels";
+import { teamRecordTotals } from "@/lib/teamRecord";
+import { statCardSurface } from "@/lib/statCardStyle";
 import { useTeamPageAccent } from "../TeamPageTheme";
 import { TeamAccentButton, TeamDetailRow, TeamSectionCard } from "../components/TeamSectionCard";
 import TeamRecentGames from "./TeamRecentGames";
@@ -46,12 +48,7 @@ export default function TeamAbout({ team }: TeamAboutProps) {
     if (team.placeId) setLocation(entityPath("place", String(team.placeId)));
   };
 
-  const winRate = team.record
-    ? Math.round(
-        ((team.record.W ?? 0) / Math.max((team.record.W ?? 0) + (team.record.L ?? 0) + (team.record.D ?? 0), 1)) *
-          100,
-      )
-    : 0;
+  const { w, l, d, winRate } = teamRecordTotals(team.record);
 
   return (
     <div className="space-y-3 px-1">
@@ -104,32 +101,42 @@ export default function TeamAbout({ team }: TeamAboutProps) {
       ) : null}
 
       <TeamSectionCard title="Record">
-        <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2">
           {[
-            { label: "Wins", value: team.record?.W ?? 0 },
-            { label: "Losses", value: team.record?.L ?? 0 },
-            { label: "Draws", value: team.record?.D ?? 0 },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-center">
-              <span className="text-[14px]" style={{ color: "var(--surna-text-secondary)" }}>
-                {label}
-              </span>
-              <span className="text-[15px] font-bold" style={{ color: "var(--surna-text)" }}>
-                {value}
-              </span>
-            </div>
-          ))}
-          <div
-            className="flex justify-between items-center pt-3"
-            style={{ borderTop: "1px solid var(--surna-border)" }}
-          >
-            <span className="text-[14px]" style={{ color: "var(--surna-text-secondary)" }}>
-              Win rate
-            </span>
-            <span className="text-[15px] font-bold" style={{ color: accent }}>
-              {winRate}%
-            </span>
-          </div>
+            { label: "Wins", value: w, tone: "win" as const },
+            { label: "Losses", value: l, tone: "loss" as const },
+            { label: "Draws", value: d, tone: "draw" as const },
+          ].map(({ label, value, tone }) => {
+            const surface = statCardSurface(tone);
+            return (
+              <div
+                key={label}
+                className="rounded-2xl p-3 text-center"
+                style={{ background: surface.background, border: `1px solid ${surface.border}` }}
+              >
+                <div className="text-[20px] font-bold tabular-nums" style={{ color: surface.valueColor }}>
+                  {value}
+                </div>
+                <div className="text-[11px] mt-0.5" style={{ color: surface.labelColor }}>
+                  {label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div
+          className="flex justify-between items-center mt-3 pt-3 px-1 rounded-2xl py-2.5"
+          style={{
+            background: statCardSurface("amber").background,
+            border: `1px solid ${statCardSurface("amber").border}`,
+          }}
+        >
+          <span className="text-[13px] font-medium" style={{ color: statCardSurface("amber").labelColor }}>
+            Win rate
+          </span>
+          <span className="text-[16px] font-bold tabular-nums" style={{ color: accent }}>
+            {winRate}%
+          </span>
         </div>
       </TeamSectionCard>
 

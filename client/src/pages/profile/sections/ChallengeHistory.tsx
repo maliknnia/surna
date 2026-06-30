@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { Loader2, Trophy, Target, Medal, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Loader2, Trophy, Target, Medal } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { MatchResultBadge, RatingDeltaBadge } from '@/components/entity';
+import { statCardSurface, type StatCardTone } from '@/lib/statCardStyle';
 import { fetchChallengesList, fetchUserRatings } from '@/lib/challengesApi';
 
 interface ChallengeHistoryProps {
@@ -56,22 +58,24 @@ export default function ChallengeHistory({ userId }: ChallengeHistoryProps) {
     <div className="space-y-6">
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-surna-purple/20 border-border p-4">
-          <div className="text-sm text-token-text-secondary mb-1">Total Matches</div>
-          <div className="text-3xl font-bold text-token-text">{stats.total}</div>
-        </Card>
-        <Card className="bg-surna-purple/20 border-border p-4">
-          <div className="text-sm text-token-text-secondary mb-1">Wins</div>
-          <div className="text-3xl font-bold text-green-400">{stats.wins}</div>
-        </Card>
-        <Card className="bg-surna-purple/20 border-border p-4">
-          <div className="text-sm text-token-text-secondary mb-1">Losses</div>
-          <div className="text-3xl font-bold text-red-400">{stats.losses}</div>
-        </Card>
-        <Card className="bg-surna-purple/20 border-border p-4">
-          <div className="text-sm text-token-text-secondary mb-1">Win Rate</div>
-          <div className="text-3xl font-bold text-token-accent">{winRate}%</div>
-        </Card>
+        {[
+          { label: "Total Matches", value: stats.total, tone: "neutral" as StatCardTone },
+          { label: "Wins", value: stats.wins, tone: "win" as StatCardTone },
+          { label: "Losses", value: stats.losses, tone: "loss" as StatCardTone },
+          { label: "Win Rate", value: `${winRate}%`, tone: "amber" as StatCardTone },
+        ].map((item) => {
+          const surface = statCardSurface(item.tone);
+          return (
+            <Card
+              key={item.label}
+              className="p-4 border"
+              style={{ background: surface.background, borderColor: surface.border }}
+            >
+              <div className="text-sm mb-1" style={{ color: surface.labelColor }}>{item.label}</div>
+              <div className="text-3xl font-bold tabular-nums" style={{ color: surface.valueColor }}>{item.value}</div>
+            </Card>
+          );
+        })}
       </div>
 
       {/* ELO Ratings by Sport */}
@@ -91,12 +95,7 @@ export default function ChallengeHistory({ userId }: ChallengeHistoryProps) {
                   </Badge>
                 </div>
                 {rating.delta && (
-                  <div className={`flex items-center gap-1 text-sm ${
-                    rating.delta > 0 ? 'text-green-400' : rating.delta < 0 ? 'text-red-400' : 'text-token-text-secondary'
-                  }`}>
-                    {rating.delta > 0 ? <TrendingUp size={14} /> : rating.delta < 0 ? <TrendingDown size={14} /> : <Minus size={14} />}
-                    {rating.delta > 0 ? '+' : ''}{rating.delta} recent
-                  </div>
+                  <RatingDeltaBadge delta={rating.delta} />
                 )}
               </div>
             ))}
@@ -138,13 +137,7 @@ export default function ChallengeHistory({ userId }: ChallengeHistoryProps) {
                         <h4 className="font-semibold text-token-text">{match.title}</h4>
                         <Badge variant="outline" className="text-xs">{match.sport}</Badge>
                         {match.status === 'completed' && result && (
-                          <Badge className={`text-xs ${
-                            won ? 'bg-green-500/20 text-green-400 border-green-400/30' :
-                            lost ? 'bg-red-500/20 text-red-400 border-red-400/30' :
-                            'bg-gray-500/20 text-gray-400 border-gray-400/30'
-                          }`}>
-                            {won ? 'Won' : lost ? 'Lost' : 'Draw'}
-                          </Badge>
+                          <MatchResultBadge result={won ? 'win' : lost ? 'loss' : 'draw'} />
                         )}
                       </div>
                       {result && (

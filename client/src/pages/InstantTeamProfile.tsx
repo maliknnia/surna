@@ -193,9 +193,9 @@ export default function InstantTeamProfile() {
 
         <EntityQuickStats
           items={[
-            { icon: Users, value: `${team.playersJoined ?? 0}/${team.playersNeeded}`, label: "Players" },
-            { icon: Clock, value: formatTimeUntil(team.startTime), label: "Starts" },
-            { icon: Trophy, value: team.skillLevel || "any", label: "Skill" },
+            { icon: Users, value: `${team.playersJoined ?? 0}/${team.playersNeeded}`, label: "Players", tone: "accent" },
+            { icon: Clock, value: formatTimeUntil(team.startTime), label: "Starts", tone: "amber" },
+            { icon: Trophy, value: team.skillLevel || "any", label: "Skill", tone: "gold" },
           ]}
         />
 

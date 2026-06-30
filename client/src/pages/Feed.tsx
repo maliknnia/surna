@@ -31,7 +31,7 @@ import { ShareModal } from "@/components/ShareModal";
 import { CommentsSheet } from "@/components/comments/CommentsSheet";
 import { cn } from "@/lib/utils";
 import { EntityEmptyState, entityBtnClass, entityBtnSurface, entityCardStyle } from "@/components/entity";
-import { markNavReturn } from "@/lib/navigation";
+import { markNavReturn, useSmartBack } from "@/lib/navigation";
 import { entityPath, mapPath, resolveContentLinks } from "@/lib/mapNavigation";
 import { ROUTES } from "@/navigation";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
@@ -245,6 +245,10 @@ export default function Feed() {
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [detailPostId, setDetailPostId] = useState<string | null>(null);
   const { videoViewer, openFromPost, openFromGrid, close: closeVideoViewer } = useVideoViewer();
+  const feedTabBeforeVideo = useRef<string>("home");
+  const feedVideoHistoryPushed = useRef(false);
+  const suppressVideoPopClose = useRef(false);
+  const goBackFromFeed = useSmartBack({ fallback: "/" });
   const [feedTab, setFeedTab] = useState<FeedTabType>("For You");
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
   const unreadNotificationCount = useUnreadNotificationCount(isAuthenticated);
@@ -320,8 +324,59 @@ export default function Feed() {
   }, []);
 
   const handleVideoClick = useCallback((post: PostWithAuthor) => {
+    feedTabBeforeVideo.current = normalizeFeedBottomTab(activeTab);
     openFromPost(post, posts);
-  }, [openFromPost, posts]);
+  }, [openFromPost, posts, activeTab]);
+
+  const handleOpenVideoGrid = useCallback(
+    (videos: Parameters<typeof openFromGrid>[0], startIndex: number, mode: Parameters<typeof openFromGrid>[2], label: string) => {
+      feedTabBeforeVideo.current = "videos";
+      openFromGrid(videos, startIndex, mode, label);
+    },
+    [openFromGrid],
+  );
+
+  const restoreFeedTabAfterVideo = useCallback((tab: string) => {
+    const restoreTab = normalizeFeedBottomTab(tab);
+    if (restoreTab === "videos" || restoreTab === "notifications") {
+      setActiveTab(restoreTab);
+    } else {
+      setActiveTab("home");
+    }
+  }, []);
+
+  const handleCloseVideoViewer = useCallback(() => {
+    const restoreTab = feedTabBeforeVideo.current;
+    closeVideoViewer();
+    restoreFeedTabAfterVideo(restoreTab);
+    if (feedVideoHistoryPushed.current) {
+      suppressVideoPopClose.current = true;
+      feedVideoHistoryPushed.current = false;
+      window.history.back();
+    }
+  }, [closeVideoViewer, restoreFeedTabAfterVideo]);
+
+  useEffect(() => {
+    if (!videoViewer) return;
+
+    window.history.pushState({ surnaFeedVideoOverlay: true }, "");
+    feedVideoHistoryPushed.current = true;
+
+    const onPopState = () => {
+      if (suppressVideoPopClose.current) {
+        suppressVideoPopClose.current = false;
+        return;
+      }
+      if (!feedVideoHistoryPushed.current) return;
+      feedVideoHistoryPushed.current = false;
+      const restoreTab = feedTabBeforeVideo.current;
+      closeVideoViewer();
+      restoreFeedTabAfterVideo(restoreTab);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [videoViewer, closeVideoViewer, restoreFeedTabAfterVideo]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -550,9 +605,9 @@ export default function Feed() {
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
             type="button"
-            onClick={() => setLocation("/")}
+            onClick={goBackFromFeed}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full active:scale-95 transition-transform"
-            aria-label="Back to home"
+            aria-label="Back"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--surna-text)" }} />
           </button>
@@ -763,7 +818,7 @@ export default function Feed() {
                 {feedBottomTab === "videos" && (
                   <FeedVideosHub
                     videos={videoPostsFromFeed}
-                    onOpenViewer={openFromGrid}
+                    onOpenViewer={handleOpenVideoGrid}
                     onCreate={openVideosCamera}
                   />
                 )}
@@ -860,7 +915,7 @@ export default function Feed() {
             queryClient.invalidateQueries({ queryKey: ["/api/posts/feed-keyset"] });
             queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
           }}
-          onClose={closeVideoViewer}
+          onClose={handleCloseVideoViewer}
         />
       )}
 

@@ -13,11 +13,9 @@ import { cn } from "@/lib/utils";
 
 type ItemId =
   | "instant"
+  | "calendar"
   | "sports"
   | "challenges"
-  | "events"
-  | "teams"
-  | "map"
   | "venues"
   | "rewards"
   | "market"
@@ -33,9 +31,7 @@ type ShortcutItem = {
 };
 
 const ALL_ITEMS: ShortcutItem[] = [
-  { id: "events", icon: "ticket", label: "Events", panel: "events" },
-  { id: "teams", icon: "users", label: "Teams", panel: "teams" },
-  { id: "map", icon: "map-pin", label: "Map", panel: "map" },
+  { id: "calendar", icon: "calendar", label: "Calendar", route: "/calendar" },
   { id: "venues", icon: "buildings", label: "Venues", panel: "venues" },
   { id: "instant", icon: "lightning", label: "Instant", route: ROUTES.instantJoin },
   { id: "sports", icon: "fire", label: "Sports", route: ROUTES.sports },
@@ -47,7 +43,7 @@ const ALL_ITEMS: ShortcutItem[] = [
 ];
 
 /** Always the same four shortcuts on home — no random reordering. */
-const PRIMARY_SHORTCUTS: ItemId[] = ["events", "teams", "map", "instant"];
+const PRIMARY_SHORTCUTS: ItemId[] = ["calendar", "instant", "challenges", "market"];
 
 const PRO_ITEM = {
   id: "pro",

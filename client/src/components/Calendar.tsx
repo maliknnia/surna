@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -9,6 +9,8 @@ import {
   CalendarDays,
   List,
   LayoutGrid,
+  MapPin,
+  Navigation,
 } from "lucide-react";
 import {
   format,
@@ -35,8 +37,11 @@ import { CalendarAgenda, type AgendaEvent } from "@/components/calendar/Calendar
 import { EntityEmptyState, EntityListSkeleton } from "@/components/entity";
 import { createHubPath } from "@/lib/createHub";
 import { ROUTES } from "@/navigation";
+import { hasEventReminder, toggleEventReminder } from "@/lib/eventReminders";
 
-type CalEvent = AgendaEvent & { description?: string };
+const LOCATION_CHIPS = ["Near me", "All Ireland", "Cork", "Dublin", "Galway", "Limerick"] as const;
+
+type CalEvent = AgendaEvent & { description?: string; city?: string };
 
 type ViewMode = "month" | "agenda";
 type FilterMode = "all" | "mine";
@@ -47,11 +52,22 @@ function mapApiEvent(event: Record<string, unknown>): CalEvent {
     title: String(event.title || "Event"),
     starts_at: String(event.starts_at || event.startDate),
     ends_at: event.ends_at ? String(event.ends_at) : event.endDate ? String(event.endDate) : undefined,
-    location: event.location ? String(event.location) : undefined,
+    location: event.location ? String(event.location) : event.venueName ? String(event.venueName) : undefined,
     sport: event.sport ? String(event.sport) : undefined,
     going_count: Number(event.going_count) || 0,
     capacity: Number(event.capacity) || undefined,
+    city: event.city ? String(event.city) : undefined,
   };
+}
+
+function eventMatchesLocation(ev: CalEvent, locationChip: string, nearLabel: string): boolean {
+  if (locationChip === "All Ireland") return true;
+  const hay = `${ev.location ?? ""} ${ev.city ?? ""}`.toLowerCase();
+  if (locationChip === "Near me") {
+    if (!nearLabel || nearLabel === "Near me") return true;
+    return hay.includes(nearLabel.toLowerCase());
+  }
+  return hay.includes(locationChip.toLowerCase());
 }
 
 export function Calendar() {
@@ -60,8 +76,35 @@ export function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
-  const [filterMode, setFilterMode] = useState<FilterMode>("mine");
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [locationChip, setLocationChip] = useState<string>("Near me");
+  const [nearCityLabel, setNearCityLabel] = useState("Near me");
+  const [reminderTick, setReminderTick] = useState(0);
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`,
+          );
+          if (!res.ok) return;
+          const data = (await res.json()) as { address?: { city?: string; town?: string; village?: string } };
+          const city = data.address?.city || data.address?.town || data.address?.village;
+          if (city) {
+            setNearCityLabel(city);
+            setLocationChip("Near me");
+          }
+        } catch {
+          /* keep default */
+        }
+      },
+      () => {},
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600_000 },
+    );
+  }, []);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -102,11 +145,12 @@ export function Calendar() {
   }, [myRsvps]);
 
   const filteredEvents = useMemo(() => {
-    if (filterMode === "mine") {
-      return eventsData.filter((e) => myEventIds.has(e.id));
-    }
-    return eventsData;
-  }, [eventsData, filterMode, myEventIds]);
+    let list = filterMode === "mine"
+      ? eventsData.filter((e) => myEventIds.has(e.id))
+      : eventsData;
+    list = list.filter((e) => eventMatchesLocation(e, locationChip, nearCityLabel));
+    return list;
+  }, [eventsData, filterMode, myEventIds, locationChip, nearCityLabel]);
 
   const eventsByDate = useMemo(() => {
     const groups: Record<string, CalEvent[]> = {};
@@ -262,12 +306,42 @@ export function Calendar() {
           <button
             type="button"
             onClick={() => setLocation(createHubPath("event"))}
-            className="h-8 px-3 rounded-full text-[12px] font-bold flex items-center gap-1"
-            style={{ background: "var(--surna-text)", color: "var(--surna-base)" }}
+            className="h-8 w-8 flex items-center justify-center active:scale-95"
+            aria-label="Create event"
+            style={{ color: "var(--surna-text)" }}
           >
-            <Plus size={14} />
-            Create
+            <Plus size={22} strokeWidth={2.25} />
           </button>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
+          <MapPin size={14} className="shrink-0" style={{ color: "var(--surna-text-secondary)" }} />
+          {LOCATION_CHIPS.map((chip) => {
+            const active = locationChip === chip;
+            const label = chip === "Near me" && nearCityLabel !== "Near me" ? nearCityLabel : chip;
+            return (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => setLocationChip(chip)}
+                className="shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors active:scale-[0.97]"
+                style={{
+                  background: active ? "var(--surna-text)" : "var(--surna-elevated)",
+                  color: active ? "var(--surna-base)" : "var(--surna-text-secondary)",
+                  border: active ? "none" : "1px solid var(--surna-border)",
+                }}
+              >
+                {chip === "Near me" ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Navigation size={11} />
+                    {label}
+                  </span>
+                ) : (
+                  label
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* 7-day strip */}
@@ -382,10 +456,28 @@ export function Calendar() {
             <CalendarAgenda
               events={selectedDateEvents}
               emptyTitle="Free day"
-              emptyHint="No events on this day — browse what's on near you."
+              emptyHint="No events on this day — try another location or browse what's on."
               emptyActionLabel="Browse events"
               emptyActionHref={ROUTES.events}
               compact
+              showReminders
+              reminderTick={reminderTick}
+              onToggleReminder={(ev) => {
+                const added = toggleEventReminder({
+                  eventId: ev.id,
+                  title: ev.title,
+                  startsAt: ev.starts_at,
+                  location: ev.location,
+                });
+                setReminderTick((n) => n + 1);
+                toast({
+                  title: added ? "Reminder saved" : "Reminder removed",
+                  description: added
+                    ? `We'll keep ${ev.title} on your schedule list.`
+                    : `${ev.title} removed from reminders.`,
+                });
+              }}
+              hasReminder={(id) => hasEventReminder(id)}
             />
           </div>
         </>

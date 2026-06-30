@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { ProfileExtras } from "@/hooks/useProfileExtras";
 import type { UserHighlight } from "@shared/userProfile";
+import { statCardSurface, type StatCardTone } from "@/lib/statCardStyle";
 import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
 import { ProfileSportsSection } from "@/components/profile/ProfileSportsSection";
 import { ROUTES } from "@/navigation";
@@ -128,57 +129,31 @@ export function ProfileAboutSection({
 
       <ProfileSectionCard title="Performance Snapshot">
         <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onWinRateClick}
-            className="rounded-xl p-3 text-left active:opacity-80"
-            style={{ background: "var(--surna-base)", border: "1px solid var(--surna-border)" }}
-          >
-            <div className="text-[22px] font-bold tabular-nums" style={{ color: "var(--surna-text)" }}>
-              {profileExtras.winRate}%
-            </div>
-            <div className="text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
-              Win rate
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={onLevelClick}
-            className="rounded-xl p-3 text-left active:opacity-80"
-            style={{ background: "var(--surna-base)", border: "1px solid var(--surna-border)" }}
-          >
-            <div
-              className="text-[22px] font-bold tabular-nums"
-              style={{ color: "var(--surna-gold, #f5c518)" }}
-            >
-              {profileExtras.level}
-            </div>
-            <div className="text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
-              Level
-            </div>
-          </button>
-          <div
-            className="rounded-xl p-3"
-            style={{ background: "var(--surna-base)", border: "1px solid var(--surna-border)" }}
-          >
-            <div className="text-[22px] font-bold tabular-nums" style={{ color: "var(--surna-text)" }}>
-              {profileExtras.gamesCount}
-            </div>
-            <div className="text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
-              Games played
-            </div>
-          </div>
-          <div
-            className="rounded-xl p-3"
-            style={{ background: "var(--surna-base)", border: "1px solid var(--surna-border)" }}
-          >
-            <div className="text-[22px] font-bold tabular-nums" style={{ color: "var(--surna-text)" }}>
-              {profileExtras.rating.toFixed(1)}
-            </div>
-            <div className="text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
-              Rating
-            </div>
-          </div>
+          {[
+            { label: "Win rate", value: `${profileExtras.winRate}%`, tone: "win" as StatCardTone, onClick: onWinRateClick },
+            { label: "Level", value: profileExtras.level, tone: "gold" as StatCardTone, onClick: onLevelClick },
+            { label: "Games played", value: profileExtras.gamesCount, tone: "accent" as StatCardTone },
+            { label: "Rating", value: profileExtras.rating.toFixed(1), tone: "amber" as StatCardTone },
+          ].map((item) => {
+            const surface = statCardSurface(item.tone);
+            const Wrapper = item.onClick ? "button" : "div";
+            return (
+              <Wrapper
+                key={item.label}
+                type={item.onClick ? "button" : undefined}
+                onClick={item.onClick}
+                className="rounded-2xl p-3 text-left active:scale-[0.98] transition-transform"
+                style={{ background: surface.background, border: `1px solid ${surface.border}` }}
+              >
+                <div className="text-[22px] font-bold tabular-nums" style={{ color: surface.valueColor }}>
+                  {item.value}
+                </div>
+                <div className="text-[12px]" style={{ color: surface.labelColor }}>
+                  {item.label}
+                </div>
+              </Wrapper>
+            );
+          })}
         </div>
         <Link href={ROUTES.performance}>
           <button

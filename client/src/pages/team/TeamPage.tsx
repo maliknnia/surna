@@ -224,7 +224,12 @@ export default function TeamPage() {
             {activeTab === 'schedule' && (
               <TeamSchedule teamId={teamId!} canManage={!!teamAny.canManage || !!teamAny.isCaptain} />
             )}
-            {activeTab === 'photos' && <TeamPhotos teamId={teamId!} />}
+            {activeTab === 'photos' && (
+              <TeamPhotos
+                teamId={teamId!}
+                canUpload={!!teamAny.canManage || !!teamAny.isCaptain}
+              />
+            )}
             {activeTab === 'feed' && <TeamFeed teamId={teamId!} />}
             {activeTab === 'chat' && (
               <TeamChat teamId={teamId!} isMember={!!teamAny.isMember || !!teamAny.hasJoined} />

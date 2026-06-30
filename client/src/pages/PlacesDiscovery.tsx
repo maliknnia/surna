@@ -4,7 +4,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useInView } from "react-intersection-observer";
-import { Plus, MapPin, Building2 } from "lucide-react";
+import { MapPin, Building2 } from "lucide-react";
 import { FeatureFilterChips } from "@/components/panels/FeatureFilterBar";
 import {
   PanelFilterSheet,
@@ -201,24 +201,18 @@ export default function PlacesDiscovery({
             {!embedded ? (
               <h1 className="text-[18px] font-bold flex-1" style={{ color: textPrimary }}>Venues</h1>
             ) : null}
-            {user && (
-              <button
-                onClick={() => setLocation("/places/create")}
-                className="h-8 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 active:scale-[0.96] transition-transform"
-                style={{ background: chipActiveBg, color: chipActiveText }}
-              >
-                <Plus size={14} />
-                Add
-              </button>
-            )}
             {panelActive && (
               <PanelHeaderToolButtons
                 style={toolsStyle}
                 searchOpen={searchOpen || hasActiveSearch}
                 filterOpen={filterOpen}
                 filterActive={hasActiveFilter}
+                showSearch
+                showCreate={!!user}
                 onToggleSearch={onToggleSearch}
                 onToggleFilter={onToggleFilter}
+                onCreate={() => setLocation("/places/create")}
+                createLabel="Add venue"
               />
             )}
           </div>

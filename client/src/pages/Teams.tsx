@@ -3,12 +3,13 @@ import { useInView } from "react-intersection-observer";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 import { useLocation } from "wouter";
-import { Plus, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { EntityEmptyState, EntityListSkeleton } from "@/components/entity";
 import { FeatureFilterChips } from "@/components/panels/FeatureFilterBar";
 import {
   PanelFilterSheet,
   PanelHeaderToolButtons,
+  PanelInlineSearch,
   panelToolsStyle,
   usePanelToolToggles,
   usePanelToolsLifecycle,
@@ -61,6 +62,8 @@ export default function Teams({
   panelActive?: boolean;
 }) {
   const [sportFilter, setSportFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [, setLocation] = useLocation();
   const goBack = useSmartBack({
@@ -207,7 +210,18 @@ export default function Teams({
   });
 
   const filteredTeams = mergedTeams.filter((team: any) => {
-    return sportFilter === "All" || (team.sport && team.sport.toLowerCase().includes(sportFilter.toLowerCase()));
+    const sportOk =
+      sportFilter === "All" ||
+      (team.sport && team.sport.toLowerCase().includes(sportFilter.toLowerCase()));
+    if (!sportOk) return false;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      team.name?.toLowerCase().includes(q) ||
+      team.sport?.toLowerCase().includes(q) ||
+      team.city?.toLowerCase().includes(q) ||
+      team.location?.toLowerCase().includes(q)
+    );
   });
 
   const teamCircleItems = filteredTeams
@@ -235,14 +249,15 @@ export default function Teams({
   }));
 
   const toolsStyle = panelToolsStyle(isDark);
-  const { onToggleFilter } = usePanelToolToggles(
-    () => {},
+  const { onToggleSearch, onToggleFilter } = usePanelToolToggles(
+    setSearchOpen,
     setFilterOpen,
-    false,
+    searchOpen,
     filterOpen,
   );
-  usePanelToolsLifecycle(panelActive, () => {}, setFilterOpen);
+  usePanelToolsLifecycle(panelActive, setSearchOpen, setFilterOpen);
   const hasActiveFilter = sportFilter !== "All";
+  const hasActiveSearch = searchQuery.trim().length > 0;
 
   return (
     <div className={embedded ? "min-h-full pb-4" : "min-h-screen pb-24"} style={{ background: pageBg, color: textPrimary }} {...touchHandlers}>
@@ -282,27 +297,30 @@ export default function Teams({
             {!embedded ? (
               <h1 className="text-[18px] font-bold flex-1" style={{ color: textPrimary }}>Teams</h1>
             ) : null}
-            <button
-              onClick={() => setLocation(createHubPath("team"))}
-              className="h-8 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 active:scale-[0.96] transition-transform"
-              style={{ background: chipActiveBg, color: chipActiveText }}
-            >
-              <Plus size={14} />
-              Create
-            </button>
             {panelActive && (
               <PanelHeaderToolButtons
                 style={toolsStyle}
-                searchOpen={false}
+                searchOpen={searchOpen || hasActiveSearch}
                 filterOpen={filterOpen}
                 filterActive={hasActiveFilter}
-                showSearch={false}
-                onToggleSearch={() => {}}
+                showSearch
+                showCreate
+                onToggleSearch={onToggleSearch}
                 onToggleFilter={onToggleFilter}
+                onCreate={() => setLocation(createHubPath("team"))}
+                createLabel="Create team"
               />
             )}
           </div>
         </div>
+        {panelActive && searchOpen && (
+          <PanelInlineSearch
+            style={toolsStyle}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            placeholder="Search teams…"
+          />
+        )}
       </div>
 
       <div className="px-4 pt-3">

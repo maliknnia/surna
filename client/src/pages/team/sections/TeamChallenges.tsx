@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { Loader2, Trophy, Target, Medal, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Loader2, Trophy, Target, Medal } from 'lucide-react';
+import { MatchResultBadge, RatingDeltaBadge } from '@/components/entity';
+import { statCardSurface, type StatCardTone } from '@/lib/statCardStyle';
 import { fetchChallengesList, fetchTeamRatings } from '@/lib/challengesApi';
 
 interface TeamChallengesProps {
@@ -71,16 +73,23 @@ export default function TeamChallenges({ teamId }: TeamChallengesProps) {
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
         {[
-          { label: 'Total', value: stats.total, color: 'text-foreground' },
-          { label: 'Wins', value: stats.wins, color: 'text-green-400' },
-          { label: 'Losses', value: stats.losses, color: 'text-red-400' },
-          { label: 'Win Rate', value: `${winRate}%`, color: 'text-amber-400' },
-        ].map((s, i) => (
-          <div key={i} className="glass-card text-center !py-4 !mb-0">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{s.label}</div>
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+          { label: 'Total', value: String(stats.total), tone: 'neutral' as StatCardTone },
+          { label: 'Wins', value: String(stats.wins), tone: 'win' as StatCardTone },
+          { label: 'Losses', value: String(stats.losses), tone: 'loss' as StatCardTone },
+          { label: 'Win Rate', value: `${winRate}%`, tone: 'amber' as StatCardTone },
+        ].map((s) => {
+          const surface = statCardSurface(s.tone);
+          return (
+          <div
+            key={s.label}
+            className="rounded-2xl text-center py-4 px-3"
+            style={{ background: surface.background, border: `1px solid ${surface.border}` }}
+          >
+            <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: surface.labelColor }}>{s.label}</div>
+            <div className="text-2xl font-bold tabular-nums" style={{ color: surface.valueColor }}>{s.value}</div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ELO Ratings */}
@@ -97,12 +106,7 @@ export default function TeamChallenges({ teamId }: TeamChallengesProps) {
                 <div className="flex items-center gap-2">
                   <span className="text-[14px] font-bold text-foreground">{rating.rating}</span>
                   {rating.delta && (
-                    <span className={`flex items-center gap-0.5 text-[12px] ${
-                      rating.delta > 0 ? 'text-green-400' : rating.delta < 0 ? 'text-red-400' : 'text-muted-foreground'
-                    }`}>
-                      {rating.delta > 0 ? <TrendingUp size={12} /> : rating.delta < 0 ? <TrendingDown size={12} /> : <Minus size={12} />}
-                      {rating.delta > 0 ? '+' : ''}{rating.delta}
-                    </span>
+                    <RatingDeltaBadge delta={rating.delta} suffix="" />
                   )}
                 </div>
               </div>
@@ -149,13 +153,10 @@ export default function TeamChallenges({ teamId }: TeamChallengesProps) {
                       )}
                     </div>
                     {match.status === 'completed' && result && (
-                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                        won ? 'bg-green-500/15 text-green-400' :
-                        lost ? 'bg-red-500/15 text-red-400' :
-                        'bg-muted/40 text-muted-foreground'
-                      }`}>
-                        {won ? 'W' : lost ? 'L' : 'D'}
-                      </span>
+                      <MatchResultBadge
+                        result={won ? 'win' : lost ? 'loss' : 'draw'}
+                        compact
+                      />
                     )}
                   </div>
                 </div>

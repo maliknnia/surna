@@ -5,17 +5,16 @@ import type { ProfileExtras } from "@/hooks/useProfileExtras";
 import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
 import { Link } from "wouter";
 import { Trophy } from "lucide-react";
-import { EntityEmptyState } from "@/components/entity";
+import { EntityEmptyState, MatchResultBadge } from "@/components/entity";
 import { ROUTES } from "@/navigation";
 import { ChevronRight } from "lucide-react";
 import {
   fetchProfileTeamGames,
   formatGameScore,
-  resultLabel,
-  resultTone,
   setProfileTeamGameVisibility,
 } from "@/lib/teamGames";
 import { getSportLabels } from "@/lib/sportLabels";
+import { statCardSurface, type StatCardTone } from "@/lib/statCardStyle";
 
 const Stats = lazy(() => import("@/pages/profile/sections/Stats"));
 const ChallengeHistory = lazy(() => import("@/pages/profile/sections/ChallengeHistory"));
@@ -39,27 +38,30 @@ export function ProfileStatsPanel({ userId, profileExtras }: ProfileStatsPanelPr
       <ProfileSectionCard title="At a glance">
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: "Win rate", value: `${profileExtras.winRate}%` },
-            { label: "Level", value: String(profileExtras.level), gold: true },
-            { label: "Games", value: String(profileExtras.gamesCount) },
-            { label: "Rating", value: profileExtras.rating.toFixed(1) },
-          ].map((item) => (
+            { label: "Win rate", value: `${profileExtras.winRate}%`, tone: "win" as StatCardTone },
+            { label: "Level", value: String(profileExtras.level), tone: "gold" as StatCardTone },
+            { label: "Games", value: String(profileExtras.gamesCount), tone: "accent" as StatCardTone },
+            { label: "Rating", value: profileExtras.rating.toFixed(1), tone: "amber" as StatCardTone },
+          ].map((item) => {
+            const surface = statCardSurface(item.tone);
+            return (
             <div
               key={item.label}
-              className="rounded-xl p-3"
-              style={{ background: "var(--surna-base)", border: "1px solid var(--surna-border)" }}
+              className="rounded-2xl p-3"
+              style={{ background: surface.background, border: `1px solid ${surface.border}` }}
             >
               <div
                 className="text-[22px] font-bold tabular-nums"
-                style={{ color: item.gold ? "var(--surna-gold, #f5c518)" : "var(--surna-text)" }}
+                style={{ color: surface.valueColor }}
               >
                 {item.value}
               </div>
-              <div className="text-[12px]" style={{ color: "var(--surna-text-secondary)" }}>
+              <div className="text-[12px]" style={{ color: surface.labelColor }}>
                 {item.label}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         <Link href={ROUTES.performance}>
           <button
@@ -128,9 +130,7 @@ function ProfileTeamGamesList({ userId, isOwnProfile }: { userId: string; isOwnP
       <div className="space-y-3">
         {games.map((game) => {
           const score = formatGameScore(game);
-          const tone = resultTone(game.result);
-          const toneColor =
-            tone === "success" ? "#22c55e" : tone === "danger" ? "#ef4444" : "var(--surna-text-secondary)";
+          const resultKind = game.result === "win" ? "win" : game.result === "loss" ? "loss" : "draw";
           return (
             <div
               key={game.id}
@@ -147,9 +147,7 @@ function ProfileTeamGamesList({ userId, isOwnProfile }: { userId: string; isOwnP
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[11px] font-bold uppercase" style={{ color: toneColor }}>
-                  {resultLabel(game.result)}
-                </span>
+                <MatchResultBadge result={resultKind} compact />
                 {isOwnProfile ? (
                   <button
                     type="button"

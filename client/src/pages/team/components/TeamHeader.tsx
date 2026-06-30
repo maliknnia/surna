@@ -158,8 +158,9 @@ export default function TeamHeader({ team, sportConfig, openJoinSheet }: TeamHea
   };
 
   const memberCount = memberCountState;
-  const maxMembers = team.maxMembers || 25;
   const logoUrl = teamLogoUrl(team);
+  const ratingLabel =
+    team.rating != null && String(team.rating).trim() !== "" ? String(team.rating) : "—";
 
   return (
     <div className="spotify-hero-inner">
@@ -218,7 +219,7 @@ export default function TeamHeader({ team, sportConfig, openJoinSheet }: TeamHea
         <div className="text-center">
           <div className="flex items-center gap-1 justify-center">
             <Star size={14} style={{ color: '#FFD700' }} />
-            <p className="text-[17px] font-bold text-foreground">{team.rating || '—'}</p>
+            <p className="text-[17px] font-bold text-foreground tabular-nums">{ratingLabel}</p>
           </div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Rating</p>
         </div>
@@ -296,13 +297,6 @@ export default function TeamHeader({ team, sportConfig, openJoinSheet }: TeamHea
           </button>
         ) : null}
       </div>
-
-      {team.record && (
-        <div className="mt-4 px-4 py-2 rounded-xl bg-muted/40">
-          <span className="text-[11px] uppercase tracking-wider mr-2 text-muted-foreground">Record</span>
-          <span className="text-sm font-bold text-foreground">{team.record.W}-{team.record.L}-{team.record.D}</span>
-        </div>
-      )}
 
       <TeamJoinSheet
         teamId={team.id}

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { formatActivityVersus, getSportLabels } from "@/lib/sportLabels";
-import { fetchTeamGames, formatGameScore, resultLabel, resultTone } from "@/lib/teamGames";
+import { fetchTeamGames, formatGameScore } from "@/lib/teamGames";
+import { MatchResultBadge } from "@/components/entity";
 import { TeamSectionCard } from "../components/TeamSectionCard";
 
 interface Props {
@@ -36,9 +37,7 @@ export default function TeamRecentGames({ teamId, sport }: Props) {
       <div className="space-y-3">
         {games.slice(0, 8).map((game) => {
           const score = formatGameScore(game);
-          const tone = resultTone(game.result);
-          const toneColor =
-            tone === "success" ? "#22c55e" : tone === "danger" ? "#ef4444" : "var(--surna-text-muted)";
+          const resultKind = game.result === "win" ? "win" : game.result === "loss" ? "loss" : "draw";
           return (
             <div
               key={game.id}
@@ -56,10 +55,8 @@ export default function TeamRecentGames({ teamId, sport }: Props) {
                     : ""}
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <div className="text-[12px] font-bold uppercase tracking-wide" style={{ color: toneColor }}>
-                  {resultLabel(game.result)}
-                </div>
+              <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                <MatchResultBadge result={resultKind} compact />
                 {score ? (
                   <div className="text-[13px] font-medium" style={{ color: "var(--surna-text)" }}>
                     {score}

@@ -1,7 +1,41 @@
 import { useEffect, type Dispatch, SetStateAction } from "react";
 import { createPortal } from "react-dom";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Plus, SlidersHorizontal, X } from "lucide-react";
 import { getPanelTheme } from "@/lib/panelTheme";
+
+/** Instagram-style search: large circle, small handle — no background pill. */
+export function InstagramSearchIcon({
+  size = 22,
+  active = false,
+  color,
+}: {
+  size?: number;
+  active?: boolean;
+  color?: string;
+}) {
+  const stroke = color ?? (active ? "var(--surna-text)" : "currentColor");
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+      style={{ display: "block" }}
+    >
+      <circle cx="10.5" cy="10.5" r="6.75" stroke={stroke} strokeWidth="2.25" />
+      <line
+        x1="15.75"
+        y1="15.75"
+        x2="21"
+        y2="21"
+        stroke={stroke}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 export interface PanelToolsStyle {
   isDark: boolean;
@@ -32,58 +66,77 @@ export function panelToolsStyle(isDark: boolean): PanelToolsStyle {
   };
 }
 
-const iconBtnClass =
-  "w-8 h-8 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform";
+const bareIconBtnClass =
+  "p-1 shrink-0 flex items-center justify-center active:scale-90 transition-all";
 
-/** Search + filter icon buttons for the panel header row */
+function bareIconColor(active: boolean, s: PanelToolsStyle): string {
+  return active ? s.btnActiveColor : s.btnColor;
+}
+
+/** Create (+), search, and filter — bare icons, no circular backgrounds. */
 export function PanelHeaderToolButtons({
   style: s,
   searchOpen,
   filterOpen,
   filterActive = false,
   showSearch = true,
+  showCreate = false,
   onToggleSearch,
   onToggleFilter,
+  onCreate,
+  createLabel = "Create",
 }: {
   style: PanelToolsStyle;
   searchOpen: boolean;
   filterOpen: boolean;
   filterActive?: boolean;
   showSearch?: boolean;
+  showCreate?: boolean;
   onToggleSearch: () => void;
   onToggleFilter: () => void;
+  onCreate?: () => void;
+  createLabel?: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5 shrink-0">
+    <div className="flex items-center gap-3 shrink-0">
+      {showCreate && onCreate ? (
+        <button
+          type="button"
+          onClick={onCreate}
+          className={bareIconBtnClass}
+          style={{ color: s.btnColor, opacity: 0.92 }}
+          aria-label={createLabel}
+        >
+          <Plus size={22} strokeWidth={2.25} />
+        </button>
+      ) : null}
       {showSearch ? (
-      <button
-        type="button"
-        onClick={onToggleSearch}
-        className={iconBtnClass}
-        style={{
-          background: searchOpen ? s.btnActiveBg : s.btnBg,
-          color: searchOpen ? s.btnActiveColor : s.btnColor,
-        }}
-        aria-label="Search"
-      >
-        <Search size={17} strokeWidth={2.25} />
-      </button>
+        <button
+          type="button"
+          onClick={onToggleSearch}
+          className={bareIconBtnClass}
+          style={{
+            color: bareIconColor(searchOpen, s),
+            opacity: searchOpen ? 1 : 0.88,
+          }}
+          aria-label="Search"
+        >
+          <InstagramSearchIcon size={22} active={searchOpen} color={bareIconColor(searchOpen, s)} />
+        </button>
       ) : null}
       <button
         type="button"
         onClick={onToggleFilter}
-        className={`${iconBtnClass} relative`}
+        className={`${bareIconBtnClass} relative`}
         style={{
-          background: filterOpen || filterActive ? s.btnActiveBg : s.btnBg,
-          color: filterOpen || filterActive ? s.btnActiveColor : s.btnColor,
+          color: bareIconColor(filterOpen || filterActive, s),
+          opacity: filterOpen || filterActive ? 1 : 0.88,
         }}
         aria-label="Filter"
       >
-        <SlidersHorizontal size={17} strokeWidth={2.25} />
+        <SlidersHorizontal size={20} strokeWidth={2.25} />
         {filterActive && !filterOpen ? (
-          <span
-            className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-surna-ios-red"
-          />
+          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-surna-ios-red" />
         ) : null}
       </button>
     </div>
@@ -105,10 +158,9 @@ export function PanelInlineSearch({
   return (
     <div className="px-4 pb-2.5" style={{ borderBottom: `1px solid ${s.borderColor}` }}>
       <div className="relative">
-        <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-          style={{ color: s.textSecondary }}
-        />
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          <InstagramSearchIcon size={16} color={s.textSecondary} />
+        </span>
         <input
           type="text"
           autoFocus
@@ -178,10 +230,11 @@ export function PanelFilterSheet({
           <button
             type="button"
             onClick={onClose}
-            className={iconBtnClass}
-            style={{ background: s.inputBg, color: s.textPrimary }}
+            className={bareIconBtnClass}
+            style={{ color: s.textPrimary }}
+            aria-label="Close filters"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">{children}</div>

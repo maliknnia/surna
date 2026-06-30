@@ -37,26 +37,27 @@ function OptionCard({
   return (
     <div
       className={cn(
-        "w-full rounded-2xl transition-all",
-        highlighted && "ring-2 ring-offset-2 ring-offset-[var(--surna-base)] animate-pulse",
+        "w-full rounded-3xl transition-all overflow-hidden",
+        highlighted && "ring-2 ring-offset-2 ring-offset-[var(--surna-base)]",
       )}
       style={{
-        background: highlighted ? "var(--surna-bg-highlight)" : "var(--surna-elevated)",
-        border: highlighted ? "2px solid #000" : "1px solid var(--surna-separator)",
+        background: "var(--surna-elevated)",
+        border: highlighted ? "1px solid var(--surna-text)" : "1px solid var(--surna-separator)",
+        boxShadow: highlighted ? "0 12px 40px rgba(0,0,0,0.08)" : "0 2px 12px rgba(0,0,0,0.04)",
       }}
     >
       <button
         type="button"
         data-create-id={option.id}
         onClick={() => onSelect(option)}
-        className="w-full text-left p-4 active:scale-[0.98] transition-transform"
+        className="w-full text-left p-4 active:scale-[0.99] transition-transform"
       >
         <div className="flex items-start gap-3">
           <span
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: "#000", color: "#fff" }}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+            style={{ background: "var(--surna-bg-highlight)", color: "var(--surna-text)" }}
           >
-            <Icon size={20} />
+            <Icon size={22} strokeWidth={1.75} />
           </span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -66,7 +67,7 @@ function OptionCard({
               {option.badge ? (
                 <span
                   className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                  style={{ background: "#000", color: "#fff" }}
+                  style={{ background: "var(--surna-bg-highlight)", color: "var(--surna-text-secondary)" }}
                 >
                   {option.badge}
                 </span>
@@ -255,10 +256,14 @@ export default function CreateHub() {
             <button
               type="button"
               onClick={() => handleSelect(focusedOption)}
-              className="w-full py-3.5 rounded-2xl text-base font-bold text-white active:scale-[0.98] transition-transform"
-              style={{ background: "#000" }}
+              className="w-full py-4 rounded-2xl text-[16px] font-bold active:scale-[0.98] transition-transform"
+              style={{
+                background: "var(--surna-text)",
+                color: "var(--surna-base)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+              }}
             >
-              Add photos — {focusedOption.title}
+              Continue · {focusedOption.title}
             </button>
             <button
               type="button"

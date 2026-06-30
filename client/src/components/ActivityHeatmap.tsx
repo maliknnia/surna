@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Activity, Clock, Users, TrendingUp, Calendar, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { statCardSurface, type StatCardTone } from "@/lib/statCardStyle";
 
 interface HeatmapData {
   hour: number;
@@ -275,33 +276,36 @@ export function ActivityHeatmap({ timeframe = '7d', activityType = 'all', classN
 
           {/* Activity Summary */}
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="activity-summary">
-            <div className="text-center p-3 bg-transparent border border-border rounded-lg">
-              <div className="text-2xl font-bold text-token-accent">
-                {Math.max(...HOURS.map(getTotalActivityForHour))}
-              </div>
-              <div className="text-sm text-muted-foreground">Peak Hour Activity</div>
-            </div>
-            
-            <div className="text-center p-3 bg-transparent border border-border rounded-lg">
-              <div className="text-2xl font-bold text-token-accent">
-                {Math.max(...DAYS_OF_WEEK.map(getTotalActivityForDay))}
-              </div>
-              <div className="text-sm text-muted-foreground">Peak Day Activity</div>
-            </div>
-            
-            <div className="text-center p-3 bg-transparent border border-border rounded-lg">
-              <div className="text-2xl font-bold text-token-accent">
-                {HOURS.find(hour => getTotalActivityForHour(hour) === Math.max(...HOURS.map(getTotalActivityForHour))) || 0}:00
-              </div>
-              <div className="text-sm text-muted-foreground">Peak Hour</div>
-            </div>
-            
-            <div className="text-center p-3 bg-transparent border border-border rounded-lg">
-              <div className="text-2xl font-bold text-token-accent">
-                {DAYS_OF_WEEK.find(day => getTotalActivityForDay(day) === Math.max(...DAYS_OF_WEEK.map(getTotalActivityForDay))) || 'N/A'}
-              </div>
-              <div className="text-sm text-muted-foreground">Peak Day</div>
-            </div>
+            {[
+              { label: "Peak Hour Activity", value: Math.max(...HOURS.map(getTotalActivityForHour)), tone: "accent" as StatCardTone },
+              { label: "Peak Day Activity", value: Math.max(...DAYS_OF_WEEK.map(getTotalActivityForDay)), tone: "win" as StatCardTone },
+              {
+                label: "Peak Hour",
+                value: `${HOURS.find((hour) => getTotalActivityForHour(hour) === Math.max(...HOURS.map(getTotalActivityForHour))) || 0}:00`,
+                tone: "amber" as StatCardTone,
+              },
+              {
+                label: "Peak Day",
+                value: DAYS_OF_WEEK.find((day) => getTotalActivityForDay(day) === Math.max(...DAYS_OF_WEEK.map(getTotalActivityForDay))) || "N/A",
+                tone: "gold" as StatCardTone,
+              },
+            ].map((item) => {
+              const surface = statCardSurface(item.tone);
+              return (
+                <div
+                  key={item.label}
+                  className="text-center p-3 rounded-xl"
+                  style={{ background: surface.background, border: `1px solid ${surface.border}` }}
+                >
+                  <div className="text-2xl font-bold tabular-nums" style={{ color: surface.valueColor }}>
+                    {item.value}
+                  </div>
+                  <div className="text-sm" style={{ color: surface.labelColor }}>
+                    {item.label}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

@@ -154,14 +154,14 @@ export function buildImageEdgeGradient(
     const surface = sportTint ? resolveLightSurface(sportTint) : resolveLightSurface(edgeColor);
     return `linear-gradient(to top, ${hexToRgba(surface.bottom, 0.72)} 0%, ${hexToRgba(surface.mid, 0.22)} 36%, transparent 62%)`;
   }
-  return `linear-gradient(to top, ${hexToRgba(edgeColor, 0.58)} 0%, ${hexToRgba(edgeColor, 0.22)} 45%, transparent 72%)`;
+  return `linear-gradient(to top, ${hexToRgba(edgeColor, 0.42)} 0%, ${hexToRgba(edgeColor, 0.16)} 45%, transparent 72%)`;
 }
 
 export const POST_CARD_DARK_SCRIM =
   "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.48) 42%, rgba(0,0,0,0.15) 100%)";
 
 export const POST_CARD_HOME_DARK_SCRIM =
-  "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.38) 48%, rgba(0,0,0,0.08) 100%)";
+  "linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.28) 48%, rgba(0,0,0,0.05) 100%)";
 
 export function buildLightPhotoScrim(tint: string, variant: "feed" | "home"): string {
   const surface = resolveLightSurface(tint);

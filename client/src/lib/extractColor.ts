@@ -19,6 +19,23 @@ function rgbToHex(r: number, g: number, b: number): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
 
+/** Lift a hex colour toward white for UI washes (coach hero, chips, etc.). */
+export function brightenHex(hex: string, amount = 0.45): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  const lift = (c: number) => Math.min(255, Math.round(c + (255 - c) * amount));
+  return `#${((1 << 24) + (lift(r) << 16) + (lift(g) << 8) + lift(b)).toString(16).slice(1)}`;
+}
+
+/** Soften extracted photo colours for card backgrounds — lighter, less aggressive. */
+export function softenCardColor(hex: string): string {
+  return brightenHex(hex, 0.38);
+}
+
 /** Average colour along image edges — for post-card gradient washes. */
 export function extractEdgeColor(imageUrl: string): Promise<string> {
   if (edgeColorCache.has(imageUrl)) {
@@ -76,10 +93,10 @@ export function extractEdgeColor(imageUrl: string): Promise<string> {
           resolve("#1a1a1a");
           return;
         }
-        r = Math.min(255, Math.round((r / count) * 0.5));
-        g = Math.min(255, Math.round((g / count) * 0.5));
-        b = Math.min(255, Math.round((b / count) * 0.5));
-        const hex = rgbToHex(r, g, b);
+        r = Math.min(255, Math.round((r / count) * 0.72));
+        g = Math.min(255, Math.round((g / count) * 0.72));
+        b = Math.min(255, Math.round((b / count) * 0.72));
+        const hex = softenCardColor(rgbToHex(r, g, b));
         edgeColorCache.set(imageUrl, hex);
         resolve(hex);
       } catch {
@@ -89,18 +106,6 @@ export function extractEdgeColor(imageUrl: string): Promise<string> {
     img.onerror = () => resolve("#1a1a1a");
     img.src = imageUrl;
   });
-}
-
-/** Lift a hex colour toward white for UI washes (coach hero, chips, etc.). */
-export function brightenHex(hex: string, amount = 0.45): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  const lift = (c: number) => Math.min(255, Math.round(c + (255 - c) * amount));
-  return `#${((1 << 24) + (lift(r) << 16) + (lift(g) << 8) + lift(b)).toString(16).slice(1)}`;
 }
 
 /** Same-origin, blob, and data URLs can be sampled without CORS taint issues. */
@@ -147,7 +152,9 @@ export function extractDominantColor(imageUrl: string): Promise<string> {
         r = Math.round(r / count);
         g = Math.round(g / count);
         b = Math.round(b / count);
-        const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        const hex = softenCardColor(
+          `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`,
+        );
         colorCache.set(normalized, hex);
         resolve(hex);
       } catch {

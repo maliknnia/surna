@@ -9,8 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Video, MapPin, Users, Clock, CalendarDays, Map } from "lucide-react";
-import { mapPath } from "@/lib/mapNavigation";
+import { Video, MapPin, Users, Clock } from "lucide-react";
 import { markNavReturn, mobilePanelReturnPath, useSmartBack } from "@/lib/navigation";
 import { PanelBackButton } from "@/components/panels/PanelBackButton";
 import { FeatureFilterChips } from "@/components/panels/FeatureFilterBar";
@@ -281,57 +280,28 @@ export default function EventsPage({
               : { background: "var(--surna-base)", borderBottom: "1px solid var(--surna-border, rgba(255,255,255,0.06))" }
           }
         >
-          <div className={`flex items-center gap-3 px-4 ${compact ? "pt-2 pb-2" : "pt-3 pb-2"}`}>
-            {onPanelBack ? (
-              <PanelBackButton onClick={goBack} background={inputBgEarly} color={textPrimaryEarly} />
+          <div className={`flex items-center gap-3 px-4 ${compact ? "pt-2 pb-2 justify-end" : "pt-3 pb-2"}`}>
+            {!compact ? (
+              <>
+                <PanelBackButton onClick={goBack} background={inputBgEarly} color={textPrimaryEarly} />
+                <h1 className="text-[18px] font-bold flex-1" style={{ color: "var(--surna-text)" }}>Events</h1>
+              </>
             ) : null}
-            <h1 className="text-[18px] font-bold flex-1" style={{ color: "var(--surna-text)" }}>Events</h1>
-            <button
-              type="button"
-              onClick={() => {
-                if (compact) markNavReturn(mobilePanelReturnPath("events"));
-                setLocation(mapPath());
-              }}
-              className="h-8 w-8 rounded-full flex items-center justify-center active:scale-95"
-              style={{ background: "var(--surna-elevated, rgba(255,255,255,0.08))" }}
-              aria-label="Open map"
-              title="Map"
-            >
-              <Map size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (compact) markNavReturn(mobilePanelReturnPath("events"));
-                setLocation("/calendar");
-              }}
-              className="h-8 w-8 rounded-full flex items-center justify-center active:scale-95"
-              style={{ background: "var(--surna-elevated, rgba(255,255,255,0.08))" }}
-              aria-label="Open calendar"
-              title="Calendar"
-            >
-              <CalendarDays size={16} />
-            </button>
-            <button
-              onClick={() => {
-                if (compact) markNavReturn(mobilePanelReturnPath("events"));
-                setLocation(createHubPath("event"));
-              }}
-              className="h-8 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 active:scale-[0.96] transition-transform"
-              style={{ background: tEarly.chipActiveBg, color: tEarly.chipActiveText }}
-              data-testid="create-event-button"
-            >
-              <Plus className="w-3 h-3" />
-              Create
-            </button>
             {panelActive && (
               <PanelHeaderToolButtons
                 style={toolsStyle}
                 searchOpen={searchOpen || hasActiveSearch}
                 filterOpen={filterOpen}
                 filterActive={hasActiveFilter}
+                showSearch
+                showCreate={!!user}
                 onToggleSearch={onToggleSearch}
                 onToggleFilter={onToggleFilter}
+                onCreate={() => {
+                  if (compact) markNavReturn(mobilePanelReturnPath("events"));
+                  setLocation(createHubPath("event"));
+                }}
+                createLabel="Create event"
               />
             )}
           </div>
@@ -384,24 +354,6 @@ export default function EventsPage({
           <div className="flex items-center gap-3">
             <PanelBackButton onClick={goBack} background={inputBg} color={textPrimary} />
             <h1 className="text-[18px] font-bold flex-1" style={{ color: textPrimary }}>Events</h1>
-            <button
-              type="button"
-              onClick={() => setLocation(mapPath())}
-              className="h-8 w-8 rounded-full flex items-center justify-center active:scale-95"
-              style={{ background: inputBg }}
-              aria-label="Open map"
-            >
-              <Map size={16} style={{ color: textPrimary }} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setLocation("/calendar")}
-              className="h-8 w-8 rounded-full flex items-center justify-center active:scale-95"
-              style={{ background: inputBg }}
-              aria-label="Open schedule"
-            >
-              <CalendarDays size={16} style={{ color: textPrimary }} />
-            </button>
             {flags.liveStreaming && user && (
               <Dialog open={showGoLiveModal} onOpenChange={setShowGoLiveModal}>
                 <DialogTrigger asChild>
@@ -441,16 +393,29 @@ export default function EventsPage({
                 </DialogContent>
               </Dialog>
             )}
-            <button
-              onClick={() => setLocation(createHubPath("event"))}
-              className="h-8 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 active:scale-[0.96] transition-transform"
-              style={{ background: chipActiveBg, color: chipActiveText }}
-              data-testid="create-event-button"
-            >
-              <Plus size={14} />
-              Create
-            </button>
+            {panelActive && (
+              <PanelHeaderToolButtons
+                style={toolsStyle}
+                searchOpen={searchOpen || hasActiveSearch}
+                filterOpen={filterOpen}
+                filterActive={hasActiveFilter}
+                showSearch
+                showCreate={!!user}
+                onToggleSearch={onToggleSearch}
+                onToggleFilter={onToggleFilter}
+                onCreate={() => setLocation(createHubPath("event"))}
+                createLabel="Create event"
+              />
+            )}
           </div>
+          {panelActive && searchOpen && (
+            <PanelInlineSearch
+              style={toolsStyle}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              placeholder="Search events…"
+            />
+          )}
         </div>
 
         <div className="flex gap-2 px-4 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>

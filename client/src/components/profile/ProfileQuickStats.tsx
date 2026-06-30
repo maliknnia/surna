@@ -21,6 +21,7 @@ export function ProfileQuickStats({
       icon: Target,
       value: `${winRate}%`,
       label: "Win Rate",
+      tone: "win",
       onClick: onWinRateClick,
       testId: "profile-quick-win-rate",
     },
@@ -29,6 +30,7 @@ export function ProfileQuickStats({
       value: level,
       label: "Level",
       gold: true,
+      tone: "gold",
       onClick: onLevelClick,
       testId: "profile-quick-level",
     },
@@ -39,6 +41,7 @@ export function ProfileQuickStats({
       icon: Trophy,
       value: gamesCount,
       label: "Games",
+      tone: "accent",
       testId: "profile-quick-games",
     });
   }
