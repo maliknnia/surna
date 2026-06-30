@@ -303,8 +303,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     const api = express.Router();
     registerFeatureRouters(api, io);
     app.use("/api", api);
-    console.log("âœ… JWT Auth routes loaded successfully");
-    console.log("âœ… Challenges routes mounted at /api/competitive-challenges");
   } catch (error) {
     console.error('Failed to load JWT auth routes:', error);
   }
@@ -313,7 +311,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { socialRouter } = await import("./routes/socialPhase3");
     app.use("/api", socialRouter);
-    console.log("✅ Phase 3 social routes mounted at /api");
   } catch (error) {
     console.error("Failed to load Phase 3 social routes:", error);
   }
@@ -322,7 +319,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { competitiveRouter } = await import("./routes/competitivePhase4");
     app.use("/api", competitiveRouter);
-    console.log("✅ Phase 4 competitive routes mounted at /api");
   } catch (error) {
     console.error("Failed to load Phase 4 competitive routes:", error);
   }
@@ -331,7 +327,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { moneyPhase5Router } = await import("./routes/phase5Money");
     app.use("/api", moneyPhase5Router);
-    console.log("✅ Phase 5 money routes mounted at /api");
   } catch (error) {
     console.error("Failed to load Phase 5 money routes:", error);
   }
@@ -339,7 +334,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { sportPhase6Router } = await import("./routes/phase6Sport");
     app.use("/api", sportPhase6Router);
-    console.log("✅ Phase 6 sport routes mounted at /api");
   } catch (error) {
     console.error("Failed to load Phase 6 sport routes:", error);
   }
@@ -347,7 +341,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { healthPhase7Router } = await import("./routes/phase7Health");
     app.use("/api", healthPhase7Router);
-    console.log("✅ Phase 7 health routes mounted at /api");
   } catch (error) {
     console.error("Failed to load Phase 7 health routes:", error);
   }
@@ -355,7 +348,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { profilePhase8Router } = await import("./routes/phase8Profile");
     app.use("/api", profilePhase8Router);
-    console.log("✅ Phase 8 profile routes mounted at /api");
   } catch (error) {
     console.error("Failed to load Phase 8 profile routes:", error);
   }
@@ -363,7 +355,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { mobilePhase9Router } = await import("./routes/phase9Mobile");
     app.use("/api", mobilePhase9Router);
-    console.log("✅ Phase 9 mobile routes mounted at /api");
   } catch (error) {
     console.error("Failed to load Phase 9 mobile routes:", error);
   }
@@ -379,7 +370,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       console.error("[boot] Compliance requests schema migration failed", err);
     });
     app.use("/api/admin", adminRouter);
-    console.log("âœ… Admin Control System routes mounted at /api/admin");
   } catch (error) {
     console.error('Failed to load admin routes:', error);
   }
@@ -388,7 +378,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { infrastructureRouter } = await import("./routes/infrastructure");
     app.use("/api/infra", infrastructureRouter);
-    console.log("âœ… Infrastructure routes mounted at /api/infra");
   } catch (error) {
     console.error('Failed to load infrastructure routes:', error);
   }
@@ -400,7 +389,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const teamsRouter = (await import("./features/teams/teams.router")).default;
     app.use("/api/teams", teamsRouter);
-    console.log("âœ… Teams routes mounted at /api/teams");
   } catch (error) {
     console.error('Failed to load teams routes:', error);
   }
@@ -410,7 +398,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const placesRouter = (await import("./features/places/places.router")).default;
     app.use("/api/places", placesRouter);
-    console.log("âœ… Places (My Hub) routes mounted at /api/places");
   } catch (error) {
     console.error('Failed to load places router:', error);
   }
@@ -419,11 +406,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { mapRouter } = await import("./routes/map");
     app.use("/api/map", mapRouter);
-    console.log("âœ… Map routes mounted at /api/map");
-    
     const { presenceRouter } = await import("./routes/presence");
     app.use("/api/presence", presenceRouter);
-    console.log("âœ… Presence routes mounted at /api/presence");
   } catch (error) {
     console.error('Failed to load map routes:', error);
   }
@@ -432,7 +416,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { instantTeamsRouter } = await import("./routes/instantTeams");
     app.use("/api/instant-teams", instantTeamsRouter);
-    console.log("âœ… Instant Teams routes mounted at /api/instant-teams");
   } catch (error) {
     console.error('Failed to load instant teams routes:', error);
   }
@@ -441,7 +424,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { proRouter } = await import("./routes/pro");
     app.use("/api/pro", proRouter);
-    console.log("âœ… SURNA Pro routes mounted at /api/pro");
   } catch (error) {
     console.error('Failed to load pro routes:', error);
   }
@@ -450,7 +432,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { proWorkflowRouter } = await import("./routes/proWorkflow");
     app.use("/api/pro-workflow", proWorkflowRouter);
-    console.log("âœ… SURNA Pro Workflow routes mounted at /api/pro-workflow");
   } catch (error) {
     console.error('Failed to load pro workflow routes:', error);
   }
@@ -459,7 +440,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { wallpaperRouter } = await import("./routes/wallpaper");
     app.use("/api/wallpaper", wallpaperRouter);
-    console.log("âœ… Wallpaper routes mounted at /api/wallpaper");
   } catch (error) {
     console.error('Failed to load wallpaper routes:', error);
   }
@@ -468,7 +448,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { storiesRouter } = await import("./routes/stories");
     app.use("/api/stories", storiesRouter);
-    console.log("âœ… Stories routes mounted at /api/stories");
   } catch (error) {
     console.error('Failed to load stories routes:', error);
   }
@@ -477,7 +456,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   try {
     const { streamingRouter } = await import("./routes/streaming");
     app.use("/api/streaming", streamingRouter);
-    console.log("âœ… Streaming routes mounted at /api/streaming");
   } catch (error) {
     console.error('Failed to load streaming routes:', error);
   }
@@ -1018,14 +996,10 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       res.status(500).json({ message: "Failed to add comment" });
     }
   });
-
-  console.log("âœ… Places routes registered successfully");
-
   // Stage 16: Security & Privacy routes
   try {
     const { default: securityRoutes } = await import("./security/securityRoutes");
     app.use("/api/security", securityRoutes);
-    console.log("âœ… Security routes loaded successfully");
   } catch (error) {
     console.error('Failed to load security routes:', error);
   }
@@ -1532,8 +1506,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         updateData.primarySport = sportsPreferences[0];
         updateData.sport = sportsPreferences[0];
       }
-      console.log("[Phase3-2] Onboarding preferences saved for user", userId);
-      
       const [updatedUser] = await db
         .update(users)
         .set(updateData)
@@ -2596,13 +2568,6 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
           (c: { userId?: string; id: string }) => !blockedIds.has(c.userId || c.id),
         );
       }
-
-      console.log("[Phase3-4] Universal search:", query || category, {
-        players: results.users?.length ?? 0,
-        teams: results.teams?.length ?? 0,
-        routes: routes.length,
-      });
-
       res.json({
         ...results,
         players: results.users,

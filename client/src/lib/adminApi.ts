@@ -17,41 +17,39 @@ export type AdminUserRow = {
   createdAt: string;
 };
 
+type AdminUsersResponse = {
+  users: Array<Record<string, unknown>>;
+  total: number;
+};
+
 export async function fetchAdminUsers(params: {
   query?: string;
   limit: number;
   offset: number;
 }): Promise<{ users: AdminUserRow[]; total: number }> {
   const search = new URLSearchParams();
-  if (params.query?.trim()) search.set("query", params.query.trim());
+  if (params.query?.trim()) search.set("q", params.query.trim());
   search.set("limit", String(params.limit));
   search.set("offset", String(params.offset));
 
-  const rows = await fetchJson<Record<string, unknown>[]>(
-    `/api/admin/users?${search.toString()}`,
-  );
+  const data = await fetchJson<AdminUsersResponse>(`/api/admin/users?${search.toString()}`);
+  const rows = Array.isArray(data.users) ? data.users : [];
 
-  const users = (Array.isArray(rows) ? rows : []).map((row) => {
-    const firstName = String(row.firstName ?? row.first_name ?? "");
-    const lastName = String(row.lastName ?? row.last_name ?? "");
-    const email = (row.email as string | null) ?? null;
-    const status = String(row.status ?? "active");
-    return {
-      id: String(row.id),
-      username:
-        (row.username as string | null) ||
-        [firstName, lastName].filter(Boolean).join(" ") ||
-        email ||
-        "User",
-      email,
-      verified: status === "verified",
-      banned: status === "banned" || status === "suspended",
-      bannedReason: null,
-      createdAt: String(row.createdAt ?? row.created_at ?? new Date().toISOString()),
-    };
-  });
+  const users: AdminUserRow[] = rows.map((row) => ({
+    id: String(row.id),
+    username:
+      (row.username as string | null) ||
+      (row.displayName as string | null) ||
+      (row.email as string | null) ||
+      "User",
+    email: (row.email as string | null) ?? null,
+    verified: Boolean(row.verified),
+    banned: Boolean(row.banned),
+    bannedReason: (row.bannedReason as string | null) ?? null,
+    createdAt: String(row.createdAt ?? new Date().toISOString()),
+  }));
 
-  return { users, total: users.length };
+  return { users, total: typeof data.total === "number" ? data.total : users.length };
 }
 
 export type FlaggedContentItem = {
