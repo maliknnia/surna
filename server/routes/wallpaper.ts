@@ -1,11 +1,18 @@
-// @ts-nocheck -- Strict modules: server/features/analytics, server/admin. Peel this pragma per folder when fixing.
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replitAuth";
-import { initUpload, completeUpload } from "../features/media/media.service";
+import { initUpload } from "../features/media/media.service";
 
 export const wallpaperRouter = Router();
+
+type WallpaperRequest = Request & {
+  user?: { id?: string; claims?: { sub?: string } };
+};
+
+function wallpaperUserId(req: WallpaperRequest): string | null {
+  return req.user?.claims?.sub ?? req.user?.id ?? null;
+}
 
 const UpdateWallpaperSchema = z.object({
   enabled: z.boolean(),
@@ -19,12 +26,12 @@ const WallpaperUploadInitSchema = z.object({
   sizeBytes: z.number().int().positive(),
 });
 
-wallpaperRouter.get("/", isAuthenticated, async (req: any, res, next) => {
+wallpaperRouter.get("/", isAuthenticated, async (req: WallpaperRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user) {
+    const userId = wallpaperUserId(req);
+    if (!userId) {
       return res.status(401).json({ error: "UNAUTHORIZED" });
     }
-    const userId = req.user.claims?.sub || req.user.id;
     const preferences = await storage.getWallpaperPreferences(userId);
     res.json(preferences);
   } catch (error) {
@@ -32,12 +39,12 @@ wallpaperRouter.get("/", isAuthenticated, async (req: any, res, next) => {
   }
 });
 
-wallpaperRouter.put("/", isAuthenticated, async (req: any, res, next) => {
+wallpaperRouter.put("/", isAuthenticated, async (req: WallpaperRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user) {
+    const userId = wallpaperUserId(req);
+    if (!userId) {
       return res.status(401).json({ error: "UNAUTHORIZED" });
     }
-    const userId = req.user.claims?.sub || req.user.id;
     const { enabled, url, pages } = UpdateWallpaperSchema.parse(req.body);
     await storage.updateWallpaperPreferences(userId, enabled, url, pages);
     res.json({ success: true });
@@ -46,19 +53,19 @@ wallpaperRouter.put("/", isAuthenticated, async (req: any, res, next) => {
   }
 });
 
-wallpaperRouter.post("/upload", isAuthenticated, async (req: any, res, next) => {
+wallpaperRouter.post("/upload", isAuthenticated, async (req: WallpaperRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user) {
+    const userId = wallpaperUserId(req);
+    if (!userId) {
       return res.status(401).json({ error: "UNAUTHORIZED" });
     }
-    const userId = req.user.claims?.sub || req.user.id;
     const body = WallpaperUploadInitSchema.parse(req.body);
     const result = await initUpload(
       userId,
       "image",
       body.filename,
       body.contentType,
-      body.sizeBytes
+      body.sizeBytes,
     );
     res.status(201).json(result);
   } catch (error) {

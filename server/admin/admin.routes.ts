@@ -22,11 +22,16 @@ import { adminMarketplaceRouter } from "./admin.marketplace.routes";
 import { adminPaymentsRouter } from "./admin.payments.routes";
 import { getHealthSnapshot } from "../monitoring/prometheusMetrics";
 import { getBullMqMetrics } from "../worker/metrics";
+import { adminLegacyRouter } from "./admin.legacy.routes";
+
 import { ensureAdminDashboardSchema } from "./ensureAdminDashboardSchema";
 
 export const adminRouter = Router();
 
 adminRouter.use(requireAdmin);
+
+// Legacy paths (/stats, /queues, …) used by older admin UI panels
+adminRouter.use(adminLegacyRouter);
 
 // Mount sub-routers
 adminRouter.use("/content", adminContentRouter);

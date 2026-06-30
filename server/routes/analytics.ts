@@ -11,9 +11,10 @@ import {
   events,
   teamMembers
 } from "@shared/schema";
-import { eq, and, gte, lte, sql, desc, count, avg, sum } from "drizzle-orm";
+import { eq, sql, desc, and, gte, lte, count, avg, sum } from "drizzle-orm";
 import { isAuthenticated } from "../replitAuth";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { z } from "zod";
 
 export function registerAnalyticsRoutes(app: Express) {
   // Dashboard metrics endpoint
@@ -418,6 +419,81 @@ export function registerAnalyticsRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching real-time metrics:", error);
       res.status(500).json({ error: "Failed to fetch real-time metrics" });
+    }
+  });
+
+  // Client-side tracking beacons (CSRF-exempt — see csrfMiddleware.ts)
+  const pageViewSchema = z.object({
+    page: z.string().min(1),
+    title: z.string().optional(),
+    userId: z.string().optional(),
+    timestamp: z.string().optional(),
+  });
+  const eventSchema = z.object({
+    event: z.string().min(1),
+    category: z.string().min(1),
+    label: z.string().optional(),
+    value: z.number().optional(),
+    properties: z.record(z.any()).optional(),
+    userId: z.string().optional(),
+    timestamp: z.string().optional(),
+  });
+  const batchEventsSchema = z.object({
+    events: z.array(eventSchema).max(50),
+  });
+
+  app.post("/api/analytics/pageview", async (req, res) => {
+    try {
+      pageViewSchema.parse(req.body);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error tracking page view:", error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to track page view",
+      });
+    }
+  });
+
+  app.post("/api/analytics/event", async (req, res) => {
+    try {
+      eventSchema.parse(req.body);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error tracking event:", error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to track event",
+      });
+    }
+  });
+
+  app.post("/api/analytics/events/batch", async (req, res) => {
+    try {
+      const { events } = batchEventsSchema.parse(req.body);
+      res.json({ success: true, processed: events.length });
+    } catch (error) {
+      console.error("Error tracking batch events:", error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to track batch events",
+      });
+    }
+  });
+
+  app.post("/api/analytics/conversion", async (req, res) => {
+    try {
+      z.object({
+        conversionType: z.string().min(1),
+        value: z.number().optional(),
+        currency: z.string().optional().default("USD"),
+        transactionId: z.string().optional(),
+        userId: z.string().optional(),
+        properties: z.record(z.any()).optional(),
+      }).parse(req.body);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error tracking conversion:", error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to track conversion",
+      });
     }
   });
 }

@@ -253,24 +253,18 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     console.error("Failed to seed reward catalog:", error);
   }
   
-  // Stage 3: Register media routes (disabled for performance)
-  // registerMediaRoutes(app);
+  // Media job queue + legacy upload pipeline (feature router handles init/complete attach)
+  registerMediaRoutes(app);
 
-  // Stage 11: Marketing & Growth routes (disabled for performance)
-  // try {
-  //   const { registerMarketingRoutes } = await import("./routes/marketingRoutes");
-  //   registerMarketingRoutes(app);
-  // } catch (error) {
-  //   console.error('Failed to load marketing routes:', error);
-  // }
+  // Referrals, campaigns, and growth analytics
+  try {
+    const { registerMarketingRoutes } = await import("./routes/marketingRoutes");
+    registerMarketingRoutes(app);
+  } catch (error) {
+    console.error("Failed to load marketing routes:", error);
+  }
 
-  // Stage 12: Admin Tools & Content Moderation routes (disabled for performance)
-  // try {
-  //   const { registerAdminRoutes } = await import("./routes/adminRoutes");
-  //   registerAdminRoutes(app);
-  // } catch (error) {
-  //   console.error('Failed to load admin routes:', error);
-  // }
+  // Admin moderation — canonical handlers in server/admin/admin.routes.ts (+ admin.legacy.routes.ts)
 
   // Stage 13: Payment Integration routes
   try {

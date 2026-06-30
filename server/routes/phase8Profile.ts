@@ -4,8 +4,6 @@ import { authUserId, resolveRequestUserId } from "../lib/authUser";
 import {
   setProfilePath,
   updateSportIdentity,
-  getActiveNudges,
-  dismissNudge,
   searchCoaches,
   searchReferees,
   searchVenues,
@@ -73,34 +71,6 @@ profilePhase8Router.put("/profile/sport-identity", async (req, res) => {
   } catch (err: unknown) {
     if (err instanceof z.ZodError) return res.status(400).json({ message: "Invalid input" });
     res.status(500).json({ message: err instanceof Error ? err.message : "Failed to update sport identity" });
-  }
-});
-
-/** GET /api/profile/nudges */
-profilePhase8Router.get("/profile/nudges", async (req, res) => {
-  const userId = requireUserId(req, res);
-  if (!userId) return;
-  try {
-    const nudges = await getActiveNudges(userId);
-    res.json({ nudges });
-  } catch (err: unknown) {
-    res.status(500).json({ message: err instanceof Error ? err.message : "Failed to load nudges" });
-  }
-});
-
-/** POST /api/profile/nudges/:milestone/dismiss */
-profilePhase8Router.post("/profile/nudges/:milestone/dismiss", async (req, res) => {
-  const userId = requireUserId(req, res);
-  if (!userId) return;
-  try {
-    const milestone = z
-      .enum(["first_team_join", "first_challenge_win", "ten_activities", "three_profile_views"])
-      .parse(req.params.milestone);
-    const result = await dismissNudge(userId, milestone);
-    res.json(result);
-  } catch (err: unknown) {
-    if (err instanceof z.ZodError) return res.status(400).json({ message: "Invalid milestone" });
-    res.status(500).json({ message: err instanceof Error ? err.message : "Failed to dismiss nudge" });
   }
 });
 
