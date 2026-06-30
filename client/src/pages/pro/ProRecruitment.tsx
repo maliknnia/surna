@@ -7,6 +7,9 @@ import { PlayerMarketTab, ScoutViewTab, ScoutWatchlistTab } from "./components/R
 import { PageShell, Card, Button, Tag, Tabs, StatCard, EmptyState, ContextBar, FilterChips } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
 import { useAppendActivity } from "./components/proWorkflowApi";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import ProPlaceCommsModule from "./modules/ProPlaceCommsModule";
+import ProShopCommsModule from "./modules/ProShopCommsModule";
 
 type RTab = "trials" | "shortlist" | "applicants" | "market" | "scout" | "watchlist";
 type TrialStatus = "scheduled" | "open" | "filling" | "closed";
@@ -66,6 +69,13 @@ function AStatus({ s }: { s: AppStatus }) {
 }
 
 export default function ProRecruitment() {
+  const { isPlaceMode, isShopMode } = useProWorkspaceContext();
+  if (isPlaceMode) return <ProPlaceCommsModule />;
+  if (isShopMode) return <ProShopCommsModule />;
+  return <ProTeamRecruitment />;
+}
+
+function ProTeamRecruitment() {
   const [tab, setTab] = useState<RTab>("trials");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | AppStatus>("all");

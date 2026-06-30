@@ -9,6 +9,9 @@ import {
 import { PageShell, Card, Button, Tag, Tabs, EmptyState, FilterChips, ContextBar } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
 import { useProTeam } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import ProPlaceScheduleModule from "./modules/ProPlaceScheduleModule";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
 
 type EventStatus = "draft" | "published" | "filling" | "full" | "cancelled";
 type EventVisibility = "public" | "private" | "invite";
@@ -191,6 +194,21 @@ function MonthCalendar({ items, onPick }: { items: EventItem[]; onPick: (id: str
 }
 
 export default function ProSchedule() {
+  const { isPlaceMode, isShopMode } = useProWorkspaceContext();
+  if (isPlaceMode) return <ProPlaceScheduleModule />;
+  if (isShopMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Team schedule"
+        description="Event scheduling lives in Team Pro. Shop orders are managed from the seller dashboard."
+      />
+    );
+  }
+  return <ProTeamSchedule />;
+}
+
+function ProTeamSchedule() {
   const [view, setView] = useState<ViewMode>("list");
   type ScheduleFilter = "all" | "upcoming" | "past" | "low" | EventStatus;
   const [statusFilter, setStatusFilter] = useState<ScheduleFilter>("all");

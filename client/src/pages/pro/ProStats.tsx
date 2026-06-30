@@ -9,6 +9,9 @@ import { PageShell, Card, Button, Tag, Tabs, StatCard, EmptyState } from "./comp
 import { useProTeam } from "./components/ProTeamContext";
 import ProSportHero from "./components/ProSportHero";
 import { proKeys, fetchProJson } from "./lib/proQueries";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import ProShopStatsModule from "./modules/ProShopStatsModule";
+import ProPlaceStatsModule from "./modules/ProPlaceStatsModule";
 
 type Range = "7d" | "30d" | "90d" | "12m";
 type StatsTab = "overview" | "performance" | "audience" | "content" | "events";
@@ -167,6 +170,13 @@ const cities = [
 
 /* ---------- Page ---------- */
 export default function ProStats() {
+  const { isShopMode, isPlaceMode } = useProWorkspaceContext();
+  if (isShopMode) return <ProShopStatsModule />;
+  if (isPlaceMode) return <ProPlaceStatsModule />;
+  return <ProTeamStats />;
+}
+
+function ProTeamStats() {
   const [range, setRange] = useState<Range>("90d");
   const [tab, setTab] = useState<StatsTab>("performance");
   const { sportProfile, activeTeam, teamId } = useProTeam();

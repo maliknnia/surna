@@ -627,6 +627,52 @@ export async function getSellerOrders(sellerId: string) {
   return result.rows;
 }
 
+export async function getSellerShopDashboard(sellerId: string) {
+  const shopRow = await getShopBySellerId(sellerId);
+  if (!shopRow) return null;
+
+  const shop = shopRow as Record<string, unknown>;
+  const productsResult = await db.execute<{ active_products: number; total_products: number }>(sql`
+    SELECT
+      COUNT(*) FILTER (WHERE is_active = true)::int AS active_products,
+      COUNT(*)::int AS total_products
+    FROM products WHERE seller_id = ${sellerId}
+  `);
+  const productStats = productsResult.rows[0] ?? { active_products: 0, total_products: 0 };
+  const orders = await getSellerOrders(sellerId);
+  const pendingOrders = orders.filter((o) => {
+    const s = String((o as { status?: string }).status ?? "").toLowerCase();
+    return s === "pending" || s === "paid" || s === "confirmed";
+  }).length;
+  const completedOrders = orders.filter(
+    (o) => String((o as { status?: string }).status ?? "").toLowerCase() === "delivered",
+  ).length;
+
+  return {
+    shop: {
+      id: String(shop.id ?? ""),
+      name: String(shop.business_name ?? "My shop"),
+      businessType: shop.business_type as string | null,
+      description: shop.description as string | null,
+      logoUrl: shop.logo_url as string | null,
+      bannerUrl: shop.banner_url as string | null,
+      location: shop.location as string | null,
+      city: shop.city as string | null,
+      followersCount: Number(shop.followers_count ?? 0),
+      productsCount: Number(shop.products_count ?? productStats.total_products),
+      isVerified: Boolean(shop.is_verified),
+      isActive: shop.is_active !== false,
+    },
+    stats: {
+      activeProducts: Number(productStats.active_products ?? 0),
+      totalProducts: Number(productStats.total_products ?? 0),
+      pendingOrders,
+      completedOrders,
+      totalOrders: orders.length,
+    },
+  };
+}
+
 export async function updateSellerOrderStatus(orderId: string, sellerId: string, status: string) {
   const allowed = ["pending", "confirmed", "dispatched", "delivered"];
   if (!allowed.includes(status)) return null;

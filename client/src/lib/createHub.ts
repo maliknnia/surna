@@ -10,6 +10,7 @@ import {
   Inbox,
   MessageCircle,
   Building2,
+  ShoppingBag,
 } from "lucide-react";
 import { ROUTES } from "@/navigation";
 import type { MyHubSummary } from "@/features/my-hub/hooks/useMyHubSummary";
@@ -172,7 +173,7 @@ export type HubManageItem = {
   description: string;
   icon: LucideIcon;
   route: string;
-  countKey?: keyof Pick<MyHubSummary, "upcomingEvents" | "activeTeams" | "activePlaces" | "activeChallenges">;
+  countKey?: keyof Pick<MyHubSummary, "upcomingEvents" | "activeTeams" | "activePlaces" | "activeShop" | "activeChallenges">;
   badgeKey?: keyof Pick<MyHubSummary, "pendingRequests" | "unreadMessages">;
   testId?: string;
 };
@@ -206,6 +207,15 @@ export const HUB_MANAGE_ITEMS: HubManageItem[] = [
     route: ROUTES.myHubPlaces,
     countKey: "activePlaces",
     testId: "hub-manage-places",
+  },
+  {
+    id: "shops",
+    title: "Shop",
+    description: "Marketplace orders and listings",
+    icon: ShoppingBag,
+    route: ROUTES.myHubShops,
+    countKey: "activeShop",
+    testId: "hub-manage-shops",
   },
   {
     id: "challenges",

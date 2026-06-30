@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { getSportProfile, type SportProfile } from "../lib/proSport";
@@ -30,6 +31,7 @@ const ProTeamContext = createContext<Ctx | null>(null);
 
 export function ProTeamProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const [location] = useLocation();
   const { data: rawTeams, isLoading: teamsLoading } = useQuery<ProTeamSummary[]>({
     queryKey: proKeys.teams(),
     enabled: !!user?.id,
@@ -62,6 +64,16 @@ export function ProTeamProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (teams.length === 0) return;
+    const fromUrl = new URLSearchParams(window.location.search).get("team");
+    if (fromUrl && teams.some((t) => t.id === fromUrl)) {
+      setTeamIdState(fromUrl);
+      try {
+        localStorage.setItem(STORAGE_KEY, fromUrl);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     const valid = teamId && teams.some((t) => t.id === teamId);
     if (valid) return;
     const next = teams[0].id;
@@ -71,7 +83,7 @@ export function ProTeamProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
-  }, [teamId, teams]);
+  }, [teamId, teams, location]);
 
   const activeTeam = useMemo(() => {
     if (teams.length === 0) return null;

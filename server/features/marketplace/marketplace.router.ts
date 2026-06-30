@@ -322,6 +322,17 @@ marketplaceRouter.get("/orders/:id", requireAuth(), async (req: any, res, next) 
   } catch(e) { next(e); }
 });
 
+// AUTH: Seller shop dashboard (My Hub / Shop Pro)
+marketplaceRouter.get("/seller/shop", requireAuth(), async (req: any, res, next) => {
+  try {
+    const dash = await MP.getSellerShopDashboard(req.jwtUser.id);
+    if (!dash) return res.status(404).json({ error: "No shop found" });
+    res.json(dash);
+  } catch (e) {
+    next(e);
+  }
+});
+
 // AUTH: Seller orders
 marketplaceRouter.get("/seller/orders", requireAuth(), async (req: any, res, next) => {
   try {

@@ -5,6 +5,9 @@ import {
 } from "lucide-react";
 import { PageShell, Card, Button, Tag, EmptyState, ContextBar } from "./components/primitives";
 import { useProRole, ROLE_LABELS } from "./components/useProRole";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import ProPlaceSettingsModule from "./modules/ProPlaceSettingsModule";
+import ProShopSettingsModule from "./modules/ProShopSettingsModule";
 
 type Section = "profile" | "organization" | "branding" | "permissions" | "notifications" | "billing" | "integrations" | "security";
 
@@ -418,6 +421,13 @@ function SecuritySection() {
 }
 
 export default function ProSettings() {
+  const { isPlaceMode, isShopMode } = useProWorkspaceContext();
+  if (isPlaceMode) return <ProPlaceSettingsModule />;
+  if (isShopMode) return <ProShopSettingsModule />;
+  return <ProTeamSettings />;
+}
+
+function ProTeamSettings() {
   const [section, setSection] = useState<Section>("profile");
   const current = sections.find((s) => s.key === section)!;
   const { role, can } = useProRole();

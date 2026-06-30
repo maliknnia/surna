@@ -27,6 +27,7 @@ myHubRouter.get("/summary", isAuthenticated, async (req: any, res) => {
       pendingRequestsRow,
       unreadDmsRow,
       unreadGroupsRow,
+      activeShopRow,
     ] = await Promise.all([
       // Events the user owns or has RSVP'd to that are upcoming
       dbRead.execute(sql`
@@ -99,6 +100,13 @@ myHubRouter.get("/summary", isAuthenticated, async (req: any, res) => {
          WHERE m.sender_id <> ${userId}
            AND (r.last_read_at IS NULL OR m.created_at > r.last_read_at);
       `),
+
+      // Marketplace shop owned by user (seller account)
+      dbRead.execute(sql`
+        SELECT COUNT(*)::int AS c
+          FROM product_sellers
+         WHERE seller_id = ${userId} AND is_active IS NOT FALSE;
+      `),
     ]);
 
     const upcomingEvents = Number(upcomingEventsRow.rows?.[0]?.c ?? 0);
@@ -109,12 +117,14 @@ myHubRouter.get("/summary", isAuthenticated, async (req: any, res) => {
     const unreadDms = Number(unreadDmsRow.rows?.[0]?.c ?? 0);
     const unreadGroups = Number(unreadGroupsRow.rows?.[0]?.c ?? 0);
     const unreadMessages = unreadDms + unreadGroups;
+    const activeShop = Number(activeShopRow.rows?.[0]?.c ?? 0);
 
     res.json({
       upcomingEvents,
       activeTeams,
       activePlaces,
       activeChallenges,
+      activeShop,
       pendingRequests,
       unreadMessages,
       generatedAt: new Date().toISOString(),

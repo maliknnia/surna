@@ -8,6 +8,9 @@ import {
 } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
 import { useProTeam } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
+import ProPlaceApprovalsModule from "./modules/ProPlaceApprovalsModule";
 import {
   useApprovals, useDecideApproval, type Approval,
 } from "./components/proWorkflowApi";
@@ -51,6 +54,21 @@ function PriorityDot({ p }: { p: Approval["priority"] }) {
 }
 
 export default function ProApprovals() {
+  const { isPlaceMode, isShopMode } = useProWorkspaceContext();
+  if (isPlaceMode) return <ProPlaceApprovalsModule />;
+  if (isShopMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Squad approvals"
+        description="Join requests and squad approvals live in Team Pro. Fulfill shop orders from Orders."
+      />
+    );
+  }
+  return <ProTeamApprovals />;
+}
+
+function ProTeamApprovals() {
   const { teamId: rawTeamId } = useProTeam();
   const teamId = rawTeamId ?? undefined;
   const { data, isLoading } = useApprovals(teamId);

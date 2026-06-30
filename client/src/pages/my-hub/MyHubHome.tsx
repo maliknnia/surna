@@ -10,6 +10,7 @@ import {
   PlusCircle,
   Building2,
   Trophy,
+  ShoppingBag,
 } from "lucide-react";
 import {
   SummaryChipRow,
@@ -42,6 +43,7 @@ export default function MyHubHome() {
       value: data?.pendingRequests ?? 0,
       icon: Inbox,
       emphasis: (data?.pendingRequests ?? 0) > 0,
+      href: "/my-hub/requests",
     },
     {
       key: "messages",
@@ -49,6 +51,7 @@ export default function MyHubHome() {
       value: data?.unreadMessages ?? 0,
       icon: MessageCircle,
       emphasis: (data?.unreadMessages ?? 0) > 0,
+      href: ROUTES.messages,
     },
     {
       key: "challenges",
@@ -62,12 +65,21 @@ export default function MyHubHome() {
       label: "Teams",
       value: data?.activeTeams ?? 0,
       icon: Users,
+      href: ROUTES.myHubTeams,
     },
     {
       key: "places",
       label: "Places",
       value: data?.activePlaces ?? 0,
       icon: Building2,
+      href: ROUTES.myHubPlaces,
+    },
+    {
+      key: "shop",
+      label: "Shop",
+      value: data?.activeShop ?? 0,
+      icon: ShoppingBag,
+      href: ROUTES.myHubShops,
     },
   ];
 
@@ -86,6 +98,7 @@ export default function MyHubHome() {
     data.activeChallenges === 0 &&
     data.activeTeams === 0 &&
     data.activePlaces === 0 &&
+    data.activeShop === 0 &&
     data.pendingRequests === 0 &&
     data.unreadMessages === 0;
 
@@ -170,7 +183,7 @@ export default function MyHubHome() {
           <EmptyState
             icon={PlusCircle}
             title="Nothing here yet"
-            description="Create your first event, start a team, or add a place to get going."
+            description="Create your first event, start a team, add a place, or open a shop to get going."
             ctaLabel="Create an event"
             ctaHref={ROUTES.create}
             testId="hub-empty-state"

@@ -4,6 +4,7 @@ export interface MyHubSummary {
   upcomingEvents: number;
   activeTeams: number;
   activePlaces: number;
+  activeShop: number;
   activeChallenges: number;
   pendingRequests: number;
   unreadMessages: number;

@@ -136,8 +136,8 @@ export default function LeftDrawer({ isOpen, onClose }: LeftDrawerProps) {
         { icon: Trophy, label: 'Achievements', description: 'Badges and milestones', path: '/gamification' },
         { icon: BarChart3, label: 'Performance', description: 'Stats and progress', path: ROUTES.performance },
         ...(isPro
-          ? [{ icon: Crown, label: 'Pro dashboard', description: 'Roster, match day, and club tools', path: '/pro' }]
-          : [{ icon: Crown, label: 'SURNA Pro', description: 'Unlock advanced club tools', path: '/subscribe' }]),
+          ? [{ icon: Crown, label: 'Pro workspace', description: 'Teams, places & shop from My Hub', path: '/my-hub' }]
+          : [{ icon: Crown, label: 'SURNA Pro', description: 'Team workspace · €9.99/mo', path: '/subscribe' }]),
       ],
     },
     {

@@ -68,5 +68,6 @@ export const Marketplace = {
   getUserOrders: repo.getUserOrders,
   getOrderDetails: repo.getOrderDetails,
   getSellerOrders: repo.getSellerOrders,
+  getSellerShopDashboard: repo.getSellerShopDashboard,
   updateSellerOrderStatus: repo.updateSellerOrderStatus,
 };

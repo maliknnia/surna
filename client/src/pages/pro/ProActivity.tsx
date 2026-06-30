@@ -8,6 +8,8 @@ import {
 } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
 import { useProTeam } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
 import { useActivity, type ActivityEntry, type ActivityKind } from "./components/proWorkflowApi";
 
 type EventKind = ActivityKind;
@@ -76,6 +78,20 @@ function dayOf(iso: string) {
 }
 
 export default function ProActivity() {
+  const { isTeamMode } = useProWorkspaceContext();
+  if (!isTeamMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Activity log"
+        description="The workspace audit trail is available in Team Pro. Place and shop actions appear in their respective tools."
+      />
+    );
+  }
+  return <ProTeamActivity />;
+}
+
+function ProTeamActivity() {
   const { can } = useProRole();
   const { teamId: rawTeamId } = useProTeam();
   const teamId = rawTeamId ?? undefined;

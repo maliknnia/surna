@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, ChevronRight, X } from "lucide-react";
 import { PageShell, Card, EmptyState } from "./components/primitives";
 import { useProTeam } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
 import { useProRole } from "./components/useProRole";
 
 type SquadPlayer = {
@@ -27,6 +29,20 @@ const STATUS_COLOR = {
 };
 
 export default function ProSquadHealth() {
+  const { isTeamMode } = useProWorkspaceContext();
+  if (!isTeamMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Squad health"
+        description="Player load and availability tracking is part of Team Pro."
+      />
+    );
+  }
+  return <ProTeamSquadHealth />;
+}
+
+function ProTeamSquadHealth() {
   const { teamId } = useProTeam();
   const { can } = useProRole();
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);

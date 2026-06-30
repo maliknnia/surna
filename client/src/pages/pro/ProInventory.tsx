@@ -7,6 +7,8 @@ import {
 import { PageShell, Card, Button, Tag, Tabs, StatCard, EmptyState, ContextBar } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
 import { useProTeam } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import ProShopInventoryModule from "./modules/ProShopInventoryModule";
 
 type ITab = "items" | "issued" | "movements";
 type Condition = "new" | "good" | "fair" | "poor";
@@ -86,6 +88,12 @@ function Stock({ qty, threshold }: { qty: number; threshold: number }) {
 }
 
 export default function ProInventory() {
+  const { isShopMode } = useProWorkspaceContext();
+  if (isShopMode) return <ProShopInventoryModule />;
+  return <ProTeamInventory />;
+}
+
+function ProTeamInventory() {
   const [tab, setTab] = useState<ITab>("items");
   const [search, setSearch] = useState("");
   const [cat, setCat] = useState<"all" | Item["category"]>("all");

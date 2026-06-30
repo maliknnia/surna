@@ -8,6 +8,9 @@ import { PageShell, Card, Button, EmptyState, ContextBar } from "./components/pr
 import { useProRole } from "./components/useProRole";
 import { useProTeam } from "./components/ProTeamContext";
 import { apiRequest } from "@/lib/queryClient";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import ProShopCommsModule from "./modules/ProShopCommsModule";
+import ProPlaceCommsModule from "./modules/ProPlaceCommsModule";
 
 type DMRow = {
   id: string;
@@ -34,6 +37,13 @@ function isTeamRelated(title: string, teamName: string) {
 }
 
 export default function ProComms() {
+  const { isShopMode, isPlaceMode } = useProWorkspaceContext();
+  if (isShopMode) return <ProShopCommsModule />;
+  if (isPlaceMode) return <ProPlaceCommsModule />;
+  return <ProTeamComms />;
+}
+
+function ProTeamComms() {
   const { can } = useProRole();
   const { teamId, activeTeam, sportProfile } = useProTeam();
   const teamName = activeTeam?.name ?? "";

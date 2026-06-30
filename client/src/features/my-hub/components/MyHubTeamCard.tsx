@@ -17,10 +17,13 @@ import {
   Filter,
   LayoutDashboard,
   Trophy,
+  Sparkles,
 } from "lucide-react";
 import { LockedAction } from "./LockedAction";
 import { StatusPill } from "./StatusPill";
 import { getSportLabels } from "@/lib/sportLabels";
+import { useProEntitlement, isProEntitlementActive } from "@/hooks/useProEntitlement";
+import { proTeamWorkspaceHref } from "@/lib/proFeatures";
 
 export interface MyHubTeam {
   id: string;
@@ -70,6 +73,8 @@ function formatRelative(iso?: string | null) {
 
 export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, onJoinSettings, onInvitePlayer, onLogGame, onManageHighlights, canEdit }: Props) {
   const [proOpen, setProOpen] = useState(false);
+  const { data: entitlement } = useProEntitlement();
+  const isPro = isProEntitlementActive(entitlement);
   const members = team.currentMembers ?? 0;
   const cap = team.maxMembers ?? null;
   const pending = team.pendingRequestsCount ?? 0;
@@ -214,15 +219,44 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
         ) : null}
       </div>
 
-      {/* Pro tools */}
+      {/* Pro workspace */}
       <div className="px-4 py-3" style={{ borderTop: "0.5px solid var(--surna-border)" }}>
+        <Link href={proTeamWorkspaceHref(team.id)}>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-3 rounded-xl px-4 py-3 mb-3 transition-all active:scale-[0.99]"
+            style={{
+              background: "linear-gradient(135deg, color-mix(in srgb, var(--surna-gold, #f5c518) 22%, var(--surna-elevated)), var(--surna-elevated))",
+              border: "1px solid color-mix(in srgb, var(--surna-gold, #f5c518) 35%, var(--surna-border))",
+            }}
+            data-testid={`team-pro-workspace-${team.id}`}
+          >
+            <span className="flex items-center gap-2.5 min-w-0">
+              <span
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "color-mix(in srgb, var(--surna-gold, #f5c518) 25%, transparent)" }}
+              >
+                <Sparkles className="w-4 h-4" style={{ color: "var(--surna-gold, #f5c518)" }} />
+              </span>
+              <span className="text-left min-w-0">
+                <span className="block text-[13px] font-bold truncate" style={{ color: "var(--surna-text)" }}>
+                  {isPro ? "Open Pro workspace" : "Team Pro workspace"}
+                </span>
+                <span className="block text-[11px] truncate" style={{ color: "var(--surna-text-secondary)" }}>
+                  Squad, match day, training & analytics
+                </span>
+              </span>
+            </span>
+            <ChevronRight className="w-4 h-4 shrink-0" style={{ color: "var(--surna-text-muted)" }} />
+          </button>
+        </Link>
         <button
           onClick={() => setProOpen((v) => !v)}
           className="w-full flex items-center justify-between text-[12px] font-semibold"
           style={{ color: "var(--surna-text-secondary)" }}
           data-testid={`team-pro-toggle-${team.id}`}
         >
-          <span>Pro tools</span>
+          <span>Quick Pro tools</span>
           <ChevronRight
             className="w-4 h-4 transition-transform"
             style={{ transform: proOpen ? "rotate(90deg)" : "rotate(0deg)" }}
@@ -236,6 +270,7 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
               description="Custom roles, scoped permissions"
               featureKey="teams.roles"
               fromSurface="my-hub-teams"
+              teamId={team.id}
               testId={`team-locked-roles-${team.id}`}
             />
             <LockedAction
@@ -244,6 +279,7 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
               description="Application forms, auto-approval rules"
               featureKey="teams.joinRules"
               fromSurface="my-hub-teams"
+              teamId={team.id}
               testId={`team-locked-joinrules-${team.id}`}
             />
             <LockedAction
@@ -252,6 +288,7 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
               description="Engagement, retention, performance"
               featureKey="teams.analytics"
               fromSurface="my-hub-teams"
+              teamId={team.id}
               testId={`team-locked-analytics-${team.id}`}
             />
             <LockedAction
@@ -260,6 +297,7 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
               description="Per-event roster + history"
               featureKey="teams.attendance"
               fromSurface="my-hub-teams"
+              teamId={team.id}
               testId={`team-locked-attendance-${team.id}`}
             />
             <LockedAction
@@ -268,6 +306,7 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
               description="Targeted recruiting + scheduled posts"
               featureKey="teams.recruitment"
               fromSurface="my-hub-teams"
+              teamId={team.id}
               testId={`team-locked-recruit-${team.id}`}
             />
             <LockedAction
@@ -276,6 +315,7 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
               description="Manage all your teams in one view"
               featureKey="teams.multiTeam"
               fromSurface="my-hub-teams"
+              teamId={team.id}
               testId={`team-locked-multi-${team.id}`}
             />
             <LockedAction
@@ -284,6 +324,7 @@ export function MyHubTeamCard({ team, onEdit, onPostUpdate, onReviewRequests, on
               description="Filter by skill, attendance, role, more"
               featureKey="teams.memberFilters"
               fromSurface="my-hub-teams"
+              teamId={team.id}
               testId={`team-locked-filters-${team.id}`}
             />
           </div>

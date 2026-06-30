@@ -6,6 +6,9 @@ import {
 } from "lucide-react";
 import { PageShell, Card, Button, Tag, Tabs, StatCard, EmptyState, ContextBar } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
+import ProPlaceClubModule from "./modules/ProPlaceClubModule";
 
 type ClubTab = "overview" | "teams" | "academy" | "staff" | "announcements" | "settings";
 
@@ -77,6 +80,21 @@ function StatusTag({ s }: { s: ClubTeam["status"] | AcademyPlayer["status"] }) {
 }
 
 export default function ProClub() {
+  const { isPlaceMode, isShopMode } = useProWorkspaceContext();
+  if (isPlaceMode) return <ProPlaceClubModule />;
+  if (isShopMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Club & academy"
+        description="Multi-team club tools are part of Team Pro. Manage shop settings from Settings."
+      />
+    );
+  }
+  return <ProTeamClub />;
+}
+
+function ProTeamClub() {
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<ClubTab>("overview");
   const { can } = useProRole();

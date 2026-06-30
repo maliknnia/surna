@@ -19,3 +19,4 @@ export { PostPlaceUpdateSheet } from "./PostPlaceUpdateSheet";
 export { UpdatePlacePhotoSheet } from "./UpdatePlacePhotoSheet";
 export { UpdatePlaceDescriptionSheet } from "./UpdatePlaceDescriptionSheet";
 export { ManagePlaceHighlightsSheet } from "./ManagePlaceHighlightsSheet";
+export { MyHubShopCard, type MyHubShop } from "./MyHubShopCard";

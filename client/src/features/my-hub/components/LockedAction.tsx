@@ -19,6 +19,9 @@ interface Props {
   description?: string;
   featureKey?: string;
   fromSurface?: string;
+  teamId?: string;
+  placeId?: string;
+  shopId?: string;
   testId?: string;
   onClick?: () => void;
 }
@@ -29,6 +32,9 @@ export function LockedAction({
   description,
   featureKey,
   fromSurface = "my-hub",
+  teamId,
+  placeId,
+  shopId,
   testId,
   onClick,
 }: Props) {
@@ -36,10 +42,11 @@ export function LockedAction({
   const [, setLocation] = useLocation();
   const { data: entitlement } = useProEntitlement();
   const isPro = isProEntitlementActive(entitlement);
+  const ctx = { teamId, placeId, shopId };
 
   const proHref = isPro
-    ? proDeepLink(featureKey, fromSurface)
-    : proEntryHref(featureKey, fromSurface);
+    ? proDeepLink(featureKey, fromSurface, ctx)
+    : proEntryHref(featureKey, fromSurface, ctx);
 
   const handleClick = () => {
     if (onClick) {

@@ -9,6 +9,8 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { PageShell, Card, Button, Tag, Tabs, EmptyState } from "./components/primitives";
 import { useProTeam } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -288,6 +290,20 @@ function BracketView({ fixtures }: { fixtures: Fixture[] }) {
 }
 
 export default function ProTournament() {
+  const { isTeamMode } = useProWorkspaceContext();
+  if (!isTeamMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Tournaments"
+        description="Run brackets and fixtures from Team Pro — one workspace per squad."
+      />
+    );
+  }
+  return <ProTeamTournament />;
+}
+
+function ProTeamTournament() {
   const [, params] = useRoute("/pro/tournament/:id");
   const tournamentId = params?.id;
   const qc = useQueryClient();

@@ -1,15 +1,20 @@
 import { lazy, Suspense } from "react";
 import { Switch, Route } from "wouter";
-import ProLayout from "./ProLayout";
+import ProWorkspaceShell from "./ProWorkspaceShell";
+import ProTeamWorkspaceHome from "./ProTeamWorkspaceHome";
+import ProPlaceWorkspaceHome from "./ProPlaceWorkspaceHome";
+import ProShopWorkspaceHome from "./ProShopWorkspaceHome";
+import "./pro-workspace.css";
 import { ProRoleProvider } from "./components/useProRole";
 import ProUpgradeScreen from "./components/ProUpgradeScreen";
 import { ProTeamProvider } from "./components/ProTeamContext";
+import { ProPlaceProvider } from "./components/ProPlaceContext";
+import { ProShopProvider } from "./components/ProShopContext";
 import { useProEntitlement } from "./hooks/useProEntitlement";
 import { useAuth } from "@/hooks/useAuth";
 import { ProDeepLinkRedirect } from "./components/ProDeepLinkRedirect";
 import "./pro-theme.css";
 
-const ProDashboard = lazy(() => import("./ProDashboard"));
 const ProRoster = lazy(() => import("./ProRoster"));
 const ProTraining = lazy(() => import("./ProTraining"));
 const ProMatchDay = lazy(() => import("./ProMatchDay"));
@@ -79,38 +84,47 @@ function ProEntitlementShell({ children }: { children: React.ReactNode }) {
 export default function ProApp() {
   return (
     <ProTeamProvider>
-      <ProRoleProvider>
-        <ProEntitlementShell>
-          <ProLayout>
-            <Suspense fallback={<ProLoading embedded />}>
-              <Switch>
-                <Route path="/pro" component={ProDashboard} />
-                <Route path="/pro/roster" component={ProRoster} />
-                <Route path="/pro/training" component={ProTraining} />
-                <Route path="/pro/squad-health" component={ProSquadHealth} />
-                <Route path="/pro/match-day" component={ProMatchDay} />
-                <Route path="/pro/tournament/:id" component={ProTournament} />
-                <Route path="/pro/tournament" component={ProTournament} />
-                <Route path="/pro/inventory" component={ProInventory} />
-                <Route path="/pro/schedule" component={ProSchedule} />
-                <Route path="/pro/stats" component={ProStats} />
-                <Route path="/pro/comms" component={ProComms} />
-                <Route path="/pro/recruitment" component={ProRecruitment} />
-                <Route path="/pro/club" component={ProClub} />
-                <Route path="/pro/approvals" component={ProApprovals} />
-                <Route path="/pro/activity" component={ProActivity} />
-                <Route path="/pro/settings" component={ProSettings} />
-                <Route>
-                  <div className="pro-empty">
-                    <div className="pro-empty__title">Page not found</div>
-                    <div className="pro-empty__desc">This Pro route does not exist.</div>
-                  </div>
-                </Route>
-              </Switch>
-            </Suspense>
-          </ProLayout>
-        </ProEntitlementShell>
-      </ProRoleProvider>
+      <ProPlaceProvider>
+        <ProShopProvider>
+        <ProRoleProvider>
+          <ProEntitlementShell>
+            <div className="pro-app">
+              <div className="pro-cinematic-ambient" aria-hidden />
+              <ProWorkspaceShell>
+                <Suspense fallback={<ProLoading embedded />}>
+                  <Switch>
+                    <Route path="/pro/shop" component={ProShopWorkspaceHome} />
+                    <Route path="/pro/place" component={ProPlaceWorkspaceHome} />
+                    <Route path="/pro" component={ProTeamWorkspaceHome} />
+                    <Route path="/pro/roster" component={ProRoster} />
+                    <Route path="/pro/training" component={ProTraining} />
+                    <Route path="/pro/squad-health" component={ProSquadHealth} />
+                    <Route path="/pro/match-day" component={ProMatchDay} />
+                    <Route path="/pro/tournament/:id" component={ProTournament} />
+                    <Route path="/pro/tournament" component={ProTournament} />
+                    <Route path="/pro/inventory" component={ProInventory} />
+                    <Route path="/pro/schedule" component={ProSchedule} />
+                    <Route path="/pro/stats" component={ProStats} />
+                    <Route path="/pro/comms" component={ProComms} />
+                    <Route path="/pro/recruitment" component={ProRecruitment} />
+                    <Route path="/pro/club" component={ProClub} />
+                    <Route path="/pro/approvals" component={ProApprovals} />
+                    <Route path="/pro/activity" component={ProActivity} />
+                    <Route path="/pro/settings" component={ProSettings} />
+                    <Route>
+                      <div className="pro-empty">
+                        <div className="pro-empty__title">Page not found</div>
+                        <div className="pro-empty__desc">This Pro route does not exist.</div>
+                      </div>
+                    </Route>
+                  </Switch>
+                </Suspense>
+              </ProWorkspaceShell>
+            </div>
+          </ProEntitlementShell>
+        </ProRoleProvider>
+        </ProShopProvider>
+      </ProPlaceProvider>
     </ProTeamProvider>
   );
 }

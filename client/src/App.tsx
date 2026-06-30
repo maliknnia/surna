@@ -119,6 +119,7 @@ const MyHubHome = lazy(() => import("@/pages/my-hub/MyHubHome"));
 const MyHubEventsPage = lazy(() => import("@/pages/my-hub/MyHubEventsPage"));
 const MyHubTeamsPage = lazy(() => import("@/pages/my-hub/MyHubTeamsPage"));
 const MyHubPlacesPage = lazy(() => import("@/pages/my-hub/MyHubPlacesPage"));
+const MyHubShopsPage = lazy(() => import("@/pages/my-hub/MyHubShopsPage"));
 const MyHubRequestsPage = lazy(() => import("@/pages/my-hub/MyHubRequestsPage"));
 const MyHubSectionPlaceholder = lazy(() => import("@/pages/my-hub/MyHubSectionPlaceholder"));
 
@@ -273,6 +274,7 @@ function Router() {
         <Route path="/my-hub/events" component={() => <ProtectedRoute component={MyHubEventsPage} />} />
         <Route path="/my-hub/teams" component={() => <ProtectedRoute component={MyHubTeamsPage} />} />
         <Route path="/my-hub/places" component={() => <ProtectedRoute component={MyHubPlacesPage} />} />
+        <Route path="/my-hub/shops" component={() => <ProtectedRoute component={MyHubShopsPage} />} />
         <Route path="/my-hub/requests" component={() => <ProtectedRoute component={MyHubRequestsPage} />} />
         <Route path="/my-hub/:section" component={() => <ProtectedRoute component={MyHubSectionPlaceholder} />} />
 

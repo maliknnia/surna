@@ -7,6 +7,8 @@ import {
 import { PageShell, Card, Button, Tag, Tabs, StatCard, EmptyState, ContextBar } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
 import { useProTeam } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
 import { apiRequest } from "@/lib/queryClient";
 import { proKeys, mapMatchRows, fetchProJson, type ProMatchRow } from "./lib/proQueries";
 import FormationMessageCard from "./components/FormationMessageCard";
@@ -76,6 +78,20 @@ type SavedLayout = {
 };
 
 export default function ProMatchDay() {
+  const { isTeamMode } = useProWorkspaceContext();
+  if (!isTeamMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Match Day"
+        description="Lineups, formations, and match prep are part of Team Pro."
+      />
+    );
+  }
+  return <ProTeamMatchDay />;
+}
+
+function ProTeamMatchDay() {
   const { teamId, teams, activeTeam, sportProfile } = useProTeam();
   const teamName = activeTeam?.name ?? teams.find((t) => t.id === teamId)?.name ?? "Team";
   const { can } = useProRole();

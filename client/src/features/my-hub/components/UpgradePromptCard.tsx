@@ -41,16 +41,16 @@ export function UpgradePromptCard({
             Pro is active
           </div>
           <div className="text-xs mt-0.5" style={{ color: "var(--surna-text-secondary)" }}>
-            Open advanced tools below or in the Pro dashboard.
+            Open a team, place, or shop in My Hub → Pro workspace.
           </div>
         </div>
-        <Link href="/pro">
+        <Link href="/my-hub">
           <button
             className="text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap"
             style={{ background: "var(--surna-text)", color: "var(--surna-bg)" }}
             data-testid="pro-active-cta"
           >
-            Open Pro
+            My Hub
           </button>
         </Link>
       </div>

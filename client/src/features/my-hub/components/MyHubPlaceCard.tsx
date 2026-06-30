@@ -26,9 +26,12 @@ import {
   MessageSquare,
   Video,
   QrCode,
+  Sparkles,
 } from "lucide-react";
 import { LockedAction } from "./LockedAction";
 import { StatusPill } from "./StatusPill";
+import { useProEntitlement, isProEntitlementActive } from "@/hooks/useProEntitlement";
+import { proPlaceWorkspaceHref } from "@/lib/proFeatures";
 
 export interface MyHubPlace {
   id: string;
@@ -72,6 +75,8 @@ export function MyHubPlaceCard({
   onManageHighlights,
 }: Props) {
   const [proOpen, setProOpen] = useState(false);
+  const { data: entitlement } = useProEntitlement();
+  const isPro = isProEntitlementActive(entitlement);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const pending = place.pendingBookingsCount ?? 0;
@@ -237,15 +242,44 @@ export function MyHubPlaceCard({
         />
       </div>
 
-      {/* Pro tools */}
+      {/* Pro workspace */}
       <div className="px-4 py-3" style={{ borderTop: "0.5px solid var(--surna-border)" }}>
+        <Link href={proPlaceWorkspaceHref(place.id)}>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-3 rounded-xl px-4 py-3 mb-3 transition-all active:scale-[0.99]"
+            style={{
+              background: "linear-gradient(135deg, color-mix(in srgb, var(--surna-gold, #f5c518) 22%, var(--surna-elevated)), var(--surna-elevated))",
+              border: "1px solid color-mix(in srgb, var(--surna-gold, #f5c518) 35%, var(--surna-border))",
+            }}
+            data-testid={`place-pro-workspace-${place.id}`}
+          >
+            <span className="flex items-center gap-2.5 min-w-0">
+              <span
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "color-mix(in srgb, var(--surna-gold, #f5c518) 25%, transparent)" }}
+              >
+                <Sparkles className="w-4 h-4" style={{ color: "var(--surna-gold, #f5c518)" }} />
+              </span>
+              <span className="text-left min-w-0">
+                <span className="block text-[13px] font-bold truncate" style={{ color: "var(--surna-text)" }}>
+                  {isPro ? "Open Pro workspace" : "Place Pro workspace"}
+                </span>
+                <span className="block text-[11px] truncate" style={{ color: "var(--surna-text-secondary)" }}>
+                  Bookings, scan, analytics & pricing
+                </span>
+              </span>
+            </span>
+            <ChevronRight className="w-4 h-4 shrink-0" style={{ color: "var(--surna-text-muted)" }} />
+          </button>
+        </Link>
         <button
           onClick={() => setProOpen((v) => !v)}
           className="w-full flex items-center justify-between text-[12px] font-semibold"
           style={{ color: "var(--surna-text-secondary)" }}
           data-testid={`place-pro-toggle-${place.id}`}
         >
-          <span>Pro tools</span>
+          <span>Quick Pro tools</span>
           <ChevronRight
             className="w-4 h-4 transition-transform"
             style={{ transform: proOpen ? "rotate(90deg)" : "rotate(0deg)" }}
@@ -277,6 +311,7 @@ export function MyHubPlaceCard({
               description="Triage requests, confirm or decline"
               featureKey="places.bookings"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-bookings-${place.id}`}
             />
             <LockedAction
@@ -285,6 +320,7 @@ export function MyHubPlaceCard({
               description="Visual calendar with conflict detection"
               featureKey="places.bookingCalendar"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-calendar-${place.id}`}
             />
             <LockedAction
@@ -293,6 +329,7 @@ export function MyHubPlaceCard({
               description="Weekly classes, sessions and blocks"
               featureKey="places.recurring"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-recurring-${place.id}`}
             />
             <LockedAction
@@ -301,6 +338,7 @@ export function MyHubPlaceCard({
               description="Per-court, per-room, per-trainer slots"
               featureKey="places.slots"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-slots-${place.id}`}
             />
             <LockedAction
@@ -309,6 +347,7 @@ export function MyHubPlaceCard({
               description="Memberships, drop-ins, packages"
               featureKey="places.pricing"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-pricing-${place.id}`}
             />
             <LockedAction
@@ -317,6 +356,7 @@ export function MyHubPlaceCard({
               description="Views, conversion, revenue trends"
               featureKey="places.analytics"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-analytics-${place.id}`}
             />
             <LockedAction
@@ -325,6 +365,7 @@ export function MyHubPlaceCard({
               description="Discount codes, bundles, flash deals"
               featureKey="places.promotions"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-promos-${place.id}`}
             />
             <LockedAction
@@ -333,6 +374,7 @@ export function MyHubPlaceCard({
               description="Featured ranking on map and search"
               featureKey="places.priority"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-priority-${place.id}`}
             />
             <LockedAction
@@ -341,6 +383,7 @@ export function MyHubPlaceCard({
               description="Triage, assignment, follow-ups"
               featureKey="places.leads"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-leads-${place.id}`}
             />
             <LockedAction
@@ -349,6 +392,7 @@ export function MyHubPlaceCard({
               description="Trainers, front-desk, scoped permissions"
               featureKey="places.staff"
               fromSurface="my-hub-places"
+              placeId={place.id}
               testId={`place-locked-staff-${place.id}`}
             />
           </div>

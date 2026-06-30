@@ -8,6 +8,9 @@ import {
 import { PageShell, Card, Button, Tag, Tabs, StatCard, EmptyState, FilterChips, ContextBar } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
 import { useProTeam, type ProTeamSummary } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
+import ProPlaceStaffModule from "./modules/ProPlaceStaffModule";
 import { apiRequest } from "@/lib/queryClient";
 import { proKeys } from "./lib/proQueries";
 import { Link } from "wouter";
@@ -386,6 +389,21 @@ function mapRosterToMembers(rows: Array<{ id: string; userId?: string; name: str
 }
 
 export default function ProRoster() {
+  const { isPlaceMode, isShopMode } = useProWorkspaceContext();
+  if (isPlaceMode) return <ProPlaceStaffModule />;
+  if (isShopMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Squad roster"
+        description="Player rosters live in Team Pro. Manage shop products from Inventory."
+      />
+    );
+  }
+  return <ProTeamRoster />;
+}
+
+function ProTeamRoster() {
   const { teams, teamId, setTeamId, teamsLoading, sportProfile } = useProTeam();
   const [tab, setTab] = useState<TeamTab>("roster");
   const { can } = useProRole();

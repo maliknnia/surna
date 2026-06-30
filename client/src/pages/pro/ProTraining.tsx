@@ -7,6 +7,8 @@ import { Link } from "wouter";
 import { PageShell, Card, Button, Tag, Tabs, StatCard, EmptyState, ContextBar } from "./components/primitives";
 import { useProRole } from "./components/useProRole";
 import { useProTeam } from "./components/ProTeamContext";
+import { useProWorkspaceContext } from "./lib/useProWorkspaceContext";
+import { ProWorkspaceModeGate } from "./components/ProWorkspaceModeGate";
 import { useAppendActivity } from "./components/proWorkflowApi";
 import ProSportHero from "./components/ProSportHero";
 import type { SportProfile } from "./lib/proSport";
@@ -72,6 +74,20 @@ function Difficulty({ level }: { level: number }) {
 }
 
 export default function ProTraining() {
+  const { isTeamMode } = useProWorkspaceContext();
+  if (!isTeamMode) {
+    return (
+      <ProWorkspaceModeGate
+        required={["team"]}
+        title="Training"
+        description="Session plans, attendance, and drills are part of Team Pro."
+      />
+    );
+  }
+  return <ProTeamTraining />;
+}
+
+function ProTeamTraining() {
   const [tab, setTab] = useState<TTab>("sessions");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");

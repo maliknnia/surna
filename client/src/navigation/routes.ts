@@ -26,6 +26,7 @@ export const ROUTES = {
   myHubEvents: '/my-hub/events',
   myHubTeams: '/my-hub/teams',
   myHubPlaces: '/my-hub/places',
+  myHubShops: '/my-hub/shops',
   myHubRequests: '/my-hub/requests',
   instantJoin: '/instant-join',
   
