@@ -118,7 +118,6 @@ export default function FirstTimeUserSetup({ user, onComplete }: FirstTimeUserSe
       return response.json();
     },
     onSuccess: () => {
-      console.log("[Phase3-2] Onboarding complete");
       toast({
         title: "Welcome to SURNA! 🎉",
         description: "Your profile has been set up successfully.",

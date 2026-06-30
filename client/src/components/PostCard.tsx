@@ -214,7 +214,6 @@ export default function PostCard({ post, onShare }: PostCardProps) {
       const endpoint = currentlyLiked
         ? `/api/posts/${post.id}/unlike`
         : `/api/posts/${post.id}/like`;
-      console.log("[Fix 6] Post like API:", endpoint);
       const response = await apiRequest("POST", endpoint, {});
       return response.json();
     },

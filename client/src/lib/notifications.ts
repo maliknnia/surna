@@ -418,9 +418,7 @@ function buildActionsForType(type: string, route?: string): NotifAction[] | unde
 }
 
 export function mergeNotificationFeed(apiRows: ApiNotificationRow[]): SurnaNotification[] {
-  const apiItems = apiRows.map(apiRowToNotification);
-  console.log("[Fix 8] Notifications loaded from API:", apiItems.length);
-  return apiItems;
+  return apiRows.map(apiRowToNotification);
 }
 
 export function filterNotifications(

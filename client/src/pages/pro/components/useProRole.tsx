@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useProTeam } from "./ProTeamContext";
 
@@ -100,12 +100,6 @@ export function ProRoleProvider({ children }: { children: ReactNode }) {
   });
 
   const role: ProRole = isProRole(serverRole?.role) ? serverRole.role : "member";
-
-  useEffect(() => {
-    if (teamId && serverRole?.role) {
-      console.log("[Fix 7] Pro role verified from database:", serverRole.role, "team", teamId);
-    }
-  }, [teamId, serverRole?.role]);
 
   const setRole = (_r: ProRole) => {
     /* Role is server-managed; local changes are ignored. */

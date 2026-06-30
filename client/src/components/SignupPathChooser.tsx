@@ -27,7 +27,6 @@ export default function SignupPathChooser({ onComplete }: Props) {
         profileType,
         skipSetup: profileType === "normal",
       });
-      console.log("[Phase8-1] Signup path chosen:", profileType);
       // Advance UI immediately — don't block on auth refetch (can hang/abort on slow networks).
       onComplete(profileType);
       void queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });

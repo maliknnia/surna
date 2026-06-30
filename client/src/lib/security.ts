@@ -210,12 +210,9 @@ export function initializeFrontendSecurity() {
   // Listen for auth errors globally
   window.addEventListener("unhandledrejection", (event) => {
     if (event.reason?.status === 401) {
-      console.log("Session expired, redirecting to login...");
       window.location.href = "/";
     } else if (event.reason?.status === 419) {
       handleTokenExpiration();
     }
   });
-  
-  console.log("🔒 Frontend security initialized");
 }

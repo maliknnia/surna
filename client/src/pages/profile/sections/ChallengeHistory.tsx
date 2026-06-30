@@ -122,7 +122,6 @@ export default function ChallengeHistory({ userId }: ChallengeHistoryProps) {
               const result = match.result;
               const won = result?.outcome === (isHost ? 'hostWin' : 'guestWin');
               const lost = result?.outcome === (isHost ? 'guestWin' : 'hostWin');
-              const draw = result?.outcome === 'draw';
 
               return (
                 <Card

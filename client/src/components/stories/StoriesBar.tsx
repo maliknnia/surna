@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -108,12 +108,6 @@ export function StoriesBar({ onStoryClick, onAddStory }: StoriesBarProps) {
     queryKey: ["/api/stories"],
     enabled: !!user,
   });
-
-  useEffect(() => {
-    if (stories.length > 0) {
-      console.log("[Fix 8] Stories loaded from API:", stories.length);
-    }
-  }, [stories.length]);
 
   const storiesByUser = stories.reduce((acc, story) => {
     const uid = story.userId;

@@ -1,13 +1,11 @@
 import { lazy, Suspense } from "react";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, Trophy, ChevronRight } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProfileExtras } from "@/hooks/useProfileExtras";
 import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
 import { Link } from "wouter";
-import { Trophy } from "lucide-react";
 import { EntityEmptyState, MatchResultBadge } from "@/components/entity";
 import { ROUTES } from "@/navigation";
-import { ChevronRight } from "lucide-react";
 import {
   fetchProfileTeamGames,
   formatGameScore,

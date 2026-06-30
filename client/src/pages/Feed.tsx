@@ -41,23 +41,7 @@ import { useVideoViewer } from "@/hooks/useVideoViewer";
 import { mapPostToVideoPost } from "@/lib/mapPostToVideoPost";
 import { DEMO_FEED_VIDEOS, DEMO_REELS } from "@/components/video/FeedVideoViewer";
 
-/** Neutral media placeholder for non-tinted surfaces (e.g. video rail) */
-const FEED_MEDIA_BG = "var(--surna-elevated)";
-
 /** Event/team CTAs — solid #fff pills read as white boxes on dark feed */
-function feedPrimaryCtaStyle(isDark: boolean, joined?: boolean) {
-  if (joined) {
-    return {
-      background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-      color: isDark ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.38)",
-    };
-  }
-  return {
-    background: isDark ? "hsl(var(--primary))" : "#000000",
-    color: "hsl(var(--primary-foreground))",
-  };
-}
-
 function feedActiveTabStyle(isDark: boolean, active: boolean) {
   if (!active) {
     return {
@@ -283,7 +267,6 @@ export default function Feed() {
       
       const response = await apiRequest('GET', url);
       const data = await response.json();
-      console.log('[Fix 1] Home feed loaded from API:', url, `${(data as FeedResponse).items?.length ?? 0} posts`);
       return data as FeedResponse;
     },
     initialPageParam: null as string | null,

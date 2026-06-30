@@ -97,7 +97,6 @@ export default function ProfessionalProfileSetup({ user, onComplete }: Props) {
       return res.json();
     },
     onSuccess: () => {
-      console.log("[Phase8-2] Professional profile saved");
       toast({ title: "Professional profile saved" });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       onComplete();

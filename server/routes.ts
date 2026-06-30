@@ -1459,21 +1459,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
 
   // Social feed enhancement routes
   
-  // Get suggested users
-  app.get('/api/users/suggested', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      const limit = parseInt(req.query.limit as string) || 10;
-      const suggestedUsers = await storage.getSuggestedUsers(userId, limit);
-      res.json(suggestedUsers);
-    } catch (error: unknown) {
-      console.error("Error fetching suggested users:", error);
-      res.status(500).json({ message: "Failed to fetch suggested users" });
-    }
-  });
+  // Suggested users — canonical handler in server/routes/socialPhase3.ts (mounted before this block).
 
   // Get trending hashtags - Stage 2 cached
   app.get('/api/hashtags/trending', async (req: any, res) => {
@@ -2044,28 +2030,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   // Team routes — canonical handlers live in server/features/teams/teams.router.ts
   // (mounted at /api/teams before this block; duplicates here were dead code).
 
-  app.get("/api/coaches", async (req, res) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 20;
-      const offset = parseInt(req.query.offset as string) || 0;
-      const sportRaw = typeof req.query.sport === "string" ? req.query.sport : "";
-      const sportParam =
-        sportRaw && sportRaw.toLowerCase() !== "all" ? sportRaw : undefined;
-      const sportKey = sportParam?.toLowerCase() ?? "all";
-
-      const coaches = await withCache(
-        `coaches_${limit}_${offset}_${sportKey}`,
-        60,
-        async () => storage.getCoaches(limit, offset, sportParam)
-      );
-
-      res.setHeader("Cache-Control", "private, max-age=15, stale-while-revalidate=60");
-      res.json(coaches.map((c) => enrichCoachRow(c)));
-    } catch (error: unknown) {
-      console.error("Error fetching coaches:", error);
-      res.status(500).json({ message: "Failed to fetch coaches" });
-    }
-  });
+  // Coaches — canonical handler in server/routes/phase8Profile.ts (mounted before this block).
 
   // Message routes
   app.get('/api/conversations', isAuthenticated, async (req: any, res) => {
@@ -4505,17 +4470,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  // Get popular content
-  app.get("/api/analytics/popular-content", isAuthenticated, async (req, res) => {
-    try {
-      const { getContentMetrics } = await import('./analytics/analyticsService');
-      const content = await getContentMetrics();
-      res.json(content);
-    } catch (error: unknown) {
-      console.error("Error getting popular content:", error);
-      res.status(500).json({ error: "Failed to get popular content" });
-    }
-  });
+  // Popular content — canonical handler in server/routes/analytics.ts (registered before this block).
 
   // Get real-time metrics
   app.get("/api/analytics/realtime", isAuthenticated, async (req, res) => {
@@ -5113,20 +5068,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   });
 
   // ====== CHALLENGE ENDPOINTS ======
-
-  // Get active challenges
-  app.get("/api/challenges", async (req, res) => {
-    try {
-      const { challengeService } = await import("./services/challengeService");
-      const userId = req.isAuthenticated?.() ? (req.user as any).claims.sub : undefined;
-      
-      const challenges = await challengeService.getActiveChallenges(userId);
-      res.json(challenges);
-    } catch (error: unknown) {
-      console.error("Error getting challenges:", error);
-      res.status(500).json({ error: "Failed to get challenges" });
-    }
-  });
+  // GET /api/challenges — canonical handler above (ChallengesService.getAvailableChallenges).
 
   // Join a challenge
   app.post("/api/challenges/:challengeId/join", isAuthenticated, async (req, res) => {
@@ -5266,44 +5208,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  // Get product with dynamic pricing
-  app.get("/api/marketplace/products/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { quantity = "1" } = req.query;
-      const userId = sessionUserId(req);
-
-      // Get base product
-      const [product] = await db
-        .select()
-        .from(products)
-        .where(eq(products.id, id));
-
-      if (!product) {
-        return res.status(404).json({ error: "Product not found" });
-      }
-
-      // Calculate dynamic pricing (userId optional — guest checkout / browse)
-      const pricing = await pricingService.calculateProductPrice(
-        id,
-        userId,
-        parseInt(quantity as string)
-      );
-
-      // Get frequently bought together
-      const relatedProducts = await marketplaceRecommendationService
-        .getFrequentlyBoughtTogether(id, 5);
-
-      res.json({
-        ...product,
-        pricing,
-        relatedProducts
-      });
-    } catch (error: unknown) {
-      console.error("Error getting product details:", error);
-      res.status(500).json({ error: "Failed to get product details" });
-    }
-  });
+  // Product detail, reviews, questions, wishlist — canonical handlers in
+  // server/features/marketplace/marketplace.router.ts (mounted at /api/marketplace before this block).
 
   // Get personalized product recommendations
   app.get("/api/marketplace/recommendations", isAuthenticated, async (req, res) => {
@@ -5358,38 +5264,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  // User wishlist management
-  app.get("/api/marketplace/wishlist", isAuthenticated, async (req, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      
-      const wishlists = await db
-        .select({
-          wishlist: userWishlists,
-          items: sql`json_agg(
-            json_build_object(
-              'id', wishlist_items.id,
-              'product', products.*,
-              'addedAt', wishlist_items.added_at,
-              'notes', wishlist_items.notes
-            )
-          )`
-        })
-        .from(userWishlists)
-        .leftJoin(wishlistItems, eq(userWishlists.id, wishlistItems.wishlistId))
-        .leftJoin(products, eq(wishlistItems.productId, products.id))
-        .where(eq(userWishlists.userId, userId))
-        .groupBy(userWishlists.id);
-
-      res.json(wishlists);
-    } catch (error: unknown) {
-      console.error("Error getting wishlist:", error);
-      res.status(500).json({ error: "Failed to get wishlist" });
-    }
-  });
+  // User wishlist listing — see marketplace.router.ts GET /wishlist.
 
   app.post("/api/marketplace/wishlist/items", isAuthenticated, async (req, res) => {
     try {
@@ -5442,145 +5317,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  // Product reviews and ratings
-  app.post("/api/marketplace/products/:id/reviews", isAuthenticated, async (req, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      const { id } = req.params;
-      const { rating, reviewTitle, reviewText } = req.body;
-
-      const purchaseCheck = await db
-        .select({ count: eqDb(orderItems.productId, id) })
-        .from(orderItems)
-        .innerJoin(orders, eqDb(orderItems.orderId, orders.id))
-        .where(andDb(eqDb(orders.userId, userId), eqDb(orderItems.productId, id)))
-        .limit(1);
-      const isVerifiedPurchase = purchaseCheck.length > 0;
-
-      const [review] = await db
-        .insert(productReviews)
-        .values({
-          productId: id,
-          userId,
-          rating,
-          reviewTitle,
-          reviewText,
-          isVerifiedPurchase
-        })
-        .returning();
-
-      res.json(review);
-    } catch (error: unknown) {
-      console.error("Error creating review:", error);
-      res.status(500).json({ error: "Failed to create review" });
-    }
-  });
-
-  app.get("/api/marketplace/products/:id/reviews", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { page = "1", limit = "10" } = req.query;
-
-      const pageNum = parseInt(page as string);
-      const limitNum = parseInt(limit as string);
-      const offset = (pageNum - 1) * limitNum;
-
-      const reviews = await db
-        .select({
-          review: productReviews,
-          user: {
-            id: users.id,
-            firstName: users.firstName,
-            profileImageUrl: users.profileImageUrl
-          }
-        })
-        .from(productReviews)
-        .innerJoin(users, eq(productReviews.userId, users.id))
-        .where(
-          and(
-            eq(productReviews.productId, id),
-            eq(productReviews.isVisible, true)
-          )
-        )
-        .orderBy(desc(productReviews.createdAt))
-        .limit(limitNum)
-        .offset(offset);
-
-      res.json(reviews);
-    } catch (error: unknown) {
-      console.error("Error getting reviews:", error);
-      res.status(500).json({ error: "Failed to get reviews" });
-    }
-  });
-
-  // Product Q&A system
-  app.post("/api/marketplace/products/:id/questions", isAuthenticated, async (req, res) => {
-    try {
-      const userId = sessionUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      const { id } = req.params;
-      const { question } = req.body;
-
-      const [newQuestion] = await db
-        .insert(productQuestions)
-        .values({
-          productId: id,
-          userId,
-          question
-        })
-        .returning();
-
-      res.json(newQuestion);
-    } catch (error: unknown) {
-      console.error("Error creating question:", error);
-      res.status(500).json({ error: "Failed to create question" });
-    }
-  });
-
-  app.get("/api/marketplace/products/:id/questions", async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      const questions = await db
-        .select({
-          question: productQuestions,
-          user: {
-            id: users.id,
-            firstName: users.firstName
-          },
-          answers: sql`json_agg(
-            json_build_object(
-              'id', product_answers.id,
-              'answer', product_answers.answer,
-              'isFromSeller', product_answers.is_from_seller,
-              'helpfulVotes', product_answers.helpful_votes,
-              'createdAt', product_answers.created_at,
-              'user', json_build_object(
-                'id', answer_users.id,
-                'firstName', answer_users.first_name
-              )
-            )
-          ) FILTER (WHERE product_answers.id IS NOT NULL)`
-        })
-        .from(productQuestions)
-        .innerJoin(users, eq(productQuestions.userId, users.id))
-        .leftJoin(productAnswers, eq(productQuestions.id, productAnswers.questionId))
-        .leftJoin(users as any, eq(productAnswers.userId, sql`answer_users.id`))
-        .where(eq(productQuestions.productId, id))
-        .groupBy(productQuestions.id, users.id)
-        .orderBy(desc(productQuestions.createdAt));
-
-      res.json(questions);
-    } catch (error: unknown) {
-      console.error("Error getting questions:", error);
-      res.status(500).json({ error: "Failed to get questions" });
-    }
-  });
+  // Product reviews and Q&A — see marketplace.router.ts.
 
   // Inventory management for sellers
   app.get("/api/marketplace/inventory/alerts", isAuthenticated, async (req, res) => {

@@ -9,14 +9,12 @@ export async function initPushNotifications(userId?: string | null): Promise<voi
 
   const perm = await PushNotifications.requestPermissions();
   if (perm.receive !== "granted") {
-    console.log("[Phase9-3] Push permission denied");
     return;
   }
 
   await PushNotifications.register();
 
   PushNotifications.addListener("registration", async (token) => {
-    console.log("[Phase9-3] Push token:", token.value.slice(0, 12) + "…");
     if (!userId) return;
     try {
       await fetch("/api/push/register", {
@@ -34,8 +32,8 @@ export async function initPushNotifications(userId?: string | null): Promise<voi
     console.warn("[Phase9-3] Push registration error:", err);
   });
 
-  PushNotifications.addListener("pushNotificationReceived", (notification) => {
-    console.log("[Phase9-3] Push received:", notification.title);
+  PushNotifications.addListener("pushNotificationReceived", () => {
+    /* Handled by in-app notification UI when foregrounded */
   });
 
   PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
