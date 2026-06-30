@@ -890,7 +890,6 @@ export default function InteractiveMap({
 
   const finishStyleLoad = (map: maplibregl.Map) => {
     const styleUrl = tileStyleRef.current;
-    console.log(`[InteractiveMap] style.load — ${tileStyleModeRef.current}:`, styleUrl);
     if (styleUrl.includes("maptiler.com")) {
       applyMapTilerStyleLoad(
         map,
@@ -1007,8 +1006,6 @@ export default function InteractiveMap({
   useEffect(() => {
     if (!mounted || !mapActive || !mapContainerRef.current || !tileStyle) return;
 
-    console.log("[InteractiveMap] loading map style:", mapTheme, tileStyle);
-
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: tileStyle,
@@ -1073,7 +1070,6 @@ export default function InteractiveMap({
     styleRef.current = tileStyle;
     tileStyleRef.current = tileStyle;
     mapTilerFallbackRef.current = false;
-    console.log("[InteractiveMap] loading map style:", mapTheme, tileStyle);
     map.setStyle(tileStyle);
   }, [tileStyle, mapTheme]);
 

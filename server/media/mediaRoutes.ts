@@ -6,7 +6,8 @@ import { requireEmailVerified } from "../middleware/requireEmailVerified";
 import { db } from "../db";
 import { posts, postMedia } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { mediaUploadRateLimit, voiceNoteRateLimit } from "../middleware/messengerRateLimit";
+import { mediaUploadRateLimit } from "../middleware/messengerRateLimit";
+import { authUserId } from "../lib/authUser";
 
 export function registerMediaRoutes(app: Express) {
   
@@ -157,7 +158,10 @@ export function registerMediaRoutes(app: Express) {
   // Create post with media  
   app.post('/api/posts/with-media', isAuthenticated, requireEmailVerified, mediaUploadRateLimit, upload.array('media', 5), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = authUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
       const { content, type = 'text' } = req.body;
       
       // Create post first

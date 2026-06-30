@@ -249,7 +249,6 @@ const FAMILY_DEFAULTS: Record<string, LabelPartial> = {
 
 const SPORT_FAMILY: Record<string, string> = {
   rugby: "team_field",
-  cricket: "team_field",
   hockey: "team_field",
   gaa: "team_field",
   hurling: "team_field",

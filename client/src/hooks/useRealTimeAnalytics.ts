@@ -44,7 +44,6 @@ export function useRealTimeAnalytics() {
       wsRef.current.onopen = () => {
         setIsConnected(true);
         setError(null);
-        console.log('🔗 Connected to analytics WebSocket');
         
         // Subscribe to metrics and events
         wsRef.current?.send(JSON.stringify({
@@ -64,7 +63,6 @@ export function useRealTimeAnalytics() {
 
       wsRef.current.onclose = () => {
         setIsConnected(false);
-        console.log('📡 Disconnected from analytics WebSocket');
         
         // Reconnect after 3 seconds
         if (reconnectTimeoutRef.current) {
@@ -94,11 +92,10 @@ export function useRealTimeAnalytics() {
         break;
         
       case 'welcome':
-        console.log('Analytics WebSocket:', message.message);
         break;
         
       default:
-        console.log('Unknown message type:', message.type);
+        break;
     }
   }, []);
 
