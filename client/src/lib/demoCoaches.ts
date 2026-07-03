@@ -72,38 +72,7 @@ export const DEMO_COACH_PROFILES: CoachWithProfile[] = [
       pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 110, period: "hour", highlighted: true }],
     },
   },
-  {
-    id: "demo-coach-james",
-    userId: "demo-user-james",
-    specialties: ["CrossFit", "Olympic Lifting"],
-    experience: "9",
-    certifications: ["CrossFit L2", "USAW Sports Performance"],
-    hourlyRate: "68.00",
-    bio: "Regional-level WOD & barbell coaching — safe PRs and structured cycles.",
-    isVerified: true,
-    isActive: true,
-    weeklyAvailability: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    user: {
-      id: "demo-user-james",
-      firstName: "James",
-      lastName: "Mitchell",
-      email: "jmitch@surna.app",
-      profileImageUrl: IMG("1571019614242-c5c5dee9f50b", 400, 400),
-      sport: "CrossFit",
-      location: "Denver, CO",
-    } as CoachWithProfile["user"],
-    profileJson: {
-      tagline: "Regional-level WOD & barbell coaching",
-      coverImageUrl: IMG("1517836357463-aaac8aa94f98", 900, 600),
-      rating: 4.9,
-      reviewCount: 55,
-      achievements: [{ id: "1", title: "Regional qualifier", year: "2021" }],
-      pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 68, period: "hour", highlighted: true }],
-    },
-  },
 ].map((row) => {
   const profile = parseCoachProfile(row.profileJson, row, row.user);
   return { ...row, profile };
-});
+}).slice(0, 2);

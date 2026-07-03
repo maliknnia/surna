@@ -1,5 +1,6 @@
 import type { StoryWithUser } from "@shared/schema";
 import type { DemoStoryUser } from "@/lib/personalizedDemoFeed";
+import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
 import { DEMO_STORY_POOL } from "@/lib/personalizedDemoFeed";
 
 export function isDemoStoryUserId(userId: string): boolean {
@@ -53,14 +54,13 @@ export function buildDemoStoriesForUser(demo: DemoStoryUser): StoryWithUser[] {
 }
 
 export function buildAllDemoStories(): StoryWithUser[] {
-  return DEMO_STORY_POOL.flatMap(buildDemoStoriesForUser);
+  return DEMO_STORY_POOL.slice(0, DEMO_SHOWCASE_LIMIT).flatMap(buildDemoStoriesForUser);
 }
 
-/** API stories first; demo fills users with no live stories. */
+/** API stories first; at most two showcase demos when the feed is empty. */
 export function mergeApiStoriesWithDemo(apiStories: StoryWithUser[]): StoryWithUser[] {
-  const apiUserIds = new Set(apiStories.map((s) => s.userId));
-  const demoOnly = buildAllDemoStories().filter((s) => !apiUserIds.has(s.userId));
-  return [...apiStories, ...demoOnly];
+  if (apiStories.length > 0) return apiStories;
+  return buildAllDemoStories();
 }
 
 export function findDemoStoryUser(userId: string): DemoStoryUser | undefined {

@@ -184,71 +184,29 @@ const teamLogos = [
 ];
 
 const seedUsers = [
-  { firstName: 'Marcus', lastName: 'Johnson', username: 'marcusj_hoops', sport: 'Basketball', bio: 'Point guard | LA Ballers captain | Hoop dreams never die', location: 'Los Angeles' },
-  { firstName: 'Sophia', lastName: 'Chen', username: 'sophia_runs', sport: 'Running', bio: 'Marathon runner | 3:12 PR | Chasing the next mile', location: 'New York' },
-  { firstName: 'DeAndre', lastName: 'Williams', username: 'dre_mma', sport: 'MMA', bio: 'Amateur MMA fighter | BJJ purple belt | Training daily', location: 'Miami' },
-  { firstName: 'Isabella', lastName: 'Rodriguez', username: 'bella_tennis', sport: 'Tennis', bio: 'Tennis player | USTA 4.5 | Love-all starts here', location: 'Houston' },
-  { firstName: 'James', lastName: 'Mitchell', username: 'jmitch_crossfit', sport: 'CrossFit', bio: 'CrossFit competitor | Regional qualifier | WOD warrior', location: 'Denver' },
-  { firstName: 'Aisha', lastName: 'Okafor', username: 'aisha_swim', sport: 'Swimming', bio: 'Competitive swimmer | Freestyle specialist | Pool is life', location: 'Atlanta' },
-  { firstName: 'Tyler', lastName: 'Brooks', username: 'tbrooks_box', sport: 'Boxing', bio: 'Golden Gloves winner | Training at Mayweather Gym', location: 'Chicago' },
-  { firstName: 'Maya', lastName: 'Patel', username: 'maya_yoga_fit', sport: 'CrossFit', bio: 'Yoga + CrossFit hybrid athlete | Mind body connection', location: 'Portland' },
-  { firstName: 'Jordan', lastName: 'Davis', username: 'jd_soccer', sport: 'Soccer', bio: 'Midfielder | Semi-pro league | Always on the pitch', location: 'Seattle' },
-  { firstName: 'Camille', lastName: 'Dupont', username: 'camille_volley', sport: 'Volleyball', bio: 'Beach volleyball player | Sand is my court', location: 'Los Angeles' },
-  { firstName: 'Ryan', lastName: 'Kim', username: 'rkim_baseball', sport: 'Baseball', bio: 'Pitcher | 92mph fastball | Diamond grinder', location: 'Phoenix' },
-  { firstName: 'Zara', lastName: 'Thompson', username: 'zara_track', sport: 'Running', bio: '400m sprinter | State champion | Speed kills', location: 'Atlanta' },
-  { firstName: 'Carlos', lastName: 'Mendez', username: 'carlos_boxing', sport: 'Boxing', bio: 'Pro boxing prospect | 8-0 record | Mexican style warrior', location: 'Los Angeles' },
-  { firstName: 'Leah', lastName: 'Anderson', username: 'leah_swim', sport: 'Swimming', bio: 'Open water swimmer | Ironman finisher | No limits', location: 'Miami' },
-  { firstName: 'Darius', lastName: 'Brown', username: 'dbrown_hoops', sport: 'Basketball', bio: 'Shooting guard | AAU veteran | Buckets only', location: 'Chicago' },
-  { firstName: 'Elena', lastName: 'Volkov', username: 'elena_tennis', sport: 'Tennis', bio: 'Former college tennis | Coaching + competing', location: 'New York' },
-  { firstName: 'Andre', lastName: 'Jackson', username: 'aj_football', sport: 'Soccer', bio: 'Striker | Club team captain | Goals on goals', location: 'Houston' },
-  { firstName: 'Mia', lastName: 'Tanaka', username: 'mia_crossfit', sport: 'CrossFit', bio: 'CrossFit Games hopeful | Lifting heavy things', location: 'Denver' },
-  { firstName: 'Omar', lastName: 'Hassan', username: 'omar_mma', sport: 'MMA', bio: 'Muay Thai + Wrestling | Fight camp life', location: 'Phoenix' },
-  { firstName: 'Jasmine', lastName: 'Wright', username: 'jas_volleyball', sport: 'Volleyball', bio: 'Indoor volleyball | Setter | NCAA D2 alum', location: 'Seattle' },
-  { firstName: 'Kevin', lastName: 'OBrien', username: 'kob_run', sport: 'Running', bio: 'Ultra runner | 100-miler finisher | Mountain goat', location: 'Denver' },
-  { firstName: 'Nia', lastName: 'Carter', username: 'nia_box', sport: 'Boxing', bio: 'Women boxing advocate | Training + competing', location: 'New York' },
-  { firstName: 'Liam', lastName: 'Nguyen', username: 'liam_swim', sport: 'Swimming', bio: 'Backstroke specialist | Club team swimmer', location: 'Portland' },
-  { firstName: 'Aaliyah', lastName: 'James', username: 'aaliyah_soccer', sport: 'Soccer', bio: 'Goalkeeper | NWSL draft eligible | Shot stopper', location: 'Chicago' },
-  { firstName: 'Brandon', lastName: 'Torres', username: 'btorres_mma', sport: 'MMA', bio: 'Jiu-jitsu black belt | Competing at 170lbs', location: 'Miami' },
-  { firstName: 'Chloe', lastName: 'Baker', username: 'chloe_tennis', sport: 'Tennis', bio: 'Doubles specialist | Mixed doubles champion', location: 'Atlanta' },
-  { firstName: 'Malik', lastName: 'Robinson', username: 'malik_hoops', sport: 'Basketball', bio: 'Center | 6\'10 | Blocking shots and grabbing boards', location: 'Houston' },
-  { firstName: 'Savannah', lastName: 'Lee', username: 'sav_track', sport: 'Running', bio: 'Hurdles + long jump | Multi-event athlete', location: 'Phoenix' },
-  { firstName: 'Trevor', lastName: 'Wilson', username: 'twil_crossfit', sport: 'CrossFit', bio: 'Functional fitness coach | Master trainer certified', location: 'Los Angeles' },
-  { firstName: 'Diana', lastName: 'Price', username: 'diana_volley', sport: 'Volleyball', bio: 'Libero | Defense wins championships | Dig city', location: 'Seattle' },
-  { firstName: 'Austin', lastName: 'Clark', username: 'aclark_box', sport: 'Boxing', bio: 'Light heavyweight | Southpaw style | 12-2 record', location: 'Chicago' },
-  { firstName: 'Priya', lastName: 'Sharma', username: 'priya_swim', sport: 'Swimming', bio: 'Butterfly specialist | National qualifier | Water is home', location: 'New York' },
-  { firstName: 'Jaden', lastName: 'Moore', username: 'jmoore_soccer', sport: 'Soccer', bio: 'Right back | Defensive wall | Clean tackle king', location: 'Denver' },
-  { firstName: 'Taylor', lastName: 'Reed', username: 'tay_run', sport: 'Running', bio: '5K specialist | Sub-16 time | Speed demon', location: 'Portland' },
-  { firstName: 'Dominic', lastName: 'Garcia', username: 'dom_baseball', sport: 'Baseball', bio: 'Shortstop | .340 batting avg | Gold glove defender', location: 'Los Angeles' },
-  { firstName: 'Kira', lastName: 'Foster', username: 'kira_mma', sport: 'MMA', bio: 'Strawweight fighter | Wrestler turned striker', location: 'Phoenix' },
-  { firstName: 'Nathan', lastName: 'Scott', username: 'nscott_hoops', sport: 'Basketball', bio: 'Small forward | Triple-double machine | Versatile', location: 'Miami' },
-  { firstName: 'Amber', lastName: 'Phillips', username: 'amber_crossfit', sport: 'CrossFit', bio: 'CrossFit L2 trainer | Nutrition coach | Athlete mom', location: 'Atlanta' },
-  { firstName: 'Elijah', lastName: 'Martin', username: 'eli_tennis', sport: 'Tennis', bio: 'Serve and volley | Old school style | Net rusher', location: 'Houston' },
-  { firstName: 'Luna', lastName: 'Flores', username: 'luna_yoga', sport: 'CrossFit', bio: 'Movement specialist | Flexibility + power | Flow state', location: 'Miami' },
-  { firstName: 'Caleb', lastName: 'Washington', username: 'cwash_soccer', sport: 'Soccer', bio: 'Left winger | Speed merchant | Assist machine', location: 'Atlanta' },
-  { firstName: 'Riley', lastName: 'Cooper', username: 'riley_swim', sport: 'Swimming', bio: 'IM swimmer | All 4 strokes | Olympic trials qualifier', location: 'Denver' },
-  { firstName: 'Xavier', lastName: 'Bell', username: 'xbell_box', sport: 'Boxing', bio: 'Welterweight contender | Technical boxer | Ring IQ', location: 'New York' },
-  { firstName: 'Haley', lastName: 'Young', username: 'haley_volley', sport: 'Volleyball', bio: 'Outside hitter | Vertical: 32 inches | Kill machine', location: 'Chicago' },
-  { firstName: 'Kai', lastName: 'Henderson', username: 'kai_run', sport: 'Running', bio: 'Trail runner | Mountain ultras | Nature lover', location: 'Portland' },
-  { firstName: 'Brooke', lastName: 'Evans', username: 'brooke_tennis', sport: 'Tennis', bio: 'Clay court specialist | Baseline rallies | Patient game', location: 'Los Angeles' },
-  { firstName: 'Isaiah', lastName: 'Campbell', username: 'isaiah_mma', sport: 'MMA', bio: 'Lightweight | Wrestling base | Ground and pound', location: 'Houston' },
-  { firstName: 'Grace', lastName: 'Murphy', username: 'grace_crossfit', sport: 'CrossFit', bio: 'Olympic lifting focus | Snatch PR: 185lbs | Strong', location: 'Seattle' },
-  { firstName: 'Diego', lastName: 'Ramirez', username: 'diego_soccer', sport: 'Soccer', bio: 'Central midfielder | Playmaker | Vision + passing', location: 'Phoenix' },
-  { firstName: 'Serena', lastName: 'Butler', username: 'serena_hoops', sport: 'Basketball', bio: 'Point guard | Floor general | Making everyone better', location: 'Denver' },
+  {
+    firstName: 'Aisha',
+    lastName: 'Okafor',
+    username: 'aisha_swim',
+    sport: 'Swimming',
+    bio: 'NCAA freestyler · open-water prep · technique-first coaching in Atlanta',
+    location: 'Atlanta',
+    profileImage: IMG('1594381898411-8465977d70af', 400, 400),
+  },
+  {
+    firstName: 'Elena',
+    lastName: 'Volkov',
+    username: 'elena_tennis',
+    sport: 'Tennis',
+    bio: 'D1 background · USTA pathway · match-play focused sessions in NYC',
+    location: 'New York',
+    profileImage: IMG('1544005313-94ddf0286df2', 400, 400),
+  },
 ];
 
 const teamData = [
   { name: 'LA Ballers', sport: 'Basketball', location: 'Los Angeles', description: 'Premier basketball team in LA. Competitive league play and weekend pickup games.', members: 12 },
-  { name: 'NYC Runners Club', sport: 'Running', location: 'New York', description: 'Central Park running crew. Marathon training, tempo runs, and trail adventures.', members: 25 },
-  { name: 'Miami Fight Club', sport: 'MMA', location: 'Miami', description: 'MMA training team. Striking, grappling, and competitive fight prep.', members: 15 },
   { name: 'Houston Aces', sport: 'Tennis', location: 'Houston', description: 'USTA league team. Singles and doubles competition at 4.0+ level.', members: 8 },
-  { name: 'Denver Iron', sport: 'CrossFit', location: 'Denver', description: 'CrossFit competition team. Preparing athletes for the Games.', members: 18 },
-  { name: 'Atlanta Aquatics', sport: 'Swimming', location: 'Atlanta', description: 'Masters swimming team. Competing locally and nationally.', members: 20 },
-  { name: 'Chi-Town Gloves', sport: 'Boxing', location: 'Chicago', description: 'Boxing gym team. Golden Gloves preparation and amateur fights.', members: 14 },
-  { name: 'Portland Trail Mix', sport: 'Running', location: 'Portland', description: 'Trail running collective. Weekend adventures in the PNW.', members: 22 },
-  { name: 'Seattle FC', sport: 'Soccer', location: 'Seattle', description: 'Adult rec soccer. Co-ed leagues and tournament play.', members: 18 },
-  { name: 'SoCal Spikers', sport: 'Volleyball', location: 'Los Angeles', description: 'Beach and indoor volleyball. Open play and tournaments.', members: 16 },
-  { name: 'Phoenix Sluggers', sport: 'Baseball', location: 'Phoenix', description: 'Adult baseball league. Competitive travel ball team.', members: 15 },
-  { name: 'NYC Fight Academy', sport: 'Boxing', location: 'New York', description: 'Amateur and pro boxing team. Training champions since 2020.', members: 12 },
 ];
 
 const postContent = [
@@ -385,8 +343,8 @@ async function runSeed() {
   await db.execute(sql`DELETE FROM users WHERE email LIKE '%@surna.app'`);
   console.log('Cleaned!');
 
-  // 1. Create 50 users
-  console.log('Creating 50 users...');
+  // 1. Create two showcase athletes
+  console.log('Creating 2 showcase users...');
   const createdUsers: any[] = [];
   for (let i = 0; i < seedUsers.length; i++) {
     const u = seedUsers[i];
@@ -397,7 +355,7 @@ async function runSeed() {
       lastName: u.lastName,
       username: u.username,
       displayName: `${u.firstName} ${u.lastName}`,
-      profileImageUrl: avatarUrl(u.username),
+      profileImageUrl: (u as { profileImage?: string }).profileImage ?? avatarUrl(u.username),
       bio: u.bio,
       sport: u.sport,
       primarySport: u.sport,

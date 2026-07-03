@@ -4,6 +4,7 @@
 
 import type { Team } from "@shared/schema";
 import { getEventCoverUrl } from "@/lib/eventCover";
+import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
 import { pickStoryUsers } from "@/lib/personalizedDemoFeed";
 import type { TeamMemberRow } from "@/pages/team/components/TeamMemberProfileSheet";
 
@@ -79,97 +80,6 @@ export const DEMO_TEAMS: DemoTeam[] = [
     cover: teamImage("Basketball", "Rebel Athletic", "cover"),
     isDemo: true,
   },
-  {
-    id: "demo-team-leeside-united",
-    name: "Leeside United",
-    sport: "Running",
-    description: "Road and trail group runs along the Lee — tempo Tuesdays, long Sunday.",
-    location: "Fitzgerald's Park",
-    city: "Cork",
-    currentMembers: 25,
-    maxMembers: 40,
-    verified: false,
-    rating: "4.7",
-    ratingCount: 18,
-    followersCount: 356,
-    latitude: 51.8925,
-    longitude: -8.4812,
-    logo: teamImage("Running", "Leeside United", "logo"),
-    cover: teamImage("Running", "Leeside United", "cover"),
-    isDemo: true,
-  },
-  {
-    id: "demo-team-munster-rugby",
-    name: "Munster Rugby Club",
-    sport: "Rugby",
-    description: "Social and competitive rugby — training Wed/Fri, matches on weekends.",
-    location: "Ballintemple",
-    city: "Cork",
-    currentMembers: 20,
-    maxMembers: 28,
-    verified: true,
-    rating: "4.9",
-    ratingCount: 42,
-    followersCount: 520,
-    latitude: 51.8942,
-    longitude: -8.4358,
-    logo: teamImage("Rugby", "Munster Rugby Club", "logo"),
-    cover: teamImage("Rugby", "Munster Rugby Club", "cover"),
-    isDemo: true,
-  },
-  {
-    id: "demo-team-shandon-crossfit",
-    name: "Shandon CrossFit Crew",
-    sport: "CrossFit",
-    description: "Community WOD crew — partner workouts and open gym sessions.",
-    location: "Shandon",
-    city: "Cork",
-    currentMembers: 8,
-    maxMembers: 14,
-    verified: false,
-    rating: "4.5",
-    ratingCount: 11,
-    followersCount: 164,
-    latitude: 51.9038,
-    longitude: -8.4655,
-    logo: teamImage("CrossFit", "Shandon CrossFit Crew", "logo"),
-    cover: teamImage("CrossFit", "Shandon CrossFit Crew", "cover"),
-    isDemo: true,
-  },
-  {
-    id: "demo-team-la-pickup",
-    name: "LA Pickup Crew",
-    sport: "Basketball",
-    description: "Westside pickup runs — bring your A-game and good vibes.",
-    location: "Venice Beach Courts",
-    city: "Los Angeles",
-    currentMembers: 14,
-    maxMembers: 18,
-    verified: false,
-    rating: "4.4",
-    ratingCount: 9,
-    followersCount: 198,
-    logo: teamImage("Basketball", "LA Pickup Crew", "logo"),
-    cover: teamImage("Basketball", "LA Pickup Crew", "cover"),
-    isDemo: true,
-  },
-  {
-    id: "demo-team-sunset-run",
-    name: "Sunset Run Club",
-    sport: "Running",
-    description: "Sunset beach runs and Saturday 10Ks around Santa Monica.",
-    location: "Santa Monica Pier",
-    city: "Los Angeles",
-    currentMembers: 22,
-    maxMembers: 35,
-    verified: true,
-    rating: "4.8",
-    ratingCount: 27,
-    followersCount: 445,
-    logo: teamImage("Running", "Sunset Run Club", "logo"),
-    cover: teamImage("Running", "Sunset Run Club", "cover"),
-    isDemo: true,
-  },
 ];
 
 const LEGACY_TEAM_ID_MAP: Record<string, string> = {
@@ -199,7 +109,7 @@ export function getDemoTeam(id: string): DemoTeam | undefined {
 export function getDemoTeamMembers(teamId: string): TeamMemberRow[] {
   const normalized = normalizeDemoTeamId(teamId);
   const team = getDemoTeam(normalized);
-  const count = Math.min(team?.currentMembers ?? 8, 12);
+  const count = Math.min(team?.currentMembers ?? 2, DEMO_SHOWCASE_LIMIT);
   return pickStoryUsers(hashSeed(normalized), count).map((u, i) => ({
     id: `${normalized}-m-${i}`,
     userId: u.id,
@@ -264,7 +174,7 @@ export function mergeWithDemoTeams(
   const api = Array.isArray(apiTeams) ? apiTeams : [];
   if (options?.skipDemo) return api;
 
-  let demos = DEMO_TEAMS;
+  let demos = DEMO_TEAMS.slice(0, DEMO_SHOWCASE_LIMIT);
   if (options?.sport && options.sport !== "All") {
     demos = demos.filter((t) => matchesSportFilter(t.sport, options.sport!));
   }

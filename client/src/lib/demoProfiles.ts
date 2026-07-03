@@ -1,5 +1,6 @@
 import type { DemoStoryUser } from "@/lib/personalizedDemoFeed";
 import { DEMO_STORY_POOL } from "@/lib/personalizedDemoFeed";
+import { SHOWCASE_ATHLETES } from "@/lib/demoShowcase";
 import { isDemoStoryUserId, findDemoStoryUser } from "@/lib/demoStories";
 import { normalizeUserProfile } from "@/lib/normalizeUserProfile";
 
@@ -20,10 +21,11 @@ export function resolveDemoCreatorId(demo: {
     const match = DEMO_STORY_POOL.find((u) => u.firstName.toLowerCase() === first);
     if (match) return match.id;
   }
-  return DEMO_STORY_POOL[0]?.id ?? "ds-jordan";
+  return DEMO_STORY_POOL[0]?.id ?? "ds-aisha";
 }
 
 function storyUserToProfile(demo: DemoStoryUser) {
+  const showcase = SHOWCASE_ATHLETES.find((a) => a.id === demo.id);
   const displayName = [demo.firstName, demo.lastName].filter(Boolean).join(" ") || demo.username;
   return normalizeUserProfile({
     id: demo.id,
@@ -33,28 +35,35 @@ function storyUserToProfile(demo: DemoStoryUser) {
     profileImageUrl: demo.profileImageUrl,
     displayName,
     email: `${demo.username}@demo.surna.app`,
-    bio: `${demo.sport} · Demo athlete on SURNA`,
+    bio: showcase?.bio ?? `${demo.sport} · SURNA showcase athlete`,
     primarySport: demo.sport,
-    verified: false,
-    followersCount: 120 + (demo.id.length * 17) % 400,
-    followingCount: 48 + (demo.id.length * 11) % 120,
+    verified: true,
+    followersCount: 840,
+    followingCount: 128,
     isFollowing: false,
     isDemo: true,
   });
 }
 
-/** Minimal profile for legacy demo video author ids (u1, u2, …). */
+/** Video reel authors — same two showcase athletes. */
 const VIDEO_AUTHOR_PROFILES: Record<
   string,
-  { firstName: string; lastName: string; sport: string; username: string; seed: string }
+  { firstName: string; lastName: string; sport: string; username: string; profileImageUrl: string }
 > = {
-  u1: { firstName: "Marcus", lastName: "Johnson", sport: "Basketball", username: "marcus_j", seed: "marcus" },
-  u2: { firstName: "Sarah", lastName: "Chen", sport: "Fitness", username: "sarah_lift", seed: "sarah" },
-  u3: { firstName: "Jordan", lastName: "Williams", sport: "Soccer", username: "jordan_w", seed: "jordan" },
-  u4: { firstName: "Alex", lastName: "Rivera", sport: "Swimming", username: "alex_swim", seed: "alex" },
-  u5: { firstName: "Taylor", lastName: "Smith", sport: "Tennis", username: "taylor_t", seed: "taylor" },
-  u6: { firstName: "Dylan", lastName: "Healy", sport: "Running", username: "dylan_run", seed: "dylan" },
-  u7: { firstName: "Leila", lastName: "Musa", sport: "Yoga", username: "leila_yoga", seed: "leila" },
+  u1: {
+    firstName: SHOWCASE_ATHLETES[0].firstName,
+    lastName: SHOWCASE_ATHLETES[0].lastName,
+    sport: SHOWCASE_ATHLETES[0].sport,
+    username: SHOWCASE_ATHLETES[0].username,
+    profileImageUrl: SHOWCASE_ATHLETES[0].profileImageUrl,
+  },
+  u2: {
+    firstName: SHOWCASE_ATHLETES[1].firstName,
+    lastName: SHOWCASE_ATHLETES[1].lastName,
+    sport: SHOWCASE_ATHLETES[1].sport,
+    username: SHOWCASE_ATHLETES[1].username,
+    profileImageUrl: SHOWCASE_ATHLETES[1].profileImageUrl,
+  },
 };
 
 function videoAuthorProfile(userId: string) {
@@ -65,14 +74,14 @@ function videoAuthorProfile(userId: string) {
     firstName: row.firstName,
     lastName: row.lastName,
     username: row.username,
-    profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(row.seed)}`,
+    profileImageUrl: row.profileImageUrl,
     displayName: `${row.firstName} ${row.lastName}`,
     email: `${row.username}@demo.surna.app`,
-    bio: `${row.sport} · Demo athlete on SURNA`,
+    bio: `${row.sport} · SURNA showcase athlete`,
     primarySport: row.sport,
-    verified: false,
-    followersCount: 200,
-    followingCount: 64,
+    verified: true,
+    followersCount: 840,
+    followingCount: 128,
     isFollowing: false,
     isDemo: true,
   });

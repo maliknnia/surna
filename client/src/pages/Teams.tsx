@@ -103,7 +103,6 @@ export default function Teams({
       const merged =
         offset === 0
           ? mergeWithDemoTeams(page, {
-              mixDemos: true,
               sport: sportFilter !== "All" ? sportFilter : undefined,
             })
           : page;
@@ -205,7 +204,6 @@ export default function Teams({
   const chipText = t.chipText;
 
   const mergedTeams = mergeWithDemoTeams(isError ? [] : teams || [], {
-    mixDemos: true,
     sport: sportFilter !== "All" ? sportFilter : undefined,
   });
 
