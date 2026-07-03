@@ -83,7 +83,10 @@ export function HomeFeedPostsSection({ contentSeed }: { contentSeed: number }) {
       ) : !post ? (
         <div
           className="rounded-xl px-4 py-6 text-center"
-          style={{ background: "var(--surna-elevated)", border: "1px solid var(--surna-border)" }}
+          style={{
+            background: "linear-gradient(160deg, color-mix(in srgb, var(--spotify-red, #8b2635) 16%, var(--surna-bg-card)) 0%, var(--surna-bg-card) 100%)",
+            border: "1px solid color-mix(in srgb, var(--spotify-red, #8b2635) 18%, var(--surna-border))",
+          }}
         >
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--surna-text-secondary)" }}>
             Nothing in your feed yet — follow teams and players to see posts here

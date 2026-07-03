@@ -10,7 +10,10 @@ export function ProfileSectionCard({ title, children, action }: ProfileSectionCa
   return (
     <div
       className="p-4 rounded-2xl"
-      style={{ background: "var(--surna-elevated)", border: "1px solid var(--surna-border)" }}
+      style={{
+        background: "linear-gradient(160deg, color-mix(in srgb, var(--spotify-red, #8b2635) 18%, var(--surna-bg-card)) 0%, var(--surna-bg-card) 100%)",
+        border: "1px solid color-mix(in srgb, var(--spotify-red, #8b2635) 20%, var(--surna-border))",
+      }}
     >
       <div className="flex items-center justify-between gap-2 mb-3">
         <h3

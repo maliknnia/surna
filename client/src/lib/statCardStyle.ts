@@ -12,8 +12,8 @@ export type StatCardSurface = {
 
 const SURFACES: Record<StatCardTone, StatCardSurface> = {
   neutral: {
-    background: "linear-gradient(145deg, color-mix(in srgb, var(--surna-text) 8%, var(--surna-elevated)) 0%, var(--surna-elevated) 100%)",
-    border: "color-mix(in srgb, var(--surna-text) 10%, var(--surna-border))",
+    background: "linear-gradient(145deg, color-mix(in srgb, var(--spotify-red, #8b2635) 24%, var(--surna-elevated)) 0%, var(--surna-elevated) 100%)",
+    border: "color-mix(in srgb, var(--spotify-red, #8b2635) 22%, var(--surna-border))",
     valueColor: "var(--surna-text)",
     labelColor: "var(--surna-text-secondary)",
     iconColor: "var(--surna-text-secondary)",

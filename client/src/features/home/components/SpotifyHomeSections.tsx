@@ -8,7 +8,7 @@ import { getQueryFn } from "@/lib/queryClient";
 import { fetchCoaches } from "@/lib/coachesApi";
 import { fetchChallengesList } from "@/lib/challengesApi";
 import { mergeWithDemoChallenges, isDemoChallengeId } from "@/lib/demoChallenges";
-import { mergeWithDemoTeams } from "@/lib/demoTeams";
+import { mergeWithDemoTeams, isDemoTeamId } from "@/lib/demoTeams";
 import { formatEventWhenShort, getEventCoverUrl } from "@/lib/eventCover";
 import {
   HOME_QUERY_KEYS,
@@ -25,61 +25,21 @@ import {
   HomePortraitCard,
 } from "@/features/home/components/HomeCardSurface";
 import { HomeFeedPostsSection } from "@/features/home/components/HomeFeedPostsSection";
-import { GlowCard } from "@/components/ui/GlowCard";
 import type { CoachWithProfile } from "@shared/schema";
 
 const PURPLE_NEW = "#803FE1";
 const HAPPENING_ROW_MAX = 4;
 const COACHES_MAX = 8;
 
-const DEMO_MARKETPLACE_PRODUCTS = [
-  {
-    id: "demo-boots",
-    title: "Pro Strike Boots",
-    meta: "€89.99 · Football",
-    sport: "Football",
-  },
-  {
-    id: "demo-sliotar",
-    title: "GAA Sliotar Pack",
-    meta: "€24.50 · GAA",
-    sport: "GAA",
-  },
-  {
-    id: "demo-helmet",
-    title: "Carbon Road Helmet",
-    meta: "€129.00 · Cycling",
-    sport: "Cycling",
-  },
-  {
-    id: "demo-rugby-ball",
-    title: "Match Rugby Ball",
-    meta: "€34.99 · Rugby",
-    sport: "Rugby",
-  },
-  {
-    id: "demo-hoops",
-    title: "Elite Indoor Ball",
-    meta: "€54.00 · Basketball",
-    sport: "Basketball",
-  },
-] as const;
+/** Prefer real API rows; hide client-side demo placeholders when real data exists. */
+function withoutDemoWhenReal<T>(items: T[], isDemo: (item: T) => boolean): T[] {
+  const list = Array.isArray(items) ? items : [];
+  const real = list.filter((item) => !isDemo(item));
+  return real.length > 0 ? real : list;
+}
 
-function shuffleWithSeed<T>(items: T[], seed: number): T[] {
-  let s = seed >>> 0;
-  const rng = () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 0xffffffff;
-  };
-  const out = [...items];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
+function sortByDesc<T>(items: T[], score: (item: T) => number): T[] {
+  return [...items].sort((a, b) => score(b) - score(a));
 }
 
 const homeQueryOptions = {
@@ -161,7 +121,7 @@ function useHomeData() {
   });
   const coachesQuery = useQuery({
     queryKey: [...HOME_QUERY_KEYS.coaches],
-    queryFn: () => fetchCoaches({ limit: 16 }),
+    queryFn: () => fetchCoaches({ limit: 16, allowDemoFallback: false }),
     ...homeQueryOptions,
   });
   const challengesQuery = useQuery({
@@ -181,13 +141,19 @@ function useHomeData() {
     [eventsQuery.data],
   );
   const teams = useMemo(
-    () => mergeWithDemoTeams(teamsQuery.data || [], { mixDemos: true }),
+    () =>
+      withoutDemoWhenReal(mergeWithDemoTeams(teamsQuery.data || []), (t) =>
+        isDemoTeamId(String(t.id)),
+      ),
     [teamsQuery.data],
   );
   const instantGames = instantQuery.data || [];
   const coaches = coachesQuery.data || [];
   const challenges = useMemo(
-    () => mergeWithDemoChallenges(challengesQuery.data?.matches || [], { mixDemos: true }),
+    () =>
+      withoutDemoWhenReal(mergeWithDemoChallenges(challengesQuery.data?.matches || []), (c) =>
+        isDemoChallengeId(String(c.id)),
+      ),
     [challengesQuery.data],
   );
 
@@ -237,13 +203,11 @@ function HappeningNearYouRow({
   events,
   instantGames,
   loading,
-  contentSeed,
   showNew,
 }: {
   events: any[];
   instantGames: any[];
   loading: boolean;
-  contentSeed: number;
   showNew?: boolean;
 }) {
   const [, setLocation] = useLocation();
@@ -259,6 +223,7 @@ function HappeningNearYouRow({
     const merged = [
       ...events.map((ev) => ({
         id: `ev-${ev.id}`,
+        sortScore: (ev.going_count || ev.goingCount || 0) * 2 + ts(ev),
         title: ev.title,
         subtitle: ev.location || "Near you",
         meta: [formatEventWhenShort(ev.starts_at || ev.startDate), ev.sport].filter(Boolean).join(" · "),
@@ -274,6 +239,7 @@ function HappeningNearYouRow({
       })),
       ...instantGames.map((g) => ({
         id: `in-${g.id}`,
+        sortScore: (g.playersJoined || 1) * 3 + ts(g),
         title: g.name,
         subtitle: g.locationName || "Near you",
         meta: [g.sport, formatEventWhenShort(g.startTime)].filter(Boolean).join(" · "),
@@ -288,8 +254,8 @@ function HappeningNearYouRow({
         },
       })),
     ];
-    return shuffleWithSeed(merged, contentSeed + 21).slice(0, HAPPENING_ROW_MAX);
-  }, [events, instantGames, contentSeed]);
+    return sortByDesc(merged, (item) => item.sortScore).slice(0, HAPPENING_ROW_MAX);
+  }, [events, instantGames]);
 
   if (loading) {
     return (
@@ -336,16 +302,16 @@ function HappeningNearYouRow({
 function TeamsNearYouRow({
   teams,
   loading,
-  contentSeed,
 }: {
   teams: any[];
   loading: boolean;
-  contentSeed: number;
 }) {
   const [, setLocation] = useLocation();
 
   const items = useMemo(() => {
-    return shuffleWithSeed(teams, contentSeed + 31)
+    return sortByDesc(teams, (team) =>
+      Number(team.followersCount || team.currentMembers || team.memberCount || 0),
+    )
       .slice(0, 6)
       .map((team) => ({
         id: String(team.id),
@@ -370,7 +336,7 @@ function TeamsNearYouRow({
           count: team.currentMembers || team.memberCount,
         },
       }));
-  }, [teams, contentSeed]);
+  }, [teams]);
 
   if (loading) {
     return (
@@ -418,14 +384,12 @@ function HomeMixedStack({
   teams,
   challenges,
   instantGames,
-  contentSeed,
   loading,
 }: {
   events: any[];
   teams: any[];
   challenges: any[];
   instantGames: any[];
-  contentSeed: number;
   loading: boolean;
 }) {
   const [, setLocation] = useLocation();
@@ -443,7 +407,7 @@ function HomeMixedStack({
       })
       .filter(({ spotsLeft }) => spotsLeft > 0);
 
-    for (const ch of challenges.slice(0, 2)) {
+    for (const ch of challenges.slice(0, 1)) {
       rows.push({
         kind: "hero",
         id: `ch-${ch.id}`,
@@ -475,24 +439,9 @@ function HomeMixedStack({
         sport: team.sport,
         attendeeEntity: { type: "team", id: String(team.id), count: memberCount },
       });
-      if (memberCount > 0) {
-        rows.push({
-          kind: "hero",
-          id: `team-hero-${team.id}`,
-          title: team.name,
-          subtitle: `${spotsLeft} spots open`,
-          meta: team.sport || "Team",
-          sport: team.sport,
-          cardKind: "team",
-          route: `/teams/${team.id}`,
-          imageUrl: team.cover || team.logo || team.logoUrl || getEventCoverUrl({ sport: team.sport, title: team.name }),
-          cta: undefined,
-          attendeeEntity: { type: "team", id: String(team.id), count: memberCount },
-        });
-      }
     }
 
-    for (const ev of events.slice(0, 2)) {
+    for (const ev of events.slice(0, 1)) {
       rows.push({
         kind: "compact",
         id: `ev-c-${ev.id}`,
@@ -529,8 +478,8 @@ function HomeMixedStack({
       });
     }
 
-    return shuffleWithSeed(rows, contentSeed + 61).slice(0, 5);
-  }, [events, teams, challenges, instantGames, contentSeed]);
+    return rows.slice(0, 4);
+  }, [events, teams, challenges, instantGames]);
 
   if (loading) {
     return (
@@ -613,14 +562,19 @@ function HomeMixedStack({
 function CoachesRow({
   coaches,
   loading,
-  contentSeed,
 }: {
   coaches: CoachWithProfile[];
   loading: boolean;
-  contentSeed: number;
 }) {
   const [, setLocation] = useLocation();
-  const list = useMemo(() => shuffleWithSeed(coaches, contentSeed + 41).slice(0, COACHES_MAX), [coaches, contentSeed]);
+  const list = useMemo(
+    () =>
+      sortByDesc(coaches, (coach) => Number(coach.profile?.rating ?? 0)).slice(
+        0,
+        COACHES_MAX,
+      ),
+    [coaches],
+  );
 
   if (loading) {
     return (
@@ -667,51 +621,14 @@ function CoachesRow({
   );
 }
 
-function MarketplacePicksRow() {
-  const [, setLocation] = useLocation();
-
-  return (
-    <section className="space-y-3">
-      <SectionTitle>Marketplace picks</SectionTitle>
-      <div className="flex gap-4 overflow-x-auto no-scrollbar -mx-4 px-5 py-3">
-        {DEMO_MARKETPLACE_PRODUCTS.map((product) => (
-          <GlowCard
-            key={product.id}
-            glowColor="purple"
-            intensity="subtle"
-            bare
-            customSize
-            className="p-[3px]"
-          >
-            <HomePortraitCard
-              imageUrl={getEventCoverUrl({ sport: product.sport, title: product.title })}
-              title={product.title}
-              meta={product.meta}
-              sport={product.sport}
-              cardKind="marketplace"
-              cta="Shop"
-              onClick={() => {
-                markNavReturn("/");
-                setLocation(ROUTES.marketplace);
-              }}
-            />
-          </GlowCard>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function FeaturedHero({
   events,
   instantGames,
   loading,
-  contentSeed,
 }: {
   events: any[];
   instantGames: any[];
   loading: boolean;
-  contentSeed: number;
 }) {
   const [, setLocation] = useLocation();
 
@@ -739,8 +656,8 @@ function FeaturedHero({
       attendeeEntity: { type: "instant" as const, id: String(g.id), count: g.playersJoined },
     }));
     const ranked = [...eventRows, ...instantRows].sort((a, b) => b.score - a.score);
-    return ranked[contentSeed % Math.max(1, ranked.length)] || ranked[0];
-  }, [events, instantGames, contentSeed]);
+    return ranked[0];
+  }, [events, instantGames]);
 
   if (loading) {
     return <div className="w-full aspect-[2/1] rounded-xl animate-pulse" style={{ background: "var(--surna-surface)" }} />;
@@ -781,26 +698,24 @@ export function SpotifyHomeFeed({
   );
 
   return (
-    <div className="space-y-6">
-      <FeaturedHero events={events} instantGames={instantGames} loading={loading} contentSeed={contentSeed} />
-      <HomeFeedPostsSection contentSeed={contentSeed} />
+    <div className="space-y-5">
+      <FeaturedHero events={events} instantGames={instantGames} loading={loading} />
       <HappeningNearYouRow
         events={events}
         instantGames={instantGames}
         loading={loading}
-        contentSeed={contentSeed}
         showNew={newIndicators.happeningNearYou}
       />
-      <TeamsNearYouRow teams={teams} loading={loading} contentSeed={contentSeed} />
+      <TeamsNearYouRow teams={teams} loading={loading} />
       <HomeMixedStack
         events={events}
         teams={teams}
         challenges={challenges}
         instantGames={instantGames}
-        contentSeed={contentSeed}
         loading={loading}
       />
-      <CoachesRow coaches={coaches} loading={loading} contentSeed={contentSeed} />
+      <HomeFeedPostsSection contentSeed={contentSeed} />
+      <CoachesRow coaches={coaches} loading={loading} />
     </div>
   );
 }

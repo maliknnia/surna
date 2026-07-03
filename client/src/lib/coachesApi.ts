@@ -7,6 +7,8 @@ export async function fetchCoaches(options?: {
   limit?: number;
   offset?: number;
   sport?: string;
+  /** When false, return [] instead of hardcoded demo coaches (home feed). */
+  allowDemoFallback?: boolean;
 }): Promise<CoachWithProfile[]> {
   const params = new URLSearchParams();
   if (options?.limit != null) params.set("limit", String(options.limit));
@@ -20,7 +22,9 @@ export async function fetchCoaches(options?: {
   if (!res.ok) throw new Error(`${res.status}: Failed to load coaches`);
   const rows = await res.json();
   const list = normalizeCoachList(Array.isArray(rows) ? rows : []);
-  if (list.length === 0) return DEMO_COACH_PROFILES;
+  if (list.length === 0) {
+    return options?.allowDemoFallback === false ? [] : DEMO_COACH_PROFILES;
+  }
   return list;
 }
 
