@@ -1,8 +1,9 @@
 /**
- * Demo venues for discovery / profile when the API is sparse (Cork-focused).
+ * Demo venues — two showcase locations only (swim + tennis).
  */
 
 import type { Place } from "@shared/schema";
+import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
 import { defaultBookingModeForCategory } from "@shared/placeBooking";
 
 export type DemoPlace = {
@@ -30,9 +31,8 @@ export type DemoPlace = {
   isDemo?: boolean;
 };
 
-function demoPhoto(seed: string, w: number, h: number): string {
-  return `https://picsum.photos/seed/surna-place-${encodeURIComponent(seed)}/${w}/${h}`;
-}
+const IMG = (id: string, w: number, h: number) =>
+  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
 
 const WEEKDAY_HOURS = {
   monday: "6:00 AM – 10:00 PM",
@@ -46,198 +46,55 @@ const WEEKDAY_HOURS = {
 
 export const DEMO_PLACES: DemoPlace[] = [
   {
-    id: "demo-place-iron-forge",
-    name: "Iron Forge Gym",
-    category: "gym",
-    sports: ["CrossFit", "Fitness", "Strength"],
-    bio: "Strength & conditioning in the heart of Cork.",
-    description: "Open gym floor, lifting platforms, and coached CrossFit classes daily.",
-    address: "12 South Mall",
-    city: "Cork",
-    state: "Co. Cork",
-    country: "Ireland",
-    phone: "+353 21 555 0101",
-    latitude: 51.8982,
-    longitude: -8.4738,
-    hours: WEEKDAY_HOURS,
-    amenities: ["Parking", "Showers", "Equipment rental"],
-    followersCount: 842,
-    reviewsCount: 126,
-    averageRating: "4.8",
-    profileImageUrl: demoPhoto("iron-forge-av", 400, 400),
-    coverImageUrl: demoPhoto("iron-forge-cover", 1200, 600),
-    isDemo: true,
-  },
-  {
-    id: "demo-place-greenfield-courts",
-    name: "Greenfield Courts",
-    category: "court",
-    sports: ["Basketball", "Tennis"],
-    bio: "Outdoor courts with floodlights.",
-    description: "Two full basketball courts and four tennis courts. Book online or drop in.",
-    address: "Marina Walk",
-    city: "Cork",
-    state: "Co. Cork",
-    country: "Ireland",
-    latitude: 51.9015,
-    longitude: -8.4682,
-    hours: { ...WEEKDAY_HOURS, sunday: "8:00 AM – 8:00 PM" },
-    amenities: ["Parking", "Floodlights"],
-    followersCount: 512,
-    reviewsCount: 89,
-    averageRating: "4.5",
-    profileImageUrl: demoPhoto("greenfield-av", 400, 400),
-    coverImageUrl: demoPhoto("greenfield-cover", 1200, 600),
-    isDemo: true,
-  },
-  {
-    id: "demo-place-riverside-complex",
-    name: "Riverside Sports Complex",
-    category: "field",
-    sports: ["Soccer", "Rugby", "GAA"],
-    bio: "Multi-sport pitches on the Lee.",
-    description: "Full-size GAA pitch, rugby field, and 5-a-side soccer cages.",
-    address: "Riverside Park",
-    city: "Cork",
-    state: "Co. Cork",
-    country: "Ireland",
-    latitude: 51.8925,
-    longitude: -8.4812,
-    hours: WEEKDAY_HOURS,
-    amenities: ["Parking", "Changing rooms", "Cafe"],
-    followersCount: 1204,
-    reviewsCount: 203,
-    averageRating: "4.7",
-    profileImageUrl: demoPhoto("riverside-av", 400, 400),
-    coverImageUrl: demoPhoto("riverside-cover", 1200, 600),
-    isDemo: true,
-  },
-  {
-    id: "demo-place-thunder-mma",
-    name: "Thunder MMA Academy",
-    category: "gym",
-    sports: ["MMA", "Boxing", "BJJ"],
-    bio: "Striking, grappling, and sparring for all levels.",
-    description: "Coached classes morning and evening. Beginners welcome.",
-    address: "8 MacCurtain St",
-    city: "Cork",
-    state: "Co. Cork",
-    country: "Ireland",
-    phone: "+353 21 555 0199",
-    latitude: 51.9038,
-    longitude: -8.4655,
-    hours: WEEKDAY_HOURS,
-    amenities: ["Showers", "Mats", "Pro shop"],
-    followersCount: 678,
-    reviewsCount: 94,
-    averageRating: "4.9",
-    profileImageUrl: demoPhoto("thunder-av", 400, 400),
-    coverImageUrl: demoPhoto("thunder-cover", 1200, 600),
-    isDemo: true,
-  },
-  {
-    id: "demo-place-aqua-centre",
-    name: "Aqua Centre",
+    id: "demo-place-tech-aquatics",
+    name: "Georgia Tech Aquatic Center",
     category: "pool",
     sports: ["Swimming"],
-    bio: "25m pool, lane swimming and aqua classes.",
-    description: "Lane hire, masters swim, and kids lessons.",
-    address: "Victoria Cross",
-    city: "Cork",
-    state: "Co. Cork",
-    country: "Ireland",
-    latitude: 51.8938,
-    longitude: -8.4925,
+    bio: "Olympic-quality 50m pool — masters and youth sessions.",
+    description: "Competition pool with timing system, diving well, and coached lane sessions.",
+    address: "750 Ferst Dr NW",
+    city: "Atlanta",
+    state: "GA",
+    country: "USA",
+    latitude: 33.7756,
+    longitude: -84.3963,
     hours: WEEKDAY_HOURS,
-    amenities: ["Parking", "Lockers", "Sauna"],
-    followersCount: 445,
-    reviewsCount: 67,
-    averageRating: "4.3",
-    profileImageUrl: demoPhoto("aqua-av", 400, 400),
-    coverImageUrl: demoPhoto("aqua-cover", 1200, 600),
+    amenities: ["Indoor", "Timing system", "Coaching"],
+    followersCount: 412,
+    reviewsCount: 68,
+    averageRating: "4.9",
+    profileImageUrl: IMG("1629909613654-28e377c9fb7a", 400, 400),
+    coverImageUrl: IMG("1629909613654-28e377c9fb7a", 1200, 600),
     isDemo: true,
   },
   {
-    id: "demo-place-westside-tennis",
-    name: "Westside Tennis Club",
+    id: "demo-place-metro-tennis",
+    name: "Metro Tennis Center",
     category: "court",
-    sports: ["Tennis", "Padel"],
-    bio: "Indoor and outdoor courts.",
-    description: "Club socials, coaching, and court hire.",
-    address: "Model Farm Rd",
-    city: "Cork",
-    state: "Co. Cork",
-    country: "Ireland",
-    latitude: 51.8872,
-    longitude: -8.5102,
-    hours: WEEKDAY_HOURS,
-    amenities: ["Parking", "Pro shop", "Cafe"],
-    followersCount: 389,
+    sports: ["Tennis"],
+    bio: "Hard courts with evening lights — USTA league home base.",
+    description: "Eight lighted hard courts, ball machine rental, and pro shop on site.",
+    address: "340 W 96th St",
+    city: "New York",
+    state: "NY",
+    country: "USA",
+    latitude: 40.793,
+    longitude: -73.971,
+    hours: { ...WEEKDAY_HOURS, sunday: "8:00 AM – 8:00 PM" },
+    amenities: ["Lights", "Pro shop", "Coaching"],
+    followersCount: 328,
     reviewsCount: 54,
-    averageRating: "4.6",
-    profileImageUrl: demoPhoto("westside-av", 400, 400),
-    coverImageUrl: demoPhoto("westside-cover", 1200, 600),
-    isDemo: true,
-  },
-  {
-    id: "demo-place-peak-performance",
-    name: "Peak Performance",
-    category: "studio",
-    sports: ["Yoga", "Pilates", "Fitness"],
-    bio: "Mind-body studio with daily classes.",
-    description: "Yoga, reformer pilates, and mobility sessions.",
-    address: "Paul St",
-    city: "Cork",
-    state: "Co. Cork",
-    country: "Ireland",
-    latitude: 51.8995,
-    longitude: -8.4745,
-    hours: WEEKDAY_HOURS,
-    amenities: ["Mats provided", "Showers"],
-    followersCount: 556,
-    reviewsCount: 72,
-    averageRating: "4.4",
-    profileImageUrl: demoPhoto("peak-av", 400, 400),
-    coverImageUrl: demoPhoto("peak-cover", 1200, 600),
-    isDemo: true,
-  },
-  {
-    id: "demo-place-pairc-gaa",
-    name: "Pairc Ui Chaoimh",
-    category: "gaa-pitch",
-    sports: ["GAA", "Hurling", "Football"],
-    bio: "County GAA grounds — training and match nights.",
-    description: "Main pitch and training walls. Community sessions weekly.",
-    address: "Ballintemple",
-    city: "Cork",
-    state: "Co. Cork",
-    country: "Ireland",
-    latitude: 51.8942,
-    longitude: -8.4358,
-    hours: { ...WEEKDAY_HOURS, friday: "4:00 PM – 10:00 PM" },
-    amenities: ["Parking", "Floodlights"],
-    followersCount: 2100,
-    reviewsCount: 312,
     averageRating: "4.8",
-    profileImageUrl: demoPhoto("pairc-av", 400, 400),
-    coverImageUrl: demoPhoto("pairc-cover", 1200, 600),
+    profileImageUrl: IMG("1622163640459-1b9a4661f851", 400, 400),
+    coverImageUrl: IMG("1622163640459-1b9a4661f851", 1200, 600),
     isDemo: true,
   },
 ];
 
-/** Legacy map pin ids → canonical demo place id */
-const LEGACY_PLACE_ID_MAP: Record<string, string> = {
-  dp0: "demo-place-iron-forge",
-  dp1: "demo-place-greenfield-courts",
-  dp2: "demo-place-riverside-complex",
-  dp3: "demo-place-thunder-mma",
-  dp4: "demo-place-aqua-centre",
-  dp5: "demo-place-westside-tennis",
-  dp6: "demo-place-peak-performance",
-};
-
 export function normalizeDemoPlaceId(id: string): string {
-  return LEGACY_PLACE_ID_MAP[id] ?? id;
+  const normalized = id.replace(/^place-/, "demo-place-");
+  if (normalized.startsWith("demo-place-")) return normalized;
+  return id.startsWith("demo-") ? id : `demo-place-${id}`;
 }
 
 export function isDemoPlaceId(id: string): boolean {
@@ -266,9 +123,9 @@ export function demoPlaceToApiRow(demo: DemoPlace): Place & { isDemo?: boolean }
     phone: demo.phone ?? null,
     website: demo.website ?? null,
     address: demo.address ?? null,
-    city: demo.city ?? "Cork",
-    state: demo.state ?? "Co. Cork",
-    country: demo.country ?? "Ireland",
+    city: demo.city ?? null,
+    state: demo.state ?? null,
+    country: demo.country ?? null,
     zipCode: null,
     latitude: demo.latitude != null ? String(demo.latitude) : null,
     longitude: demo.longitude != null ? String(demo.longitude) : null,
@@ -294,15 +151,17 @@ export function demoPlaceToApiRow(demo: DemoPlace): Place & { isDemo?: boolean }
 
 export function mergeWithDemoPlaces(
   apiPlaces: any[],
-  options?: { skipDemo?: boolean; mixDemos?: boolean },
+  options?: { skipDemo?: boolean; mixDemos?: boolean; fallback?: boolean },
 ): any[] {
   const api = Array.isArray(apiPlaces) ? apiPlaces : [];
-  if (options?.skipDemo) return api;
+  if (options?.skipDemo ?? true) return api;
+  const demos = DEMO_PLACES.slice(0, DEMO_SHOWCASE_LIMIT).map(demoPlaceToApiRow);
   if (options?.mixDemos) {
     const apiIds = new Set(api.map((p) => String(p.id)));
-    const extras = DEMO_PLACES.filter((d) => !apiIds.has(d.id)).map(demoPlaceToApiRow);
-    return [...api, ...extras];
+    const extras = demos.filter((d) => !apiIds.has(d.id));
+    return [...api, ...extras].slice(0, DEMO_SHOWCASE_LIMIT);
   }
   if (api.length > 0) return api;
-  return DEMO_PLACES.map(demoPlaceToApiRow);
+  if (options?.fallback) return demos;
+  return demos;
 }

@@ -1,4 +1,4 @@
-/** Two curated showcase personas — used across stories, profiles, and offline demos. */
+/** Two curated showcase personas — used when offline demos are explicitly enabled. */
 
 export const DEMO_SHOWCASE_LIMIT = 2;
 
@@ -41,4 +41,25 @@ export const SHOWCASE_ATHLETES: ShowcaseAthlete[] = [
 
 export function showcaseAvatar(username: string): string | undefined {
   return SHOWCASE_ATHLETES.find((a) => a.username === username)?.profileImageUrl;
+}
+
+/** Client-side demo ids — never mix with live API lists by default. */
+export function isClientDemoId(id: string | null | undefined): boolean {
+  if (!id) return false;
+  const s = String(id);
+  return (
+    s.startsWith("demo-") ||
+    s.startsWith("ds-") ||
+    s.startsWith("dt") ||
+    s.startsWith("dp") ||
+    s.startsWith("dv") ||
+    s.startsWith("fv")
+  );
+}
+
+/** Drop demo rows when the API returned real rows. */
+export function apiOnly<T>(items: T[], isDemo: (item: T) => boolean): T[] {
+  const list = Array.isArray(items) ? items : [];
+  const real = list.filter((item) => !isDemo(item));
+  return real.length > 0 ? real : [];
 }

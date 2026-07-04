@@ -43,18 +43,16 @@ export function challengeDetailRoute(id: string): string {
 
 export function mergeWithDemoChallenges(
   apiMatches: unknown[],
-  options?: { skipDemo?: boolean; mixDemos?: boolean },
+  options?: { skipDemo?: boolean; mixDemos?: boolean; fallback?: boolean },
 ): DemoChallenge[] {
   const api = (Array.isArray(apiMatches) ? apiMatches : []) as DemoChallenge[];
-  if (options?.skipDemo) return api;
-
-  const demos = DEMO_CHALLENGES.slice(0, DEMO_SHOWCASE_LIMIT);
-
+  if (options?.skipDemo ?? true) return api;
   if (options?.mixDemos) {
     const apiIds = new Set(api.map((m) => String(m.id)));
-    const extras = demos.filter((d) => !apiIds.has(d.id));
-    return [...api, ...extras];
+    const extras = DEMO_CHALLENGES.filter((d) => !apiIds.has(d.id));
+    return [...api, ...extras].slice(0, DEMO_SHOWCASE_LIMIT);
   }
   if (api.length > 0) return api;
-  return [...demos];
+  if (options?.fallback) return DEMO_CHALLENGES.slice(0, DEMO_SHOWCASE_LIMIT);
+  return api;
 }

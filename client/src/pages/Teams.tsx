@@ -30,7 +30,6 @@ import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/
 import { teamLogoUrl } from "@/lib/teamLogo";
 import { getSportConfig } from "@/components/TeamCard";
 import type { Team } from "@shared/schema";
-import { mergeWithDemoTeams } from "@/lib/demoTeams";
 
 const SPORT_CHIPS = [
   { key: "All", emoji: "🏆" },
@@ -100,12 +99,7 @@ export default function Teams({
       if (!response.ok) throw new Error('Failed to fetch teams');
       const data = await response.json();
       const page = Array.isArray(data) ? data : (data.items || []);
-      const merged =
-        offset === 0
-          ? mergeWithDemoTeams(page, {
-              sport: sportFilter !== "All" ? sportFilter : undefined,
-            })
-          : page;
+      const merged = offset === 0 ? page : page;
       const hasMore = page.length >= limit;
       return {
         data: merged,
@@ -203,9 +197,7 @@ export default function Teams({
   const chipBg = t.chipBg;
   const chipText = t.chipText;
 
-  const mergedTeams = mergeWithDemoTeams(isError ? [] : teams || [], {
-    sport: sportFilter !== "All" ? sportFilter : undefined,
-  });
+  const mergedTeams = isError ? [] : teams || [];
 
   const filteredTeams = mergedTeams.filter((team: any) => {
     const sportOk =

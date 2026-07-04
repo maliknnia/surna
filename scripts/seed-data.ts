@@ -205,59 +205,18 @@ const seedUsers = [
 ];
 
 const teamData = [
-  { name: 'LA Ballers', sport: 'Basketball', location: 'Los Angeles', description: 'Premier basketball team in LA. Competitive league play and weekend pickup games.', members: 12 },
-  { name: 'Houston Aces', sport: 'Tennis', location: 'Houston', description: 'USTA league team. Singles and doubles competition at 4.0+ level.', members: 8 },
+  { name: 'Atlanta Swim Club', sport: 'Swimming', location: 'Atlanta', description: 'Masters training group — technique-first pool sessions.', members: 2 },
+  { name: 'Metro Tennis Collective', sport: 'Tennis', location: 'New York', description: 'Match-play and drill nights for 4.0+ players.', members: 2 },
 ];
 
 const postContent = [
-  { content: 'Just dropped 35 points in tonight\'s league game! Feeling unstoppable on the court right now 🏀', sport: 'Basketball', hashtags: ['basketball', 'gameday', 'buckets'] },
-  { content: 'New PR alert! 3:08 marathon in NYC. The crowd energy was insane. Months of training paid off! 🏃', sport: 'Running', hashtags: ['marathon', 'pr', 'running'] },
-  { content: 'Submitted my opponent in the 2nd round via armbar. 3-0 this year, feeling confident about regionals 💪', sport: 'MMA', hashtags: ['mma', 'bjj', 'submission'] },
-  { content: 'Amazing doubles match today. Down 4-6, 3-5 and we came back to win in a super tiebreak! Tennis is mental 🎾', sport: 'Tennis', hashtags: ['tennis', 'comeback', 'doubles'] },
-  { content: 'Crushed Murph today in under 40 minutes. New gym PR! The heat made it brutal but worth every second', sport: 'CrossFit', hashtags: ['crossfit', 'murph', 'pr'] },
   { content: 'Morning swim session was perfect. Hit my 100m free goal time. Coach says I\'m on track for Nationals 🏊', sport: 'Swimming', hashtags: ['swimming', 'freestyle', 'nationals'] },
-  { content: 'Sparring session with a pro today. Got caught with a body shot but landed some clean combos. Learning every day 🥊', sport: 'Boxing', hashtags: ['boxing', 'sparring', 'training'] },
-  { content: 'Beautiful sunrise trail run at Mt. Hood today. 15 miles of pure bliss. Nature is the best gym 🏔️', sport: 'Running', hashtags: ['trailrunning', 'mthood', 'nature'] },
-  { content: 'Hat trick in today\'s league match! The team played incredibly. 5-2 win puts us top of the table ⚽', sport: 'Soccer', hashtags: ['soccer', 'hattrick', 'winning'] },
-  { content: 'Beach volleyball tournament this weekend was a blast. Made it to the semis with an amazing partner 🏐', sport: 'Volleyball', hashtags: ['volleyball', 'beach', 'tournament'] },
-  { content: 'Hit a walk-off homer in the bottom of the 9th! Whole team went crazy. Best feeling in sports ⚾', sport: 'Baseball', hashtags: ['baseball', 'walkoff', 'clutch'] },
-  { content: 'Back from a knee injury and stronger than ever. First workout in 3 months felt incredible. Grateful for the journey 💪', sport: 'CrossFit', hashtags: ['comeback', 'recovery', 'grateful'] },
-  { content: 'Coached my first youth basketball camp today. Seeing those kids light up when they make a shot is everything 🌟', sport: 'Basketball', hashtags: ['coaching', 'youth', 'inspiration'] },
-  { content: 'New deadlift PR: 405 lbs! Been chasing this number for 2 years. Consistency wins every time 🏋️', sport: 'CrossFit', hashtags: ['deadlift', 'pr', 'strength'] },
-  { content: 'Finished my first open water race. 2.4 miles in the Pacific Ocean. Scary but incredibly rewarding 🌊', sport: 'Swimming', hashtags: ['openwater', 'challenge', 'ocean'] },
-  { content: 'Just signed up for my first amateur boxing match next month. Nervous but excited. Time to put in the work! 🥊', sport: 'Boxing', hashtags: ['amateur', 'fight', 'boxing'] },
-  { content: 'Team practice was fire today. Our passing game is clicking and everyone is locked in for playoffs 🔥', sport: 'Soccer', hashtags: ['teamwork', 'practice', 'playoffs'] },
-  { content: '50-mile ultra marathon complete! 11 hours of running through the mountains. My legs hate me but my heart is full 🏃‍♂️', sport: 'Running', hashtags: ['ultra', 'endurance', 'mountains'] },
-  { content: 'Rolled with a visiting black belt today. Got tapped 5 times but learned so much. The mat doesn\'t lie 🥋', sport: 'MMA', hashtags: ['bjj', 'learning', 'humble'] },
-  { content: 'Won the club tennis championship! 6-4, 7-5 in the final. All those early morning sessions were worth it 🏆', sport: 'Tennis', hashtags: ['champion', 'tennis', 'trophy'] },
-  { content: 'Recovery day: ice bath, foam rolling, and stretching. Your body is your tool, take care of it 🧊', sport: 'CrossFit', hashtags: ['recovery', 'selfcare', 'rest'] },
-  { content: 'Great scrimmage with the team today. Our defense is looking solid heading into the season 🛡️', sport: 'Basketball', hashtags: ['defense', 'preseason', 'team'] },
-  { content: 'Just finished a 2-hour pool session. Butterfly is finally starting to feel natural. Progress is progress! 🦋', sport: 'Swimming', hashtags: ['butterfly', 'progress', 'swimming'] },
-  { content: 'Hosting a free community boxing class this Saturday! Everyone welcome, all skill levels. Let\'s get moving! 🥊', sport: 'Boxing', hashtags: ['community', 'free', 'boxing'] },
-  { content: 'Season opener today! 3 goals and an assist. The team chemistry is unreal this year ⚡', sport: 'Soccer', hashtags: ['season', 'goals', 'chemistry'] },
-  { content: 'Finally broke the 4-hour barrier on the Grand Canyon rim-to-rim trail. Bucket list achievement unlocked! 🏜️', sport: 'Running', hashtags: ['grandcanyon', 'trail', 'bucketlist'] },
-  { content: 'Meal prep Sunday! Chicken, rice, veggies x7. Fuel your body right and the results follow 🍗', sport: 'CrossFit', hashtags: ['mealprep', 'nutrition', 'discipline'] },
-  { content: 'Post-match analysis with the team. We lost but learned a ton. Film don\'t lie. Back to work Monday 📹', sport: 'Basketball', hashtags: ['filmreview', 'improvement', 'grind'] },
-  { content: 'Night swim under the stars. There\'s something magical about the water at night. Pure peace 🌙', sport: 'Swimming', hashtags: ['nightswim', 'peace', 'water'] },
-  { content: 'Just got my USTA ranking updated. Moved up 200 spots this season! Hard work = results 📈', sport: 'Tennis', hashtags: ['ranking', 'improvement', 'tennis'] },
+  { content: 'Amazing doubles match today. Down 4-6, 3-5 and we came back to win in a super tiebreak! Tennis is mental 🎾', sport: 'Tennis', hashtags: ['tennis', 'comeback', 'doubles'] },
 ];
 
 const eventData = [
-  { title: '5v5 Basketball Tournament', description: 'Open tournament for all skill levels. Teams of 5 with refs and scorekeepers. Prizes for top 3!', eventType: 'competition', sport: 'Basketball', location: 'Downtown Courts, LA', maxParticipants: 40, daysFromNow: 3 },
-  { title: 'Central Park 10K', description: 'Weekly group run through Central Park. All paces welcome. Meet at Columbus Circle.', eventType: 'training', sport: 'Running', location: 'Central Park, NYC', maxParticipants: 100, daysFromNow: 1 },
-  { title: 'MMA Sparring Night', description: 'Open mat sparring session. Bring your own gear. All disciplines welcome.', eventType: 'training', sport: 'MMA', location: 'Miami Fight Club', maxParticipants: 30, daysFromNow: 2 },
-  { title: 'Mixed Doubles Social', description: 'Casual mixed doubles round robin. Snacks and drinks provided. Great way to meet tennis players!', eventType: 'social', sport: 'Tennis', location: 'Memorial Park Courts, Houston', maxParticipants: 16, daysFromNow: 5 },
-  { title: 'CrossFit Competition Prep', description: 'Mock competition with 3 workouts. Practice your game-day routine and test your fitness.', eventType: 'competition', sport: 'CrossFit', location: 'Iron Box Gym, Denver', maxParticipants: 24, daysFromNow: 7 },
-  { title: 'Masters Swim Meet', description: 'USMS sanctioned meet. Events from 50m to 1500m. Age group competition.', eventType: 'competition', sport: 'Swimming', location: 'Georgia Tech Aquatics, Atlanta', maxParticipants: 200, daysFromNow: 14 },
-  { title: 'Boxing Exhibition Night', description: 'Amateur exhibition bouts. 3 rounds each. Matchups by weight and experience.', eventType: 'competition', sport: 'Boxing', location: 'Chi-Town Boxing Club, Chicago', maxParticipants: 20, daysFromNow: 10 },
-  { title: 'Trail Running Workshop', description: 'Learn trail running techniques, navigation, and gear selection. Includes a 5-mile group run.', eventType: 'workshop', sport: 'Running', location: 'Forest Park, Portland', maxParticipants: 25, daysFromNow: 4 },
-  { title: 'Co-ed Soccer League Kickoff', description: 'Season opener for the adult rec league. 8 teams competing over 10 weeks.', eventType: 'competition', sport: 'Soccer', location: 'Magnuson Park, Seattle', maxParticipants: 80, daysFromNow: 6 },
-  { title: 'Beach Volleyball Sunset Session', description: 'Open play at the beach courts. All levels welcome. Bring friends!', eventType: 'social', sport: 'Volleyball', location: 'Manhattan Beach, LA', maxParticipants: 40, daysFromNow: 2 },
-  { title: 'Baseball Skills Clinic', description: 'Hitting, fielding, and pitching drills led by former college players.', eventType: 'workshop', sport: 'Baseball', location: 'Tempe Diablo Stadium, Phoenix', maxParticipants: 30, daysFromNow: 8 },
-  { title: 'Yoga for Athletes Workshop', description: 'Mobility and flexibility workshop designed for CrossFit and strength athletes.', eventType: 'workshop', sport: 'CrossFit', location: 'Mindful Movement Studio, Portland', maxParticipants: 20, daysFromNow: 3 },
-  { title: 'Pickup Basketball Night', description: 'Weekly pickup games. First come, first served. Winners stay on.', eventType: 'social', sport: 'Basketball', location: 'Venice Beach Courts, LA', maxParticipants: 30, daysFromNow: 1 },
-  { title: 'Half Marathon Training Group', description: 'Join our 12-week training plan for the spring half marathon. Coaches provided.', eventType: 'training', sport: 'Running', location: 'Piedmont Park, Atlanta', maxParticipants: 50, daysFromNow: 9 },
-  { title: 'Grappling Only Tournament', description: 'Submission-only grappling tournament. Gi and no-gi divisions.', eventType: 'competition', sport: 'MMA', location: 'Gracie Miami, FL', maxParticipants: 64, daysFromNow: 21 },
+  { title: 'Masters Swim Meet', description: 'USMS sanctioned meet. Events from 50m to 1500m.', eventType: 'competition', sport: 'Swimming', location: 'Georgia Tech Aquatics, Atlanta', maxParticipants: 24, daysFromNow: 5 },
+  { title: 'Mixed Doubles Social', description: 'Casual mixed doubles round robin. Snacks provided.', eventType: 'social', sport: 'Tennis', location: 'Metro Tennis Center, NYC', maxParticipants: 12, daysFromNow: 3 },
 ];
 
 const productData = [
@@ -279,16 +238,8 @@ const productData = [
 ];
 
 const placeData = [
-  { name: 'Iron Box CrossFit', category: 'gym', sports: ['CrossFit', 'Olympic Lifting'], bio: 'Premier CrossFit box with Olympic lifting platforms and turf area.', address: '1250 W 6th St', city: 'Denver', state: 'CO', latitude: '39.7392', longitude: '-104.9903', amenities: ['showers', 'parking', 'coaching'] },
-  { name: 'Venice Beach Courts', category: 'court', sports: ['Basketball', 'Volleyball'], bio: 'Iconic outdoor courts. Basketball and beach volleyball under the California sun.', address: '1800 Ocean Front Walk', city: 'Los Angeles', state: 'CA', latitude: '33.9850', longitude: '-118.4695', amenities: ['outdoor', 'free', 'lighting'] },
-  { name: 'Central Park Track', category: 'track', sports: ['Running', 'Track & Field'], bio: 'The famous reservoir loop and track facilities in Central Park.', address: 'Central Park', city: 'New York', state: 'NY', latitude: '40.7829', longitude: '-73.9654', amenities: ['outdoor', 'free', 'restrooms'] },
-  { name: 'Miami Fight Academy', category: 'gym', sports: ['MMA', 'Boxing', 'BJJ'], bio: 'Full-service fight gym with cage, ring, and mat space. Pro and amateur training.', address: '3500 NW 2nd Ave', city: 'Miami', state: 'FL', latitude: '25.8028', longitude: '-80.2090', amenities: ['showers', 'parking', 'pro-shop'] },
-  { name: 'Memorial Park Tennis Center', category: 'court', sports: ['Tennis'], bio: '16 hard courts with lights. Pro shop and coaching available.', address: '6402 Arnot St', city: 'Houston', state: 'TX', latitude: '29.7604', longitude: '-95.3698', amenities: ['lights', 'pro-shop', 'parking'] },
-  { name: 'Georgia Tech Aquatic Center', category: 'pool', sports: ['Swimming', 'Water Polo'], bio: 'Olympic-quality pool facility. 50m competition pool and diving well.', address: '750 Ferst Dr NW', city: 'Atlanta', state: 'GA', latitude: '33.7756', longitude: '-84.3963', amenities: ['indoor', 'timing-system', 'bleachers'] },
-  { name: 'Chi-Town Boxing Club', category: 'gym', sports: ['Boxing'], bio: 'Old-school boxing gym. Heavy bags, speed bags, ring. Champions trained here.', address: '2345 S Michigan Ave', city: 'Chicago', state: 'IL', latitude: '41.8525', longitude: '-87.6244', amenities: ['showers', 'coaching', 'equipment'] },
-  { name: 'Forest Park Trails', category: 'field', sports: ['Running', 'Hiking'], bio: '80+ miles of trails in Portland\'s urban forest. Perfect for trail running.', address: 'NW 29th Ave', city: 'Portland', state: 'OR', latitude: '45.5272', longitude: '-122.7095', amenities: ['outdoor', 'free', 'trails'] },
-  { name: 'Magnuson Field Complex', category: 'field', sports: ['Soccer', 'Football'], bio: 'Multi-field complex for team sports. Turf and natural grass options.', address: '7400 Sand Point Way NE', city: 'Seattle', state: 'WA', latitude: '47.6815', longitude: '-122.2564', amenities: ['lights', 'parking', 'restrooms'] },
-  { name: 'Tempe Diablo Training Fields', category: 'field', sports: ['Baseball', 'Softball'], bio: 'Professional-grade baseball diamonds. Spring training quality facilities.', address: '2200 W Alameda Dr', city: 'Phoenix', state: 'AZ', latitude: '33.3884', longitude: '-111.9660', amenities: ['lights', 'dugouts', 'batting-cages'] },
+  { name: 'Georgia Tech Aquatic Center', category: 'pool', sports: ['Swimming'], bio: 'Olympic-quality pool facility. 50m competition pool.', address: '750 Ferst Dr NW', city: 'Atlanta', state: 'GA', latitude: '33.7756', longitude: '-84.3963', amenities: ['indoor', 'timing-system', 'coaching'] },
+  { name: 'Metro Tennis Center', category: 'court', sports: ['Tennis'], bio: 'Lighted hard courts with pro shop and coaching.', address: '340 W 96th St', city: 'New York', state: 'NY', latitude: '40.7930', longitude: '-73.9710', amenities: ['lights', 'pro-shop', 'coaching'] },
 ];
 
 async function runSeed() {
@@ -361,7 +312,7 @@ async function runSeed() {
       primarySport: u.sport,
       location: u.location,
       skillLevel: ['beginner', 'intermediate', 'advanced', 'elite'][i % 4],
-      verified: i < 10,
+      verified: true,
       emailVerified: true,
       profileType: 'normal',
       profileJson: {
@@ -386,19 +337,11 @@ async function runSeed() {
     await db.execute(sql`INSERT INTO user_levels (id, user_id, level, total_points, points_to_next_level) VALUES (${uuid()}, ${createdUsers[i].id}, ${level}, ${totalXp}, ${xpNext})`);
   }
 
-  // 3. Create follows (social connections)
+  // 3. Mutual follows between showcase athletes
   console.log('Creating follows...');
-  for (let i = 0; i < createdUsers.length; i++) {
-    const numFollows = Math.floor(Math.random() * 15) + 5;
-    const followed = new Set<number>();
-    for (let j = 0; j < numFollows; j++) {
-      let target = Math.floor(Math.random() * createdUsers.length);
-      while (target === i || followed.has(target)) {
-        target = Math.floor(Math.random() * createdUsers.length);
-      }
-      followed.add(target);
-      await db.execute(sql`INSERT INTO user_follows (id, follower_id, followed_id) VALUES (${uuid()}, ${createdUsers[i].id}, ${createdUsers[target].id})`);
-    }
+  if (createdUsers.length >= 2) {
+    await db.execute(sql`INSERT INTO user_follows (id, follower_id, followed_id) VALUES (${uuid()}, ${createdUsers[0].id}, ${createdUsers[1].id})`);
+    await db.execute(sql`INSERT INTO user_follows (id, follower_id, followed_id) VALUES (${uuid()}, ${createdUsers[1].id}, ${createdUsers[0].id})`);
   }
 
   // 4. Create places
@@ -406,7 +349,7 @@ async function runSeed() {
   const createdPlaces: any[] = [];
   for (let pi = 0; pi < placeData.length; pi++) {
     const p = placeData[pi];
-    const owner = createdUsers[Math.floor(Math.random() * 10)];
+    const owner = createdUsers[pi % createdUsers.length];
     const placeId = uuid();
     const sportsStr = `{${p.sports.join(',')}}`;
     const amenitiesStr = p.amenities ? `{${p.amenities.join(',')}}` : null;
@@ -464,7 +407,7 @@ async function runSeed() {
   }
   console.log(`Created ${FAKE_COACH_PERSONAS.length} fake coach accounts`);
 
-  // 7. Create posts (30 posts)
+  // 7. Create posts (one per showcase athlete)
   console.log('Creating posts...');
   const createdPosts: any[] = [];
   for (let i = 0; i < postContent.length; i++) {
@@ -486,23 +429,6 @@ async function runSeed() {
     createdPosts.push({ id: pid });
   }
   console.log(`Created ${createdPosts.length} posts`);
-
-  // Extra posts so feed/home always feels full
-  console.log('Creating bonus posts...');
-  for (let i = 0; i < postContent.length; i++) {
-    const p = postContent[i];
-    const author = createdUsers[(i + 7) % createdUsers.length];
-    const pid = uuid();
-    const imgUrl = actionPhotoUrl(`bonus-post-${i}-${author.username}`, 800, 533);
-    const likes = Math.floor(Math.random() * 200) + 20;
-    const comments = Math.floor(Math.random() * 40) + 3;
-    const shares = Math.floor(Math.random() * 25) + 2;
-    const created = new Date(Date.now() - Math.floor(Math.random() * 3 * 24 * 60 * 60 * 1000));
-    const hashtagsStr = p.hashtags ? `{${p.hashtags.join(',')}}` : null;
-    await db.execute(sql`INSERT INTO posts (id, author_id, content, image_url, media_type, sport, hashtags, visibility, post_type, likes_count, comments_count, shares_count, created_at) VALUES (${pid}, ${author.id}, ${p.content}, ${imgUrl}, 'image', ${p.sport}, ${hashtagsStr}::text[], 'public', 'image', ${likes}, ${comments}, ${shares}, ${created.toISOString()})`);
-    createdPosts.push({ id: pid });
-  }
-  console.log(`Total posts: ${createdPosts.length}`);
 
   // 8. Create likes and comments on posts
   console.log('Creating likes and comments...');
@@ -560,70 +486,26 @@ async function runSeed() {
   }
   console.log(`Created ${createdEvents.length} events`);
 
-  // 10. Create products
-  console.log('Creating products...');
-  for (let i = 0; i < productData.length; i++) {
-    const p = productData[i];
-    const seller = createdUsers[i % 10];
-    const prodImg = productImages[i % productImages.length];
-    await db.execute(sql`INSERT INTO products (id, seller_id, name, description, price, category, brand, image_url, stock, is_active) VALUES (${uuid()}, ${seller.id}, ${p.name}, ${p.description}, ${p.price}, ${p.category}, ${p.brand}, ${prodImg}, ${p.stock}, true)`);
-  }
-  console.log(`Created ${productData.length} products`);
+  // 10. Products skipped — showcase seed stays minimal
 
-  // 11. Create competitive matches
-  console.log('Creating matches...');
-  const matchData = [
-    { title: 'LA Ballers vs Chi-Town Gloves - Charity Game', type: 'teamVsTeam', sport: 'Basketball', status: 'accepted' },
-    { title: '1v1 Boxing Showdown', type: 'player1v1', sport: 'Boxing', status: 'live' },
-    { title: 'Open 5K Time Trial', type: 'open', sport: 'Running', status: 'pending' },
-    { title: 'Tennis Singles Challenge', type: 'player1v1', sport: 'Tennis', status: 'completed' },
-    { title: 'Team CrossFit Throwdown', type: 'teamVsTeam', sport: 'CrossFit', status: 'accepted' },
-    { title: 'MMA Exhibition Match', type: 'player1v1', sport: 'MMA', status: 'pending' },
-    { title: 'Soccer Friendly - Seattle vs Portland', type: 'teamVsTeam', sport: 'Soccer', status: 'accepted' },
-    { title: 'Swimming Relay Challenge', type: 'open', sport: 'Swimming', status: 'pending' },
-  ];
-
-  for (let i = 0; i < matchData.length; i++) {
-    const m = matchData[i];
-    const creator = createdUsers[i * 5 % createdUsers.length];
-    const timeStart = new Date(Date.now() + (i + 1) * 2 * 24 * 60 * 60 * 1000);
-
-    const mid = uuid();
-    const creatorType = m.type === 'teamVsTeam' ? 'team' : 'user';
-    const creatorId = m.type === 'teamVsTeam' ? createdTeams[i % createdTeams.length].id : creator.id;
-    const opponentId = m.type === 'player1v1' ? createdUsers[(i * 5 + 3) % createdUsers.length].id : null;
-    const opponentType = m.type === 'player1v1' ? 'user' : (m.type === 'teamVsTeam' ? 'team' : null);
-    const timeEnd = new Date(timeStart.getTime() + 3 * 60 * 60 * 1000);
-    const cap = m.type === 'open' ? 50 : null;
-    await db.execute(sql`INSERT INTO competitive_matches (id, title, type, sport, creator_type, creator_id, opponent_type, opponent_id, visibility, time_start, time_end, status, reward, capacity) VALUES (${mid}, ${m.title}, ${m.type}, ${m.sport}, ${creatorType}, ${creatorId}, ${opponentType}, ${opponentId}, 'public', ${timeStart.toISOString()}, ${timeEnd.toISOString()}, ${m.status}, 'xp', ${cap})`);
-  }
-  console.log('Created 8 competitive matches');
-
-  // 12. Stories (24h)
+  // 11. Competitive matches skipped
   console.log('Creating stories...');
   let storyCount = 0;
   const expiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString();
   const storyCaptions = [
-    'Game day vibes 🔥', 'Morning session done ✅', 'Match highlights from yesterday',
-    'Training camp day 3 💪', 'County final week!', 'New boots, new goals ⚽',
-    'Recovery + ice bath 🧊', 'Team huddle before throw-in', 'PR day at the gym',
-    'Sunset sprints on the pitch', 'Skills session 🎯', 'Captain\'s speech hit different',
-    'Under the lights tonight', 'Post-match chipper 🍻', 'Road to the final',
+    'Pool lanes booked for 6am 🏊',
+    'Serve clinic spots open 🎾',
   ];
-  for (let i = 0; i < 40; i++) {
-    const author = createdUsers[i % createdUsers.length];
+  for (let i = 0; i < createdUsers.length; i++) {
+    const author = createdUsers[i];
     const sid = uuid();
-    const isVideo = i % 6 === 0;
+    const isVideo = false;
     const caption = storyCaptions[i % storyCaptions.length];
-    await db.execute(sql`INSERT INTO stories (id, user_id, owner_type, owner_id, media_url, media_type, thumbnail_url, caption, visibility, view_count, expires_at) VALUES (${sid}, ${author.id}, 'person', ${author.id}, ${isVideo ? SAMPLE_VIDEOS[i % SAMPLE_VIDEOS.length] : postImages[i % postImages.length]}, ${isVideo ? 'video' : 'image'}, ${isVideo ? postImages[i % postImages.length] : null}, ${caption}, 'public', ${Math.floor(Math.random() * 120) + 8}, ${expiresAt})`);
+    await db.execute(sql`INSERT INTO stories (id, user_id, owner_type, owner_id, media_url, media_type, thumbnail_url, caption, visibility, view_count, expires_at) VALUES (${sid}, ${author.id}, 'person', ${author.id}, ${postImages[i % postImages.length]}, 'image', null, ${caption}, 'public', ${12 + i * 3}, ${expiresAt})`);
     storyCount++;
-    const viewers = Math.floor(Math.random() * 6) + 2;
-    const seen = new Set<number>();
-    for (let v = 0; v < viewers; v++) {
-      let idx = Math.floor(Math.random() * createdUsers.length);
-      while (seen.has(idx)) idx = Math.floor(Math.random() * createdUsers.length);
-      seen.add(idx);
-      await db.execute(sql`INSERT INTO story_viewers (id, story_id, viewer_id) VALUES (${uuid()}, ${sid}, ${createdUsers[idx].id})`);
+    const otherIdx = i === 0 ? 1 : 0;
+    if (createdUsers[otherIdx]) {
+      await db.execute(sql`INSERT INTO story_viewers (id, story_id, viewer_id) VALUES (${uuid()}, ${sid}, ${createdUsers[otherIdx].id})`);
     }
   }
   console.log(`Created ${storyCount} stories`);
@@ -631,24 +513,23 @@ async function runSeed() {
   // 13. Instant join teams
   console.log('Creating instant teams...');
   const instantNames = [
-    'Pickup hoops tonight', 'Sunset 5v5', 'Morning run crew', 'Open mat sparring',
-    'Tennis doubles needed', 'Soccer scrimmage', 'Beach volleyball', 'CrossFit WOD',
-    'Boxing pads session', 'Baseball batting practice', 'Swim laps group', 'Flag football',
+    { name: 'Morning swim set', sport: 'Swimming', location: 'Atlanta' },
+    { name: 'Tennis doubles tonight', sport: 'Tennis', location: 'New York' },
   ];
   for (let i = 0; i < instantNames.length; i++) {
-    const creator = createdUsers[i * 4 % createdUsers.length];
-    const sport = sports[i % sports.length];
-    const loc = seedUsers[i % seedUsers.length].location;
-    const coords = cityCoords[loc] || cityCoords['Los Angeles'];
+    const row = instantNames[i];
+    const creator = createdUsers[i % createdUsers.length];
+    const loc = row.location;
+    const coords = cityCoords[loc] || cityCoords['Atlanta'];
     const tid = uuid();
-    const start = new Date(Date.now() + (i % 6) * 60 * 60 * 1000 + 2 * 60 * 60 * 1000);
+    const start = new Date(Date.now() + (i + 1) * 2 * 60 * 60 * 1000);
     const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-    const needed = 4 + (i % 8);
-    const joined = 1 + (i % 4);
-    await db.execute(sql`INSERT INTO instant_teams (id, creator_id, name, sport, description, lat, lng, location_name, start_time, end_time, players_needed, players_joined, skill_level, visibility, status) VALUES (${tid}, ${creator.id}, ${instantNames[i]}, ${sport}, ${'Looking for players — all welcome!'}, ${coords.lat}, ${coords.lng}, ${loc}, ${start.toISOString()}, ${end.toISOString()}, ${needed}, ${joined}, 'any', 'public', 'active')`);
+    const needed = 4;
+    const joined = 2;
+    await db.execute(sql`INSERT INTO instant_teams (id, creator_id, name, sport, description, lat, lng, location_name, start_time, end_time, players_needed, players_joined, skill_level, visibility, status) VALUES (${tid}, ${creator.id}, ${row.name}, ${row.sport}, ${'Looking for players — all welcome!'}, ${coords.lat}, ${coords.lng}, ${loc}, ${start.toISOString()}, ${end.toISOString()}, ${needed}, ${joined}, 'any', 'public', 'active')`);
     await db.execute(sql`INSERT INTO instant_team_members (id, team_id, user_id, status) VALUES (${uuid()}, ${tid}, ${creator.id}, 'joined')`);
-    for (let m = 0; m < joined - 1; m++) {
-      const member = createdUsers[(i + m + 1) % createdUsers.length];
+    const member = createdUsers[(i + 1) % createdUsers.length];
+    if (member.id !== creator.id) {
       await db.execute(sql`INSERT INTO instant_team_members (id, team_id, user_id, status) VALUES (${uuid()}, ${tid}, ${member.id}, 'joined')`);
     }
   }
@@ -657,20 +538,14 @@ async function runSeed() {
   // 14. Direct messages
   console.log('Creating messages...');
   const dmSnippets = [
-    'You in for the game tonight?',
-    'Great match yesterday — rematch soon?',
-    'Sent you the court location pin 📍',
-    'Can you bring an extra ball?',
-    'Team chat is buzzing, check it out',
-    'Congrats on the PR! 🔥',
+    'Pool lanes booked for 6am — see you there 🏊',
+    'Serve clinic spots are open — want the 7pm slot?',
   ];
   let msgCount = 0;
-  for (let i = 0; i < 30; i++) {
-    const sender = createdUsers[i % createdUsers.length];
-    const receiver = createdUsers[(i + 11) % createdUsers.length];
-    if (sender.id === receiver.id) continue;
-    await db.execute(sql`INSERT INTO messages (id, sender_id, receiver_id, content, message_type, is_read) VALUES (${uuid()}, ${sender.id}, ${receiver.id}, ${dmSnippets[i % dmSnippets.length]}, 'text', ${Math.random() > 0.4})`);
-    msgCount++;
+  if (createdUsers.length >= 2) {
+    await db.execute(sql`INSERT INTO messages (id, sender_id, receiver_id, content, message_type, is_read) VALUES (${uuid()}, ${createdUsers[0].id}, ${createdUsers[1].id}, ${dmSnippets[0]}, 'text', false)`);
+    await db.execute(sql`INSERT INTO messages (id, sender_id, receiver_id, content, message_type, is_read) VALUES (${uuid()}, ${createdUsers[1].id}, ${createdUsers[0].id}, ${dmSnippets[1]}, 'text', true)`);
+    msgCount = 2;
   }
   console.log(`Created ${msgCount} messages`);
 
@@ -699,45 +574,40 @@ async function runSeed() {
   }).onConflictDoNothing();
   await db.execute(sql`UPDATE users SET profile_image_url = ${profileImages[0]}, email_verified = true WHERE id = ${LOCAL_DEV_ID}`);
 
-  for (let i = 0; i < Math.min(20, createdUsers.length); i++) {
+  for (let i = 0; i < createdUsers.length; i++) {
     await db.execute(sql`INSERT INTO user_follows (id, follower_id, followed_id) VALUES (${uuid()}, ${LOCAL_DEV_ID}, ${createdUsers[i].id})`);
     await db.execute(sql`INSERT INTO user_follows (id, follower_id, followed_id) VALUES (${uuid()}, ${createdUsers[i].id}, ${LOCAL_DEV_ID})`);
   }
 
   const notifTypes = [
-    { type: 'like', title: 'New like', message: 'Marcus liked your post' },
-    { type: 'comment', title: 'New comment', message: 'Sophia commented on your highlight' },
-    { type: 'follow', title: 'New follower', message: 'DeAndre started following you' },
-    { type: 'team_invite', title: 'Team invite', message: 'You were invited to LA Ballers' },
-    { type: 'challenge', title: 'Challenge invite', message: '1v1 Boxing Showdown — accept?' },
-    { type: 'event', title: 'Event reminder', message: '5v5 Basketball Tournament starts in 2 hours' },
+    { type: 'like', title: 'New like', message: 'Aisha liked your post' },
+    { type: 'comment', title: 'New comment', message: 'Elena commented on your highlight' },
+    { type: 'follow', title: 'New follower', message: 'Aisha started following you' },
+    { type: 'team_invite', title: 'Team invite', message: 'You were invited to Atlanta Swim Club' },
+    { type: 'event', title: 'Event reminder', message: 'Masters Swim Meet starts in 2 hours' },
   ];
   for (let i = 0; i < notifTypes.length; i++) {
     const n = notifTypes[i];
     await db.execute(sql`INSERT INTO notifications (id, user_id, type, title, message, is_read) VALUES (${uuid()}, ${LOCAL_DEV_ID}, ${n.type}, ${n.title}, ${n.message}, ${i > 2})`);
   }
 
-  for (let i = 0; i < 8; i++) {
-    const sender = createdUsers[i];
-    await db.execute(sql`INSERT INTO messages (id, sender_id, receiver_id, content, message_type, is_read) VALUES (${uuid()}, ${sender.id}, ${LOCAL_DEV_ID}, ${dmSnippets[i % dmSnippets.length]}, 'text', false)`);
+  if (createdUsers[0]) {
+    await db.execute(sql`INSERT INTO messages (id, sender_id, receiver_id, content, message_type, is_read) VALUES (${uuid()}, ${createdUsers[0].id}, ${LOCAL_DEV_ID}, ${dmSnippets[0]}, 'text', false)`);
   }
 
   await db.execute(sql`DELETE FROM user_levels WHERE user_id = ${LOCAL_DEV_ID}`);
   await db.execute(sql`INSERT INTO user_levels (id, user_id, level, total_points, points_to_next_level) VALUES (${uuid()}, ${LOCAL_DEV_ID}, 12, 1800, 2000)`);
 
   console.log('\n✅ Seed complete!');
-  console.log(`  ${createdUsers.length} users`);
+  console.log(`  ${createdUsers.length} showcase users`);
   console.log(`  ${createdTeams.length} teams`);
-  console.log(`  10 fake coach accounts (@surna.app)`);
-  console.log(`  ${createdPosts.length} posts with likes/comments`);
+  console.log(`  ${FAKE_COACH_PERSONAS.length} coach profiles`);
+  console.log(`  ${createdPosts.length} posts`);
   console.log(`  ${createdEvents.length} events`);
-  console.log(`  ${productData.length} products`);
   console.log(`  ${createdPlaces.length} places`);
-  console.log(`  8 competitive matches`);
-  console.log(`  ${createdUsers.length * 10}+ social follows`);
   console.log(`  ${storyCount} stories`);
   console.log(`  ${instantNames.length} instant join games`);
-  console.log(`  ${msgCount}+ messages`);
+  console.log(`  ${msgCount} messages`);
   console.log(`  Local dev (${LOCAL_DEV_ID}) linked with follows + notifications`);
 }
 

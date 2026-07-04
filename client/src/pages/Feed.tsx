@@ -39,7 +39,6 @@ import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
 import { usePostEngagement } from "@/hooks/usePostEngagement";
 import { useVideoViewer } from "@/hooks/useVideoViewer";
 import { mapPostToVideoPost } from "@/lib/mapPostToVideoPost";
-import { DEMO_FEED_VIDEOS, DEMO_REELS } from "@/components/video/FeedVideoViewer";
 
 /** Event/team CTAs — solid #fff pills read as white boxes on dark feed */
 function feedActiveTabStyle(isDark: boolean, active: boolean) {
@@ -443,11 +442,9 @@ export default function Feed() {
   );
 
   const videoPostsFromFeed = useMemo(() => {
-    const fromFeed = posts
+    return posts
       .filter((p: any) => p.videoUrl)
       .map((p: any) => mapPostToVideoPost(p));
-    if (fromFeed.length > 0) return fromFeed;
-    return [...DEMO_REELS, ...DEMO_FEED_VIDEOS];
   }, [posts]);
 
   const handleFollowUser = useCallback(async (userId: string) => {

@@ -169,10 +169,10 @@ function matchesSportFilter(teamSport: string, filter: string): boolean {
 
 export function mergeWithDemoTeams(
   apiTeams: any[],
-  options?: { skipDemo?: boolean; mixDemos?: boolean; sport?: string },
+  options?: { skipDemo?: boolean; mixDemos?: boolean; sport?: string; fallback?: boolean },
 ): any[] {
   const api = Array.isArray(apiTeams) ? apiTeams : [];
-  if (options?.skipDemo) return api;
+  if (options?.skipDemo ?? true) return api;
 
   let demos = DEMO_TEAMS.slice(0, DEMO_SHOWCASE_LIMIT);
   if (options?.sport && options.sport !== "All") {
@@ -182,8 +182,9 @@ export function mergeWithDemoTeams(
   if (options?.mixDemos) {
     const apiIds = new Set(api.map((t) => String(t.id)));
     const extras = demos.filter((d) => !apiIds.has(d.id)).map(demoTeamToApiRow);
-    return [...api, ...extras];
+    return [...api, ...extras].slice(0, DEMO_SHOWCASE_LIMIT);
   }
   if (api.length > 0) return api;
-  return demos.map(demoTeamToApiRow);
+  if (options?.fallback) return demos.map(demoTeamToApiRow);
+  return api;
 }
