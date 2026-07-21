@@ -131,9 +131,11 @@ export function Calendar() {
 
   const eventsData = useMemo(() => {
     if (filterMode === "mine") return apiEvents;
-    return mergeWithDemoEvents(apiEvents, { skipDemo: false, fallback: true }).map((e) =>
-      mapApiEvent(e as Record<string, unknown>),
-    );
+    return mergeWithDemoEvents(apiEvents, {
+      skipDemo: false,
+      mixDemos: true,
+      fallback: true,
+    }).map((e) => mapApiEvent(e as Record<string, unknown>));
   }, [apiEvents, filterMode]);
 
   const { data: myRsvps } = useMyRSVPs();

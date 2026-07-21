@@ -8,53 +8,53 @@ const sportColorMap: Record<string, { base: string; emoji: string }> = {
   soccer:       { base: "#D84315", emoji: "⚽" },
   basketball:   { base: "#F57C00", emoji: "🏀" },
   swimming:     { base: "#E53935", emoji: "🏊" },
-  rugby:        { base: "#A1543A", emoji: "🏉" },
+  rugby:        { base: "#C62828", emoji: "🏉" },
   cricket:      { base: "#FF8F00", emoji: "🏏" },
-  hockey:       { base: "#BF360C", emoji: "🏒" },
-  golf:         { base: "#E8A030", emoji: "⛳" },
+  hockey:       { base: "#E53935", emoji: "🏒" },
+  golf:         { base: "#EF6C00", emoji: "⛳" },
   running:      { base: "#FF5722", emoji: "🏃" },
-  cycling:      { base: "#D32F2F", emoji: "🚴" },
+  cycling:      { base: "#E53935", emoji: "🚴" },
   wrestling:    { base: "#E64A19", emoji: "🤼" },
-  gaa:          { base: "#169B62", emoji: "🏐" },
+  gaa:          { base: "#E53935", emoji: "🏐" },
   hurling:      { base: "#FF7900", emoji: "🏑" },
   fitness:      { base: "#FF6B4B", emoji: "💪" },
   crossfit:     { base: "#E53935", emoji: "🏋️" },
-  yoga:         { base: "#D4A24E", emoji: "🧘" },
-  martial_arts: { base: "#B71C1C", emoji: "🥋" },
+  yoga:         { base: "#FF7043", emoji: "🧘" },
+  martial_arts: { base: "#C62828", emoji: "🥋" },
   strength_training: { base: "#C62828", emoji: "💪" },
   strength:     { base: "#C62828", emoji: "💪" },
   cardio:       { base: "#FF5722", emoji: "🏃" },
-  pilates:      { base: "#CF8B3A", emoji: "🧘" },
-  hiit:         { base: "#DD2C00", emoji: "🔥" },
+  pilates:      { base: "#FF7043", emoji: "🧘" },
+  hiit:         { base: "#FF3D00", emoji: "🔥" },
   weightlifting: { base: "#E64A19", emoji: "🏋️" },
   track_and_field: { base: "#FF6E40", emoji: "🏃" },
-  jiu_jitsu:    { base: "#B71C1C", emoji: "🥋" },
-  bjj:          { base: "#B71C1C", emoji: "🥋" },
+  jiu_jitsu:    { base: "#C62828", emoji: "🥋" },
+  bjj:          { base: "#C62828", emoji: "🥋" },
   karate:       { base: "#C62828", emoji: "🥋" },
-  taekwondo:    { base: "#D32F2F", emoji: "🥋" },
-  judo:         { base: "#BF360C", emoji: "🥋" },
-  muay_thai:    { base: "#B71C1C", emoji: "🥊" },
+  taekwondo:    { base: "#E53935", emoji: "🥋" },
+  judo:         { base: "#E53935", emoji: "🥋" },
+  muay_thai:    { base: "#C62828", emoji: "🥊" },
   kickboxing:   { base: "#C62828", emoji: "🥊" },
-  surfing:      { base: "#F4511E", emoji: "🏄" },
-  skateboarding: { base: "#A1543A", emoji: "🛹" },
-  climbing:     { base: "#9B4F30", emoji: "🧗" },
-  rock_climbing: { base: "#9B4F30", emoji: "🧗" },
+  surfing:      { base: "#FF5722", emoji: "🏄" },
+  skateboarding: { base: "#E64A19", emoji: "🛹" },
+  climbing:     { base: "#FF5722", emoji: "🧗" },
+  rock_climbing: { base: "#FF5722", emoji: "🧗" },
   dance:        { base: "#E84D60", emoji: "💃" },
   gymnastics:   { base: "#EF5350", emoji: "🤸" },
-  rowing:       { base: "#D84315", emoji: "🚣" },
+  rowing:       { base: "#E53935", emoji: "🚣" },
   badminton:    { base: "#FFA726", emoji: "🏸" },
   table_tennis: { base: "#FF8F00", emoji: "🏓" },
   ping_pong:    { base: "#FF8F00", emoji: "🏓" },
-  lacrosse:     { base: "#E65100", emoji: "🥍" },
-  fencing:      { base: "#A85040", emoji: "🤺" },
-  archery:      { base: "#8D4E2A", emoji: "🏹" },
-  skiing:       { base: "#F4511E", emoji: "⛷️" },
+  lacrosse:     { base: "#FF6F00", emoji: "🥍" },
+  fencing:      { base: "#E53935", emoji: "🤺" },
+  archery:      { base: "#EF6C00", emoji: "🏹" },
+  skiing:       { base: "#FF5722", emoji: "⛷️" },
   snowboarding: { base: "#FF7043", emoji: "🏂" },
-  handball:     { base: "#F57C00", emoji: "🤾" },
+  handball:     { base: "#FF6F00", emoji: "🤾" },
   water_polo:   { base: "#E53935", emoji: "🤽" },
 };
 
-const DEFAULT_COLOR = "#8B2635";
+const DEFAULT_COLOR = "#C62828";
 const DEFAULT_EMOJI = "🏆";
 
 function hexToHSL(hex: string): [number, number, number] {
@@ -87,12 +87,13 @@ function hslToHex(h: number, s: number, l: number): string {
 
 function lighten(hex: string, amount: number): string {
   const [h, s, l] = hexToHSL(hex);
-  return hslToHex(h, Math.max(s - 3, 0), Math.min(l + amount, 65));
+  return hslToHex(h, Math.max(s - 2, 0), Math.min(l + amount, 58));
 }
 
 function darken(hex: string, amount: number): string {
   const [h, s, l] = hexToHSL(hex);
-  return hslToHex(h, Math.min(s + 3, 100), Math.max(l - amount, 22));
+  // Keep dark-mode fills brighter than before (avoid muddy browns)
+  return hslToHex(h, Math.min(s + 2, 100), Math.max(l - amount, 36));
 }
 
 export interface SportColorResult {

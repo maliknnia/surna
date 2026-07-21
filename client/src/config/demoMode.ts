@@ -23,7 +23,9 @@ export function isMessengerDemosEnabled(realConversationCount: number): boolean 
   return import.meta.env.DEV && realConversationCount === 0;
 }
 
-/** Hardcoded demo rows when public APIs return empty (e.g. coaches discover). */
+/** Hardcoded demo rows when public lists are empty — on unless explicitly disabled. */
 export function isDemoContentFallbackEnabled(): boolean {
-  return devUnlessExplicit(parseEnvBool(import.meta.env.VITE_DEMO_FALLBACK));
+  const explicit = parseEnvBool(import.meta.env.VITE_DEMO_FALLBACK);
+  if (explicit !== undefined) return explicit;
+  return true;
 }

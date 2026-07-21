@@ -3,8 +3,7 @@
  */
 
 import type { Team } from "@shared/schema";
-import { getEventCoverUrl } from "@/lib/eventCover";
-import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
+import { DEMO_SHOWCASE_LIMIT, SHOWCASE_ATHLETES } from "@/lib/demoShowcase";
 import { isDemoContentFallbackEnabled } from "@/config/demoMode";
 import { pickStoryUsers } from "@/lib/personalizedDemoFeed";
 import type { TeamMemberRow } from "@/pages/team/components/TeamMemberProfileSheet";
@@ -29,12 +28,8 @@ export type DemoTeam = {
   isDemo?: boolean;
 };
 
-function teamImage(sport: string, name: string, variant: "logo" | "cover"): string {
-  return (
-    getEventCoverUrl({ sport, title: name }) ||
-    `https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=${variant === "logo" ? 400 : 900}&auto=format&fit=crop&q=85`
-  );
-}
+const IMG = (id: string, w: number, h: number) =>
+  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
 
 function hashSeed(id: string): number {
   let h = 0;
@@ -58,8 +53,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 412,
     latitude: 51.8982,
     longitude: -8.4738,
-    logo: teamImage("Soccer", "Cork FC United", "logo"),
-    cover: teamImage("Soccer", "Cork FC United", "cover"),
+    logo: IMG("1574629810360-7efbbe195018", 400, 400),
+    cover: IMG("1574629810360-7efbbe195018", 1200, 600),
     isDemo: true,
   },
   {
@@ -77,8 +72,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 288,
     latitude: 51.9015,
     longitude: -8.4682,
-    logo: teamImage("Basketball", "Rebel Athletic", "logo"),
-    cover: teamImage("Basketball", "Rebel Athletic", "cover"),
+    logo: IMG("1546519638-68e166b93deb", 400, 400),
+    cover: IMG("1546519638-68e166b93deb", 1200, 600),
     isDemo: true,
   },
   {
@@ -96,8 +91,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 520,
     latitude: 51.8955,
     longitude: -8.4901,
-    logo: teamImage("Running", "Leeside Run Crew", "logo"),
-    cover: teamImage("Running", "Leeside Run Crew", "cover"),
+    logo: IMG("1476480862126-209bfaa8edc8", 400, 400),
+    cover: IMG("1476480862126-209bfaa8edc8", 1200, 600),
     isDemo: true,
   },
 ];
@@ -105,11 +100,12 @@ export const DEMO_TEAMS: DemoTeam[] = [
 const LEGACY_TEAM_ID_MAP: Record<string, string> = {
   dt0: "demo-team-cork-fc",
   dt1: "demo-team-rebel-athletic",
-  dt2: "demo-team-leeside-united",
-  dt3: "demo-team-munster-rugby",
-  dt4: "demo-team-shandon-crossfit",
-  "demo-team-pickup": "demo-team-la-pickup",
-  "demo-team-run-club": "demo-team-sunset-run",
+  dt2: "demo-team-leeside-runners",
+  dt3: "demo-team-cork-fc",
+  dt4: "demo-team-rebel-athletic",
+  "demo-team-pickup": "demo-team-rebel-athletic",
+  "demo-team-run-club": "demo-team-leeside-runners",
+  "demo-team-leeside-united": "demo-team-leeside-runners",
 };
 
 export function normalizeDemoTeamId(id: string): string {
@@ -130,7 +126,10 @@ export function getDemoTeamMembers(teamId: string): TeamMemberRow[] {
   const normalized = normalizeDemoTeamId(teamId);
   const team = getDemoTeam(normalized);
   const count = Math.min(team?.currentMembers ?? 2, DEMO_SHOWCASE_LIMIT);
-  return pickStoryUsers(hashSeed(normalized), count).map((u, i) => ({
+  const athletes = SHOWCASE_ATHLETES.length
+    ? SHOWCASE_ATHLETES
+    : pickStoryUsers(hashSeed(normalized), count);
+  return athletes.slice(0, count).map((u, i) => ({
     id: `${normalized}-m-${i}`,
     userId: u.id,
     role: i === 0 ? "captain" : i === 1 ? "co-captain" : "member",

@@ -28,22 +28,22 @@ const sportConfig: Record<string, { emoji: string; colors: [string, string]; rin
   soccer: { emoji: "⚽", colors: ["#D84315", "#D84315"], ringColor: "#D84315" },
   basketball: { emoji: "🏀", colors: ["#F57C00", "#F57C00"], ringColor: "#F57C00" },
   swimming: { emoji: "🏊", colors: ["#E53935", "#E53935"], ringColor: "#E53935" },
-  rugby: { emoji: "🏉", colors: ["#A1543A", "#A1543A"], ringColor: "#A1543A" },
+  rugby: { emoji: "🏉", colors: ["#C62828", "#C62828"], ringColor: "#C62828" },
   cricket: { emoji: "🏏", colors: ["#FF8F00", "#FF8F00"], ringColor: "#FF8F00" },
-  hockey: { emoji: "🏒", colors: ["#BF360C", "#BF360C"], ringColor: "#BF360C" },
-  golf: { emoji: "⛳", colors: ["#E8A030", "#E8A030"], ringColor: "#E8A030" },
+  hockey: { emoji: "🏒", colors: ["#E53935", "#E53935"], ringColor: "#E53935" },
+  golf: { emoji: "⛳", colors: ["#EF6C00", "#EF6C00"], ringColor: "#EF6C00" },
   running: { emoji: "🏃", colors: ["#FF5722", "#FF5722"], ringColor: "#FF5722" },
-  cycling: { emoji: "🚴", colors: ["#D32F2F", "#D32F2F"], ringColor: "#D32F2F" },
+  cycling: { emoji: "🚴", colors: ["#E53935", "#E53935"], ringColor: "#E53935" },
   wrestling: { emoji: "🤼", colors: ["#E64A19", "#E64A19"], ringColor: "#E64A19" },
-  gaa: { emoji: "🏐", colors: ["#A1543A", "#A1543A"], ringColor: "#A1543A" },
+  gaa: { emoji: "🏐", colors: ["#E53935", "#E53935"], ringColor: "#E53935" },
   hurling: { emoji: "🏑", colors: ["#FF7900", "#FF7900"], ringColor: "#FF7900" },
   fitness: { emoji: "💪", colors: ["#FF6B4B", "#FF6B4B"], ringColor: "#FF6B4B" },
   crossfit: { emoji: "🏋️", colors: ["#E53935", "#E53935"], ringColor: "#E53935" },
-  yoga: { emoji: "🧘", colors: ["#D4A24E", "#D4A24E"], ringColor: "#D4A24E" },
-  martial_arts: { emoji: "🥋", colors: ["#B71C1C", "#B71C1C"], ringColor: "#B71C1C" },
+  yoga: { emoji: "🧘", colors: ["#FF7043", "#FF7043"], ringColor: "#FF7043" },
+  martial_arts: { emoji: "🥋", colors: ["#C62828", "#C62828"], ringColor: "#C62828" },
 };
 
-const defaultConfig = { emoji: "🏆", colors: ["#8B2635", "#8B2635"] as [string, string], ringColor: "#8B2635" };
+const defaultConfig = { emoji: "🏆", colors: ["#C62828", "#C62828"] as [string, string], ringColor: "#C62828" };
 
 export function getSportConfig(sport: string | null | undefined) {
   if (!sport) return defaultConfig;

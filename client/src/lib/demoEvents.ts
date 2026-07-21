@@ -1,8 +1,8 @@
 /**
- * Demo events — two showcase fallbacks only when explicitly enabled.
+ * Demo events — polished showcase when discovery is empty or sparse.
  */
 import { resolveDemoCreatorId } from "@/lib/demoProfiles";
-import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
+import { DEMO_SHOWCASE_LIMIT, SHOWCASE_ATHLETES } from "@/lib/demoShowcase";
 import { isDemoContentFallbackEnabled } from "@/config/demoMode";
 
 export type DemoEvent = {
@@ -18,11 +18,19 @@ export type DemoEvent = {
   creator_first_name?: string;
   creator_username?: string;
   creator_avatar?: string;
+  cover_url?: string;
   isDemo?: boolean;
 };
 
+const IMG = (id: string, w: number, h: number) =>
+  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
+
 function hoursFromNow(h: number): string {
   return new Date(Date.now() + h * 3600_000).toISOString();
+}
+
+function athlete(username: string) {
+  return SHOWCASE_ATHLETES.find((a) => a.username === username);
 }
 
 export const DEMO_EVENTS: DemoEvent[] = [
@@ -33,11 +41,13 @@ export const DEMO_EVENTS: DemoEvent[] = [
     location: "Georgia Tech Aquatic Center · Atlanta",
     sport: "Swimming",
     starts_at: hoursFromNow(20),
-    going_count: 2,
-    interested_count: 1,
-    capacity: 8,
+    going_count: 12,
+    interested_count: 4,
+    capacity: 16,
     creator_first_name: "Aisha",
     creator_username: "aisha_swim",
+    creator_avatar: athlete("aisha_swim")?.profileImageUrl,
+    cover_url: IMG("1571907483441-8b5d0d2c8f0a", 1200, 700),
     isDemo: true,
   },
   {
@@ -47,11 +57,13 @@ export const DEMO_EVENTS: DemoEvent[] = [
     location: "Central Park Courts · NYC",
     sport: "Tennis",
     starts_at: hoursFromNow(26),
-    going_count: 2,
-    interested_count: 0,
-    capacity: 6,
+    going_count: 8,
+    interested_count: 3,
+    capacity: 12,
     creator_first_name: "Elena",
     creator_username: "elena_tennis",
+    creator_avatar: athlete("elena_tennis")?.profileImageUrl,
+    cover_url: IMG("1622163640459-1b9a4661f851", 1200, 700),
     isDemo: true,
   },
   {
@@ -61,11 +73,13 @@ export const DEMO_EVENTS: DemoEvent[] = [
     location: "Marina Walk · Cork",
     sport: "Running",
     starts_at: hoursFromNow(14),
-    going_count: 3,
-    interested_count: 2,
-    capacity: 20,
+    going_count: 18,
+    interested_count: 6,
+    capacity: 30,
     creator_first_name: "Marcus",
     creator_username: "marcus_run",
+    creator_avatar: athlete("marcus_run")?.profileImageUrl,
+    cover_url: IMG("1476480862126-209bfaa8edc8", 1200, 700),
     isDemo: true,
   },
 ];
@@ -97,6 +111,9 @@ export function demoEventToApiRow(demo: DemoEvent) {
     creator_first_name: demo.creator_first_name,
     creator_username: demo.creator_username,
     creator_avatar: demo.creator_avatar,
+    cover_url: demo.cover_url,
+    coverUrl: demo.cover_url,
+    imageUrl: demo.cover_url,
     going_count: demo.going_count,
     interested_count: demo.interested_count ?? 0,
     total_rsvps: demo.going_count + (demo.interested_count ?? 0),
@@ -104,17 +121,28 @@ export function demoEventToApiRow(demo: DemoEvent) {
   };
 }
 
+/** Drop leftover integration-test events from public lists. */
+export function isJunkApiEvent(ev: { id?: string; title?: string; creator_id?: string; creatorId?: string }): boolean {
+  const creator = String(ev.creator_id ?? ev.creatorId ?? "");
+  const title = String(ev.title ?? "");
+  if (creator.startsWith("jwt-")) return true;
+  if (/^Wave\d+\s/i.test(title)) return true;
+  if (/\bmq[a-z0-9]{5,}\b/i.test(title)) return true;
+  return false;
+}
+
 export function mergeWithDemoEvents(
   apiEvents: any[],
   options?: { skipDemo?: boolean; mixDemos?: boolean; fallback?: boolean },
 ): any[] {
-  const api = Array.isArray(apiEvents) ? apiEvents : [];
+  const api = (Array.isArray(apiEvents) ? apiEvents : []).filter((e) => !isJunkApiEvent(e));
   if (options?.skipDemo ?? true) return api;
   if (!isDemoContentFallbackEnabled()) return api;
   const demos = DEMO_EVENTS.slice(0, DEMO_SHOWCASE_LIMIT);
   if (options?.mixDemos) {
     const apiIds = new Set(api.map((e) => String(e.id)));
-    const extras = demos.filter((d) => !apiIds.has(d.id));
+    const extras = demos.filter((d) => !apiIds.has(d.id)).map(demoEventToApiRow);
+    if (api.length >= DEMO_SHOWCASE_LIMIT) return api;
     return [...api, ...extras].slice(0, DEMO_SHOWCASE_LIMIT);
   }
   if (api.length > 0) return api;

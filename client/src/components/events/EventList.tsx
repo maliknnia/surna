@@ -139,6 +139,7 @@ export default function EventList({
     Boolean(q.trim()) || category !== "all" || timeWindow !== "all";
   const allItems = mergeWithDemoEvents(apiItems, {
     skipDemo: hasActiveFilters,
+    mixDemos: !hasActiveFilters,
     fallback: !hasActiveFilters,
   });
   const items = maxItems ? allItems.slice(0, maxItems) : allItems;

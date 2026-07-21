@@ -323,6 +323,8 @@ async function listPublicUncached(qs: {from?: string,to?: string,q?: string,cate
     LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM event_rsvps WHERE event_id=e.id AND status='interested') interested ON true
     WHERE e.visibility='public'
       AND COALESCE(e.status,'active') = 'active'
+      AND (e.creator_id IS NULL OR e.creator_id NOT LIKE 'jwt-%')
+      AND e.title !~* '^Wave[0-9]+\\s'
     ${timeWhere} ${search} ${categoryFilter} ${cursor}
     ORDER BY e.starts_at DESC, e.id DESC
     LIMIT ${qs.limit};

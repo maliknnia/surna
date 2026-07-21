@@ -213,6 +213,7 @@ export default function Teams({
     ? []
     : mergeWithDemoTeams(liveTeams, {
         skipDemo: hasActiveSearch,
+        mixDemos: !hasActiveSearch,
         fallback: !hasActiveSearch,
         sport: sportFilter !== "All" ? sportFilter : undefined,
       });

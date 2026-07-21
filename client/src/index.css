@@ -761,7 +761,7 @@
   }
 
   .event-card-dark {
-    background: var(--extracted-color, #8b2635);
+    background: var(--extracted-color, #C62828);
     border-radius: var(--radius-card);
     border: none;
   }
