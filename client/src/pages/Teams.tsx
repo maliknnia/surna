@@ -198,10 +198,20 @@ export default function Teams({
   const chipBg = t.chipBg;
   const chipText = t.chipText;
 
+  const hasActiveFilter = sportFilter !== "All";
   const hasActiveSearch = searchQuery.trim().length > 0;
+
+  const liveTeams = (teams || []).filter((team: any) => {
+    const id = String(team?.id ?? "");
+    const captain = String(team?.captainId ?? team?.captain_id ?? "");
+    if (captain.startsWith("jwt-")) return false;
+    if (id.startsWith("demo-") || id.startsWith("dt")) return false;
+    return true;
+  });
+
   const mergedTeams = isError
     ? []
-    : mergeWithDemoTeams(teams || [], {
+    : mergeWithDemoTeams(liveTeams, {
         skipDemo: hasActiveSearch,
         fallback: !hasActiveSearch,
         sport: sportFilter !== "All" ? sportFilter : undefined,
@@ -254,8 +264,6 @@ export default function Teams({
     filterOpen,
   );
   usePanelToolsLifecycle(panelActive, setSearchOpen, setFilterOpen);
-  const hasActiveFilter = sportFilter !== "All";
-  const hasActiveSearch = searchQuery.trim().length > 0;
 
   return (
     <div className={embedded ? "min-h-full pb-4" : "min-h-screen pb-24"} style={{ background: pageBg, color: textPrimary }} {...touchHandlers}>

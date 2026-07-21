@@ -121,10 +121,13 @@ function useHomeData() {
     const api = Array.isArray(eventsQuery.data) ? eventsQuery.data : eventsQuery.data?.items || [];
     return takeHomeRows(mergeWithDemoEvents(api, { skipDemo: false, fallback: true }));
   }, [eventsQuery.data]);
-  const teams = useMemo(
-    () => takeHomeRows(mergeWithDemoTeams(teamsQuery.data || [], { skipDemo: false, fallback: true })),
-    [teamsQuery.data],
-  );
+  const teams = useMemo(() => {
+    const api = (teamsQuery.data || []).filter((team: any) => {
+      const captain = String(team?.captainId ?? team?.captain_id ?? "");
+      return !captain.startsWith("jwt-");
+    });
+    return takeHomeRows(mergeWithDemoTeams(api, { skipDemo: false, fallback: true }));
+  }, [teamsQuery.data]);
   const instantGames = useMemo(() => takeHomeRows(instantQuery.data || []), [instantQuery.data]);
   const coaches = takeHomeRows(coachesQuery.data || []);
 

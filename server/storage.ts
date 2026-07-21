@@ -832,10 +832,16 @@ export class DatabaseStorage implements IStorage {
         ? sportQuery.trim()
         : undefined;
 
+    // Hide integration-test teams (captain ids from JWT smoke users) from public discovery.
     const q = db
       .select()
       .from(teams)
-      .where(sport ? sql`LOWER(${teams.sport}) = LOWER(${sport})` : sql`true`)
+      .where(
+        and(
+          sql`${teams.captainId} NOT LIKE 'jwt-%'`,
+          sport ? sql`LOWER(${teams.sport}) = LOWER(${sport})` : sql`true`,
+        ),
+      )
       .orderBy(desc(teams.createdAt))
       .limit(limit)
       .offset(offset);
