@@ -1,9 +1,10 @@
 /**
- * Demo venues — two showcase locations only (swim + tennis).
+ * Demo venues — curated showcase when discovery APIs are empty.
  */
 
 import type { Place } from "@shared/schema";
 import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
+import { isDemoContentFallbackEnabled } from "@/config/demoMode";
 import { defaultBookingModeForCategory } from "@shared/placeBooking";
 
 export type DemoPlace = {
@@ -89,6 +90,28 @@ export const DEMO_PLACES: DemoPlace[] = [
     coverImageUrl: IMG("1622163640459-1b9a4661f851", 1200, 600),
     isDemo: true,
   },
+  {
+    id: "demo-place-marina-track",
+    name: "Marina Track & Field",
+    category: "track",
+    sports: ["Running"],
+    bio: "All-weather track · group runs and intervals welcome.",
+    description: "Eight-lane synthetic track with floodlights and a soft warm-up loop along the marina.",
+    address: "Marina Walk",
+    city: "Cork",
+    state: "Cork",
+    country: "Ireland",
+    latitude: 51.8985,
+    longitude: -8.465,
+    hours: { ...WEEKDAY_HOURS, sunday: "7:00 AM – 7:00 PM" },
+    amenities: ["Lights", "Track", "Changing rooms"],
+    followersCount: 286,
+    reviewsCount: 39,
+    averageRating: "4.7",
+    profileImageUrl: IMG("1476480862126-209bfaa8edc8", 400, 400),
+    coverImageUrl: IMG("1476480862126-209bfaa8edc8", 1200, 600),
+    isDemo: true,
+  },
 ];
 
 export function normalizeDemoPlaceId(id: string): string {
@@ -155,6 +178,7 @@ export function mergeWithDemoPlaces(
 ): any[] {
   const api = Array.isArray(apiPlaces) ? apiPlaces : [];
   if (options?.skipDemo ?? true) return api;
+  if (!isDemoContentFallbackEnabled()) return api;
   const demos = DEMO_PLACES.slice(0, DEMO_SHOWCASE_LIMIT).map(demoPlaceToApiRow);
   if (options?.mixDemos) {
     const apiIds = new Set(api.map((p) => String(p.id)));
@@ -163,5 +187,5 @@ export function mergeWithDemoPlaces(
   }
   if (api.length > 0) return api;
   if (options?.fallback) return demos;
-  return demos;
+  return api;
 }

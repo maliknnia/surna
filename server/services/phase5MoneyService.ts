@@ -237,12 +237,14 @@ export async function fulfillMarketplaceOrderFulfilled(stripePaymentIntentId: st
   const result = await fulfillMarketplacePayment(stripePaymentIntentId, userId);
   if (!result) return null;
 
-  await db.execute(sql`
-    UPDATE orders SET status = 'fulfilled', updated_at = NOW()
-    WHERE id = ${result.orderId} AND status IN ('paid', 'pending')
-  `);
+  if (!result.alreadyFulfilled) {
+    await db.execute(sql`
+      UPDATE orders SET status = 'fulfilled', updated_at = NOW()
+      WHERE id = ${result.orderId} AND status IN ('paid', 'pending')
+    `);
+    console.log("[Phase5-3] Marketplace order fulfilled:", result.orderId);
+  }
 
-  console.log("[Phase5-3] Marketplace order fulfilled:", result.orderId);
   return result;
 }
 

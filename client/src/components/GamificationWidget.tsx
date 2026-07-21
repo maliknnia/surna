@@ -5,40 +5,21 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Star, Award, Crown, ChevronRight, Zap } from "lucide-react";
 import { Link } from "wouter";
-
-interface CompactGamificationData {
-  totalPoints: number;
-  currentLevel: number;
-  levelProgress: number;
-  badgeCount: number;
-  rank: number;
-  recentBadge?: {
-    title: string;
-    iconEmoji: string;
-    earnedAt: string;
-  };
-  currentStreak: number;
-  pointsToday: number;
-}
+import { fetchGamificationUser, toGamificationSummary } from "@/lib/gamificationApi";
+import { useAuth } from "@/hooks/useAuth";
 
 export function GamificationWidget() {
-  const mockData: CompactGamificationData = {
-    totalPoints: 2450,
-    currentLevel: 7,
-    levelProgress: 65,
-    badgeCount: 12,
-    rank: 42,
-    recentBadge: {
-      title: "Social Butterfly",
-      iconEmoji: "🦋",
-      earnedAt: "2024-02-10",
+  const { isAuthenticated } = useAuth();
+  const { data: gamificationData, isLoading } = useQuery({
+    queryKey: ["/api/gamification/user", "widget"],
+    queryFn: async () => {
+      const raw = await fetchGamificationUser();
+      return raw ? toGamificationSummary(raw) : null;
     },
-    currentStreak: 5,
-    pointsToday: 85,
-  };
+    enabled: isAuthenticated,
+  });
 
-  const gamificationData = mockData;
-  const isLoading = false;
+  if (!isAuthenticated) return null;
 
   if (isLoading) {
     return (
@@ -52,6 +33,16 @@ export function GamificationWidget() {
               <div className="h-10 rounded-xl bg-[var(--surna-bg-highlight)]" />
             </div>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!gamificationData) {
+    return (
+      <Card className="w-full border-[var(--surna-border)] bg-[var(--surna-elevated)] shadow-none">
+        <CardContent className="p-4">
+          <p className="text-sm text-[var(--surna-text-muted)]">Join events and teams to earn points.</p>
         </CardContent>
       </Card>
     );
@@ -106,11 +97,13 @@ export function GamificationWidget() {
             <span className="font-medium text-[var(--surna-text)]">{gamificationData.badgeCount}</span>
             <span className="text-xs">badges</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[var(--surna-text-secondary)]">
-            <Crown className="h-3.5 w-3.5" />
-            <span className="font-medium text-[var(--surna-text)]">#{gamificationData.rank}</span>
-            <span className="text-xs">rank</span>
-          </div>
+          {gamificationData.rank > 0 && (
+            <div className="flex items-center gap-1.5 text-[var(--surna-text-secondary)]">
+              <Crown className="h-3.5 w-3.5" />
+              <span className="font-medium text-[var(--surna-text)]">#{gamificationData.rank}</span>
+              <span className="text-xs">rank</span>
+            </div>
+          )}
         </div>
 
         {gamificationData.currentStreak > 0 && (
@@ -142,7 +135,17 @@ export function GamificationWidget() {
 }
 
 export function GamificationMiniWidget() {
-  const mockData = { totalPoints: 2450, currentLevel: 7, pointsToday: 85 };
+  const { isAuthenticated } = useAuth();
+  const { data } = useQuery({
+    queryKey: ["/api/gamification/user", "mini"],
+    queryFn: async () => {
+      const raw = await fetchGamificationUser();
+      return raw ? toGamificationSummary(raw) : null;
+    },
+    enabled: isAuthenticated,
+  });
+
+  if (!isAuthenticated || !data) return null;
 
   return (
     <div
@@ -151,13 +154,13 @@ export function GamificationMiniWidget() {
     >
       <div className="flex items-center gap-1.5 text-sm">
         <Star className="h-3.5 w-3.5 text-[var(--surna-text-muted)]" />
-        <span className="font-semibold tabular-nums">{mockData.totalPoints.toLocaleString()}</span>
+        <span className="font-semibold tabular-nums">{data.totalPoints.toLocaleString()}</span>
       </div>
       <span className="text-[var(--surna-border)]">·</span>
-      <span className="text-sm font-medium text-[var(--surna-text-secondary)]">L{mockData.currentLevel}</span>
-      {mockData.pointsToday > 0 && (
+      <span className="text-sm font-medium text-[var(--surna-text-secondary)]">L{data.currentLevel}</span>
+      {data.pointsToday > 0 && (
         <Badge variant="secondary" className="text-[10px] px-1.5">
-          +{mockData.pointsToday}
+          +{data.pointsToday}
         </Badge>
       )}
       <Link href="/gamification" className="ml-auto">

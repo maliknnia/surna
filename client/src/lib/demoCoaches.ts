@@ -72,7 +72,39 @@ export const DEMO_COACH_PROFILES: CoachWithProfile[] = [
       pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 110, period: "hour", highlighted: true }],
     },
   },
+  {
+    id: "demo-coach-marcus",
+    userId: "demo-user-marcus",
+    specialties: ["Running", "Endurance"],
+    experience: "9",
+    certifications: ["Athletics Ireland L2", "RRCA Certified"],
+    hourlyRate: "55.00",
+    bio: "Trail & road coach · sub-3 marathon focus · Cork-based group and 1-on-1 sessions.",
+    isVerified: true,
+    isActive: true,
+    weeklyAvailability: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    user: {
+      id: "demo-user-marcus",
+      firstName: "Marcus",
+      lastName: "Reid",
+      email: "marcus@surna.app",
+      profileImageUrl: IMG("1507003211169-0a1dd7228f2d", 400, 400),
+      sport: "Running",
+      location: "Cork, IE",
+    } as CoachWithProfile["user"],
+    profileJson: {
+      tagline: "Road & trail · build to race day",
+      coverImageUrl: IMG("1476480862126-209bfaa8edc8", 900, 600),
+      rating: 4.8,
+      reviewCount: 38,
+      achievements: [{ id: "1", title: "Sub-2:55 marathon PB", year: "2023" }],
+      media: [{ id: "m1", type: "image", url: IMG("1452626036726-48bbf2842481", 800, 500), title: "Marina long run" }],
+      pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 55, period: "hour", highlighted: true }],
+    },
+  },
 ].map((row) => {
   const profile = parseCoachProfile(row.profileJson, row, row.user);
   return { ...row, profile };
-}).slice(0, 2);
+});

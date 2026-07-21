@@ -1350,8 +1350,20 @@ export class DatabaseStorage implements IStorage {
         rewardId,
       });
 
-      // Deduct points
-      await this.removePoints(userId, reward.pointsCost, "reward_redeemed", `Redeemed: ${reward.title}`);
+      // Deduct points (inline — must stay in this transaction)
+      await tx.insert(pointTransactions).values({
+        userId,
+        points: -reward.pointsCost,
+        action: "reward_redeemed",
+        description: `Redeemed: ${reward.title}`,
+      });
+      await tx
+        .update(userPerformance)
+        .set({
+          metrics: sql`jsonb_set(${userPerformance.metrics}::jsonb, '{totalPoints}', to_jsonb(GREATEST(0, COALESCE((${userPerformance.metrics}::jsonb->>'totalPoints')::int, 0) - ${reward.pointsCost})))`,
+          createdAt: sql`NOW()`,
+        })
+        .where(eq(userPerformance.userId, userId));
 
       // Update reward redemption count
       await tx
@@ -3131,16 +3143,83 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClubTeams(clubId: string): Promise<any[]> {
-    return db.select().from(proClubTeams).where(eq(proClubTeams.clubId, clubId));
+    const rows = await db
+      .select({
+        id: proClubTeams.id,
+        clubId: proClubTeams.clubId,
+        teamId: proClubTeams.teamId,
+        createdAt: proClubTeams.createdAt,
+        teamName: teams.name,
+        teamSport: teams.sport,
+        teamLogo: teams.logo,
+        teamCity: teams.city,
+        teamLocation: teams.location,
+        memberCount: sql<number>`(
+          SELECT COUNT(*)::int FROM ${teamMembers}
+          WHERE ${teamMembers.teamId} = ${teams.id}
+            AND ${teamMembers.status} = 'active'
+        )`,
+      })
+      .from(proClubTeams)
+      .innerJoin(teams, eq(proClubTeams.teamId, teams.id))
+      .where(eq(proClubTeams.clubId, clubId))
+      .orderBy(asc(teams.name));
+    return rows;
   }
 
-  async addClubTeam(data: any): Promise<any> {
+  async isClubTeamLinked(clubId: string, teamId: string): Promise<boolean> {
+    const [row] = await db
+      .select({ id: proClubTeams.id })
+      .from(proClubTeams)
+      .where(and(eq(proClubTeams.clubId, clubId), eq(proClubTeams.teamId, teamId)))
+      .limit(1);
+    return Boolean(row);
+  }
+
+  async userCanManageTeam(userId: string, teamId: string): Promise<boolean> {
+    const [team] = await db.select({ captainId: teams.captainId }).from(teams).where(eq(teams.id, teamId)).limit(1);
+    if (!team) return false;
+    if (team.captainId === userId) return true;
+    const [member] = await db
+      .select({ role: teamMembers.role })
+      .from(teamMembers)
+      .where(
+        and(
+          eq(teamMembers.teamId, teamId),
+          eq(teamMembers.userId, userId),
+          eq(teamMembers.status, "active"),
+        ),
+      )
+      .limit(1);
+    const role = member?.role ?? "";
+    return role === "captain" || role === "co_captain" || role === "admin";
+  }
+
+  async addClubTeam(data: { clubId: string; teamId: string }): Promise<any> {
     const [entry] = await db.insert(proClubTeams).values(data).returning();
     return entry;
   }
 
   async getAcademyProfiles(clubId: string): Promise<any[]> {
-    return db.select().from(proAcademyProfiles).where(eq(proAcademyProfiles.clubId, clubId));
+    const rows = await db
+      .select({
+        id: proAcademyProfiles.id,
+        clubId: proAcademyProfiles.clubId,
+        userId: proAcademyProfiles.userId,
+        ageGroup: proAcademyProfiles.ageGroup,
+        progressJson: proAcademyProfiles.progressJson,
+        createdAt: proAcademyProfiles.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        displayName: users.displayName,
+        username: users.username,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(proAcademyProfiles)
+      .innerJoin(users, eq(proAcademyProfiles.userId, users.id))
+      .where(eq(proAcademyProfiles.clubId, clubId))
+      .orderBy(asc(proAcademyProfiles.createdAt));
+    return rows;
   }
 
   async createAcademyProfile(data: any): Promise<any> {
@@ -3312,9 +3391,33 @@ export class DatabaseStorage implements IStorage {
     return rows;
   }
 
-  async addUserReview(data: InsertUserReview): Promise<UserReview> {
+  async upsertUserReview(data: InsertUserReview): Promise<UserReview> {
+    const [existing] = await db
+      .select({ id: userReviews.id })
+      .from(userReviews)
+      .where(and(eq(userReviews.subjectId, data.subjectId), eq(userReviews.authorId, data.authorId)))
+      .limit(1);
+
+    if (existing) {
+      const [updated] = await db
+        .update(userReviews)
+        .set({
+          rating: data.rating,
+          text: data.text ?? null,
+          context: data.context ?? null,
+        })
+        .where(eq(userReviews.id, existing.id))
+        .returning();
+      return updated;
+    }
+
     const [review] = await db.insert(userReviews).values(data).returning();
     return review;
+  }
+
+  /** @deprecated Use upsertUserReview — kept for callers that only insert. */
+  async addUserReview(data: InsertUserReview): Promise<UserReview> {
+    return this.upsertUserReview(data);
   }
 
   async deleteUserReview(reviewId: string, authorId: string): Promise<boolean> {

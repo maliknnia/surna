@@ -7,6 +7,8 @@ export const CreateProduct = z.object({
   currency: z.string().default(process.env.CURRENCY_DEFAULT || "USD"),
   stock: z.number().int().min(0).default(1),
   mediaId: z.string().optional().nullable(),
+  imageUrl: z.string().url().optional().nullable(),
+  category: z.string().max(64).optional(),
 });
 
 export const UpdateProduct = CreateProduct.partial().extend({

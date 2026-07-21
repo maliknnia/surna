@@ -2,6 +2,7 @@ import type { CoachWithProfile } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { normalizeCoachList, normalizeCoachRow } from "@/lib/normalizeCoach";
 import { DEMO_COACH_PROFILES } from "@/lib/demoCoaches";
+import { isDemoContentFallbackEnabled } from "@/config/demoMode";
 
 export async function fetchCoaches(options?: {
   limit?: number;
@@ -23,7 +24,13 @@ export async function fetchCoaches(options?: {
   const rows = await res.json();
   const list = normalizeCoachList(Array.isArray(rows) ? rows : []);
   if (list.length === 0) {
-    return options?.allowDemoFallback === false ? [] : DEMO_COACH_PROFILES;
+    if (options?.allowDemoFallback === false) return [];
+    const demos =
+      options?.allowDemoFallback === true || isDemoContentFallbackEnabled()
+        ? DEMO_COACH_PROFILES
+        : [];
+    if (demos.length === 0) return [];
+    return options?.limit != null ? demos.slice(0, options.limit) : demos;
   }
   return list;
 }

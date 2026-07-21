@@ -26,16 +26,18 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { format, subDays, startOfDay, endOfDay, subWeeks, subMonths } from "date-fns";
 
-import {
+import type {
   DashboardMetrics,
   TimeSeriesData,
   RealTimeData,
-  createMockAnalyticsData,
 } from "../../../shared/performance-types";
 import {
   fetchAnalyticsDashboard,
   fetchAnalyticsDailyMetrics,
   fetchAnalyticsRealtime,
+  emptyDashboardMetrics,
+  emptyTimeSeries,
+  emptyRealtime,
 } from "@/lib/analyticsHubApi";
 
 export default function AnalyticsHub() {
@@ -50,9 +52,9 @@ export default function AnalyticsHub() {
   const queryClient = useQueryClient();
 
   // Fetch comprehensive metrics combining both dashboards
-  const { data: metrics, isLoading: metricsLoading } = useQuery<DashboardMetrics | null>({
+  const { data: metrics, isLoading: metricsLoading } = useQuery<DashboardMetrics>({
     queryKey: ["analytics-dashboard", timeframe],
-    queryFn: () => fetchAnalyticsDashboard(dateRange.from, dateRange.to) as Promise<DashboardMetrics | null>,
+    queryFn: () => fetchAnalyticsDashboard(dateRange.from, dateRange.to),
     enabled: !!dateRange.from && !!dateRange.to,
   });
 
@@ -61,30 +63,22 @@ export default function AnalyticsHub() {
     userGrowth: TimeSeriesData[];
     contentEngagement: TimeSeriesData[];
     dailyMetrics: TimeSeriesData[];
-  } | null>({
+  }>({
     queryKey: ["analytics-time-series", timeframe],
-    queryFn: () => fetchAnalyticsDailyMetrics(dateRange.from, dateRange.to) as Promise<{
-      userActivity: TimeSeriesData[];
-      userGrowth: TimeSeriesData[];
-      contentEngagement: TimeSeriesData[];
-      dailyMetrics: TimeSeriesData[];
-    } | null>,
+    queryFn: () => fetchAnalyticsDailyMetrics(dateRange.from, dateRange.to),
     enabled: !!dateRange.from && !!dateRange.to,
   });
 
-  const { data: realTimeData, isLoading: realTimeLoading } = useQuery<RealTimeData | null>({
+  const { data: realTimeData, isLoading: realTimeLoading } = useQuery<RealTimeData>({
     queryKey: ["analytics-realtime"],
-    queryFn: async () => (await fetchAnalyticsRealtime()) as RealTimeData | null,
+    queryFn: fetchAnalyticsRealtime,
     refetchInterval: 5000,
   });
 
-  // Use properly typed mock data
-  const mockData = createMockAnalyticsData();
-
   const data = {
-    metrics: metrics || mockData.metrics,
-    timeSeries: timeSeriesData || mockData.timeSeries,
-    realTime: realTimeData || mockData.realTime
+    metrics: metrics ?? emptyDashboardMetrics(),
+    timeSeries: timeSeriesData ?? emptyTimeSeries(),
+    realTime: realTimeData ?? emptyRealtime(),
   };
 
   const handleTimeframeChange = (value: string) => {
@@ -184,7 +178,11 @@ export default function AnalyticsHub() {
             </select>
             
             <button
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/analytics'] })}
+              onClick={() => {
+                void queryClient.invalidateQueries({ queryKey: ["analytics-dashboard"] });
+                void queryClient.invalidateQueries({ queryKey: ["analytics-time-series"] });
+                void queryClient.invalidateQueries({ queryKey: ["analytics-realtime"] });
+              }}
               className="px-4 py-2 rounded-lg hover:opacity-80 transition-opacity bg-card text-foreground"
             >
               <Zap className="w-4 h-4 inline mr-2" />

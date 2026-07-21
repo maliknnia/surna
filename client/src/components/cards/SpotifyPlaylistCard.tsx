@@ -33,7 +33,7 @@ function cardTextColors(backgroundColor: string) {
   return {
     primary: lightBg ? "#121212" : "#ffffff",
     muted: lightBg ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
-    border: lightBg ? "rgba(0,0,0,0.14)" : "rgba(255,255,255,0.28)",
+    fill: lightBg ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.14)",
     thumbBg: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)",
   };
 }
@@ -60,8 +60,8 @@ export default function SpotifyPlaylistCard({
       : "playlist-card__thumb";
 
   const pillStyle: CSSProperties = {
-    border: `1px solid ${colors.border}`,
-    background: "transparent",
+    border: "none",
+    background: colors.fill,
     color: colors.primary,
   };
 
@@ -69,8 +69,8 @@ export default function SpotifyPlaylistCard({
     width: 36,
     height: 36,
     borderRadius: "50%",
-    border: `1px solid ${colors.border}`,
-    background: "transparent",
+    border: "none",
+    background: colors.fill,
     color: colors.primary,
   };
 
@@ -161,9 +161,8 @@ export default function SpotifyPlaylistCard({
                 opacity: action.disabled ? 0.45 : 1,
                 ...(action.active
                   ? {
-                      background: isLightHex(backgroundColor)
-                        ? "rgba(0,0,0,0.06)"
-                        : "rgba(255,255,255,0.12)",
+                      background: colors.fill,
+                      opacity: 1,
                     }
                   : {}),
               }}

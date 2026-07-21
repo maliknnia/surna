@@ -68,6 +68,7 @@ export const ROUTES = {
   
   // Marketplace
   marketplace: '/marketplace',
+  createMarketplaceListing: '/marketplace/sell/create',
   shop: (id: string) => `/marketplace/shop/${id}`,
   product: (id: string) => `/marketplace/product/${id}`,
   cart: '/marketplace/cart',

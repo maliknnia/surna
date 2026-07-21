@@ -19,31 +19,31 @@ interface TeamCardProps {
 }
 
 const sportConfig: Record<string, { emoji: string; colors: [string, string]; ringColor: string }> = {
-  boxing: { emoji: "🥊", colors: ["#FF6B4B", "#FF6B4B"], ringColor: "#FF6B4B" },
-  mma: { emoji: "🥋", colors: ["#FF6B4B", "#FF6B4B"], ringColor: "#FF6B4B" },
-  baseball: { emoji: "⚾", colors: ["#4A90D9", "#4A90D9"], ringColor: "#4A90D9" },
-  volleyball: { emoji: "🏐", colors: ["#F8E71C", "#F8E71C"], ringColor: "#F8E71C" },
-  tennis: { emoji: "🎾", colors: ["#B8E986", "#B8E986"], ringColor: "#B8E986" },
-  football: { emoji: "⚽", colors: ["#7ED321", "#7ED321"], ringColor: "#7ED321" },
-  soccer: { emoji: "⚽", colors: ["#7ED321", "#7ED321"], ringColor: "#7ED321" },
-  basketball: { emoji: "🏀", colors: ["#F5A623", "#F5A623"], ringColor: "#F5A623" },
-  swimming: { emoji: "🏊", colors: ["#50E3C2", "#50E3C2"], ringColor: "#50E3C2" },
-  rugby: { emoji: "🏉", colors: ["#8D6E63", "#8D6E63"], ringColor: "#8D6E63" },
-  cricket: { emoji: "🏏", colors: ["#7ED321", "#7ED321"], ringColor: "#7ED321" },
-  hockey: { emoji: "🏒", colors: ["#78909C", "#78909C"], ringColor: "#78909C" },
-  golf: { emoji: "⛳", colors: ["#7ED321", "#7ED321"], ringColor: "#7ED321" },
-  running: { emoji: "🏃", colors: ["#FF6B4B", "#FF6B4B"], ringColor: "#FF6B4B" },
-  cycling: { emoji: "🚴", colors: ["#000000", "#000000"], ringColor: "#000000" },
-  wrestling: { emoji: "🤼", colors: ["#F5A623", "#F5A623"], ringColor: "#F5A623" },
-  gaa: { emoji: "🏐", colors: ["#169B62", "#169B62"], ringColor: "#169B62" },
-  hurling: { emoji: "🏑", colors: ["#FF7900", "#169B62"], ringColor: "#FF7900" },
+  boxing: { emoji: "🥊", colors: ["#C62828", "#C62828"], ringColor: "#C62828" },
+  mma: { emoji: "🥋", colors: ["#B71C1C", "#B71C1C"], ringColor: "#B71C1C" },
+  baseball: { emoji: "⚾", colors: ["#E65100", "#E65100"], ringColor: "#E65100" },
+  volleyball: { emoji: "🏐", colors: ["#F9A825", "#F9A825"], ringColor: "#F9A825" },
+  tennis: { emoji: "🎾", colors: ["#EF6C00", "#EF6C00"], ringColor: "#EF6C00" },
+  football: { emoji: "⚽", colors: ["#D84315", "#D84315"], ringColor: "#D84315" },
+  soccer: { emoji: "⚽", colors: ["#D84315", "#D84315"], ringColor: "#D84315" },
+  basketball: { emoji: "🏀", colors: ["#F57C00", "#F57C00"], ringColor: "#F57C00" },
+  swimming: { emoji: "🏊", colors: ["#E53935", "#E53935"], ringColor: "#E53935" },
+  rugby: { emoji: "🏉", colors: ["#A1543A", "#A1543A"], ringColor: "#A1543A" },
+  cricket: { emoji: "🏏", colors: ["#FF8F00", "#FF8F00"], ringColor: "#FF8F00" },
+  hockey: { emoji: "🏒", colors: ["#BF360C", "#BF360C"], ringColor: "#BF360C" },
+  golf: { emoji: "⛳", colors: ["#E8A030", "#E8A030"], ringColor: "#E8A030" },
+  running: { emoji: "🏃", colors: ["#FF5722", "#FF5722"], ringColor: "#FF5722" },
+  cycling: { emoji: "🚴", colors: ["#D32F2F", "#D32F2F"], ringColor: "#D32F2F" },
+  wrestling: { emoji: "🤼", colors: ["#E64A19", "#E64A19"], ringColor: "#E64A19" },
+  gaa: { emoji: "🏐", colors: ["#A1543A", "#A1543A"], ringColor: "#A1543A" },
+  hurling: { emoji: "🏑", colors: ["#FF7900", "#FF7900"], ringColor: "#FF7900" },
   fitness: { emoji: "💪", colors: ["#FF6B4B", "#FF6B4B"], ringColor: "#FF6B4B" },
-  crossfit: { emoji: "🏋️", colors: ["#FF6B4B", "#FF6B4B"], ringColor: "#FF6B4B" },
-  yoga: { emoji: "🧘", colors: ["#000000", "#000000"], ringColor: "#000000" },
-  martial_arts: { emoji: "🥋", colors: ["#FF6B4B", "#FF6B4B"], ringColor: "#FF6B4B" },
+  crossfit: { emoji: "🏋️", colors: ["#E53935", "#E53935"], ringColor: "#E53935" },
+  yoga: { emoji: "🧘", colors: ["#D4A24E", "#D4A24E"], ringColor: "#D4A24E" },
+  martial_arts: { emoji: "🥋", colors: ["#B71C1C", "#B71C1C"], ringColor: "#B71C1C" },
 };
 
-const defaultConfig = { emoji: "🏆", colors: ["#607D8B", "#607D8B"] as [string, string], ringColor: "#607D8B" };
+const defaultConfig = { emoji: "🏆", colors: ["#8B2635", "#8B2635"] as [string, string], ringColor: "#8B2635" };
 
 export function getSportConfig(sport: string | null | undefined) {
   if (!sport) return defaultConfig;

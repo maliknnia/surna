@@ -871,8 +871,8 @@ proCategoriesRouter.post("/club/create", async (req, res) => {
   const user = getUser(req);
   if (!user) return unauthorized(res);
   try {
-    const data = createClubSchema.parse(req.body);
-    const club = await storage.createClub(data);
+    const data = createClubSchema.omit({ ownerId: true }).parse(req.body);
+    const club = await storage.createClub({ ...data, ownerId: user.id });
     res.status(201).json(club);
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
@@ -894,6 +894,13 @@ proCategoriesRouter.post("/club/:clubId/team", async (req, res) => {
   if (!user) return unauthorized(res);
   try {
     const data = addClubTeamSchema.parse({ ...req.body, clubId: req.params.clubId });
+    const club = await storage.getClub(data.clubId);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+    if (club.ownerId !== user.id) return res.status(403).json({ error: "Not authorized for this club" });
+    const canManageTeam = await storage.userCanManageTeam(user.id, data.teamId);
+    if (!canManageTeam) return res.status(403).json({ error: "You must captain or admin the team to link it" });
+    const alreadyLinked = await storage.isClubTeamLinked(data.clubId, data.teamId);
+    if (alreadyLinked) return res.status(409).json({ error: "Team is already linked to this club" });
     const clubTeam = await storage.addClubTeam(data);
     res.status(201).json(clubTeam);
   } catch (error: any) {

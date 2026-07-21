@@ -13,3 +13,8 @@ export function invalidateMyHubQueries(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ["challenges-list"] }),
   ]);
 }
+
+/** Refresh team feed after posts or profile edits that affect the team page. */
+export function invalidateTeamFeedQueries(queryClient: QueryClient, teamId: string) {
+  return queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "feed"] });
+}

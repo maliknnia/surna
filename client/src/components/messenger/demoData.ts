@@ -1,3 +1,4 @@
+import { isMessengerDemosEnabled } from "@/config/demoMode";
 import { SHOWCASE_ATHLETES } from "@/lib/demoShowcase";
 
 const [AISHA, ELENA] = SHOWCASE_ATHLETES;
@@ -121,11 +122,9 @@ export function isDemoConversation(id: string): boolean {
   return id.startsWith("demo-");
 }
 
-/** Dev-only sample threads when inbox is empty. */
+/** Sample threads when inbox is empty — dev only unless VITE_MESSENGER_DEMOS=true. */
 export function shouldShowMessengerDemos(realCount: number): boolean {
-  if (import.meta.env.VITE_MESSENGER_DEMOS === "true") return true;
-  if (import.meta.env.VITE_MESSENGER_DEMOS === "false") return false;
-  return import.meta.env.DEV && realCount === 0;
+  return isMessengerDemosEnabled(realCount);
 }
 
 export function getDemoMessages(conversationId: string) {

@@ -5,6 +5,7 @@
 import type { Team } from "@shared/schema";
 import { getEventCoverUrl } from "@/lib/eventCover";
 import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
+import { isDemoContentFallbackEnabled } from "@/config/demoMode";
 import { pickStoryUsers } from "@/lib/personalizedDemoFeed";
 import type { TeamMemberRow } from "@/pages/team/components/TeamMemberProfileSheet";
 
@@ -78,6 +79,25 @@ export const DEMO_TEAMS: DemoTeam[] = [
     longitude: -8.4682,
     logo: teamImage("Basketball", "Rebel Athletic", "logo"),
     cover: teamImage("Basketball", "Rebel Athletic", "cover"),
+    isDemo: true,
+  },
+  {
+    id: "demo-team-leeside-runners",
+    name: "Leeside Run Crew",
+    sport: "Running",
+    description: "Tuesday thresholds + Sunday long runs along the Lee.",
+    location: "Fitzgerald Park",
+    city: "Cork",
+    currentMembers: 24,
+    maxMembers: 40,
+    verified: true,
+    rating: "4.9",
+    ratingCount: 41,
+    followersCount: 520,
+    latitude: 51.8955,
+    longitude: -8.4901,
+    logo: teamImage("Running", "Leeside Run Crew", "logo"),
+    cover: teamImage("Running", "Leeside Run Crew", "cover"),
     isDemo: true,
   },
 ];
@@ -173,6 +193,7 @@ export function mergeWithDemoTeams(
 ): any[] {
   const api = Array.isArray(apiTeams) ? apiTeams : [];
   if (options?.skipDemo ?? true) return api;
+  if (!isDemoContentFallbackEnabled()) return api;
 
   let demos = DEMO_TEAMS.slice(0, DEMO_SHOWCASE_LIMIT);
   if (options?.sport && options.sport !== "All") {

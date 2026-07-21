@@ -10,7 +10,7 @@ export const entityBtnSurface = {
 
 export const entityCardStyle = {
   background: "var(--surna-elevated)",
-  border: "1px solid var(--surna-border)",
+  border: "none",
 } as const;
 
 export function formatEntityCount(n: number): string {

@@ -339,6 +339,7 @@ function Router() {
         <Route path="/marketplace/product/:id" component={() => <ProtectedRoute component={lazy(() => import("@/pages/product-detail"))} />} />
         <Route path="/marketplace/cart" component={() => <ProtectedRoute component={Cart} />} />
         <Route path="/marketplace/checkout" component={() => <ProtectedRoute component={lazy(() => import("@/pages/marketplace-checkout"))} />} />
+        <Route path="/marketplace/sell/create" component={() => <ProtectedRoute component={lazy(() => import("@/pages/marketplace/CreateMarketplaceListing"))} />} />
         <Route path="/wishlist" component={() => <ProtectedRoute component={lazy(() => import("@/pages/wishlist"))} />} />
         <Route path="/saved" component={() => <ProtectedRoute component={lazy(() => import("@/pages/SavedPosts"))} />} />
         <Route path="/media" component={() => <ProtectedRoute component={MediaManager} />} />

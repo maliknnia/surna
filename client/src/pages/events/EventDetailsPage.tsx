@@ -162,6 +162,16 @@ export default function EventDetailsPage() {
   const [demoAttendees, setDemoAttendees] = useState<ActivityPerson[]>([]);
   const { toast } = useToast();
 
+  const { data: ticketCheckoutStatus } = useQuery<{ available?: boolean }>({
+    queryKey: ["/api/events/ticket-checkout/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/events/ticket-checkout/status");
+      if (!res.ok) return { available: false };
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
   useEffect(() => {
     if (!id || !isDemoEventId(id)) {
       setDemoAttendees([]);
@@ -466,6 +476,14 @@ export default function EventDetailsPage() {
 
   const startTicketCheckout = async () => {
     if (!id || !ev?.id || isDemoEventId(String(ev.id))) return;
+    if (ticketCheckoutStatus?.available === false) {
+      toast({
+        title: "Ticket sales unavailable",
+        description: "Online checkout is not configured yet (STRIPE_SECRET_KEY).",
+        variant: "destructive",
+      });
+      return;
+    }
     setCheckoutLoading(true);
     try {
       const origin = window.location.origin;

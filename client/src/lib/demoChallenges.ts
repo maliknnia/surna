@@ -1,6 +1,7 @@
 /** Demo challenges — two polished fallbacks when the competitive API is empty. */
 
 import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
+import { isDemoContentFallbackEnabled } from "@/config/demoMode";
 
 export type DemoChallenge = {
   id: string;
@@ -47,6 +48,7 @@ export function mergeWithDemoChallenges(
 ): DemoChallenge[] {
   const api = (Array.isArray(apiMatches) ? apiMatches : []) as DemoChallenge[];
   if (options?.skipDemo ?? true) return api;
+  if (!isDemoContentFallbackEnabled()) return api;
   if (options?.mixDemos) {
     const apiIds = new Set(api.map((m) => String(m.id)));
     const extras = DEMO_CHALLENGES.filter((d) => !apiIds.has(d.id));

@@ -181,7 +181,7 @@ export function registerAnalyticsRoutes(app: Express) {
         const dayData = dailyData.find(d => format(d.date, "yyyy-MM-dd") === date);
         return {
           date,
-          activeUsers: dayData?.dailyActiveUsers || 0,
+          activeUsers: dayData?.activeUsers || 0,
           newUsers: dayData?.newUsers || 0
         };
       });
@@ -190,8 +190,8 @@ export function registerAnalyticsRoutes(app: Express) {
         const dayData = dailyData.find(d => format(d.date, "yyyy-MM-dd") === date);
         return {
           date,
-          totalUsers: dayData?.newUsers || 0, // Cumulative would be calculated
-          activeUsers: dayData?.dailyActiveUsers || 0
+          totalUsers: dayData?.newUsers || 0,
+          activeUsers: dayData?.activeUsers || 0
         };
       });
 
@@ -199,9 +199,9 @@ export function registerAnalyticsRoutes(app: Express) {
         const dayData = dailyData.find(d => format(d.date, "yyyy-MM-dd") === date);
         return {
           date,
-          posts: dayData?.totalPosts || 0,
-          events: dayData?.totalEvents || 0,
-          interactions: dayData?.totalLikes + dayData?.totalComments || 0
+          posts: dayData?.postsCreated || 0,
+          events: 0,
+          interactions: (dayData?.totalLikes ?? 0) + (dayData?.totalComments ?? 0)
         };
       });
 

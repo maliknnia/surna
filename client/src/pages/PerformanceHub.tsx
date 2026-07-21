@@ -7,10 +7,9 @@ import {
   UserStats, 
   PerformanceMetrics, 
   GoalData, 
-  createMockUserStats,
-  isValidUserStats,
   DarkTheme
 } from "../../../shared/performance-types";
+import { fetchGamificationUser, normalizeGamificationUserStats } from "@/lib/gamificationApi";
 import { 
   MoreVertical, 
   MessageCircle, 
@@ -38,18 +37,14 @@ export default function PerformanceHub() {
   const [activeTab, setActiveTab] = useState('overview');
   
   // Fetch user gamification data with proper typing
-  const { data: userStats, isLoading } = useQuery<UserStats>({
+  const { data: userStats, isLoading } = useQuery<UserStats | null>({
     queryKey: ["/api/gamification/user"],
     queryFn: async () => {
-      const res = await fetch("/api/gamification/user", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load gamification data");
-      return res.json();
+      const raw = await fetchGamificationUser();
+      return raw ? normalizeGamificationUserStats(raw) : null;
     },
     enabled: !!user?.id,
   });
-  
-  // Use properly typed mock data
-  const mockUserStats = createMockUserStats();
   
   const performanceMetrics: PerformanceMetrics = {
     strength: 85,
@@ -105,7 +100,23 @@ export default function PerformanceHub() {
     }
   ];
   
-  const stats = userStats && Object.keys(userStats).length > 0 ? userStats as UserStats : mockUserStats;
+  const stats = userStats;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+        <p className="text-muted-foreground">Sign in to view your performance stats.</p>
+      </div>
+    );
+  }
+
   const level = stats.currentLevel;
   const currentPoints = stats.currentXP;
   const pointsToNext = stats.xpToNext;

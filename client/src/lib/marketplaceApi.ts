@@ -72,6 +72,26 @@ export async function fetchSellerOrders() {
   return { orders: data.orders || [] };
 }
 
+export type SellerShopDashboard = {
+  shop: Record<string, unknown>;
+  stats: {
+    activeProducts: number;
+    pendingOrders: number;
+    completedOrders: number;
+  };
+};
+
+export async function fetchSellerProducts(limit = 50) {
+  const data = await fetchJson<{ items: Record<string, unknown>[] }>(
+    `/api/marketplace/seller/products?limit=${limit}`,
+  );
+  return { items: (data.items || []).map(normalizeListProduct) };
+}
+
+export async function fetchSellerShopDashboard() {
+  return fetchJson<SellerShopDashboard>("/api/marketplace/seller/shop");
+}
+
 export function normalizeListProduct(row: Record<string, unknown>) {
   const price =
     typeof row.price === "string" ? parseFloat(row.price) : Number(row.price ?? 0);
@@ -237,4 +257,59 @@ export function normalizeProductReviews(rows: Record<string, unknown>[]) {
       profileImageUrl: (row.profile_image_url ?? row.profileImageUrl) as string | undefined,
     },
   }));
+}
+
+export type CreateMarketplaceProductInput = {
+  title: string;
+  description?: string;
+  priceCents: number;
+  stock: number;
+  currency?: string;
+  imageUrl?: string | null;
+  category?: string;
+};
+
+export type CreateMarketplaceShopInput = {
+  businessName: string;
+  description?: string;
+  city?: string;
+  country?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+};
+
+export async function createMarketplaceProduct(input: CreateMarketplaceProductInput) {
+  const res = await fetch("/api/marketplace/products", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(text);
+  }
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function createMarketplaceShop(input: CreateMarketplaceShopInput) {
+  const res = await fetch("/api/marketplace/shops", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(text);
+  }
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function fetchMyMarketplaceShop() {
+  const data = await fetchJson<{ shop: Record<string, unknown> | null }>(
+    "/api/marketplace/shops/mine",
+  );
+  return data.shop ?? null;
 }

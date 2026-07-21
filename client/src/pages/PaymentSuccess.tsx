@@ -110,6 +110,7 @@ export default function PaymentSuccess() {
 
     if (pi) {
       setStatus("payment_only");
+      void queryClient.invalidateQueries({ queryKey: ["/api/marketplace/cart"] });
       fetch("/api/orders/create-from-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, useMemo } from "react";
 import { Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { mergeApiStoriesWithDemo } from "@/lib/demoStories";
 import type { StoryWithUser } from "@shared/schema";
 
 interface StoryGroup {
@@ -104,10 +105,12 @@ export function StoriesBar({ onStoryClick, onAddStory }: StoriesBarProps) {
   const { user } = useAuth();
   const [pressedId, setPressedId] = useState<string | null>(null);
 
-  const { data: stories = [], isLoading } = useQuery<StoryWithUser[]>({
+  const { data: apiStories = [], isLoading } = useQuery<StoryWithUser[]>({
     queryKey: ["/api/stories"],
     enabled: !!user,
   });
+
+  const stories = useMemo(() => mergeApiStoriesWithDemo(apiStories), [apiStories]);
 
   const storiesByUser = stories.reduce((acc, story) => {
     const uid = story.userId;

@@ -149,6 +149,7 @@ export default function ProductDetail() {
   } as const;
 
   const productId = params?.id;
+  const currentUserId = (user as { id?: string } | null)?.id;
 
   // Get product details with dynamic pricing
   const { data: product, isLoading: productLoading, isError: productError } = useQuery({
@@ -195,6 +196,17 @@ export default function ProductDetail() {
     enabled: !!productId,
   });
 
+  const ownReview = reviewsData?.find((entry) => entry.user.id === currentUserId);
+
+  useEffect(() => {
+    if (!ownReview) return;
+    setNewReview({
+      rating: ownReview.review.rating,
+      title: ownReview.review.reviewTitle,
+      text: ownReview.review.reviewText,
+    });
+  }, [ownReview?.review.id, ownReview?.review.rating, ownReview?.review.reviewTitle, ownReview?.review.reviewText]);
+
   const { data: questions, isLoading: questionsLoading } = useQuery<Question[]>({
     queryKey: ["marketplace-product-questions", productId],
     queryFn: async () => {
@@ -232,10 +244,13 @@ export default function ProductDetail() {
       apiRequest("POST", `/api/marketplace/products/${productId}/reviews`, reviewData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["marketplace-product-reviews", productId] });
-      setNewReview({ rating: 5, title: "", text: "" });
+      queryClient.invalidateQueries({ queryKey: ["marketplace-product", productId] });
+      if (!ownReview) {
+        setNewReview({ rating: 5, title: "", text: "" });
+      }
       toast({
-        title: "Review Submitted",
-        description: "Thank you for your review!",
+        title: "Review saved",
+        description: "Thank you for your feedback!",
       });
     },
     onError: () => {
@@ -776,7 +791,9 @@ export default function ProductDetail() {
           <div className="space-y-4">
             {isAuthenticated ? (
               <div className="p-4 rounded-2xl space-y-4" style={entityCardStyle}>
-                <p className="text-[14px] font-semibold">Write a review</p>
+                <p className="text-[14px] font-semibold">
+                  {ownReview ? "Update your review" : "Write a review"}
+                </p>
                 <form onSubmit={handleSubmitReview} className="space-y-4">
                   <div>
                     <p className="text-[12px] mb-2" style={{ color: "var(--surna-text-secondary)" }}>Rating</p>
@@ -825,7 +842,11 @@ export default function ProductDetail() {
                     style={{ ...entityBtnSurface, background: "var(--surna-gold)", color: "#000" }}
                     data-testid="submit-review-button"
                   >
-                    Submit review
+                    {createReviewMutation.isPending
+                      ? "Saving…"
+                      : ownReview
+                        ? "Update review"
+                        : "Submit review"}
                   </button>
                 </form>
               </div>

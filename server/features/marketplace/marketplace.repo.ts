@@ -47,20 +47,44 @@ export async function ensureCatalogVariants(productId: string, category: string 
 // name -> title, price -> price_cents conversion, is_active -> status mapping
 
 export async function createProduct(sellerId: string, p: any) {
-  // Convert price_cents to price (decimal) for existing schema
   const priceDecimal = (p.priceCents / 100).toFixed(2);
+  const category = p.category ?? "marketplace";
   const q = await db.execute(sql`
-    INSERT INTO products (seller_id, name, description, price, stock, is_active, category, brand)
-    VALUES (${sellerId}, ${p.title}, ${p.description ?? ''}, ${priceDecimal}, ${p.stock ?? 1}, true, 'marketplace', '')
-    RETURNING id, name AS title, description, price, stock, is_active, seller_id, created_at;
-  `); 
+    INSERT INTO products (seller_id, name, description, price, stock, is_active, category, brand, image_url)
+    VALUES (${sellerId}, ${p.title}, ${p.description ?? ''}, ${priceDecimal}, ${p.stock ?? 1}, true, ${category}, ${p.brand ?? ''}, ${p.imageUrl ?? null})
+    RETURNING id, name AS title, description, price, stock, is_active, seller_id, image_url AS "imageUrl", created_at;
+  `);
   const row = q.rows[0] as any;
-  // Convert back to expected format
   return {
     ...row,
     price_cents: Math.round((row.price as number) * 100),
-    status: (row.is_active as boolean) ? 'active' : 'hidden'
+    status: (row.is_active as boolean) ? "active" : "hidden",
   };
+}
+
+export async function listSellerProducts(sellerId: string, limit = 50) {
+  const result = await db.execute(sql`
+    SELECT
+      p.id,
+      p.name AS title,
+      p.description,
+      p.price,
+      p.stock,
+      p.is_active,
+      p.seller_id,
+      p.category,
+      p.image_url AS "imageUrl",
+      p.created_at
+    FROM products p
+    WHERE p.seller_id = ${sellerId}
+    ORDER BY p.created_at DESC
+    LIMIT ${limit}
+  `);
+  return result.rows.map((row: any) => ({
+    ...row,
+    price_cents: Math.round(Number(row.price ?? 0) * 100),
+    status: row.is_active ? "active" : "hidden",
+  }));
 }
 
 export async function updateProduct(sellerId: string, id: string, p: any) {
@@ -283,6 +307,31 @@ export async function clearCart(cartId: string) {
   await db.execute(sql`DELETE FROM cart_items WHERE cart_id=${cartId};`);
 }
 
+export async function calculateCartCheckoutTotals(userId: string) {
+  await ensureMarketplaceSchema();
+  const cartId = await ensureCart(userId);
+  const items = await getCart(cartId);
+  if (items.length === 0) return null;
+
+  const taxBps = Number(process.env.TAX_RATE_BPS ?? 800);
+  const subtotal = items.reduce(
+    (sum, row: any) => sum + (row.unit_price_cents as number) * (row.qty as number),
+    0,
+  );
+  const tax = Math.floor(subtotal * (taxBps / 10000));
+  const total = subtotal + tax;
+  const currency = String(items[0]?.currency ?? "USD").toLowerCase();
+
+  return {
+    cartId,
+    itemCount: items.length,
+    subtotalCents: subtotal,
+    taxCents: tax,
+    totalCents: total,
+    currency,
+  };
+}
+
 export async function checkout(userId: string, cartId: string, taxBps: number) {
   await ensureMarketplaceSchema();
   // compute totals
@@ -444,13 +493,55 @@ export async function getShopProducts(shopId: string, limit: number = 20) {
 
 // ===== PRODUCT REVIEWS =====
 
-export async function addProductReview(productId: string, userId: string, data: any) {
+async function userPurchasedProduct(userId: string, productId: string): Promise<boolean> {
+  const q = await db.execute(sql`
+    SELECT 1
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    WHERE o.user_id = ${userId}
+      AND oi.product_id = ${productId}
+      AND o.status IN ('paid', 'fulfilled', 'delivered', 'confirmed')
+    LIMIT 1;
+  `);
+  return q.rows.length > 0;
+}
+
+export async function upsertProductReview(
+  productId: string,
+  userId: string,
+  data: { rating: number; reviewTitle?: string; reviewText?: string },
+): Promise<{ review: Record<string, unknown>; updated: boolean }> {
+  const verified = await userPurchasedProduct(userId, productId);
+  const title = data.reviewTitle?.trim() || "";
+  const text = data.reviewText?.trim() || "";
+
+  const existing = await db.execute(sql`
+    SELECT id FROM product_reviews
+    WHERE product_id = ${productId} AND user_id = ${userId}
+    LIMIT 1;
+  `);
+  const isUpdate = existing.rows.length > 0;
+
   const result = await db.execute(sql`
     INSERT INTO product_reviews (product_id, user_id, rating, review_title, review_text, is_verified_purchase)
-    VALUES (${productId}, ${userId}, ${data.rating}, ${data.reviewTitle || ''}, ${data.reviewText || ''}, ${data.isVerifiedPurchase || false})
+    VALUES (${productId}, ${userId}, ${data.rating}, ${title}, ${text}, ${verified})
+    ON CONFLICT (product_id, user_id)
+    DO UPDATE SET
+      rating = EXCLUDED.rating,
+      review_title = EXCLUDED.review_title,
+      review_text = EXCLUDED.review_text,
+      is_verified_purchase = product_reviews.is_verified_purchase OR EXCLUDED.is_verified_purchase,
+      updated_at = NOW()
     RETURNING *;
   `);
-  return result.rows[0];
+
+  return { review: result.rows[0] as Record<string, unknown>, updated: isUpdate };
+}
+
+/** @deprecated Use upsertProductReview */
+export async function addProductReview(productId: string, userId: string, data: any) {
+  const { review } = await upsertProductReview(productId, userId, data);
+  return review;
 }
 
 export async function getProductReviews(productId: string, limit: number = 10) {
@@ -718,7 +809,7 @@ export async function fulfillMarketplacePayment(
   `);
   const existing = existingOrder.rows[0] as { id: string; status: string } | undefined;
 
-  if (existing?.status === "paid") {
+  if (existing && (existing.status === "paid" || existing.status === "fulfilled")) {
     return { orderId: existing.id, alreadyFulfilled: true };
   }
 

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { CreateProduct, UpdateProduct, ListQuery, CartItemInput, TeamBulkPreviewQuery, TeamBulkAddToCartBody } from "./marketplace.validation";
 import { Marketplace as MP } from "./marketplace.service";
 import { authMiddleware, requireAuth } from "../../middleware/auth";
@@ -189,7 +190,7 @@ marketplaceRouter.post("/cart/items", requireAuth(), async (req: any, res, next)
   }
 });
 
-// AUTH: checkout (stub â€“ records order, reduces stock, clears cart)
+// AUTH: dev/test checkout — records order, reduces stock, clears cart (no Stripe)
 marketplaceRouter.post("/checkout", requireAuth(), async (req: any, res, next) => {
   try {
     const cartId = await MP.ensureCart(req.jwtUser.id);
@@ -199,6 +200,16 @@ marketplaceRouter.post("/checkout", requireAuth(), async (req: any, res, next) =
 });
 
 // ===== SHOP/SELLER PROTECTED ROUTES =====
+
+// AUTH: Get current user's shop
+marketplaceRouter.get("/shops/mine", requireAuth(), async (req: any, res, next) => {
+  try {
+    const shop = await MP.getShopBySellerId(req.jwtUser.id);
+    res.json({ shop: shop ?? null });
+  } catch (e) {
+    next(e);
+  }
+});
 
 // AUTH: Create shop
 marketplaceRouter.post("/shops", requireAuth(), async (req: any, res, next) => {
@@ -241,12 +252,22 @@ marketplaceRouter.post("/shops/:id/follow", requireAuth(), async (req: any, res,
 
 // ===== REVIEW PROTECTED ROUTES =====
 
-// AUTH: Add product review
+// AUTH: Add or update product review (one per user per product)
 marketplaceRouter.post("/products/:id/reviews", requireAuth(), async (req: any, res, next) => {
   try {
-    const review = await MP.addProductReview(req.params.id, req.jwtUser.id, req.body);
-    res.status(201).json(review);
-  } catch(e) { next(e); }
+    const body = z
+      .object({
+        rating: z.number().int().min(1).max(5),
+        reviewTitle: z.string().max(200).optional(),
+        reviewText: z.string().max(4000).optional(),
+      })
+      .parse(req.body);
+    const { review, updated } = await MP.upsertProductReview(req.params.id, req.jwtUser.id, body);
+    res.status(updated ? 200 : 201).json(review);
+  } catch (e) {
+    if (e instanceof z.ZodError) return res.status(400).json({ error: "Invalid review" });
+    next(e);
+  }
 });
 
 // ===== Q&A PROTECTED ROUTES =====
@@ -333,6 +354,17 @@ marketplaceRouter.get("/seller/shop", requireAuth(), async (req: any, res, next)
   }
 });
 
+// AUTH: Seller's own product listings
+marketplaceRouter.get("/seller/products", requireAuth(), async (req: any, res, next) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, 100);
+    const items = await MP.listSellerProducts(req.jwtUser.id, limit);
+    res.json({ items });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // AUTH: Seller orders
 marketplaceRouter.get("/seller/orders", requireAuth(), async (req: any, res, next) => {
   try {
@@ -353,33 +385,62 @@ marketplaceRouter.patch("/seller/orders/:id/status", requireAuth(), async (req: 
 
 // ===== PAYMENT ROUTES =====
 
+function isStripeConfigured() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  return Boolean(key && !key.includes("placeholder"));
+}
+
+// AUTH: Server-calculated checkout totals (matches order fulfillment tax)
+marketplaceRouter.get("/checkout/summary", requireAuth(), async (req: any, res, next) => {
+  try {
+    const totals = await MP.calculateCartCheckoutTotals(req.jwtUser.id);
+    if (!totals) return res.status(400).json({ error: "Cart is empty" });
+    res.json({
+      ...totals,
+      stripeConfigured: isStripeConfigured(),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // AUTH: Create payment intent for checkout
 marketplaceRouter.post("/create-payment-intent", requireAuth(), async (req: any, res, next) => {
   try {
-    const { amount } = req.body;
-    
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: "Invalid amount" });
+    if (!isStripeConfigured()) {
+      return res.status(503).json({ error: "Stripe is not configured" });
     }
 
-    // Initialize Stripe
+    const totals = await MP.calculateCartCheckoutTotals(req.jwtUser.id);
+    if (!totals) {
+      return res.status(400).json({ error: "Cart is empty" });
+    }
+
     const Stripe = (await import("stripe")).default;
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency: "usd",
+      amount: totals.totalCents,
+      currency: totals.currency,
+      automatic_payment_methods: { enabled: true },
       metadata: {
         userId: req.jwtUser.id,
-        source: "marketplace"
-      }
+        source: "marketplace",
+        cartId: totals.cartId,
+      },
     });
 
-    res.json({ clientSecret: paymentIntent.client_secret });
-  } catch(e: any) {
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      subtotalCents: totals.subtotalCents,
+      taxCents: totals.taxCents,
+      totalCents: totals.totalCents,
+      currency: totals.currency,
+    });
+  } catch (e: any) {
     console.error("Payment intent creation error:", e);
     res.status(500).json({ error: "Failed to create payment intent: " + e.message });
   }

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,29 +8,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { invalidateMyHubQueries } from "@/lib/hubQueries";
+import { ROUTES } from "@/navigation";
+import {
+  CreateMediaSection,
+  type CreateMediaValue,
+} from "@/components/create/CreateMediaSection";
 import { 
   ArrowLeft, 
   Building2, 
-  Upload, 
   DollarSign, 
   Clock, 
   Users, 
   MapPin,
-  Wifi,
-  Car,
-  Shield,
   TrendingUp,
-  Camera,
   CheckCircle,
-  Zap,
   Star,
-  Calendar
 } from "lucide-react";
 
 export default function GymListing() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
   const [previewMode, setPreviewMode] = useState(false);
+  const [coverMedia, setCoverMedia] = useState<CreateMediaValue>(null);
+  const [profileMedia, setProfileMedia] = useState<CreateMediaValue>(null);
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     // Basic Info
     facilityName: "",
@@ -75,10 +81,6 @@ export default function GymListing() {
     dresscode: "",
     policies: "",
     cancellationPolicy: "",
-    
-    // Visual Assets
-    facilityPhotos: [] as File[],
-    equipmentPhotos: [] as File[],
     virtualTour: "",
     
     // Business Info
@@ -127,15 +129,115 @@ export default function GymListing() {
     "Dance Studio": { hourly: "€100-250", daily: "€700-2000", monthly: "€10000-30000" }
   };
 
+  const publishMutation = useMutation({
+    mutationFn: async () => {
+      const addressQuery = [formData.address, formData.city, formData.state, formData.zipCode]
+        .filter(Boolean)
+        .join(", ");
+      let latitude: string | undefined;
+      let longitude: string | undefined;
+      if (addressQuery.trim()) {
+        try {
+          const geoRes = await apiRequest("POST", "/api/location/geocode", { address: addressQuery });
+          const geo = (await geoRes.json()) as { lat?: number; lng?: number };
+          if (geo.lat != null && geo.lng != null) {
+            latitude = String(geo.lat);
+            longitude = String(geo.lng);
+          }
+        } catch {
+          /* optional geocode */
+        }
+      }
+
+      const categoryMap: Record<string, string> = {
+        "Full Service Gym": "gym",
+        "CrossFit Box": "gym",
+        "Yoga Studio": "studio",
+        "Dance Studio": "studio",
+        "Martial Arts Dojo": "gym",
+        "Boxing Gym": "gym",
+        "Rock Climbing Gym": "gym",
+        "Swimming Pool": "pool",
+        "Tennis Court": "court",
+        "Basketball Court": "court",
+        "Soccer Field": "field",
+        "Multi-Sport Complex": "field",
+      };
+
+      const sports = [
+        ...formData.cardioEquipment.slice(0, 2).map(() => "Fitness"),
+        ...formData.strengthEquipment.slice(0, 1).map(() => "Strength"),
+      ].filter(Boolean);
+      if (sports.length === 0) sports.push("Fitness");
+
+      const hours: Record<string, string> = {};
+      for (const [day, h] of Object.entries(formData.operatingHours)) {
+        if (h.closed) hours[day] = "Closed";
+        else if (h.open && h.close) hours[day] = `${h.open} – ${h.close}`;
+      }
+
+      const description = [
+        formData.uniqueSellingPoints,
+        formData.policies,
+        formData.specialOffers,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      const res = await apiRequest("POST", "/api/places", {
+        name: formData.facilityName.trim(),
+        category: categoryMap[formData.facilityType] ?? "gym",
+        sports,
+        bio: formData.uniqueSellingPoints?.slice(0, 280) || `${formData.facilityType} on SURNA`,
+        description: description || undefined,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        country: "USA",
+        phone: formData.phone,
+        email: formData.email,
+        website: formData.website || undefined,
+        amenities: formData.amenities,
+        hours,
+        latitude,
+        longitude,
+        bookingMode: "hourly_slots",
+        slotPrice: formData.hourlyRate ? String(formData.hourlyRate) : undefined,
+        profileImageUrl: profileMedia?.publicUrl ?? undefined,
+        coverImageUrl: coverMedia?.publicUrl ?? undefined,
+      });
+      const place = (await res.json()) as { id: string };
+      await Promise.all(
+        galleryUrls.map((imageUrl, displayOrder) =>
+          apiRequest("POST", `/api/places/${place.id}/photos`, { imageUrl, displayOrder }),
+        ),
+      );
+      return place;
+    },
+    onSuccess: async (place) => {
+      toast({
+        title: "Facility listed",
+        description: "Your gym is live — manage bookings from My Hub.",
+      });
+      await invalidateMyHubQueries(queryClient);
+      setLocation(ROUTES.place(place.id));
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Could not list facility",
+        description: err.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
     } else {
-      toast({
-        title: "Gym Listing Submitted! 🏋️‍♂️",
-        description: "Your facility is now listed on SURNA! Athletes can start booking your space.",
-      });
+      publishMutation.mutate();
     }
   };
 
@@ -610,19 +712,17 @@ export default function GymListing() {
           <div className="space-y-4">
             <h3 className="font-bold text-lg">Business Verification & Assets</h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Facility Photos *</label>
-                <div className="border-2 border-dashed border-primary/20 rounded-lg p-4">
-                  <div className="text-center">
-                    <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">High-quality photos of your facility</p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload Photos (5-10 recommended)
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <CreateMediaSection
+                cover={coverMedia}
+                onCoverChange={setCoverMedia}
+                logo={profileMedia}
+                onLogoChange={setProfileMedia}
+                gallery={galleryUrls}
+                onGalleryChange={setGalleryUrls}
+                maxGallery={8}
+                coverLabel="Cover photo"
+                coverHint="Wide shot of your facility — shows on map pins and listing cards."
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -711,7 +811,12 @@ export default function GymListing() {
       case 5:
         return formData.cancellationPolicy;
       case 6:
-        return formData.termsAccepted && formData.liabilityInsurance && formData.backgroundCheck;
+        return (
+          formData.termsAccepted &&
+          formData.liabilityInsurance &&
+          formData.backgroundCheck &&
+          Boolean(coverMedia?.publicUrl || profileMedia?.publicUrl || galleryUrls.length > 0)
+        );
       default:
         return false;
     }
@@ -737,9 +842,20 @@ export default function GymListing() {
           {/* Facility Listing Preview */}
           <Card className="mb-6">
             <CardContent className="p-6">
+              {coverMedia?.publicUrl ? (
+                <img
+                  src={coverMedia.publicUrl}
+                  alt=""
+                  className="w-full h-40 object-cover rounded-lg mb-4"
+                />
+              ) : null}
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Building2 className="w-8 h-8 text-primary" />
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                  {profileMedia?.publicUrl ? (
+                    <img src={profileMedia.publicUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Building2 className="w-8 h-8 text-primary" />
+                  )}
                 </div>
                 <h2 className="text-2xl font-bold text-foreground mb-2">{formData.facilityName || "Your Facility Name"}</h2>
                 <div className="flex items-center justify-center gap-2 mb-2">
@@ -876,13 +992,13 @@ export default function GymListing() {
             )}
             <Button
               type="submit"
-              disabled={!canProceed()}
+              disabled={!canProceed() || publishMutation.isPending}
               className="flex-1 bg-primary hover:bg-primary/90"
             >
               {currentStep === 6 ? (
                 <>
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  List My Facility
+                  {publishMutation.isPending ? "Publishing…" : "List my facility"}
                 </>
               ) : (
                 "Continue"

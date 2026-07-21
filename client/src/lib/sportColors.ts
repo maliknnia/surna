@@ -126,10 +126,8 @@ export function sportCardBg(sport: string | null | undefined, mode: "light" | "d
 
 export function sportCardGradient(sport: string | null | undefined, mode: "light" | "dark"): string {
   const c = getSportColor(sport);
-  if (mode === "light") {
-    return `linear-gradient(135deg, ${c.light} 0%, #FFFFFF 100%)`;
-  }
-  return `linear-gradient(135deg, ${c.dark} 0%, #000000 100%)`;
+  // Solid fill — matches event discovery cards (no gradient wash)
+  return mode === "light" ? c.light : c.dark;
 }
 
 /** Map venue category/kind → sport key for the same card tints as TeamCard */

@@ -21,8 +21,9 @@
     /* ─── iOS COLOR SYSTEM (Dark Mode Default) ─── */
     --surna-void: #000000;
     --surna-base: #000000;
-    --surna-elevated: color-mix(in srgb, var(--spotify-red) 14%, #121212);
-    --surna-surface: color-mix(in srgb, var(--spotify-red) 10%, #121212);
+    /* Neutral dark surfaces — no brand-tint wash on cards */
+    --surna-elevated: #181818;
+    --surna-surface: #141414;
 
     --surna-black: #000000;
     --surna-dark-grey: #000000;
@@ -75,9 +76,9 @@
 
     /* Mapped Semantic */
     --surna-bg: #000000;
-    --surna-bg-elevated: #121212;
-    --surna-bg-card: color-mix(in srgb, var(--spotify-red) 16%, #0f0f0f);
-    --surna-bg-card-hover: color-mix(in srgb, var(--spotify-red) 22%, #1a1214);
+    --surna-bg-elevated: #181818;
+    --surna-bg-card: #181818;
+    --surna-bg-card-hover: #222222;
     --surna-bg-highlight: #1E1E1E;
     --surna-bg-press: #2A2A2A;
     --surna-text: #FFFFFF;
@@ -760,11 +761,7 @@
   }
 
   .event-card-dark {
-    background: linear-gradient(
-      135deg,
-      var(--extracted-color, var(--spotify-red)) 0%,
-      color-mix(in srgb, var(--extracted-color, var(--spotify-red)), black 30%) 100%
-    );
+    background: var(--extracted-color, #8b2635);
     border-radius: var(--radius-card);
     border: none;
   }

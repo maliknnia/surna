@@ -137,7 +137,10 @@ export default function EventList({
   const apiItems = data?.pages.flatMap((p: any) => p.items) ?? [];
   const hasActiveFilters =
     Boolean(q.trim()) || category !== "all" || timeWindow !== "all";
-  const allItems = mergeWithDemoEvents(apiItems, { skipDemo: hasActiveFilters });
+  const allItems = mergeWithDemoEvents(apiItems, {
+    skipDemo: hasActiveFilters,
+    fallback: !hasActiveFilters,
+  });
   const items = maxItems ? allItems.slice(0, maxItems) : allItems;
 
   const filterOptions = [

@@ -7,9 +7,9 @@ import {
   UserStats, 
   PerformanceMetric, 
   WebVitalMetric,
-  createMockUserStats,
   DarkTheme 
 } from "../../../shared/performance-types";
+import { fetchGamificationUser, normalizeGamificationUserStats } from "@/lib/gamificationApi";
 
 interface UnifiedDashboardProps {
   userId?: string;
@@ -35,8 +35,12 @@ export function UnifiedDashboard({
   });
 
   // Fetch user gamification data
-  const { data: userStats } = useQuery<UserStats>({
+  const { data: userStats, isLoading: statsLoading } = useQuery<UserStats | null>({
     queryKey: ["/api/gamification/user", userId],
+    queryFn: async () => {
+      const raw = await fetchGamificationUser();
+      return raw ? normalizeGamificationUserStats(raw) : null;
+    },
     enabled: !!userId && showGamification,
   });
 
@@ -45,10 +49,7 @@ export function UnifiedDashboard({
     enabled: showGamification,
   });
 
-  // Use properly typed mock data
-  const mockUserStats = createMockUserStats();
-
-  const stats = userStats && Object.keys(userStats).length > 0 ? userStats as UserStats : mockUserStats;
+  const stats = userStats;
 
   const getMetricsByType = (type: string) => {
     return metrics.filter(m => m.name.includes(type));
@@ -94,6 +95,24 @@ export function UnifiedDashboard({
     { type: 'CLS', name: 'Cumulative Layout Shift', icon: Zap, unit: '', threshold: 0.1 },
     { type: 'FCP', name: 'First Contentful Paint', icon: Gauge, unit: 'ms', threshold: 1800 }
   ];
+
+  if (showGamification && statsLoading) {
+    return (
+      <div className={`p-6 ${className}`} style={{ color: "var(--surna-text)" }}>
+        Loading stats…
+      </div>
+    );
+  }
+
+  if (showGamification && !stats) {
+    return (
+      <div className={`p-6 ${className}`} style={{ color: "var(--surna-text-secondary)" }}>
+        Sign in to view gamification stats.
+      </div>
+    );
+  }
+
+  const displayStats = stats as UserStats;
 
   return (
     <div 
@@ -170,8 +189,8 @@ export function UnifiedDashboard({
                   <Trophy className="w-5 h-5 mr-2" style={{ color: 'var(--surna-text)' }} />
                   <span style={{ color: 'var(--surna-text)', fontSize: '0.9rem' }}>Level</span>
                 </div>
-                <div className="text-2xl font-bold" style={{ color: 'var(--surna-text)' }}>{stats.currentLevel}</div>
-                <div style={{ color: 'var(--surna-text)', fontSize: '0.8rem' }}>{stats.currentXP}/{stats.xpToNext} XP</div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--surna-text)' }}>{displayStats.currentLevel}</div>
+                <div style={{ color: 'var(--surna-text)', fontSize: '0.8rem' }}>{displayStats.currentXP}/{displayStats.xpToNext} XP</div>
               </div>
             )}
             
@@ -181,8 +200,8 @@ export function UnifiedDashboard({
                   <Star className="w-5 h-5 mr-2" style={{ color: 'var(--surna-text)' }} />
                   <span style={{ color: 'var(--surna-text)', fontSize: '0.9rem' }}>Points</span>
                 </div>
-                <div className="text-2xl font-bold" style={{ color: 'var(--surna-text)' }}>{stats.totalPoints.toLocaleString()}</div>
-                <div style={{ color: 'var(--surna-text)', fontSize: '0.8rem' }}>Rank #{stats.rank}</div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--surna-text)' }}>{displayStats.totalPoints.toLocaleString()}</div>
+                <div style={{ color: 'var(--surna-text)', fontSize: '0.8rem' }}>Rank #{displayStats.rank}</div>
               </div>
             )}
 
@@ -192,8 +211,8 @@ export function UnifiedDashboard({
                   <Flame className="w-5 h-5 mr-2" style={{ color: 'var(--surna-text)' }} />
                   <span style={{ color: 'var(--surna-text)', fontSize: '0.9rem' }}>Streak</span>
                 </div>
-                <div className="text-2xl font-bold" style={{ color: 'var(--surna-text)' }}>{stats.streaks.dailyLogin}</div>
-                <div style={{ color: 'var(--surna-text)', fontSize: '0.8rem' }}>Best: {stats.streaks.longestStreak}</div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--surna-text)' }}>{displayStats.streaks.dailyLogin}</div>
+                <div style={{ color: 'var(--surna-text)', fontSize: '0.8rem' }}>Best: {displayStats.streaks.longestStreak}</div>
               </div>
             )}
 
@@ -214,7 +233,7 @@ export function UnifiedDashboard({
             <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--surna-bg-highlight)' }}>
               <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--surna-text)' }}>Recent Achievements</h3>
               <div className="space-y-3">
-                {stats.achievements.slice(0, 3).map((achievement: any) => (
+                {displayStats.achievements.slice(0, 3).map((achievement: any) => (
                   <div key={achievement.id} className="flex items-center justify-between p-3 rounded-lg" 
                        style={{ backgroundColor: 'var(--surna-base)' }}>
                     <div className="flex items-center">
@@ -320,7 +339,7 @@ export function UnifiedDashboard({
           <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--surna-bg-highlight)' }}>
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--surna-text)' }}>Earned Badges</h3>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-              {stats.badges.map((badge: any) => (
+              {displayStats.badges.map((badge: any) => (
                 <div key={badge.id} className="text-center p-3 rounded-lg" 
                      style={{ backgroundColor: 'var(--surna-base)' }}>
                   <Award className="w-8 h-8 mx-auto mb-2" style={{ color: getBadgeColor(badge.rarity) }} />
@@ -335,7 +354,7 @@ export function UnifiedDashboard({
           <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--surna-bg-highlight)' }}>
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--surna-text)' }}>Achievement Progress</h3>
             <div className="space-y-4">
-              {stats.achievements.map((achievement: any) => (
+              {displayStats.achievements.map((achievement: any) => (
                 <div key={achievement.id} className="p-4 rounded-lg" style={{ backgroundColor: 'var(--surna-base)' }}>
                   <div className="flex justify-between items-center mb-3">
                     <div>

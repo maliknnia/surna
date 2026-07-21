@@ -3386,10 +3386,17 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       }
       const { id: ratedUserId } = req.params;
       const { rating, comment } = req.body;
-      
-      // TODO: Implement rating system in storage
-      // For now, just return success
-      res.json({ success: true, rating, comment });
+      if (raterId === ratedUserId) {
+        return res.status(400).json({ message: "Cannot rate yourself" });
+      }
+
+      const review = await storage.upsertUserReview({
+        subjectId: ratedUserId,
+        authorId: raterId,
+        rating,
+        text: comment ?? null,
+      });
+      res.json({ success: true, review });
     } catch (error: unknown) {
       console.error("Error rating user:", error);
       res.status(500).json({ message: "Failed to rate user" });
@@ -3397,28 +3404,14 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   });
   
   // Performance routes
-  app.get('/api/user/performance', async (req, res) => {
+  app.get('/api/user/performance', isAuthenticated, async (req: any, res) => {
     try {
-      // For now, return mock performance data when not authenticated
-      const mockPerformance = {
-        level: 1,
-        totalPoints: 33,
-        pointsToNextLevel: 67,
-        sport: 'general',
-        metrics: {
-          totalPoints: 33,
-          eventsAttended: 0,
-          teamsJoined: 1,
-          challengesCompleted: 0,
-          currentLevel: 1,
-          workouts: 12,
-          calories: 2456,
-          minutes: 387
-        },
-        recentTransactions: [],
-        availableRewards: []
-      };
-      res.json(mockPerformance);
+      const userId = sessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      const performance = await storage.getUserPerformance(userId);
+      res.json(performance);
     } catch (error: unknown) {
       console.error("Error fetching user performance:", error);
       res.status(500).json({ message: "Failed to fetch performance data" });
@@ -3649,7 +3642,12 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (!result) return res.status(404).json({ message: "Could not fulfill order" });
 
       const order = await getMarketplaceOrderConfirmation(userId, paymentIntentId);
-      res.status(201).json({ orderId: result.orderId, order, fulfilled: true });
+      res.status(result.alreadyFulfilled ? 200 : 201).json({
+        orderId: result.orderId,
+        order,
+        fulfilled: true,
+        alreadyFulfilled: result.alreadyFulfilled,
+      });
     } catch (error) {
       console.error("Error creating order from payment:", error);
       res.status(500).json({ message: "Failed to create order" });
@@ -3658,7 +3656,8 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
 
   app.patch("/api/orders/:id/status", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub || req.user?.id;
+      const userId = sessionUserId(req);
+      if (!userId) return res.status(401).json({ message: "User not authenticated" });
       const allowed = ["pending", "confirmed", "dispatched", "delivered"];
       const status = String(req.body?.status || "");
       if (!allowed.includes(status)) return res.status(400).json({ message: "Invalid status" });
@@ -5574,7 +5573,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (!authorId) return res.status(401).json({ message: "User not authenticated" });
       const subjectId = req.params.userId;
       if (authorId === subjectId) return res.status(400).json({ message: "Cannot review yourself" });
-      const review = await storage.addUserReview({ subjectId, authorId, ...req.body });
+      const review = await storage.upsertUserReview({ subjectId, authorId, ...req.body });
       res.json(review);
     } catch (error: unknown) {
       console.error("Error adding user review:", error);

@@ -1,3 +1,5 @@
+import { isMapDemoPinsEnabled } from "./demoMode";
+
 export const flags = {
   hubEnabled: true,
   placesEnabled: true,
@@ -18,6 +20,6 @@ export const flags = {
   videoContent: true,  // Phase 3: Video uploads and playback
   liveStreaming: true,  // Phase 4: Live streaming capability
   aiRecommendations: true,  // Phase 5: AI-powered suggestions
-  /** Supplement empty viewport with demo pins so the map always looks alive in dev and prod previews */
-  mapDemoPins: true,
+  /** Supplement empty viewport with showcase pins — dev only unless VITE_MAP_DEMO_PINS=true */
+  mapDemoPins: isMapDemoPinsEnabled(),
 } as const;

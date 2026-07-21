@@ -29,6 +29,7 @@ import DiscoveryCircleStrip from "@/components/cards/DiscoveryCircleStrip";
 import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/cards/DiscoverySectionHeading";
 import { teamLogoUrl } from "@/lib/teamLogo";
 import { getSportConfig } from "@/components/TeamCard";
+import { mergeWithDemoTeams } from "@/lib/demoTeams";
 import type { Team } from "@shared/schema";
 
 const SPORT_CHIPS = [
@@ -197,7 +198,14 @@ export default function Teams({
   const chipBg = t.chipBg;
   const chipText = t.chipText;
 
-  const mergedTeams = isError ? [] : teams || [];
+  const hasActiveSearch = searchQuery.trim().length > 0;
+  const mergedTeams = isError
+    ? []
+    : mergeWithDemoTeams(teams || [], {
+        skipDemo: hasActiveSearch,
+        fallback: !hasActiveSearch,
+        sport: sportFilter !== "All" ? sportFilter : undefined,
+      });
 
   const filteredTeams = mergedTeams.filter((team: any) => {
     const sportOk =

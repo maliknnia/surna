@@ -1,7 +1,10 @@
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Heart, MessageCircle } from "lucide-react";
+import { isDemoContentFallbackEnabled } from "@/config/demoMode";
+import { SHOWCASE_ATHLETES } from "@/lib/demoShowcase";
 import { markNavReturn } from "@/lib/navigation";
 import { getEventCoverUrl } from "@/lib/eventCover";
 import { apiRequest } from "@/lib/queryClient";
@@ -34,6 +37,33 @@ function locationLabel(post: PostWithAuthor & { place?: { name?: string } }): st
   return null;
 }
 
+function showcaseDemoPost(): PostWithAuthor {
+  const athlete = SHOWCASE_ATHLETES[0] ?? SHOWCASE_ATHLETES[SHOWCASE_ATHLETES.length - 1];
+  const cover =
+    getEventCoverUrl({ sport: athlete?.sport, title: "Morning session" }) ||
+    athlete?.profileImageUrl ||
+    "";
+  return {
+    id: "demo-post-home-feed",
+    authorId: athlete?.id ?? "ds-aisha",
+    content: "Open water set done — technique focus, then easy 400s. Who's joining Thursday?",
+    imageUrl: cover,
+    sport: athlete?.sport ?? "Swimming",
+    location: athlete?.location ?? "Atlanta, GA",
+    likesCount: 24,
+    commentsCount: 5,
+    createdAt: new Date(Date.now() - 3 * 3600_000),
+    author: {
+      id: athlete?.id ?? "ds-aisha",
+      firstName: athlete?.firstName ?? "Aisha",
+      lastName: athlete?.lastName ?? "Okafor",
+      username: athlete?.username ?? "aisha_swim",
+      displayName: athlete ? `${athlete.firstName} ${athlete.lastName}` : "Aisha Okafor",
+      profileImageUrl: athlete?.profileImageUrl,
+    },
+  } as PostWithAuthor;
+}
+
 function FeedCardSkeleton() {
   return (
     <div
@@ -62,7 +92,12 @@ export function HomeFeedPostsSection({ contentSeed }: { contentSeed: number }) {
     staleTime: 60_000,
   });
 
-  const post = data?.items?.[0] ?? null;
+  const post = useMemo(() => {
+    const live = data?.items?.[0] ?? null;
+    if (live) return live;
+    if (isDemoContentFallbackEnabled()) return showcaseDemoPost();
+    return null;
+  }, [data?.items]);
 
   const openFeed = () => {
     markNavReturn("/");

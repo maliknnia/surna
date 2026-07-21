@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { uploadCreateImage } from "@/lib/uploadCreateMedia";
+import { invalidateTeamFeedQueries } from "@/lib/hubQueries";
 import type { MyHubTeam } from "./MyHubTeamCard";
 
 interface Props {
@@ -62,7 +63,10 @@ export function EditTeamSheet({ team, open, onOpenChange }: Props) {
       queryClient.invalidateQueries({ queryKey: ["/api/teams/me/managed"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams/my-teams"] });
       queryClient.invalidateQueries({ queryKey: ["/api/my-hub/summary"] });
-      if (team?.id) queryClient.invalidateQueries({ queryKey: ["/api/teams", team.id] });
+      if (team?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/teams", team.id] });
+        void invalidateTeamFeedQueries(queryClient, team.id);
+      }
       onOpenChange(false);
     },
     onError: (err: Error) => {

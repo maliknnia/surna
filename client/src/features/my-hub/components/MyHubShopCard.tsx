@@ -8,11 +8,13 @@ import {
   BarChart3,
   Store,
   Megaphone,
+  Plus,
 } from "lucide-react";
 import { LockedAction } from "./LockedAction";
 import { useProEntitlement, isProEntitlementActive } from "@/hooks/useProEntitlement";
 import { proShopWorkspaceHref } from "@/lib/proFeatures";
 import { marketplaceShopPath } from "@/lib/marketplaceApi";
+import { ROUTES } from "@/navigation";
 
 export type MyHubShop = {
   id: string;
@@ -83,6 +85,9 @@ export function MyHubShopCard({ shop, stats }: Props) {
       </div>
 
       <div className="px-3 py-2 flex items-center gap-1 overflow-x-auto" style={{ borderTop: "0.5px solid var(--surna-border)" }}>
+        <Link href={ROUTES.createMarketplaceListing}>
+          <ActionChip icon={Plus} label="List item" testId={`shop-list-${shop.id}`} />
+        </Link>
         <Link href={marketplaceShopPath(shop.id)}>
           <ActionChip icon={Store} label="Storefront" testId={`shop-open-${shop.id}`} />
         </Link>

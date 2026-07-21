@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, MessageSquare, Trash2 } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient, getQueryFn } from '@/lib/queryClient';
@@ -48,7 +48,7 @@ export default function Reviews({ userId, isOwnProfile = false }: ReviewsProps) 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users', userId, 'reviews'] });
       setRating(0); setText(''); setContext('');
-      toast({ title: 'Review posted' });
+      toast({ title: 'Review saved' });
     },
     onError: (e: any) => toast({ title: 'Failed', description: e?.message || 'Could not post', variant: 'destructive' }),
   });
@@ -66,6 +66,14 @@ export default function Reviews({ userId, isOwnProfile = false }: ReviewsProps) 
     : '0.0';
 
   const canReview = !!currentUserId && currentUserId !== userId;
+  const ownReview = reviews.find((r) => r.authorId === currentUserId);
+
+  useEffect(() => {
+    if (!ownReview) return;
+    setRating(ownReview.rating);
+    setText(ownReview.text ?? '');
+    setContext(ownReview.context ?? '');
+  }, [ownReview?.id, ownReview?.rating, ownReview?.text, ownReview?.context]);
 
   return (
     <div className="space-y-6">
@@ -91,7 +99,9 @@ export default function Reviews({ userId, isOwnProfile = false }: ReviewsProps) 
       {/* Compose */}
       {canReview && (
         <div className="p-4 rounded-2xl border border-border space-y-3">
-          <p className="text-sm font-semibold text-foreground">Leave a review</p>
+          <p className="text-sm font-semibold text-foreground">
+            {ownReview ? 'Update your review' : 'Leave a review'}
+          </p>
           <div className="flex items-center gap-1">
             {Array.from({ length: 5 }).map((_, i) => {
               const value = i + 1;
@@ -130,7 +140,7 @@ export default function Reviews({ userId, isOwnProfile = false }: ReviewsProps) 
             disabled={!rating || addReview.isPending}
             data-testid="button-submit-review"
           >
-            {addReview.isPending ? 'Posting…' : 'Post review'}
+            {addReview.isPending ? 'Posting…' : ownReview ? 'Update review' : 'Post review'}
           </Button>
         </div>
       )}

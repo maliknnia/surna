@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Store } from "lucide-react";
 import {
   SectionHeader,
@@ -72,16 +73,30 @@ export default function MyHubShopsPage() {
             icon={Store}
             title="You don't have a shop yet"
             description="List gear, merch, or equipment on the marketplace and manage orders from one place."
-            ctaLabel="Open seller dashboard"
-            ctaHref="/seller/dashboard"
+            ctaLabel="Create your first listing"
+            ctaHref={ROUTES.createMarketplaceListing}
             testId="shops-empty-state"
           />
         )}
 
         {shop ? (
-          <section>
+          <section className="space-y-3">
             <SectionHeader title="Your shop" subtitle="Marketplace seller account" />
             <MyHubShopCard shop={shop} stats={stats} />
+            <Link href={ROUTES.createMarketplaceListing}>
+              <button
+                type="button"
+                className="w-full rounded-2xl px-4 py-3 text-sm font-semibold transition-all active:scale-[0.99]"
+                style={{
+                  background: "var(--surna-elevated)",
+                  border: "1px solid var(--surna-border)",
+                  color: "var(--surna-text)",
+                }}
+                data-testid="shops-add-listing"
+              >
+                Add new listing
+              </button>
+            </Link>
           </section>
         ) : null}
 

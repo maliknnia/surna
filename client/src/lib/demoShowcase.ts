@@ -1,6 +1,6 @@
-/** Two curated showcase personas — used when offline demos are explicitly enabled. */
+/** Curated showcase personas — used when offline demos are enabled. */
 
-export const DEMO_SHOWCASE_LIMIT = 2;
+export const DEMO_SHOWCASE_LIMIT = 3;
 
 const IMG = (id: string, w: number, h: number) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
@@ -36,6 +36,16 @@ export const SHOWCASE_ATHLETES: ShowcaseAthlete[] = [
     sport: "Tennis",
     bio: "D1 background · USTA pathway coach · NYC",
     location: "New York, NY",
+  },
+  {
+    id: "ds-marcus",
+    firstName: "Marcus",
+    lastName: "Reid",
+    username: "marcus_run",
+    profileImageUrl: IMG("1507003211169-0a1dd7228f2d", 400, 400),
+    sport: "Running",
+    bio: "Trail & road · sub-3 marathon chase · Cork",
+    location: "Cork, IE",
   },
 ];
 

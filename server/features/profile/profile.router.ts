@@ -11,6 +11,7 @@ import {
 } from "./profile.resources";
 import { isAuthenticated } from "../../replitAuth";
 import { resolveRequestUserId } from "../../lib/authUser";
+import { storage } from "../../storage";
 import { getActiveNudges, dismissNudge } from "../../services/phase8ProfileService";
 import {
   getProfileTeamGames,
@@ -136,15 +137,34 @@ profileRouter.patch("/team-games/:participantId/visibility", isAuthenticated, as
 
 profileRouter.post("/:id/review", isAuthenticated, async (req, res) => {
   try {
-    const { rating, comment } = req.body;
-    res.json({
-      success: true,
-      reviewId: `review-${Date.now()}`,
-      rating,
-      comment,
+    const authorId = resolveRequestUserId(req as Parameters<typeof resolveRequestUserId>[0]);
+    if (!authorId) return res.status(401).json({ error: "UNAUTHORIZED" });
+
+    const subjectId = req.params.id;
+    if (authorId === subjectId) {
+      return res.status(400).json({ message: "Cannot review yourself" });
+    }
+
+    const body = z
+      .object({
+        rating: z.number().int().min(1).max(5),
+        comment: z.string().max(1000).optional(),
+        text: z.string().max(1000).optional(),
+        context: z.string().max(100).optional(),
+      })
+      .parse(req.body);
+
+    const review = await storage.upsertUserReview({
+      subjectId,
+      authorId,
+      rating: body.rating,
+      text: body.text ?? body.comment ?? null,
+      context: body.context ?? null,
     });
-  } catch {
-    res.status(500).json({ message: "Failed to submit review" });
+    res.status(201).json(review);
+  } catch (err: unknown) {
+    if (err instanceof z.ZodError) return res.status(400).json({ message: "Invalid input" });
+    res.status(500).json({ message: err instanceof Error ? err.message : "Failed to submit review" });
   }
 });
 

@@ -3,6 +3,7 @@
  */
 import { resolveDemoCreatorId } from "@/lib/demoProfiles";
 import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
+import { isDemoContentFallbackEnabled } from "@/config/demoMode";
 
 export type DemoEvent = {
   id: string;
@@ -53,6 +54,20 @@ export const DEMO_EVENTS: DemoEvent[] = [
     creator_username: "elena_tennis",
     isDemo: true,
   },
+  {
+    id: "demo-ev-sunrise-run",
+    title: "Sunrise 10K & Coffee",
+    description: "Easy pace group run · coffee stop after.",
+    location: "Marina Walk · Cork",
+    sport: "Running",
+    starts_at: hoursFromNow(14),
+    going_count: 3,
+    interested_count: 2,
+    capacity: 20,
+    creator_first_name: "Marcus",
+    creator_username: "marcus_run",
+    isDemo: true,
+  },
 ];
 
 export function isDemoEventId(id: string): boolean {
@@ -95,6 +110,7 @@ export function mergeWithDemoEvents(
 ): any[] {
   const api = Array.isArray(apiEvents) ? apiEvents : [];
   if (options?.skipDemo ?? true) return api;
+  if (!isDemoContentFallbackEnabled()) return api;
   const demos = DEMO_EVENTS.slice(0, DEMO_SHOWCASE_LIMIT);
   if (options?.mixDemos) {
     const apiIds = new Set(api.map((e) => String(e.id)));
@@ -102,6 +118,6 @@ export function mergeWithDemoEvents(
     return [...api, ...extras].slice(0, DEMO_SHOWCASE_LIMIT);
   }
   if (api.length > 0) return api;
-  if (options?.fallback) return [...demos];
+  if (options?.fallback) return demos.map(demoEventToApiRow);
   return api;
 }

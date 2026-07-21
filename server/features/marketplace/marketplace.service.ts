@@ -48,6 +48,7 @@ export const Marketplace = {
   },
   
   // Reviews
+  upsertProductReview: repo.upsertProductReview,
   addProductReview: repo.addProductReview,
   getProductReviews: repo.getProductReviews,
   
@@ -70,4 +71,9 @@ export const Marketplace = {
   getSellerOrders: repo.getSellerOrders,
   getSellerShopDashboard: repo.getSellerShopDashboard,
   updateSellerOrderStatus: repo.updateSellerOrderStatus,
+  listSellerProducts: async (sellerId: string, limit?: number) => {
+    const rows = await repo.listSellerProducts(sellerId, limit);
+    return rows.map(withImageVariants);
+  },
+  calculateCartCheckoutTotals: repo.calculateCartCheckoutTotals,
 };

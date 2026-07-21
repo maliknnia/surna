@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { markNavReturn } from "@/lib/navigation";
 import { getQueryFn } from "@/lib/queryClient";
 import { fetchCoaches } from "@/lib/coachesApi";
-import { isClientDemoId } from "@/lib/demoShowcase";
+import { mergeWithDemoEvents } from "@/lib/demoEvents";
+import { mergeWithDemoTeams } from "@/lib/demoTeams";
 import { ROUTES } from "@/navigation";
 import { formatEventWhenShort, getEventCoverUrl } from "@/lib/eventCover";
 import {
@@ -25,9 +26,8 @@ import type { CoachWithProfile } from "@shared/schema";
 const PURPLE_NEW = "#803FE1";
 const HOME_ROW_MAX = 2;
 
-function liveApiRows<T>(items: T[]): T[] {
-  const list = Array.isArray(items) ? items : [];
-  return list.filter((item) => !isClientDemoId(String((item as { id?: string }).id ?? ""))).slice(0, HOME_ROW_MAX);
+function takeHomeRows<T>(items: T[]): T[] {
+  return (Array.isArray(items) ? items : []).slice(0, HOME_ROW_MAX);
 }
 
 function sortByDesc<T>(items: T[], score: (item: T) => number): T[] {
@@ -113,17 +113,20 @@ function useHomeData() {
   });
   const coachesQuery = useQuery({
     queryKey: [...HOME_QUERY_KEYS.coaches],
-    queryFn: () => fetchCoaches({ limit: HOME_ROW_MAX, allowDemoFallback: false }),
+    queryFn: () => fetchCoaches({ limit: HOME_ROW_MAX }),
     ...homeQueryOptions,
   });
 
-  const events = useMemo(
-    () => liveApiRows(Array.isArray(eventsQuery.data) ? eventsQuery.data : eventsQuery.data?.items || []),
-    [eventsQuery.data],
+  const events = useMemo(() => {
+    const api = Array.isArray(eventsQuery.data) ? eventsQuery.data : eventsQuery.data?.items || [];
+    return takeHomeRows(mergeWithDemoEvents(api, { skipDemo: false, fallback: true }));
+  }, [eventsQuery.data]);
+  const teams = useMemo(
+    () => takeHomeRows(mergeWithDemoTeams(teamsQuery.data || [], { skipDemo: false, fallback: true })),
+    [teamsQuery.data],
   );
-  const teams = useMemo(() => liveApiRows(teamsQuery.data || []), [teamsQuery.data]);
-  const instantGames = useMemo(() => liveApiRows(instantQuery.data || []), [instantQuery.data]);
-  const coaches = coachesQuery.data || [];
+  const instantGames = useMemo(() => takeHomeRows(instantQuery.data || []), [instantQuery.data]);
+  const coaches = takeHomeRows(coachesQuery.data || []);
 
   const loading =
     eventsQuery.isLoading ||

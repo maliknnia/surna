@@ -22,7 +22,8 @@ export type CreateOptionId =
   | "challenge"
   | "place"
   | "post"
-  | "live";
+  | "live"
+  | "sell";
 
 export interface CreateOption {
   id: CreateOptionId;
@@ -151,6 +152,24 @@ export const CREATE_SECTIONS: CreateSection[] = [
         manageLabel: "Manage events",
         eta: "1 min",
         stepLabels: ["Title", "Stream URL", "Broadcast"],
+      },
+    ],
+  },
+  {
+    id: "commerce",
+    title: "Sell gear",
+    subtitle: "List products on the marketplace",
+    options: [
+      {
+        id: "sell",
+        title: "Marketplace listing",
+        subtitle: "Sell equipment, merch, or gear to athletes",
+        icon: ShoppingBag,
+        route: ROUTES.createMarketplaceListing,
+        manageRoute: ROUTES.myHubShops,
+        manageLabel: "Manage shop",
+        eta: "2 min",
+        stepLabels: ["Photo", "Details", "Publish"],
       },
     ],
   },

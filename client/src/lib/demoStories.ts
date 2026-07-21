@@ -2,6 +2,7 @@ import type { StoryWithUser } from "@shared/schema";
 import type { DemoStoryUser } from "@/lib/personalizedDemoFeed";
 import { DEMO_SHOWCASE_LIMIT } from "@/lib/demoShowcase";
 import { DEMO_STORY_POOL } from "@/lib/personalizedDemoFeed";
+import { isDemoContentFallbackEnabled } from "@/config/demoMode";
 
 export function isDemoStoryUserId(userId: string): boolean {
   return userId.startsWith("ds-");
@@ -57,9 +58,10 @@ export function buildAllDemoStories(): StoryWithUser[] {
   return DEMO_STORY_POOL.slice(0, DEMO_SHOWCASE_LIMIT).flatMap(buildDemoStoriesForUser);
 }
 
-/** API stories first; at most two showcase demos when the feed is empty. */
+/** API stories first; showcase demos when the feed is empty and demos are enabled. */
 export function mergeApiStoriesWithDemo(apiStories: StoryWithUser[]): StoryWithUser[] {
   if (apiStories.length > 0) return apiStories;
+  if (!isDemoContentFallbackEnabled()) return apiStories;
   return buildAllDemoStories();
 }
 

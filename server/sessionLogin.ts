@@ -71,6 +71,17 @@ export function establishSession(
   });
 }
 
+function authDbUnavailableMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/compute time quota|exceeded the compute/i.test(msg)) {
+    return "Database is paused (Neon compute quota exceeded). Upgrade or wait for the quota reset, then try again.";
+  }
+  if (/ECONNREFUSED|ENOTFOUND|timeout|Connection terminated|fetch failed/i.test(msg)) {
+    return "Cannot reach the database right now. Check DATABASE_URL and try again.";
+  }
+  return "Sign-in temporarily unavailable";
+}
+
 function phoneSignInAvailable(): boolean {
   return !isProduction() || Boolean(process.env.TWILIO_ACCOUNT_SID?.trim());
 }
@@ -240,7 +251,7 @@ export function registerSessionLoginRoutes(app: Express) {
       });
     } catch (err) {
       console.error("[auth] email sign-up failed:", err);
-      res.status(500).json({ message: "Could not create account" });
+      res.status(500).json({ message: authDbUnavailableMessage(err) });
     }
   });
 
@@ -267,7 +278,7 @@ export function registerSessionLoginRoutes(app: Express) {
         dbUser = row;
       } catch (err) {
         console.error("[auth] email sign-in DB error:", err);
-        return res.status(503).json({ message: "Sign-in temporarily unavailable" });
+        return res.status(503).json({ message: authDbUnavailableMessage(err) });
       }
 
       await establishSession(req, {
@@ -336,7 +347,7 @@ export function registerSessionLoginRoutes(app: Express) {
       } catch (err) {
         console.error("[auth] phone verify DB error:", err);
         if (isProduction()) {
-          return res.status(503).json({ message: "Sign-in temporarily unavailable" });
+          return res.status(503).json({ message: authDbUnavailableMessage(err) });
         }
         dbUser = {
           id: `phone-${phone.slice(-10)}`,

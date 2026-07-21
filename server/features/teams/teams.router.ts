@@ -728,8 +728,14 @@ teamsRouter.get('/:id/feed', isAuthenticated, async (req: AuthedRequest, res: Re
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    const authorIds = await activeMemberUserIds(req.params.id);
-    if (authorIds.length === 0) return res.json({ posts: [] });
+    const teamId = req.params.id;
+    const authorIds = await activeMemberUserIds(teamId);
+
+    const teamScoped = sql`(${posts.eventData}::jsonb->>'teamId') = ${teamId}`;
+    const authorFilter =
+      authorIds.length > 0
+        ? or(inArray(posts.authorId, authorIds), teamScoped)
+        : teamScoped;
 
     const rows = await db
       .select({ post: posts, author: users })
@@ -737,9 +743,9 @@ teamsRouter.get('/:id/feed', isAuthenticated, async (req: AuthedRequest, res: Re
       .innerJoin(users, eq(posts.authorId, users.id))
       .where(
         and(
-          inArray(posts.authorId, authorIds),
           eq(posts.removed, false),
           or(eq(posts.visibility, 'public'), eq(posts.visibility, 'friends')),
+          authorFilter,
         ),
       )
       .orderBy(desc(posts.createdAt))
@@ -749,6 +755,75 @@ teamsRouter.get('/:id/feed', isAuthenticated, async (req: AuthedRequest, res: Re
   } catch (err) {
     console.error('[teams] feed error', err);
     res.status(500).json({ message: 'Failed to fetch team feed' });
+  }
+});
+
+const TeamFeedPostSchema = z
+  .object({
+    content: z.string().max(5000).optional().default(''),
+    imageUrl: z.string().url().optional().nullable(),
+    videoUrl: z.string().url().optional().nullable(),
+  })
+  .refine(
+    (data) => Boolean(data.content?.trim()) || Boolean(data.imageUrl) || Boolean(data.videoUrl),
+    { message: 'Post must include text or media' },
+  );
+
+teamsRouter.post('/:id/feed', isAuthenticated, async (req: AuthedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const parsed = TeamFeedPostSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'INVALID_BODY', issues: parsed.error.issues });
+    }
+
+    const teamId = req.params.id;
+    const canManage = await viewerCanManageTeam(teamId, userId);
+    if (!canManage) {
+      return res.status(403).json({ message: 'Only captains, co-captains or admins can post to the team feed' });
+    }
+
+    const [teamRow] = await db
+      .select({ sport: teams.sport })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+    if (!teamRow) return res.status(404).json({ message: 'Not found' });
+
+    const hasVideo = Boolean(parsed.data.videoUrl);
+    const hasImage = Boolean(parsed.data.imageUrl);
+    const mediaType = hasVideo ? 'video' : hasImage ? 'image' : 'text';
+    const postType = hasVideo ? 'video' : hasImage ? 'image' : 'text';
+
+    const [inserted] = await db
+      .insert(posts)
+      .values({
+        authorId: userId,
+        content: parsed.data.content?.trim() ?? '',
+        imageUrl: parsed.data.imageUrl ?? null,
+        videoUrl: parsed.data.videoUrl ?? null,
+        mediaType,
+        postType,
+        sport: teamRow.sport,
+        visibility: 'public',
+        eventData: { teamId },
+      })
+      .returning();
+
+    const [author] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    res.status(201).json({
+      post: {
+        ...inserted,
+        teamId,
+        author: author ? toPublicUser(author) : null,
+        authorName: author ? authorDisplayName(author) : 'Member',
+      },
+    });
+  } catch (err) {
+    console.error('[teams] feed post error', err);
+    res.status(500).json({ message: 'Failed to post to team feed' });
   }
 });
 

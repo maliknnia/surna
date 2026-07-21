@@ -1,5 +1,5 @@
 /**
- * Showcase story pool — exactly two curated athletes when the API is empty.
+ * Showcase story pool — curated athletes when the API is empty.
  */
 
 import { DEMO_SHOWCASE_LIMIT, SHOWCASE_ATHLETES } from "@/lib/demoShowcase";
@@ -17,6 +17,8 @@ export type DemoStoryUser = {
   teaser: string;
 };
 
+const TEASERS = ["Morning laps", "Serve clinic tonight", "Easy 10K + coffee"];
+
 export const DEMO_STORY_POOL: DemoStoryUser[] = SHOWCASE_ATHLETES.map((a, i) => ({
   id: a.id,
   firstName: a.firstName,
@@ -27,7 +29,7 @@ export const DEMO_STORY_POOL: DemoStoryUser[] = SHOWCASE_ATHLETES.map((a, i) => 
   isLive: i === 1,
   ownerType: "person" as const,
   sport: a.sport,
-  teaser: i === 0 ? "Morning laps 🏊" : "Serve clinic tonight 🎾",
+  teaser: TEASERS[i] ?? a.bio,
 }));
 
 export function pickStoryUsers(_seed: number, count = DEMO_SHOWCASE_LIMIT): DemoStoryUser[] {

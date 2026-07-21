@@ -31,9 +31,67 @@ export function brightenHex(hex: string, amount = 0.45): string {
   return `#${((1 << 24) + (lift(r) << 16) + (lift(g) << 8) + lift(b)).toString(16).slice(1)}`;
 }
 
-/** Soften extracted photo colours for card backgrounds — lighter, less aggressive. */
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return { h: h * 360, s, l };
+}
+
+function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+  const hh = ((h % 360) + 360) % 360;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + hh / 30) % 12;
+    return l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+  };
+  return {
+    r: Math.round(f(0) * 255),
+    g: Math.round(f(8) * 255),
+    b: Math.round(f(4) * 255),
+  };
+}
+
+/**
+ * Discovery card fill from a photo colour —
+ * keep the image’s warmth, pull toward brick red / brown, solid (no wash).
+ */
 export function softenCardColor(hex: string): string {
-  return brightenHex(hex, 0.38);
+  const rgb = hexToRgb(hex);
+  if (!rgb) return "#8B2635";
+
+  const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+  // Warm brick target (~12°) — reds/oranges keep more of their own hue
+  const targetHue = 12;
+  const isAlreadyWarm = h <= 45 || h >= 330;
+  const hueBlend = isAlreadyWarm ? 0.28 : 0.62;
+  let warmH = h + ((targetHue - h + 540) % 360 - 180) * hueBlend;
+  warmH = ((warmH % 360) + 360) % 360;
+
+  // Rich but not neon; dark enough for white text (event-card look)
+  const warmS = Math.min(0.72, Math.max(0.38, s * 0.85 + 0.22));
+  const warmL = Math.min(0.4, Math.max(0.26, l * 0.55 + 0.12));
+
+  const out = hslToRgb(warmH, warmS, warmL);
+  return rgbToHex(out.r, out.g, out.b);
 }
 
 /** Average colour along image edges — for post-card gradient washes. */

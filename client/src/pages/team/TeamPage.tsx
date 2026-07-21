@@ -230,7 +230,12 @@ export default function TeamPage() {
                 canUpload={!!teamAny.canManage || !!teamAny.isCaptain}
               />
             )}
-            {activeTab === 'feed' && <TeamFeed teamId={teamId!} />}
+            {activeTab === 'feed' && (
+              <TeamFeed
+                teamId={teamId!}
+                canManage={!!teamAny.canManage || !!teamAny.isCaptain}
+              />
+            )}
             {activeTab === 'chat' && (
               <TeamChat teamId={teamId!} isMember={!!teamAny.isMember || !!teamAny.hasJoined} />
             )}

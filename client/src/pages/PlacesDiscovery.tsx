@@ -100,6 +100,7 @@ export default function PlacesDiscovery({
   const places = useMemo(() => {
     let list = mergeWithDemoPlaces(apiPlaces, {
       skipDemo: hasActiveFilters,
+      fallback: !hasActiveFilters,
     });
     if (selectedCategory !== "All") {
       const cat = selectedCategory.toLowerCase();
