@@ -26,21 +26,27 @@ function storyAvatarFrame(opts: {
   const { hasStories, hasUnviewed, isLive } = opts;
 
   if (!hasStories) {
-    return { border: "1.5px dashed var(--surna-story-empty-dash)" };
+    return {
+      border: "1.5px dashed var(--surna-story-empty-dash)",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.18)",
+    };
   }
   if (isLive) {
     return {
       border: "2px solid var(--surna-story-ring)",
-      boxShadow: "0 0 12px var(--surna-story-ring-glow)",
+      boxShadow: "0 0 12px var(--surna-story-ring-glow), 0 4px 12px rgba(0,0,0,0.12)",
     };
   }
   if (hasUnviewed) {
     return {
       border: "2px solid var(--surna-story-ring)",
-      boxShadow: "0 0 10px var(--surna-story-ring-glow)",
+      boxShadow: "0 0 10px var(--surna-story-ring-glow), 0 4px 12px rgba(0,0,0,0.1)",
     };
   }
-  return { border: "2px solid transparent" };
+  return {
+    border: "2px solid transparent",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.16)",
+  };
 }
 
 function StoryAvatar({

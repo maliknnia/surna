@@ -22,9 +22,6 @@ export type DemoEvent = {
   isDemo?: boolean;
 };
 
-const IMG = (id: string, w: number, h: number) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
-
 function hoursFromNow(h: number): string {
   return new Date(Date.now() + h * 3600_000).toISOString();
 }
@@ -47,7 +44,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     creator_first_name: "Aisha",
     creator_username: "aisha_swim",
     creator_avatar: athlete("aisha_swim")?.profileImageUrl,
-    cover_url: IMG("1571907483441-8b5d0d2c8f0a", 1200, 700),
+    cover_url: athlete("aisha_swim")?.coverImageUrl,
     isDemo: true,
   },
   {
@@ -63,7 +60,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     creator_first_name: "Elena",
     creator_username: "elena_tennis",
     creator_avatar: athlete("elena_tennis")?.profileImageUrl,
-    cover_url: IMG("1622163640459-1b9a4661f851", 1200, 700),
+    cover_url: athlete("elena_tennis")?.coverImageUrl,
     isDemo: true,
   },
   {
@@ -79,7 +76,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     creator_first_name: "Marcus",
     creator_username: "marcus_run",
     creator_avatar: athlete("marcus_run")?.profileImageUrl,
-    cover_url: IMG("1476480862126-209bfaa8edc8", 1200, 700),
+    cover_url: athlete("marcus_run")?.coverImageUrl,
     isDemo: true,
   },
 ];

@@ -70,30 +70,23 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
 }
 
 /**
- * Discovery card fill from a photo colour —
- * vivid crimson-red family, brighter than the old muddy brick wash.
+ * Discovery card fill — keep the photo’s own colour.
+ * Only nudge lightness so white text stays readable (no hue wash).
  */
 export function softenCardColor(hex: string): string {
   const rgb = hexToRgb(hex);
-  if (!rgb) return "#C62828";
+  if (!rgb) return "#2a2a2a";
 
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
-  // Crimson target (~355°) — avoid pulling everything into brown (hue ~12°)
-  const targetHue = 355;
-  const isAlreadyRed =
-    (h >= 330 && h <= 360) || (h >= 0 && h <= 25) || (h >= 345);
-  const isOrangeYellow = h > 25 && h < 70;
-  // Keep photo hue when it's already a strong red/orange; otherwise nudge to crimson
-  const hueBlend = isAlreadyRed ? 0.12 : isOrangeYellow ? 0.35 : 0.55;
-  let warmH = h + ((targetHue - h + 540) % 360 - 180) * hueBlend;
-  warmH = ((warmH % 360) + 360) % 360;
+  // Preserve hue + saturation from the image; clamp lightness for contrast
+  const outS = Math.min(0.85, Math.max(0.2, s));
+  let outL = l;
+  if (outL > 0.58) outL = 0.42 + (outL - 0.58) * 0.25; // too light → darken
+  if (outL < 0.22) outL = 0.28; // too dark → lift slightly
+  outL = Math.min(0.52, Math.max(0.28, outL));
 
-  // Punchier saturation + higher lightness so cards read clean, not muddy
-  const warmS = Math.min(0.8, Math.max(0.52, s * 0.65 + 0.38));
-  const warmL = Math.min(0.5, Math.max(0.36, l * 0.4 + 0.3));
-
-  const out = hslToRgb(warmH, warmS, warmL);
+  const out = hslToRgb(h, outS, outL);
   return rgbToHex(out.r, out.g, out.b);
 }
 
@@ -196,7 +189,7 @@ export function extractDominantColor(imageUrl: string): Promise<string> {
       try {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-        if (!ctx) { resolve("#C62828"); return; }
+        if (!ctx) { resolve("#2a2a2a"); return; }
         canvas.width = 50;
         canvas.height = 50;
         ctx.drawImage(img, 0, 0, 50, 50);
@@ -209,7 +202,7 @@ export function extractDominantColor(imageUrl: string): Promise<string> {
           if (pr < 15 && pg < 15 && pb < 15) continue;
           r += pr; g += pg; b += pb; count++;
         }
-        if (count === 0) { resolve("#C62828"); return; }
+        if (count === 0) { resolve("#2a2a2a"); return; }
         r = Math.round(r / count);
         g = Math.round(g / count);
         b = Math.round(b / count);
@@ -219,10 +212,10 @@ export function extractDominantColor(imageUrl: string): Promise<string> {
         colorCache.set(normalized, hex);
         resolve(hex);
       } catch {
-        resolve("#C62828");
+        resolve("#2a2a2a");
       }
     };
-    img.onerror = () => resolve("#C62828");
+    img.onerror = () => resolve("#2a2a2a");
     img.src = normalized;
   });
 }

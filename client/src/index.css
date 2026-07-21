@@ -491,18 +491,51 @@
   }
 
   /* ─── SPOTIFY CARD STYLES ─── */
+  /* Soft “air” lift — slight inflate feel (premium, kept subtle) */
   .card-spotify {
-    border-radius: var(--radius-card);
-    transition: transform 0.2s var(--spring-gentle);
+    border-radius: calc(var(--radius-card) + 2px);
+    transition: transform 0.2s var(--spring-gentle), box-shadow 0.2s ease;
     cursor: pointer;
     position: relative;
     overflow: hidden;
     border: none;
-    box-shadow: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+      0 8px 20px rgba(0, 0, 0, 0.12),
+      0 2px 6px rgba(0, 0, 0, 0.06);
+  }
+  .card-spotify::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.03) 26%,
+      transparent 50%
+    );
+    z-index: 1;
+  }
+  .card-spotify > * {
+    position: relative;
+    z-index: 2;
+  }
+  .dark .card-spotify {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+      0 10px 24px rgba(0, 0, 0, 0.32),
+      0 2px 8px rgba(0, 0, 0, 0.18);
   }
   .card-spotify:active {
-    transform: scale(0.97);
+    transform: scale(0.98);
     transition: transform 0.1s ease;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 4px 12px rgba(0, 0, 0, 0.12);
   }
 
   .playlist-card {
@@ -519,15 +552,18 @@
     position: relative;
     width: 56px;
     height: 56px;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
     flex-shrink: 0;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 3px 10px rgba(0, 0, 0, 0.14);
   }
 
   .playlist-card__thumb--lg {
     width: 76px;
     height: 76px;
-    border-radius: 12px;
+    border-radius: 14px;
   }
 
   .playlist-card__thumb-fallback {
@@ -761,9 +797,45 @@
   }
 
   .event-card-dark {
-    background: var(--extracted-color, #C62828);
-    border-radius: var(--radius-card);
+    background: var(--extracted-color, #2a2a2a);
+    border-radius: calc(var(--radius-card) + 2px);
     border: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+      0 8px 20px rgba(0, 0, 0, 0.14),
+      0 2px 6px rgba(0, 0, 0, 0.06);
+    position: relative;
+    overflow: hidden;
+  }
+  .event-card-dark::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.02) 28%,
+      transparent 52%
+    );
+  }
+
+  /* Shared soft inflate for home portraits + coach avatars */
+  .surna-air-surface {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+      0 6px 16px rgba(0, 0, 0, 0.12),
+      0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+  .dark .surna-air-surface {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+      0 8px 18px rgba(0, 0, 0, 0.28),
+      0 2px 6px rgba(0, 0, 0, 0.16);
   }
 
   /* ─── SECTION LABELS (Spotify) ─── */
@@ -2704,6 +2776,19 @@ html:not(.dark) .surna-glow--bare[data-glow]::after {
   border-radius: 50%;
   overflow: hidden;
   position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.08),
+    0 6px 14px rgba(0, 0, 0, 0.12),
+    0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.dark .coach-circle-card__avatar {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.22),
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    0 2px 6px rgba(0, 0, 0, 0.16);
 }
 
 .coach-circle-card__frame--lit::before {

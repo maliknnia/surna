@@ -29,7 +29,7 @@ export type DemoTeam = {
 };
 
 const IMG = (id: string, w: number, h: number) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
+  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=90`;
 
 function hashSeed(id: string): number {
   let h = 0;
@@ -72,8 +72,8 @@ export const DEMO_TEAMS: DemoTeam[] = [
     followersCount: 288,
     latitude: 51.9015,
     longitude: -8.4682,
-    logo: IMG("1546519638-68e166b93deb", 400, 400),
-    cover: IMG("1546519638-68e166b93deb", 1200, 600),
+    logo: IMG("1546519638-68e109498ffc", 400, 400),
+    cover: IMG("1546519638-68e109498ffc", 1200, 600),
     isDemo: true,
   },
   {

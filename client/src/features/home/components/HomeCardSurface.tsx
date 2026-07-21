@@ -139,7 +139,7 @@ export function HomePortraitCard({
         contentKind={toContentKind(cardKind)}
         aspectRatio="142/190"
         variant="home"
-        className="w-[142px] h-[190px] rounded-xl active:scale-[0.98] transition-transform cursor-pointer"
+        className="w-[142px] h-[190px] rounded-xl surna-air-surface active:scale-[0.98] transition-transform cursor-pointer"
         onClick={onClick}
       >
         {attendeeEntity && (

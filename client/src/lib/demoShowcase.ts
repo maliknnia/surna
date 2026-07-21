@@ -2,8 +2,12 @@
 
 export const DEMO_SHOWCASE_LIMIT = 3;
 
-const IMG = (id: string, w: number, h: number) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
+/** High-quality portrait URL (face crop) for showcase athletes. */
+const FACE = (id: string, w = 400, h = 400) =>
+  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&crop=faces&auto=format&q=90`;
+
+const SHOT = (id: string, w: number, h: number) =>
+  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=90`;
 
 export type ShowcaseAthlete = {
   id: string;
@@ -11,6 +15,7 @@ export type ShowcaseAthlete = {
   lastName: string;
   username: string;
   profileImageUrl: string;
+  coverImageUrl: string;
   sport: string;
   bio: string;
   location: string;
@@ -22,7 +27,8 @@ export const SHOWCASE_ATHLETES: ShowcaseAthlete[] = [
     firstName: "Aisha",
     lastName: "Okafor",
     username: "aisha_swim",
-    profileImageUrl: IMG("1594381898411-8465977d70af", 400, 400),
+    profileImageUrl: FACE("1530549387789-4c1017266635"),
+    coverImageUrl: SHOT("1518611012118-696072aa579a", 1200, 700),
     sport: "Swimming",
     bio: "NCAA freestyler · open-water prep · Atlanta",
     location: "Atlanta, GA",
@@ -32,7 +38,8 @@ export const SHOWCASE_ATHLETES: ShowcaseAthlete[] = [
     firstName: "Elena",
     lastName: "Volkov",
     username: "elena_tennis",
-    profileImageUrl: IMG("1544005313-94ddf0286df2", 400, 400),
+    profileImageUrl: FACE("1544005313-94ddf0286df2"),
+    coverImageUrl: SHOT("1601422407692-ec4eeec1d9b3", 1200, 700),
     sport: "Tennis",
     bio: "D1 background · USTA pathway coach · NYC",
     location: "New York, NY",
@@ -42,7 +49,8 @@ export const SHOWCASE_ATHLETES: ShowcaseAthlete[] = [
     firstName: "Marcus",
     lastName: "Reid",
     username: "marcus_run",
-    profileImageUrl: IMG("1507003211169-0a1dd7228f2d", 400, 400),
+    profileImageUrl: FACE("1507003211169-0a1dd7228f2d"),
+    coverImageUrl: SHOT("1476480862126-209bfaa8edc8", 1200, 700),
     sport: "Running",
     bio: "Trail & road · sub-3 marathon chase · Cork",
     location: "Cork, IE",

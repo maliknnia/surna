@@ -1,8 +1,13 @@
 import { parseCoachProfile } from "@shared/coachProfile";
 import type { CoachWithProfile } from "@shared/schema";
+import { SHOWCASE_ATHLETES } from "@/lib/demoShowcase";
 
 const IMG = (id: string, w: number, h: number) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
+  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=90`;
+
+const aisha = SHOWCASE_ATHLETES[0];
+const elena = SHOWCASE_ATHLETES[1];
+const marcus = SHOWCASE_ATHLETES[2];
 
 /** Offline fallback when /api/coaches is empty — keeps cards & profiles populated in demos. */
 export const DEMO_COACH_PROFILES: CoachWithProfile[] = [
@@ -21,23 +26,22 @@ export const DEMO_COACH_PROFILES: CoachWithProfile[] = [
     updatedAt: new Date(),
     user: {
       id: "demo-user-aisha",
-      firstName: "Aisha",
-      lastName: "Okafor",
+      firstName: aisha.firstName,
+      lastName: aisha.lastName,
       email: "aisha@surna.app",
-      profileImageUrl: IMG("1594381898411-8465977d70af", 400, 400),
-      sport: "Swimming",
-      location: "Atlanta, GA",
+      profileImageUrl: aisha.profileImageUrl,
+      sport: aisha.sport,
+      location: aisha.location,
     } as CoachWithProfile["user"],
     profileJson: {
       tagline: "Freestyle & IM technique · pool to podium",
       teachingPhilosophy: "Every stroke should feel effortless before it gets faster.",
-      coverImageUrl: IMG("1571905289734-cca53f78610c", 900, 600),
+      coverImageUrl: aisha.coverImageUrl,
       rating: 4.9,
       reviewCount: 47,
       achievements: [{ id: "1", title: "State Champion 100m Free", year: "2019" }],
-      media: [{ id: "m1", type: "image", url: IMG("1530549332234-77879e400468", 800, 500), title: "Pool technique" }],
+      media: [{ id: "m1", type: "image", url: IMG("1571019614242-c5c5dee9f50b", 800, 500), title: "Pool technique" }],
       pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 70, period: "hour", highlighted: true }],
-      sessionTypes: ["Individual (1-on-1)", "Video analysis"],
     },
   },
   {
@@ -55,20 +59,20 @@ export const DEMO_COACH_PROFILES: CoachWithProfile[] = [
     updatedAt: new Date(),
     user: {
       id: "demo-user-elena",
-      firstName: "Elena",
-      lastName: "Volkov",
+      firstName: elena.firstName,
+      lastName: elena.lastName,
       email: "elena@surna.app",
-      profileImageUrl: IMG("1544005313-94ddf0286df2", 400, 400),
-      sport: "Tennis",
-      location: "New York, NY",
+      profileImageUrl: elena.profileImageUrl,
+      sport: elena.sport,
+      location: elena.location,
     } as CoachWithProfile["user"],
     profileJson: {
       tagline: "High-performance juniors · USTA pathway",
-      coverImageUrl: IMG("1622163640459-1b9a4661f851", 900, 600),
+      coverImageUrl: elena.coverImageUrl,
       rating: 5,
       reviewCount: 62,
       achievements: [{ id: "1", title: "12 juniors to D1 scholarships", year: "2022" }],
-      media: [{ id: "m1", type: "image", url: IMG("1554068545-4d6fbe637681", 800, 500), title: "Doubles positioning" }],
+      media: [{ id: "m1", type: "image", url: IMG("1601422407692-ec4eeec1d9b3", 800, 500), title: "Court session" }],
       pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 110, period: "hour", highlighted: true }],
     },
   },
@@ -87,20 +91,20 @@ export const DEMO_COACH_PROFILES: CoachWithProfile[] = [
     updatedAt: new Date(),
     user: {
       id: "demo-user-marcus",
-      firstName: "Marcus",
-      lastName: "Reid",
+      firstName: marcus.firstName,
+      lastName: marcus.lastName,
       email: "marcus@surna.app",
-      profileImageUrl: IMG("1507003211169-0a1dd7228f2d", 400, 400),
-      sport: "Running",
-      location: "Cork, IE",
+      profileImageUrl: marcus.profileImageUrl,
+      sport: marcus.sport,
+      location: marcus.location,
     } as CoachWithProfile["user"],
     profileJson: {
       tagline: "Road & trail · build to race day",
-      coverImageUrl: IMG("1476480862126-209bfaa8edc8", 900, 600),
+      coverImageUrl: marcus.coverImageUrl,
       rating: 4.8,
-      reviewCount: 38,
-      achievements: [{ id: "1", title: "Sub-2:55 marathon PB", year: "2023" }],
-      media: [{ id: "m1", type: "image", url: IMG("1452626036726-48bbf2842481", 800, 500), title: "Marina long run" }],
+      reviewCount: 39,
+      achievements: [{ id: "1", title: "Sub-3 marathon", year: "2023" }],
+      media: [{ id: "m1", type: "image", url: IMG("1476480862126-209bfaa8edc8", 800, 500), title: "Long run" }],
       pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 55, period: "hour", highlighted: true }],
     },
   },
