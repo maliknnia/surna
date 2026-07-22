@@ -345,7 +345,7 @@ function CoachesRow({
         <SectionTitle>Coaches near you</SectionTitle>
         <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="w-[120px] h-[120px] rounded-full animate-pulse shrink-0" style={{ background: "var(--surna-surface)" }} />
+            <div key={i} className="w-[96px] h-[96px] rounded-full animate-pulse shrink-0" style={{ background: "var(--surna-surface)" }} />
           ))}
         </div>
       </section>
@@ -356,9 +356,9 @@ function CoachesRow({
   return (
     <section className="space-y-3">
       <SectionTitle>Coaches near you</SectionTitle>
-      <div className="flex gap-4 surna-h-scroll no-scrollbar -mx-4 px-5 py-4">
+      <div className="flex gap-3.5 surna-h-scroll no-scrollbar -mx-4 px-4 pb-1">
         {list.map((coach) => {
-          const photo = coach.profile?.coverImageUrl || coach.user.profileImageUrl;
+          const photo = coach.user.profileImageUrl || coach.profile?.coverImageUrl;
           const initials = `${coach.user.firstName?.[0] ?? ""}${coach.user.lastName?.[0] ?? ""}`;
           const name = coach.user.firstName
             ? `${coach.user.firstName}${coach.user.lastName ? ` ${coach.user.lastName[0]}.` : ""}`

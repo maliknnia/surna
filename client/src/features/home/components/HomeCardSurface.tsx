@@ -334,7 +334,7 @@ export function HomeFeaturedCard({
   );
 }
 
-/** Circle coach card — avatar + name/sport below. */
+/** Circle coach card — clean portrait, plain elevated empty state. */
 export function HomeCoachCircleCard({
   photo,
   initials,
@@ -350,46 +350,34 @@ export function HomeCoachCircleCard({
   /** @deprecated Glow removed — kept for call-site compat. */
   glow?: boolean;
 }) {
-  const { gradientBackground, textColors, mode, tint } = useHomeCardTint({ sport, cardKind: "coach" });
   const hasPhoto = Boolean(photo?.trim());
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="coach-circle-card flex-shrink-0 w-[120px] flex flex-col items-center active:scale-[0.98] transition-transform touch-manipulation"
+      className="coach-circle-card flex-shrink-0 w-[104px] flex flex-col items-center active:scale-[0.97] transition-transform touch-manipulation"
     >
-      <div className="coach-circle-card__frame">
+      <div className="coach-circle-card__frame" style={{ width: 96, height: 96 }}>
         <div
           className="coach-circle-card__avatar relative overflow-hidden"
-          style={{ background: gradientBackground }}
+          style={{ background: "var(--surna-elevated)" }}
         >
-          {hasPhoto && (
+          {hasPhoto ? (
             <img src={photo!} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-          )}
-          {!hasPhoto && (
-            <>
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: buildNoImageRadialGlow(tint, mode) }}
-              />
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: buildNoImageStripeTexture(tint, mode) }}
-              />
-              <div
-                className="relative w-full h-full flex items-center justify-center text-2xl font-bold"
-                style={inter({ color: textColors.primary })}
-              >
-                {initials || "C"}
-              </div>
-            </>
+          ) : (
+            <div
+              className="relative w-full h-full flex items-center justify-center text-xl font-bold"
+              style={inter({ color: "var(--surna-text-secondary)" })}
+            >
+              {initials || "C"}
+            </div>
           )}
         </div>
       </div>
       <p
-        className="text-[13px] text-center mt-2 line-clamp-2 w-full"
-        style={{ ...inter({ fontWeight: 400, color: "var(--surna-text)" }), marginTop: HOME_BELOW_CARD_MT }}
+        className="text-[12px] text-center mt-2.5 line-clamp-2 w-full font-semibold leading-snug"
+        style={{ ...inter({ fontWeight: 600, color: "var(--surna-text)" }), marginTop: HOME_BELOW_CARD_MT }}
       >
         {name}
       </p>

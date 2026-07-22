@@ -86,16 +86,16 @@ export default function Coaches({ embedded = false }: { embedded?: boolean }) {
         className="sticky top-0 z-50 backdrop-blur-xl"
         style={{ background: headerBg, borderBottom: `1px solid ${borderColor}` }}
       >
-        <div className="px-4 pt-3 pb-3">
+        <div className="px-4 pt-3 pb-2.5">
           <div className="flex items-center gap-3">
             {!embedded && <PanelBackButton onClick={goBack} background={inputBg} color={textPrimary} />}
             <div className="flex-1 min-w-0">
-              <h1 className="text-[22px] font-bold tracking-tight" style={{ color: textPrimary }}>
+              <h1 className="text-[20px] font-semibold tracking-tight" style={{ color: textPrimary }}>
                 Coaches
               </h1>
               {!embedded && (
-                <p className="text-[11px] truncate" style={{ color: textSecondary }}>
-                  Book a coach near you
+                <p className="text-[12px] truncate mt-0.5" style={{ color: textSecondary }}>
+                  Book near you
                 </p>
               )}
             </div>
@@ -104,9 +104,10 @@ export default function Coaches({ embedded = false }: { embedded?: boolean }) {
               onClick={() => void handleRefresh()}
               className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform"
               style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}
+              aria-label="Refresh coaches"
             >
               <RefreshCw
-                size={16}
+                size={15}
                 className={isFetching ? "animate-spin" : ""}
                 style={{ color: textPrimary }}
               />
@@ -127,10 +128,7 @@ export default function Coaches({ embedded = false }: { embedded?: boolean }) {
             />
           </div>
 
-          <div
-            className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide"
-            style={{ scrollbarWidth: "none" }}
-          >
+          <div className="flex gap-2 mt-3 surna-h-scroll no-scrollbar pb-0.5 -mx-1 px-1">
             {sportFilters.map((sport) => {
               const active = activeFilter === sport;
               return (
@@ -138,11 +136,12 @@ export default function Coaches({ embedded = false }: { embedded?: boolean }) {
                   key={sport}
                   type="button"
                   onClick={() => setActiveFilter(sport)}
-                  className="px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap shrink-0 active:scale-95 transition-transform"
+                  className="px-3 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap shrink-0 active:scale-95 transition-transform"
                   style={{
                     background: active ? chipActiveBg : chipBg,
                     color: active ? chipActiveText : chipText,
-                    border: active ? "none" : `1px solid ${borderColor}`,
+                    border: `1px solid ${active ? "transparent" : borderColor}`,
+                    boxShadow: !isDark && !active ? "0 1px 2px rgba(0,0,0,0.04)" : "none",
                   }}
                 >
                   {sport}
@@ -195,21 +194,21 @@ export default function Coaches({ embedded = false }: { embedded?: boolean }) {
               </p>
             )}
             <div className="px-4 pb-6">
-              <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4">
+              <div className="grid grid-cols-3 gap-x-2 gap-y-7 sm:grid-cols-4 sm:gap-x-4">
                 {(filteredCoaches as CoachWithProfile[]).map((coach) => (
-                  <CoachCircleCard key={coach.id} coach={coach} size={92} />
+                  <CoachCircleCard key={coach.id} coach={coach} size={88} />
                 ))}
               </div>
             </div>
 
-            <div className="px-4 mt-4 mb-6 text-center">
+            <div className="px-4 mt-2 mb-8 text-center">
               <button
                 type="button"
                 onClick={() => setLocation("/monetization/coach-signup")}
-                className="text-[12px] font-semibold underline underline-offset-2"
+                className="text-[12px] font-medium underline underline-offset-2"
                 style={{ color: textSecondary }}
               >
-                Become a coach on SURNA
+                Become a coach
               </button>
             </div>
           </>
@@ -221,11 +220,12 @@ export default function Coaches({ embedded = false }: { embedded?: boolean }) {
 
 function ListSkeleton({ chipBg }: { chipBg: string }) {
   return (
-    <div className="grid grid-cols-3 gap-6 px-4 sm:grid-cols-4">
+    <div className="grid grid-cols-3 gap-x-2 gap-y-7 px-4 sm:grid-cols-4 sm:gap-x-4">
       {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="flex flex-col items-center gap-2">
-          <div className="w-[92px] h-[92px] rounded-full animate-pulse" style={{ background: chipBg }} />
-          <div className="h-3 w-16 rounded animate-pulse" style={{ background: chipBg }} />
+        <div key={i} className="flex flex-col items-center gap-2.5">
+          <div className="w-[88px] h-[88px] rounded-full animate-pulse" style={{ background: chipBg }} />
+          <div className="h-2.5 w-14 rounded-full animate-pulse" style={{ background: chipBg }} />
+          <div className="h-2 w-10 rounded-full animate-pulse" style={{ background: chipBg }} />
         </div>
       ))}
     </div>

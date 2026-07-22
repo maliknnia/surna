@@ -337,11 +337,11 @@ export default function CoachProfile() {
             followPending={followCoachMutation.isPending}
           />
           {!isOwnCoach && (
-            <div className="flex justify-center gap-4 mt-2 px-4">
-              <button type="button" onClick={blockCoach} className="text-[12px] text-muted-foreground underline">
+            <div className="flex justify-center gap-5 mt-3 px-4">
+              <button type="button" onClick={blockCoach} className="text-[11px] text-muted-foreground/80">
                 Block
               </button>
-              <button type="button" onClick={reportCoach} className="text-[12px] text-muted-foreground underline">
+              <button type="button" onClick={reportCoach} className="text-[11px] text-muted-foreground/80">
                 Report
               </button>
             </div>
@@ -349,21 +349,21 @@ export default function CoachProfile() {
         </div>
 
         <nav className="spotify-tab-bar">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide px-4">
+          <div className="flex gap-1 surna-h-scroll no-scrollbar px-4">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => selectTab(t.id)}
-                className={`px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition-all duration-200 relative ${
+                className={`px-4 py-3 text-[13px] font-medium whitespace-nowrap transition-all duration-200 relative ${
                   tab === t.id ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
                 {t.label}
                 {tab === t.id && (
                   <div
-                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-[2px] rounded-full"
-                    style={{ background: accentColor }}
+                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full"
+                    style={{ background: "var(--surna-text)" }}
                   />
                 )}
               </button>
@@ -473,14 +473,14 @@ function CoachAboutTab({
     <div className="space-y-4">
       {coach.bio ? (
         <div className="glass-card">
-          <h3 className="text-lg font-bold text-foreground mb-3">About</h3>
+          <h3 className="text-[15px] font-semibold text-foreground mb-3">About</h3>
           <p className="text-[14px] leading-relaxed text-muted-foreground">{coach.bio}</p>
         </div>
       ) : null}
 
       {profile.teachingPhilosophy ? (
         <div className="glass-card">
-          <h3 className="text-lg font-bold text-foreground mb-3">Coaching philosophy</h3>
+          <h3 className="text-[15px] font-semibold text-foreground mb-3">Coaching philosophy</h3>
           <p className="text-[14px] leading-relaxed italic text-muted-foreground">
             &ldquo;{profile.teachingPhilosophy}&rdquo;
           </p>
@@ -489,7 +489,7 @@ function CoachAboutTab({
 
       {(profile.sessionTypes?.length ?? coach.specialties?.length) ? (
         <div className="glass-card">
-          <h3 className="text-lg font-bold text-foreground mb-3">Session types</h3>
+          <h3 className="text-[15px] font-semibold text-foreground mb-3">Session types</h3>
           <div className="flex flex-wrap gap-2">
             {(profile.sessionTypes ?? coach.specialties ?? []).map((s) => (
               <Chip key={s} label={s} accent={accentColor} />
@@ -500,7 +500,7 @@ function CoachAboutTab({
 
       {coach.certifications?.length ? (
         <div className="glass-card">
-          <h3 className="text-lg font-bold text-foreground mb-3">Certifications</h3>
+          <h3 className="text-[15px] font-semibold text-foreground mb-3">Certifications</h3>
           <ul className="space-y-2">
             {coach.certifications.map((c) => (
               <li key={c} className="flex items-start gap-2 text-[13px] text-muted-foreground">
@@ -514,7 +514,7 @@ function CoachAboutTab({
 
       {profile.languages?.length ? (
         <div className="glass-card">
-          <h3 className="text-lg font-bold text-foreground mb-3">Languages</h3>
+          <h3 className="text-[15px] font-semibold text-foreground mb-3">Languages</h3>
           <div className="flex flex-wrap gap-3">
             {profile.languages.map((l) => (
               <span key={l} className="flex items-center gap-1 text-[13px] text-muted-foreground">
@@ -527,7 +527,7 @@ function CoachAboutTab({
 
       {profile.maxStudents ? (
         <div className="glass-card">
-          <h3 className="text-lg font-bold text-foreground mb-3">Capacity</h3>
+          <h3 className="text-[15px] font-semibold text-foreground mb-3">Capacity</h3>
           <p className="text-[13px] flex items-center gap-2 text-muted-foreground">
             <Users size={14} /> Up to {profile.maxStudents} athletes per program
           </p>
@@ -536,7 +536,7 @@ function CoachAboutTab({
 
       {availData?.weekly ? (
         <div className="glass-card">
-          <h3 className="text-lg font-bold text-foreground mb-2">Weekly availability</h3>
+          <h3 className="text-[15px] font-semibold text-foreground mb-2">Weekly availability</h3>
           <p className="text-[11px] text-muted-foreground mb-3">Highlighted days have bookable windows</p>
           <div className="flex gap-1.5">
             {weekOrder.map((k) => {
@@ -562,7 +562,7 @@ function CoachAboutTab({
 
       {profile.socialLinks?.length ? (
         <div className="glass-card">
-          <h3 className="text-lg font-bold text-foreground mb-3">Links</h3>
+          <h3 className="text-[15px] font-semibold text-foreground mb-3">Links</h3>
           <div className="flex flex-wrap gap-2">
             {profile.socialLinks.map((l) => (
               <a
@@ -616,9 +616,9 @@ function CoachAchievementsTab({
               <Award size={18} style={{ color: accentColor }} />
             </div>
             <div>
-              <p className="text-[14px] font-bold text-foreground">{a.title}</p>
+              <p className="text-[14px] font-semibold text-foreground">{a.title}</p>
               {a.year ? (
-                <p className="text-[11px] font-semibold mt-0.5" style={{ color: accentColor }}>
+                <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--surna-text-secondary)" }}>
                   {a.year}
                 </p>
               ) : null}

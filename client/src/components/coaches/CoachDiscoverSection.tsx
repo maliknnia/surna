@@ -19,10 +19,13 @@ export default function CoachDiscoverSection({
   textSecondary,
 }: Props) {
   return (
-    <section className="mb-9">
-      <div className="flex items-end justify-between px-4 mb-4">
+    <section className="mb-8">
+      <div className="flex items-end justify-between px-4 mb-3.5">
         <div className="min-w-0">
-          <h2 className="text-[20px] font-bold tracking-tight leading-tight" style={{ color: textPrimary }}>
+          <h2
+            className="text-[17px] font-semibold tracking-tight leading-tight"
+            style={{ color: textPrimary }}
+          >
             {title}
           </h2>
           {subtitle ? (
@@ -35,7 +38,7 @@ export default function CoachDiscoverSection({
           <button
             type="button"
             onClick={onSeeAll}
-            className="flex items-center gap-0.5 text-[12px] font-semibold shrink-0 ml-2 active:opacity-70"
+            className="flex items-center gap-0.5 text-[12px] font-medium shrink-0 ml-2 active:opacity-70"
             style={{ color: textSecondary }}
           >
             See all
@@ -43,12 +46,7 @@ export default function CoachDiscoverSection({
           </button>
         ) : null}
       </div>
-      <div
-        className="flex gap-3 overflow-x-auto px-4 pb-1 scrollbar-hide"
-        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
-      >
-        {children}
-      </div>
+      <div className="flex gap-3.5 surna-h-scroll no-scrollbar px-4 pb-1">{children}</div>
     </section>
   );
 }
