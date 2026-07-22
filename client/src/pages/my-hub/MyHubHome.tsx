@@ -11,6 +11,7 @@ import {
   Building2,
   Trophy,
   ShoppingBag,
+  LayoutGrid,
 } from "lucide-react";
 import {
   SummaryChipRow,
@@ -129,9 +130,10 @@ export default function MyHubHome() {
             </button>
           </Link>
           <h1
-            className="text-lg font-semibold"
+            className="text-lg font-semibold flex items-center gap-2"
             style={{ color: "var(--surna-text)" }}
           >
+            <LayoutGrid className="w-5 h-5" style={{ color: "var(--surna-text-secondary)" }} />
             My Hub
           </h1>
           <Link href={ROUTES.create}>

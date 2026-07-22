@@ -53,6 +53,7 @@ import {
   VoiceIcon as SurnaVoice,
   UploadIcon as SurnaUpload,
   PrivacyIcon as SurnaPrivacy,
+  MyHubIcon as SurnaMyHub,
   LayersIcon as SurnaLayers,
   SlidersIcon as SurnaSliders,
   LocateIcon as SurnaLocate,
@@ -112,6 +113,8 @@ const SURNA_ICON_MAP: Record<string, SurnaIconComponent> = {
   Crosshair: SurnaLocate,
   Film: SurnaFilm,
   Clapperboard: SurnaFilm,
+  LayoutGrid: SurnaMyHub,
+  LayoutDashboard: SurnaMyHub,
 };
 
 function wrapSurnaAsLucide(SurnaComponent: SurnaIconComponent, lucideName: string): LucideIcon {
@@ -257,7 +260,7 @@ const PHOSPHOR_MAP: Record<string, string> = {
   "Keyboard": "keyboard",
   "Layers": "layers",
   "LayoutDashboard": "squares-four",
-  "LayoutGrid": "layout-grid",
+  "LayoutGrid": "squares-four",
   "LifeBuoy": "lifebuoy",
   "Lightbulb": "lightbulb",
   "Link2": "link-2",
