@@ -60,7 +60,7 @@ export const DEFAULT_MAP_LAYERS: MapLayerToggles = {
   instant: true,
   teams: true,
   coaches: true,
-  players: false,
+  players: true,
   places: true,
   challenges: true,
 };
