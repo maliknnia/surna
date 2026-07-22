@@ -25,7 +25,7 @@ export function YourTeamsStrip({
         </h2>
         <span className="text-[11px] text-muted-foreground">{myTeams.length}</span>
       </div>
-      <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+      <div className="flex gap-2.5 surna-h-scroll no-scrollbar -mx-1 px-1 pb-1">
         {myTeams.map((team) => {
           const logo = teamLogoUrl(team);
           const config = getSportConfig(team.sport);

@@ -139,7 +139,7 @@ export function HomePortraitCard({
         contentKind={toContentKind(cardKind)}
         aspectRatio="142/190"
         variant="home"
-        className="w-[142px] h-[190px] rounded-xl surna-air-surface active:scale-[0.98] transition-transform cursor-pointer"
+        className="w-[142px] h-[190px] rounded-xl surna-air-photo active:scale-[0.98] transition-transform cursor-pointer"
         onClick={onClick}
       >
         {attendeeEntity && (
@@ -167,10 +167,7 @@ export function HomePortraitCard({
             style={{
               ...inter(),
               color: textColors.primary,
-              textShadow:
-                textColors.primary === "#ffffff"
-                  ? "0 1px 8px rgba(0,0,0,0.55)"
-                  : "0 1px 3px rgba(255,255,255,0.65)",
+              textShadow: "0 1px 6px rgba(0,0,0,0.55)",
             }}
           >
             {title}
@@ -217,7 +214,7 @@ export function HomeGridCard({
       <button
         type="button"
         onClick={onClick}
-        className="flex items-center w-full h-16 rounded-md overflow-hidden text-left active:scale-[0.98] transition-transform"
+        className="flex items-center w-full h-16 rounded-md overflow-hidden text-left surna-air-photo active:scale-[0.98] transition-transform"
         style={{ background: HOME_GRID_BG }}
         aria-label={label}
       >
@@ -287,7 +284,7 @@ export function HomeFeaturedCard({
         contentKind={toContentKind(cardKind)}
         aspectRatio="2/1"
         variant="home"
-        className="w-full rounded-xl min-h-[130px] active:scale-[0.99] transition-transform cursor-pointer"
+        className="w-full rounded-xl min-h-[130px] surna-air-photo active:scale-[0.99] transition-transform cursor-pointer"
         onClick={onClick}
       >
         {attendeeEntity && (
@@ -307,10 +304,7 @@ export function HomeFeaturedCard({
               style={{
                 ...inter(),
                 color: textColors.primary,
-                textShadow:
-                  textColors.primary === "#ffffff"
-                    ? "0 1px 10px rgba(0,0,0,0.5)"
-                    : "0 1px 3px rgba(255,255,255,0.65)",
+                textShadow: "0 1px 10px rgba(0,0,0,0.5)",
               }}
             >
               {title}
@@ -497,7 +491,7 @@ export function HomeCompactRow({
         contentKind={toContentKind(cardKind)}
         aspectRatio="auto"
         variant="home"
-        className="w-full rounded-xl min-h-[72px] active:scale-[0.98] transition-transform cursor-pointer"
+        className="w-full rounded-xl min-h-[72px] surna-air-photo active:scale-[0.98] transition-transform cursor-pointer"
         onClick={onClick}
       >
         <div className="flex items-center gap-3 p-2.5 h-full w-full">

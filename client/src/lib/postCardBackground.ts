@@ -163,10 +163,12 @@ export const POST_CARD_DARK_SCRIM =
 export const POST_CARD_HOME_DARK_SCRIM =
   "linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.28) 48%, rgba(0,0,0,0.05) 100%)";
 
-export function buildLightPhotoScrim(tint: string, variant: "feed" | "home"): string {
-  const surface = resolveLightSurface(tint);
-  const floor = variant === "home" ? 0.82 : 0.88;
-  return `linear-gradient(to top, ${hexToRgba(surface.bottom, floor)} 0%, ${hexToRgba(surface.mid, 0.34)} 34%, transparent 62%)`;
+/** Light-mode photo cards: soft dark fade only — never a white/pastel wash over the image. */
+export function buildLightPhotoScrim(_tint: string, variant: "feed" | "home"): string {
+  if (variant === "home") {
+    return "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.18) 42%, transparent 72%)";
+  }
+  return "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 40%, transparent 70%)";
 }
 
 export function resolveCardScrim(
@@ -174,8 +176,8 @@ export function resolveCardScrim(
   variant: "feed" | "home" = "feed",
   tint?: string,
 ): string {
-  if (mode === "light" && tint) {
-    return buildLightPhotoScrim(tint, variant);
+  if (mode === "light") {
+    return buildLightPhotoScrim(tint || POST_CARD_TINTS.default, variant);
   }
   if (variant === "home") {
     return POST_CARD_HOME_DARK_SCRIM;

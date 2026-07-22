@@ -101,7 +101,7 @@ export default function DiscoveryCircleStrip({
 
   return (
     <div className="discovery-circle-strip">
-      <div className="overflow-x-auto no-scrollbar -mx-4 px-4">
+      <div className="surna-h-scroll no-scrollbar -mx-4 px-4">
         <div className="flex gap-4 pb-1">
           {loading
             ? Array.from({ length: 7 }).map((_, i) => <CircleSkeleton key={i} />)

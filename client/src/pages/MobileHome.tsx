@@ -347,9 +347,9 @@ export default function MobileHome() {
         onClose={() => setDrawerOpen(false)}
       />
 
-      <main className="flex-1 relative overflow-hidden">
+      <main className="flex-1 relative overflow-hidden" style={{ overscrollBehaviorX: "none" }}>
         <div
-          className="flex h-full transition-transform duration-300 ease-out"
+          className="flex h-full transition-transform duration-300 ease-out will-change-transform"
           style={{ transform: `translateX(-${activeIndex * 100}%)` }}
         >
           {PANEL_IDS.map((panelId, i) => {
@@ -358,7 +358,8 @@ export default function MobileHome() {
               <div
                 key={panelId}
                 ref={i === 0 ? homeScrollRef : undefined}
-                className={`w-full flex-shrink-0 h-full ${isMap ? 'overflow-hidden' : 'overflow-y-auto smooth-scroll'}`}
+                className={`w-full flex-shrink-0 h-full overflow-x-hidden ${isMap ? 'overflow-hidden' : 'overflow-y-auto smooth-scroll'}`}
+                style={{ overscrollBehaviorX: "none", overscrollBehaviorY: "contain" }}
                 onScroll={isMap ? undefined : handlePanelScroll}
               >
                 {i === 0 ? (

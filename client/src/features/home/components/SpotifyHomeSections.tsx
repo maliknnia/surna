@@ -208,7 +208,7 @@ function HappeningNearYouRow({
     return (
       <section className="space-y-3">
         <SectionTitle showNew={showNew}>Happening near you</SectionTitle>
-        <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4">
+        <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="w-[142px] h-[190px] rounded-xl animate-pulse shrink-0" style={{ background: "var(--surna-surface)" }} />
           ))}
@@ -223,7 +223,7 @@ function HappeningNearYouRow({
     <section className="space-y-3">
       <SectionTitle showNew={showNew}>Happening near you</SectionTitle>
       <LiveInstantCounter count={liveCount} />
-      <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 pb-0.5">
+      <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4 pb-0.5">
         {items.map((item) => (
           <HomePortraitCard
             key={item.id}
@@ -289,7 +289,7 @@ function TeamsNearYouRow({
     return (
       <section className="space-y-3">
         <SectionTitle>Teams near you</SectionTitle>
-        <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4">
+        <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="w-[142px] h-[190px] rounded-xl animate-pulse shrink-0" style={{ background: "var(--surna-surface)" }} />
           ))}
@@ -303,7 +303,7 @@ function TeamsNearYouRow({
   return (
     <section className="space-y-3">
       <SectionTitle>Teams near you</SectionTitle>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 pb-0.5">
+      <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4 pb-0.5">
         {items.map((item) => (
           <HomePortraitCard
             key={item.id}
@@ -343,7 +343,7 @@ function CoachesRow({
     return (
       <section className="space-y-3">
         <SectionTitle>Coaches near you</SectionTitle>
-        <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4">
+        <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="w-[120px] h-[120px] rounded-full animate-pulse shrink-0" style={{ background: "var(--surna-surface)" }} />
           ))}
@@ -356,7 +356,7 @@ function CoachesRow({
   return (
     <section className="space-y-3">
       <SectionTitle>Coaches near you</SectionTitle>
-      <div className="flex gap-4 overflow-x-auto no-scrollbar -mx-4 px-5 py-4">
+      <div className="flex gap-4 surna-h-scroll no-scrollbar -mx-4 px-5 py-4">
         {list.map((coach) => {
           const photo = coach.profile?.coverImageUrl || coach.user.profileImageUrl;
           const initials = `${coach.user.firstName?.[0] ?? ""}${coach.user.lastName?.[0] ?? ""}`;

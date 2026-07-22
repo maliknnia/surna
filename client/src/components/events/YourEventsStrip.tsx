@@ -74,7 +74,7 @@ export function YourEventsStrip({ onEventClick }: { onEventClick: (eventId: stri
         </h2>
         <span className="text-[11px] text-muted-foreground">{merged.length}</span>
       </div>
-      <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+      <div className="flex gap-2.5 surna-h-scroll no-scrollbar -mx-1 px-1 pb-1">
         {merged.map((ev) => (
           <EventPill key={ev.id} ev={ev} onClick={() => onEventClick(ev.id)} />
         ))}
@@ -123,7 +123,7 @@ export function EventDiscoveryCircles({
           See all
         </button>
       </div>
-      <div className="flex gap-4 overflow-x-auto no-scrollbar pb-1">
+      <div className="flex gap-4 surna-h-scroll no-scrollbar pb-1">
         {picks.map((pick) => {
           const ev = pick.item;
           if (!ev) return null;

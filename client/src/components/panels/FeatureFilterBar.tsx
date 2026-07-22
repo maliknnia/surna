@@ -69,8 +69,7 @@ export function FeatureFilterChips({
   ) =>
     layout === "scroll" ? (
       <div
-        className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+        className="flex gap-2 surna-h-scroll no-scrollbar pb-1 -mx-1 px-1"
       >
         {items.map((chip) => renderChip(chip, activeKey, onSelect))}
       </div>

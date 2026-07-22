@@ -33,7 +33,7 @@ export type DemoPlace = {
 };
 
 const IMG = (id: string, w: number, h: number) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=85`;
+  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=90`;
 
 const WEEKDAY_HOURS = {
   monday: "6:00 AM – 10:00 PM",
@@ -64,8 +64,8 @@ export const DEMO_PLACES: DemoPlace[] = [
     followersCount: 412,
     reviewsCount: 68,
     averageRating: "4.9",
-    profileImageUrl: IMG("1629909613654-28e377c9fb7a", 400, 400),
-    coverImageUrl: IMG("1629909613654-28e377c9fb7a", 1200, 600),
+    profileImageUrl: IMG("1518611012118-696072aa579a", 400, 400),
+    coverImageUrl: IMG("1518611012118-696072aa579a", 1200, 600),
     isDemo: true,
   },
   {
@@ -86,8 +86,8 @@ export const DEMO_PLACES: DemoPlace[] = [
     followersCount: 328,
     reviewsCount: 54,
     averageRating: "4.8",
-    profileImageUrl: IMG("1622163640459-1b9a4661f851", 400, 400),
-    coverImageUrl: IMG("1622163640459-1b9a4661f851", 1200, 600),
+    profileImageUrl: IMG("1601422407692-ec4eeec1d9b3", 400, 400),
+    coverImageUrl: IMG("1601422407692-ec4eeec1d9b3", 1200, 600),
     isDemo: true,
   },
   {

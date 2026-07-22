@@ -154,6 +154,7 @@ export function PostCardMediaBackdrop({
                 <div className="pointer-events-none absolute inset-0" style={{ background: scrim }} />
               </>
             ) : (
+              /* Light: solid photo + soft dark bottom fade only (no white/pastel wash). */
               <div className="pointer-events-none absolute inset-0" style={{ background: scrim }} />
             )}
           </>

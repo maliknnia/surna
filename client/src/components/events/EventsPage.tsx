@@ -177,7 +177,9 @@ export default function EventsPage({
   const handleRefresh = async () => {
     setEventsRefreshKey((k) => k + 1);
   };
-  const { isRefreshing, pullDistance, touchHandlers } = usePullToRefresh(handleRefresh);
+  const { isRefreshing, pullDistance, touchHandlers } = usePullToRefresh(handleRefresh, {
+    enabled: !compact,
+  });
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -418,7 +420,7 @@ export default function EventsPage({
           )}
         </div>
 
-        <div className="flex gap-2 px-4 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex gap-2 px-4 pb-2 surna-h-scroll no-scrollbar">
           {TIME_FILTERS.map((tf) => (
             <button
               key={tf.key}

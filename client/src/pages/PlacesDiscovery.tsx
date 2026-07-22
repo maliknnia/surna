@@ -123,7 +123,9 @@ export default function PlacesDiscovery({
   const handleRefresh = async () => {
     await refetch();
   };
-  const { isRefreshing, pullDistance, touchHandlers } = usePullToRefresh(handleRefresh);
+  const { isRefreshing, pullDistance, touchHandlers } = usePullToRefresh(handleRefresh, {
+    enabled: !embedded,
+  });
 
   const t = getPanelTheme();
   const pageBg = t.pageBg;

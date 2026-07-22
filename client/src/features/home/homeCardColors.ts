@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   buildTintCardBackground,
-  resolveLightSurface,
   resolvePostCardTint,
   type PostCardContentKind,
 } from "@/lib/postCardBackground";
@@ -21,16 +20,9 @@ function mapCardKind(cardKind?: HomeCardKind): PostCardContentKind | undefined {
   return cardKind;
 }
 
-export function homeCardTextColors(mode: "light" | "dark", sportTint?: string) {
-  if (mode === "light" && sportTint) {
-    return {
-      primary: resolveLightSurface(sportTint).text,
-      muted: "rgba(0,0,0,0.52)",
-    };
-  }
-  return mode === "light"
-    ? { primary: "#121212", muted: "rgba(0,0,0,0.55)" }
-    : { primary: "#ffffff", muted: "rgba(255,255,255,0.72)" };
+/** Photo-card titles always read as white on imagery (solid photo, no white glow). */
+export function homeCardTextColors(_mode: "light" | "dark", _sportTint?: string) {
+  return { primary: "#ffffff", muted: "rgba(255,255,255,0.78)" };
 }
 
 export function useHomeCardTint(opts: {

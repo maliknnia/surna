@@ -717,12 +717,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.12),
+      0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark .discovery-circle-ring {
+    box-shadow:
+      0 8px 16px rgba(0, 0, 0, 0.3),
+      0 2px 6px rgba(0, 0, 0, 0.16);
   }
 
   .discovery-circle-ring--create {
     border: 2px dashed var(--surna-border);
     padding: 0;
     background: transparent !important;
+    box-shadow: none;
   }
 
   .discovery-circle-inner {
@@ -735,11 +745,13 @@
     justify-content: center;
     background: var(--surna-void);
     box-sizing: border-box;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .discovery-circle-inner--create {
     border: none;
     background: var(--surna-surface);
+    box-shadow: none;
   }
 
   .discovery-circle-emoji {
@@ -836,6 +848,45 @@
       inset 0 -1px 0 rgba(0, 0, 0, 0.2),
       0 8px 18px rgba(0, 0, 0, 0.28),
       0 2px 6px rgba(0, 0, 0, 0.16);
+  }
+
+  /* Photo tiles — depth only, no white inset/sheen wash */
+  .surna-air-photo {
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.12),
+      0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+  .dark .surna-air-photo {
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.28),
+      0 2px 6px rgba(0, 0, 0, 0.16);
+  }
+
+  /* Light mode: discovery cards keep soft depth without bright white top highlight */
+  :root:not(.dark) .card-spotify {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.04),
+      0 8px 20px rgba(0, 0, 0, 0.1),
+      0 2px 6px rgba(0, 0, 0, 0.05);
+  }
+  :root:not(.dark) .card-spotify::after {
+    background: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      transparent 40%
+    );
+  }
+  :root:not(.dark) .playlist-card__thumb {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  }
+  :root:not(.dark) .event-card-dark {
+    box-shadow:
+      0 8px 20px rgba(0, 0, 0, 0.1),
+      0 2px 6px rgba(0, 0, 0, 0.05);
+  }
+  :root:not(.dark) .event-card-dark::after {
+    display: none;
   }
 
   /* ─── SECTION LABELS (Spotify) ─── */
@@ -1049,6 +1100,20 @@
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Horizontal strips — no rubber-band bleed into the page */
+  .surna-h-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .surna-h-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
   .text-balance { text-wrap: balance; }
 
