@@ -349,7 +349,15 @@ export default function MapPage({
       pinMatchesSportChip(pin, sportFilter, mapSettings.selectedSports);
     const matchesDistance = (pin: MapPin) =>
       pinMatchesDistanceChip(pin, distanceFilter, effectiveLocation, mapSettings.radiusKm);
-    const matchesLayer = (pin: MapPin) => pinMatchesLayer(pin.type, mapSettings.layers);
+    const matchesLayer = (pin: MapPin) => {
+      if (
+        (pin.type === "person" || pin.type === "player") &&
+        (pin.id.startsWith("ds-") || pin.data?.isDemo)
+      ) {
+        return true;
+      }
+      return pinMatchesLayer(pin.type, mapSettings.layers);
+    };
     const matchesTeammates = (pin: MapPin) => {
       if (!mapSettings.findTeammates) return true;
       if (pin.type === "saved") return true;
