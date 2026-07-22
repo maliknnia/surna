@@ -218,7 +218,7 @@ export default function TeamHeader({ team, sportConfig, openJoinSheet }: TeamHea
         <div className="w-px h-8 bg-muted/40" />
         <div className="text-center">
           <div className="flex items-center gap-1 justify-center">
-            <Star size={14} style={{ color: '#FFD700' }} />
+            <Star size={14} style={{ color: "var(--surna-text-secondary)" }} />
             <p className="text-[17px] font-bold text-foreground tabular-nums">{ratingLabel}</p>
           </div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Rating</p>
@@ -228,7 +228,7 @@ export default function TeamHeader({ team, sportConfig, openJoinSheet }: TeamHea
             <div className="w-px h-8 bg-muted/40" />
             <div className="text-center">
               <div className="flex items-center gap-1 justify-center">
-                <Trophy size={14} style={{ color: accentColor }} />
+                <Trophy size={14} style={{ color: "var(--surna-text-secondary)" }} />
                 <p className="text-[17px] font-bold text-foreground">{team.currentWinStreak}</p>
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Win streak</p>

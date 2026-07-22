@@ -28,7 +28,7 @@ import {
   matchPinToFocus,
   parseMapFocusFromSearch,
 } from "@/lib/mapNavigation";
-import { enrichMapPinPhotos, generateDemoPins, shouldUseDemoMapPins } from "@/lib/demoMapPins";
+import { enrichMapPinPhotos, generateDemoPins, generateDemoPersonPins, shouldUseDemoMapPins } from "@/lib/demoMapPins";
 import { generateDemoRoutes } from "@/lib/demoMapRoutes";
 import { useLocationSharing } from "@/hooks/useLocationSharing";
 import { useMapSettings } from "@/hooks/useMapSettings";
@@ -308,6 +308,12 @@ export default function MapPage({
       const pinIds = new Set(allPins.map((p) => p.id));
       const demoSupplement = demoPins.filter((p) => !pinIds.has(p.id));
       allPins = [...allPins, ...demoSupplement];
+    } else if (shouldUseDemoMapPins()) {
+      // Always show showcase people even when live venues/events exist
+      const pinIds = new Set(allPins.map((p) => p.id));
+      const people = generateDemoPersonPins(effectiveLocation);
+      const missing = people.filter((p) => !pinIds.has(p.id));
+      allPins = [...allPins, ...missing];
     }
 
     const savedPins: MapPin[] = mapSettings.savedPlaces.map((place) => ({

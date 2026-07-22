@@ -11,21 +11,24 @@ function devUnlessExplicit(explicit: boolean | undefined): boolean {
   return import.meta.env.DEV;
 }
 
-/** Supplement empty map viewports with showcase pins (Aisha/Elena events & places). */
+/** Hardcoded demo rows when public lists are empty — on unless explicitly disabled. */
+export function isDemoContentFallbackEnabled(): boolean {
+  const explicit = parseEnvBool(import.meta.env.VITE_DEMO_FALLBACK);
+  if (explicit !== undefined) return explicit;
+  return true;
+}
+
+/** Supplement map with showcase pins (people always; events/places when empty). */
 export function isMapDemoPinsEnabled(): boolean {
-  return devUnlessExplicit(parseEnvBool(import.meta.env.VITE_MAP_DEMO_PINS));
+  const explicit = parseEnvBool(import.meta.env.VITE_MAP_DEMO_PINS);
+  if (explicit !== undefined) return explicit;
+  // Same default as discovery demos so fake accounts show on map too
+  return isDemoContentFallbackEnabled();
 }
 
 /** Sample messenger threads when the inbox is empty. */
 export function isMessengerDemosEnabled(realConversationCount: number): boolean {
   const explicit = parseEnvBool(import.meta.env.VITE_MESSENGER_DEMOS);
   if (explicit !== undefined) return explicit;
-  return import.meta.env.DEV && realConversationCount === 0;
-}
-
-/** Hardcoded demo rows when public lists are empty — on unless explicitly disabled. */
-export function isDemoContentFallbackEnabled(): boolean {
-  const explicit = parseEnvBool(import.meta.env.VITE_DEMO_FALLBACK);
-  if (explicit !== undefined) return explicit;
-  return true;
+  return devUnlessExplicit(undefined) && realConversationCount === 0;
 }

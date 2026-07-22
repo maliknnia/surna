@@ -7,7 +7,7 @@ import InteractiveMap from "@/components/map/InteractiveMap";
 import PinSheet from "@/components/map/PinSheet";
 import { MapFilterSheet } from "@/components/map/MapFilterSheet";
 import { MapSearchSheet } from "@/components/map/MapSearchSheet";
-import { generateDemoPins, enrichMapPinPhotos } from "@/lib/demoMapPins";
+import { generateDemoPins, generateDemoPersonPins, enrichMapPinPhotos } from "@/lib/demoMapPins";
 import { flags } from "@/config/flags";
 import { calculateDistance, type Coordinates } from "@/lib/geo";
 import { getMapOverlayTheme } from "@/lib/panelTheme";
@@ -235,8 +235,14 @@ export default function MapPlacesHub({ viewMode = 'map', title }: MapPlacesHubPr
 
   const displayPins = useMemo(() => {
     let list = pins.map((p) => enrichMapPinPhotos(p));
-    if (flags.mapDemoPins && list.length === 0) {
-      list = generateDemoPins(effectiveLocation);
+    if (flags.mapDemoPins) {
+      const pinIds = new Set(list.map((p) => p.id));
+      if (list.length === 0) {
+        list = generateDemoPins(effectiveLocation);
+      } else {
+        const people = generateDemoPersonPins(effectiveLocation).filter((p) => !pinIds.has(p.id));
+        list = [...list, ...people];
+      }
     }
     return list;
   }, [pins, effectiveLocation]);

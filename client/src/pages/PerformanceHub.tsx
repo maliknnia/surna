@@ -407,10 +407,10 @@ export default function PerformanceHub() {
                     </div>
                     <div className="p-4 rounded-lg bg-card">
                       <div className="flex items-center mb-2">
-                        <Flame className="w-5 h-5 mr-2 text-primary" />
+                        <Flame className="w-5 h-5 mr-2 text-muted-foreground" />
                         <span className="text-foreground">Current Streak</span>
                       </div>
-                      <div className="text-2xl font-bold text-primary">{stats.streaks.dailyLogin}</div>
+                      <div className="text-2xl font-bold text-foreground">{stats.streaks.dailyLogin}</div>
                       <div className="text-muted-foreground text-xs">Best: {stats.streaks.longestStreak} days</div>
                     </div>
                   </div>

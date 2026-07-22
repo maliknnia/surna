@@ -108,7 +108,7 @@ export function GamificationWidget() {
 
         {gamificationData.currentStreak > 0 && (
           <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-[var(--surna-bg-highlight)] border border-[var(--surna-border)]">
-            <Zap className="h-3.5 w-3.5 text-amber-400" />
+            <Zap className="h-3.5 w-3.5 text-[var(--surna-text-secondary)]" />
             <span className="text-xs font-medium text-[var(--surna-text)]">
               {gamificationData.currentStreak} day streak
             </span>

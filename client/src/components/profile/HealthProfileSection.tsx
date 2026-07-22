@@ -134,7 +134,7 @@ export function HealthProfileSection({ userId, isOwnProfile }: { userId: string;
       key: "streak",
       node: (
         <div className="flex items-center gap-3">
-          <Flame size={20} style={{ color: "var(--surna-gold)" }} />
+          <Flame size={20} style={{ color: "var(--surna-text-secondary)" }} />
           <div>
             <p className="text-[15px] font-bold" style={{ color: "var(--surna-text)" }}>
               {data.currentStreak} day streak
