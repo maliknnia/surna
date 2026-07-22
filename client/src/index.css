@@ -2879,51 +2879,7 @@ html:not(.dark) .surna-glow--bare[data-glow]::after {
     0 2px 6px rgba(0, 0, 0, 0.16);
 }
 
-.coach-circle-card__frame--lit::before {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 2;
-  background: radial-gradient(
-    circle 58px at var(--px, 50%) var(--py, 50%),
-    var(--coach-glow-hot) 0%,
-    var(--coach-glow-mid) 38%,
-    transparent 72%
-  );
-  -webkit-mask: radial-gradient(circle, transparent calc(50% - 5px), #000 calc(50% - 1px));
-  mask: radial-gradient(circle, transparent calc(50% - 5px), #000 calc(50% - 1px));
-}
-
-.coach-circle-card__frame--lit::after {
-  content: "";
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 1;
-  box-shadow:
-    0 0 0 1.5px var(--coach-glow-ring),
-    0 0 22px var(--coach-glow-halo),
-    0 0 40px var(--coach-glow-halo-soft);
-}
-
-html.dark {
-  --coach-glow-hot: rgba(233, 213, 255, 0.95);
-  --coach-glow-mid: rgba(168, 85, 247, 0.75);
-  --coach-glow-ring: rgba(192, 132, 252, 0.65);
-  --coach-glow-halo: rgba(128, 63, 225, 0.45);
-  --coach-glow-halo-soft: rgba(128, 63, 225, 0.2);
-}
-
-html:not(.dark) {
-  --coach-glow-hot: rgba(124, 58, 237, 0.9);
-  --coach-glow-mid: rgba(139, 92, 246, 0.55);
-  --coach-glow-ring: rgba(109, 40, 217, 0.5);
-  --coach-glow-halo: rgba(91, 33, 182, 0.28);
-  --coach-glow-halo-soft: rgba(91, 33, 182, 0.12);
-}
+/* Coach pointer-glow removed — keep frame plain */
 
 .surna-glow[data-glow]::before,
 .surna-glow[data-glow]::after {

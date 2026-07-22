@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import {
   HOME_BELOW_CARD_MT,
   HOME_GRID_BG,
@@ -334,71 +334,24 @@ export function HomeFeaturedCard({
   );
 }
 
-function aimCoachGlow(el: HTMLDivElement, clientX: number, clientY: number) {
-  const rect = el.getBoundingClientRect();
-  const x = ((clientX - rect.left) / rect.width) * 100;
-  const y = ((clientY - rect.top) / rect.height) * 100;
-  el.style.setProperty("--px", `${x.toFixed(1)}%`);
-  el.style.setProperty("--py", `${y.toFixed(1)}%`);
-}
-
-/** Circle coach card — avatar + name/sport below. Optional pointer glow on avatar only. */
+/** Circle coach card — avatar + name/sport below. */
 export function HomeCoachCircleCard({
   photo,
   initials,
   name,
   sport,
   onClick,
-  glow = false,
 }: {
   photo?: string | null;
   initials: string;
   name: string;
   sport: string;
   onClick: () => void;
+  /** @deprecated Glow removed — kept for call-site compat. */
   glow?: boolean;
 }) {
-  const frameRef = useRef<HTMLDivElement>(null);
-  const [lit, setLit] = useState(false);
   const { gradientBackground, textColors, mode, tint } = useHomeCardTint({ sport, cardKind: "coach" });
   const hasPhoto = Boolean(photo?.trim());
-
-  const aimGlow = (clientX: number, clientY: number) => {
-    if (frameRef.current) aimCoachGlow(frameRef.current, clientX, clientY);
-  };
-
-  const activate = (clientX: number, clientY: number) => {
-    if (!glow) return;
-    setLit(true);
-    aimGlow(clientX, clientY);
-  };
-
-  useEffect(() => {
-    if (!glow || !lit) return;
-    const onMove = (e: PointerEvent) => aimGlow(e.clientX, e.clientY);
-    const onEnd = () => setLit(false);
-    window.addEventListener("pointermove", onMove, { passive: true });
-    window.addEventListener("pointerup", onEnd);
-    window.addEventListener("pointercancel", onEnd);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onEnd);
-      window.removeEventListener("pointercancel", onEnd);
-    };
-  }, [glow, lit]);
-
-  const frameHandlers = glow
-    ? {
-        onPointerEnter: (e: ReactPointerEvent) => activate(e.clientX, e.clientY),
-        onPointerMove: (e: ReactPointerEvent) => {
-          if (lit) aimGlow(e.clientX, e.clientY);
-          else activate(e.clientX, e.clientY);
-        },
-        onPointerDown: (e: ReactPointerEvent) => activate(e.clientX, e.clientY),
-        onPointerLeave: () => setLit(false),
-        onPointerCancel: () => setLit(false),
-      }
-    : undefined;
 
   return (
     <button
@@ -406,11 +359,7 @@ export function HomeCoachCircleCard({
       onClick={onClick}
       className="coach-circle-card flex-shrink-0 w-[120px] flex flex-col items-center active:scale-[0.98] transition-transform touch-manipulation"
     >
-      <div
-        ref={frameRef}
-        {...frameHandlers}
-        className={`coach-circle-card__frame${glow && lit ? " coach-circle-card__frame--lit" : ""}`}
-      >
+      <div className="coach-circle-card__frame">
         <div
           className="coach-circle-card__avatar relative overflow-hidden"
           style={{ background: gradientBackground }}

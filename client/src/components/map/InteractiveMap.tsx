@@ -664,10 +664,10 @@ function attachMarker(
 function createRouteEndpointMarker(label: string, pinColor: string): HTMLElement {
   const wrap = document.createElement("div");
   wrap.style.cssText =
-    "display:flex;flex-direction:column;align-items:center;pointer-events:none;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4));";
+    "display:flex;flex-direction:column;align-items:center;pointer-events:none;";
   wrap.innerHTML = `
-    <div style="width:20px;height:20px;border-radius:50%;background:${pinColor};border:3px solid #fff;box-shadow:0 0 0 2px ${pinColor}66;"></div>
-    <span style="margin-top:4px;padding:2px 10px;border-radius:999px;background:#fff;color:#111;font-size:11px;font-weight:800;text-transform:uppercase;white-space:nowrap;font-family:system-ui,sans-serif;border:2px solid ${pinColor};">${label}</span>
+    <div style="width:16px;height:16px;border-radius:50%;background:${pinColor};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>
+    <span style="margin-top:4px;padding:2px 8px;border-radius:999px;background:#fff;color:#111;font-size:10px;font-weight:800;text-transform:uppercase;white-space:nowrap;font-family:system-ui,sans-serif;border:1.5px solid ${pinColor};">${label}</span>
   `;
   return wrap;
 }

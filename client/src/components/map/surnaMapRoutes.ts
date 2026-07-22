@@ -9,15 +9,15 @@ export interface MapRoute {
 }
 
 const ROUTE_SOURCE_ID = "surna-routes";
-const ROUTE_GLOW_LAYER_ID = "surna-routes-glow";
 const ROUTE_LINE_LAYER_ID = "surna-routes-line";
+const ROUTE_CASING_LAYER_ID = "surna-routes-casing";
 
 export function routeColorForSport(sportType: string): string {
   const sport = sportType.toLowerCase();
-  if (sport.includes("cycl") || sport.includes("bike")) return "#4A90D9";
-  if (sport.includes("run") || sport.includes("jog")) return "#CC6B4A";
-  if (sport.includes("hik") || sport.includes("trail") || sport.includes("walk")) return "#4CAF50";
-  return "#4A90D9";
+  if (sport.includes("cycl") || sport.includes("bike")) return "#2563EB";
+  if (sport.includes("run") || sport.includes("jog")) return "#DC2626";
+  if (sport.includes("hik") || sport.includes("trail") || sport.includes("walk")) return "#16A34A";
+  return "#2563EB";
 }
 
 function isValidRouteCoord(lat: number, lng: number): boolean {
@@ -66,6 +66,7 @@ function buildRoutesGeoJSON(routes: MapRoute[]): GeoJSON.FeatureCollection {
   };
 }
 
+/** Clean solid route lines — white casing + sport colour core (no glow/blur). */
 export function ensureMapRouteLayers(map: maplibregl.Map, beforeId?: string) {
   if (!map.getSource(ROUTE_SOURCE_ID)) {
     map.addSource(ROUTE_SOURCE_ID, {
@@ -74,10 +75,13 @@ export function ensureMapRouteLayers(map: maplibregl.Map, beforeId?: string) {
     });
   }
 
-  if (!map.getLayer(ROUTE_GLOW_LAYER_ID)) {
+  // Remove legacy glow layer if present from older clients
+  if (map.getLayer("surna-routes-glow")) map.removeLayer("surna-routes-glow");
+
+  if (!map.getLayer(ROUTE_CASING_LAYER_ID)) {
     map.addLayer(
       {
-        id: ROUTE_GLOW_LAYER_ID,
+        id: ROUTE_CASING_LAYER_ID,
         type: "line",
         source: ROUTE_SOURCE_ID,
         layout: {
@@ -85,10 +89,9 @@ export function ensureMapRouteLayers(map: maplibregl.Map, beforeId?: string) {
           "line-join": "round",
         },
         paint: {
-          "line-color": ["get", "color"],
-          "line-width": 10,
-          "line-opacity": 0.25,
-          "line-blur": 1.5,
+          "line-color": "#ffffff",
+          "line-width": 7,
+          "line-opacity": 0.95,
         },
       },
       beforeId,
@@ -108,7 +111,7 @@ export function ensureMapRouteLayers(map: maplibregl.Map, beforeId?: string) {
         paint: {
           "line-color": ["get", "color"],
           "line-width": 4,
-          "line-opacity": 0.85,
+          "line-opacity": 1,
         },
       },
       beforeId,
@@ -127,7 +130,7 @@ export function bindMapRouteClicks(
   onRouteClick: (route: MapRoute) => void,
   routesRef: { current: MapRoute[] },
 ) {
-  const layerIds = [ROUTE_LINE_LAYER_ID, ROUTE_GLOW_LAYER_ID];
+  const layerIds = [ROUTE_LINE_LAYER_ID, ROUTE_CASING_LAYER_ID];
 
   const handleClick = (event: maplibregl.MapLayerMouseEvent) => {
     const feature = event.features?.[0];
@@ -169,13 +172,14 @@ export function bindMapRouteClicks(
 
 export function removeMapRouteLayers(map: maplibregl.Map) {
   if (map.getLayer(ROUTE_LINE_LAYER_ID)) map.removeLayer(ROUTE_LINE_LAYER_ID);
-  if (map.getLayer(ROUTE_GLOW_LAYER_ID)) map.removeLayer(ROUTE_GLOW_LAYER_ID);
+  if (map.getLayer(ROUTE_CASING_LAYER_ID)) map.removeLayer(ROUTE_CASING_LAYER_ID);
+  if (map.getLayer("surna-routes-glow")) map.removeLayer("surna-routes-glow");
   if (map.getSource(ROUTE_SOURCE_ID)) map.removeSource(ROUTE_SOURCE_ID);
 }
 
-/** Full-screen event route detail — thick line, always on top of basemap. */
+/** Full-screen event route detail — solid line, no glow. */
 const DETAIL_SOURCE_ID = "surna-event-route-detail";
-const DETAIL_GLOW_LAYER_ID = "surna-event-route-detail-glow";
+const DETAIL_CASING_LAYER_ID = "surna-event-route-detail-casing";
 const DETAIL_LINE_LAYER_ID = "surna-event-route-detail-line";
 
 function moveLayersToTop(map: maplibregl.Map, layerIds: string[]) {
@@ -205,25 +209,29 @@ export function syncEventRouteDetailLayer(
     ],
   };
 
+  // Drop legacy glow
+  if (map.getLayer("surna-event-route-detail-glow")) {
+    map.removeLayer("surna-event-route-detail-glow");
+  }
+
   const existing = map.getSource(DETAIL_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
   if (existing) {
     existing.setData(geojson);
-    moveLayersToTop(map, [DETAIL_GLOW_LAYER_ID, DETAIL_LINE_LAYER_ID]);
+    moveLayersToTop(map, [DETAIL_CASING_LAYER_ID, DETAIL_LINE_LAYER_ID]);
     return;
   }
 
   map.addSource(DETAIL_SOURCE_ID, { type: "geojson", data: geojson });
 
   map.addLayer({
-    id: DETAIL_GLOW_LAYER_ID,
+    id: DETAIL_CASING_LAYER_ID,
     type: "line",
     source: DETAIL_SOURCE_ID,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": color,
-      "line-width": 22,
-      "line-opacity": 0.45,
-      "line-blur": 2,
+      "line-color": "#ffffff",
+      "line-width": 10,
+      "line-opacity": 1,
     },
   });
 
@@ -234,16 +242,17 @@ export function syncEventRouteDetailLayer(
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
       "line-color": color,
-      "line-width": 7,
+      "line-width": 5,
       "line-opacity": 1,
     },
   });
 
-  moveLayersToTop(map, [DETAIL_GLOW_LAYER_ID, DETAIL_LINE_LAYER_ID]);
+  moveLayersToTop(map, [DETAIL_CASING_LAYER_ID, DETAIL_LINE_LAYER_ID]);
 }
 
 export function removeEventRouteDetailLayer(map: maplibregl.Map) {
   if (map.getLayer(DETAIL_LINE_LAYER_ID)) map.removeLayer(DETAIL_LINE_LAYER_ID);
-  if (map.getLayer(DETAIL_GLOW_LAYER_ID)) map.removeLayer(DETAIL_GLOW_LAYER_ID);
+  if (map.getLayer(DETAIL_CASING_LAYER_ID)) map.removeLayer(DETAIL_CASING_LAYER_ID);
+  if (map.getLayer("surna-event-route-detail-glow")) map.removeLayer("surna-event-route-detail-glow");
   if (map.getSource(DETAIL_SOURCE_ID)) map.removeSource(DETAIL_SOURCE_ID);
 }

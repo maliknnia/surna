@@ -150,6 +150,10 @@ export default function CreateHub() {
       }
       return;
     }
+    if (option.id === "run") {
+      navigate(option.route);
+      return;
+    }
     setSelectedType(option.id);
     scrollToComposer();
   };

@@ -58,6 +58,8 @@ export const ROUTES = {
   
   events: '/events',
   createEvent: '/events/create',
+  createRun: '/runs/create',
+  activityTrack: '/activity/track',
   event: (id: string) => `/events/${id}`,
   eventRoute: (id: string) => `/events/${id}/route`,
   

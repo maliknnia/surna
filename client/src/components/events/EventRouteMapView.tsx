@@ -20,48 +20,26 @@ function mapStyleUrl(mode: "dark" | "light" | "satellite"): string {
   return styles[mode];
 }
 
-function createEndpointMarker(label: string, pinColor: string, ringColor: string): HTMLElement {
+function createEndpointMarker(label: string, pinColor: string): HTMLElement {
   const wrap = document.createElement("div");
   wrap.style.cssText =
-    "display:flex;flex-direction:column;align-items:center;pointer-events:none;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.45));";
+    "display:flex;flex-direction:column;align-items:center;pointer-events:none;";
   wrap.innerHTML = `
-    <div style="position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
-      <div style="
-        position:absolute;inset:0;border-radius:50%;
-        background:${ringColor};opacity:0.35;
-        animation:surnaRoutePulse 2s ease-out infinite;
-      "></div>
-      <div style="
-        width:22px;height:22px;border-radius:50%;
-        background:${pinColor};
-        border:3px solid #fff;
-        box-shadow:0 0 0 2px ${pinColor}55;
-        position:relative;z-index:1;
-      "></div>
-    </div>
+    <div style="
+      width:18px;height:18px;border-radius:50%;
+      background:${pinColor};
+      border:2.5px solid #fff;
+      box-shadow:0 2px 6px rgba(0,0,0,0.35);
+    "></div>
     <span style="
-      margin-top:6px;padding:4px 12px;border-radius:999px;
+      margin-top:5px;padding:3px 10px;border-radius:999px;
       background:#fff;color:#111;
-      font-size:12px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;
+      font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;
       white-space:nowrap;font-family:system-ui,sans-serif;
-      box-shadow:0 2px 10px rgba(0,0,0,0.25);
-      border:2px solid ${pinColor};
+      box-shadow:0 1px 4px rgba(0,0,0,0.2);
+      border:1.5px solid ${pinColor};
     ">${label}</span>
   `;
-
-  if (!document.getElementById("surna-route-marker-styles")) {
-    const style = document.createElement("style");
-    style.id = "surna-route-marker-styles";
-    style.textContent = `
-      @keyframes surnaRoutePulse {
-        0% { transform: scale(0.75); opacity: 0.55; }
-        70% { transform: scale(1.35); opacity: 0; }
-        100% { transform: scale(1.35); opacity: 0; }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
   return wrap;
 }
 
@@ -96,14 +74,14 @@ function applyRouteToMap(
 
     markersRef.current.push(
       new maplibregl.Marker({
-        element: createEndpointMarker("Start", "#22c55e", "#22c55e"),
+        element: createEndpointMarker("Start", "#22c55e"),
         anchor: "bottom",
         offset: [0, -4],
       })
         .setLngLat([start.lng, start.lat])
         .addTo(map),
       new maplibregl.Marker({
-        element: createEndpointMarker("Finish", "#ef4444", "#ef4444"),
+        element: createEndpointMarker("Finish", "#ef4444"),
         anchor: "bottom",
         offset: [0, -4],
       })
@@ -125,7 +103,7 @@ function applyRouteToMap(
   removeEventRouteDetailLayer(map);
   markersRef.current.push(
     new maplibregl.Marker({
-      element: createEndpointMarker("Event", routeColor, routeColor),
+      element: createEndpointMarker("Event", routeColor),
       anchor: "bottom",
       offset: [0, -4],
     })

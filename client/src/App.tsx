@@ -360,6 +360,7 @@ function Router() {
         <Route path="/performance" component={PerformanceHub} />
         <Route path="/performance-hub" component={PerformanceHub} />
         <Route path="/activity/track" component={() => <ProtectedRoute component={lazy(() => import("@/pages/ActivityTrackPage"))} />} />
+        <Route path="/runs/create" component={() => <ProtectedRoute component={lazy(() => import("@/pages/CreateRunPage"))} />} />
         <Route path="/referrals" component={() => <ProtectedRoute component={ReferralPage} />} />
         <Route path="/growth" component={() => <ProtectedRoute component={GrowthPage} />} />
         

@@ -176,7 +176,7 @@ export default function PerformanceHub() {
         <h2 className="text-3xl font-bold mb-4 text-foreground">Your Performance</h2>
         <button
           type="button"
-          onClick={() => setLocation("/activity/track")}
+          onClick={() => setLocation("/runs/create")}
           className="mb-8 w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2"
           style={{ background: "#1DB954", color: "#121212" }}
           data-testid="start-activity-track"

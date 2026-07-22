@@ -11,12 +11,14 @@ import {
   MessageCircle,
   Building2,
   ShoppingBag,
+  Navigation,
 } from "lucide-react";
 import { ROUTES } from "@/navigation";
 import type { MyHubSummary } from "@/features/my-hub/hooks/useMyHubSummary";
 
 export type CreateOptionId =
   | "event"
+  | "run"
   | "team"
   | "pickup"
   | "challenge"
@@ -64,6 +66,18 @@ export const CREATE_SECTIONS: CreateSection[] = [
         eta: "3 min",
         stepLabels: ["Photo & basics", "When", "Where", "Details", "Publish"],
         badge: "Popular",
+      },
+      {
+        id: "run",
+        title: "Run / route",
+        subtitle: "Draw A→B on the map or record GPS — distance, pace, and save",
+        icon: Navigation,
+        route: ROUTES.createRun,
+        manageRoute: ROUTES.performance,
+        manageLabel: "Your activities",
+        eta: "2 min",
+        stepLabels: ["Draw or record", "Stats", "Save"],
+        badge: "New",
       },
       {
         id: "team",

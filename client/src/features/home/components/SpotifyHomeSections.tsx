@@ -371,7 +371,6 @@ function CoachesRow({
               initials={initials || "C"}
               name={name}
               sport={sportLabel}
-              glow
               onClick={() => {
                 markNavReturn("/");
                 setLocation(ROUTES.coach(coach.id));
