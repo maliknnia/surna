@@ -1,60 +1,61 @@
+/** Sport → card fallback colour (used only when there is no photo). Prefer true-to-sport hues. */
 const sportColorMap: Record<string, { base: string; emoji: string }> = {
   boxing:       { base: "#C62828", emoji: "🥊" },
-  mma:          { base: "#B71C1C", emoji: "🥋" },
-  baseball:     { base: "#E65100", emoji: "⚾" },
+  mma:          { base: "#6D4C41", emoji: "🥋" },
+  baseball:     { base: "#1565C0", emoji: "⚾" },
   volleyball:   { base: "#F9A825", emoji: "🏐" },
-  tennis:       { base: "#EF6C00", emoji: "🎾" },
-  football:     { base: "#D84315", emoji: "⚽" },
-  soccer:       { base: "#D84315", emoji: "⚽" },
-  basketball:   { base: "#F57C00", emoji: "🏀" },
-  swimming:     { base: "#E53935", emoji: "🏊" },
-  rugby:        { base: "#C62828", emoji: "🏉" },
-  cricket:      { base: "#FF8F00", emoji: "🏏" },
-  hockey:       { base: "#E53935", emoji: "🏒" },
-  golf:         { base: "#EF6C00", emoji: "⛳" },
+  tennis:       { base: "#43A047", emoji: "🎾" },
+  football:     { base: "#2E7D32", emoji: "⚽" },
+  soccer:       { base: "#2E7D32", emoji: "⚽" },
+  basketball:   { base: "#EF6C00", emoji: "🏀" },
+  swimming:     { base: "#0288D1", emoji: "🏊" },
+  rugby:        { base: "#6A1B9A", emoji: "🏉" },
+  cricket:      { base: "#558B2F", emoji: "🏏" },
+  hockey:       { base: "#37474F", emoji: "🏒" },
+  golf:         { base: "#558B2F", emoji: "⛳" },
   running:      { base: "#FF5722", emoji: "🏃" },
-  cycling:      { base: "#E53935", emoji: "🚴" },
+  cycling:      { base: "#F9A825", emoji: "🚴" },
   wrestling:    { base: "#E64A19", emoji: "🤼" },
-  gaa:          { base: "#E53935", emoji: "🏐" },
-  hurling:      { base: "#FF7900", emoji: "🏑" },
-  fitness:      { base: "#FF6B4B", emoji: "💪" },
-  crossfit:     { base: "#E53935", emoji: "🏋️" },
-  yoga:         { base: "#FF7043", emoji: "🧘" },
-  martial_arts: { base: "#C62828", emoji: "🥋" },
-  strength_training: { base: "#C62828", emoji: "💪" },
-  strength:     { base: "#C62828", emoji: "💪" },
+  gaa:          { base: "#2E7D32", emoji: "🏐" },
+  hurling:      { base: "#F9A825", emoji: "🏑" },
+  fitness:      { base: "#546E7A", emoji: "💪" },
+  crossfit:     { base: "#D84315", emoji: "🏋️" },
+  yoga:         { base: "#7E57C2", emoji: "🧘" },
+  martial_arts: { base: "#5D4037", emoji: "🥋" },
+  strength_training: { base: "#455A64", emoji: "💪" },
+  strength:     { base: "#455A64", emoji: "💪" },
   cardio:       { base: "#FF5722", emoji: "🏃" },
-  pilates:      { base: "#FF7043", emoji: "🧘" },
+  pilates:      { base: "#8D6E63", emoji: "🧘" },
   hiit:         { base: "#FF3D00", emoji: "🔥" },
-  weightlifting: { base: "#E64A19", emoji: "🏋️" },
+  weightlifting: { base: "#546E7A", emoji: "🏋️" },
   track_and_field: { base: "#FF6E40", emoji: "🏃" },
-  jiu_jitsu:    { base: "#C62828", emoji: "🥋" },
-  bjj:          { base: "#C62828", emoji: "🥋" },
+  jiu_jitsu:    { base: "#1A237E", emoji: "🥋" },
+  bjj:          { base: "#1A237E", emoji: "🥋" },
   karate:       { base: "#C62828", emoji: "🥋" },
-  taekwondo:    { base: "#E53935", emoji: "🥋" },
-  judo:         { base: "#E53935", emoji: "🥋" },
+  taekwondo:    { base: "#1565C0", emoji: "🥋" },
+  judo:         { base: "#1565C0", emoji: "🥋" },
   muay_thai:    { base: "#C62828", emoji: "🥊" },
   kickboxing:   { base: "#C62828", emoji: "🥊" },
-  surfing:      { base: "#FF5722", emoji: "🏄" },
+  surfing:      { base: "#00ACC1", emoji: "🏄" },
   skateboarding: { base: "#E64A19", emoji: "🛹" },
-  climbing:     { base: "#FF5722", emoji: "🧗" },
-  rock_climbing: { base: "#FF5722", emoji: "🧗" },
+  climbing:     { base: "#8D6E63", emoji: "🧗" },
+  rock_climbing: { base: "#8D6E63", emoji: "🧗" },
   dance:        { base: "#E84D60", emoji: "💃" },
-  gymnastics:   { base: "#EF5350", emoji: "🤸" },
-  rowing:       { base: "#E53935", emoji: "🚣" },
-  badminton:    { base: "#FFA726", emoji: "🏸" },
+  gymnastics:   { base: "#EC407A", emoji: "🤸" },
+  rowing:       { base: "#0277BD", emoji: "🚣" },
+  badminton:    { base: "#7CB342", emoji: "🏸" },
   table_tennis: { base: "#FF8F00", emoji: "🏓" },
   ping_pong:    { base: "#FF8F00", emoji: "🏓" },
-  lacrosse:     { base: "#FF6F00", emoji: "🥍" },
-  fencing:      { base: "#E53935", emoji: "🤺" },
-  archery:      { base: "#EF6C00", emoji: "🏹" },
-  skiing:       { base: "#FF5722", emoji: "⛷️" },
-  snowboarding: { base: "#FF7043", emoji: "🏂" },
-  handball:     { base: "#FF6F00", emoji: "🤾" },
-  water_polo:   { base: "#E53935", emoji: "🤽" },
+  lacrosse:     { base: "#00695C", emoji: "🥍" },
+  fencing:      { base: "#546E7A", emoji: "🤺" },
+  archery:      { base: "#6D4C41", emoji: "🏹" },
+  skiing:       { base: "#0277BD", emoji: "⛷️" },
+  snowboarding: { base: "#455A64", emoji: "🏂" },
+  handball:     { base: "#EF6C00", emoji: "🤾" },
+  water_polo:   { base: "#0288D1", emoji: "🤽" },
 };
 
-const DEFAULT_COLOR = "#C62828";
+const DEFAULT_COLOR = "#455A64";
 const DEFAULT_EMOJI = "🏆";
 
 function hexToHSL(hex: string): [number, number, number] {
@@ -92,7 +93,6 @@ function lighten(hex: string, amount: number): string {
 
 function darken(hex: string, amount: number): string {
   const [h, s, l] = hexToHSL(hex);
-  // Keep dark-mode fills brighter than before (avoid muddy browns)
   return hslToHex(h, Math.min(s + 2, 100), Math.max(l - amount, 36));
 }
 
@@ -127,7 +127,6 @@ export function sportCardBg(sport: string | null | undefined, mode: "light" | "d
 
 export function sportCardGradient(sport: string | null | undefined, mode: "light" | "dark"): string {
   const c = getSportColor(sport);
-  // Solid fill — matches event discovery cards (no gradient wash)
   return mode === "light" ? c.light : c.dark;
 }
 

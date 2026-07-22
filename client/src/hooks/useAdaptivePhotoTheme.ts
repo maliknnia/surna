@@ -3,19 +3,20 @@ import { extractDominantColor, getCachedColor, brightenHex } from "@/lib/extract
 
 /** Pulls dominant colour from a photo and exposes theme tokens for profile surfaces. */
 export function useAdaptivePhotoTheme(imageUrl: string | null | undefined, isDark: boolean) {
+  const fallback = isDark ? "#2a2a2a" : "#e8e8e8";
   const [accentColor, setAccentColor] = useState(() =>
-    imageUrl ? getCachedColor(imageUrl) ?? "#8b2635" : "#8b2635",
+    imageUrl ? getCachedColor(imageUrl) ?? fallback : fallback,
   );
 
   useEffect(() => {
     if (!imageUrl) {
-      setAccentColor("#8b2635");
+      setAccentColor(fallback);
       return;
     }
     const cached = getCachedColor(imageUrl);
     if (cached) setAccentColor(cached);
     extractDominantColor(imageUrl).then(setAccentColor);
-  }, [imageUrl]);
+  }, [imageUrl, fallback]);
 
   const wash = brightenHex(accentColor, isDark ? 0.12 : 0.55);
   const pageBg = isDark

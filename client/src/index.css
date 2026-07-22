@@ -253,20 +253,20 @@
   html::-webkit-scrollbar,
   body::-webkit-scrollbar,
   #root::-webkit-scrollbar {
-    display: none;
-    width: 0;
-    height: 0;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
 
   *::-webkit-scrollbar {
-    display: none;
-    width: 0;
-    height: 0;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   /* Plus Jakarta Sans Bold — titles, section headers, logo, stat figures */
@@ -500,10 +500,10 @@
     overflow: hidden;
     border: none;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
       inset 0 -1px 0 rgba(0, 0, 0, 0.06),
-      0 8px 20px rgba(0, 0, 0, 0.12),
-      0 2px 6px rgba(0, 0, 0, 0.06);
+      0 10px 28px rgba(0, 0, 0, 0.14),
+      0 3px 8px rgba(0, 0, 0, 0.07);
   }
   .card-spotify::after {
     content: "";
@@ -525,10 +525,10 @@
   }
   .dark .card-spotify {
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
       inset 0 -1px 0 rgba(0, 0, 0, 0.22),
-      0 10px 24px rgba(0, 0, 0, 0.32),
-      0 2px 8px rgba(0, 0, 0, 0.18);
+      0 12px 30px rgba(0, 0, 0, 0.36),
+      0 3px 10px rgba(0, 0, 0, 0.2);
   }
   .card-spotify:active {
     transform: scale(0.98);
@@ -833,41 +833,41 @@
     );
   }
 
-  /* Shared soft inflate for home portraits + coach avatars */
+  /* Shared soft inflate for elevated surfaces + photo tiles */
   .surna-air-surface {
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
       inset 0 -1px 0 rgba(0, 0, 0, 0.05),
-      0 6px 16px rgba(0, 0, 0, 0.12),
-      0 1px 4px rgba(0, 0, 0, 0.06);
+      0 8px 22px rgba(0, 0, 0, 0.12),
+      0 2px 6px rgba(0, 0, 0, 0.06);
   }
   .dark .surna-air-surface {
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
       inset 0 -1px 0 rgba(0, 0, 0, 0.2),
-      0 8px 18px rgba(0, 0, 0, 0.28),
-      0 2px 6px rgba(0, 0, 0, 0.16);
+      0 10px 24px rgba(0, 0, 0, 0.32),
+      0 2px 8px rgba(0, 0, 0, 0.16);
   }
 
-  /* Photo tiles — depth only, no white inset/sheen wash */
+  /* Photo tiles — soft inflate without white sheen wash over the image */
   .surna-air-photo {
     box-shadow:
-      0 6px 16px rgba(0, 0, 0, 0.12),
-      0 1px 4px rgba(0, 0, 0, 0.06);
+      0 10px 26px rgba(0, 0, 0, 0.14),
+      0 3px 8px rgba(0, 0, 0, 0.07);
   }
   .dark .surna-air-photo {
     box-shadow:
-      0 8px 18px rgba(0, 0, 0, 0.28),
-      0 2px 6px rgba(0, 0, 0, 0.16);
+      0 12px 28px rgba(0, 0, 0, 0.34),
+      0 3px 10px rgba(0, 0, 0, 0.2);
   }
 
   /* Light mode: discovery cards keep soft depth without bright white top highlight */
   :root:not(.dark) .card-spotify {
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
       inset 0 -1px 0 rgba(0, 0, 0, 0.04),
-      0 8px 20px rgba(0, 0, 0, 0.1),
-      0 2px 6px rgba(0, 0, 0, 0.05);
+      0 10px 26px rgba(0, 0, 0, 0.11),
+      0 3px 8px rgba(0, 0, 0, 0.05);
   }
   :root:not(.dark) .card-spotify::after {
     background: linear-gradient(
@@ -2865,14 +2865,14 @@ html:not(.dark) .surna-glow--bare[data-glow]::after {
   position: relative;
   border: 1px solid var(--surna-border);
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.12),
-    0 1px 4px rgba(0, 0, 0, 0.06);
+    0 10px 26px rgba(0, 0, 0, 0.14),
+    0 3px 8px rgba(0, 0, 0, 0.07);
 }
 
 .dark .coach-circle-card__avatar {
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.28),
-    0 2px 6px rgba(0, 0, 0, 0.16);
+    0 12px 28px rgba(0, 0, 0, 0.34),
+    0 3px 10px rgba(0, 0, 0, 0.2);
 }
 
 .surna-glow[data-glow]::before,

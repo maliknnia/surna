@@ -205,21 +205,14 @@
   display: none;
 }
 
+/* Match app-wide hidden scrollbars — no side gutter lines */
+.pro-app * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
 .pro-app *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.pro-app *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 99px;
-  border: 2px solid var(--pro-bg);
-}
-
-.pro-app *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.pro-app *::-webkit-scrollbar-track {
-  background: transparent;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

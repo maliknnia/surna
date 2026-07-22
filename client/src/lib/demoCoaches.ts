@@ -8,6 +8,7 @@ const IMG = (id: string, w: number, h: number) =>
 const aisha = SHOWCASE_ATHLETES[0];
 const elena = SHOWCASE_ATHLETES[1];
 const marcus = SHOWCASE_ATHLETES[2];
+const jordan = SHOWCASE_ATHLETES[3];
 
 /** Offline fallback when /api/coaches is empty — keeps cards & profiles populated in demos. */
 export const DEMO_COACH_PROFILES: CoachWithProfile[] = [
@@ -106,6 +107,38 @@ export const DEMO_COACH_PROFILES: CoachWithProfile[] = [
       achievements: [{ id: "1", title: "Sub-3 marathon", year: "2023" }],
       media: [{ id: "m1", type: "image", url: IMG("1476480862126-209bfaa8edc8", 800, 500), title: "Long run" }],
       pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 55, period: "hour", highlighted: true }],
+    },
+  },
+  {
+    id: "demo-coach-jordan",
+    userId: "demo-user-jordan",
+    specialties: ["Running", "Speed"],
+    experience: "6",
+    certifications: ["Athletics Ireland L1"],
+    hourlyRate: "45.00",
+    bio: "Tempo & interval coach · 5K–half focus · Dublin group sessions.",
+    isVerified: true,
+    isActive: true,
+    weeklyAvailability: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    user: {
+      id: "demo-user-jordan",
+      firstName: jordan.firstName,
+      lastName: jordan.lastName,
+      email: "jordan@surna.app",
+      profileImageUrl: jordan.profileImageUrl,
+      sport: jordan.sport,
+      location: jordan.location,
+    } as CoachWithProfile["user"],
+    profileJson: {
+      tagline: "Speed work that sticks · race-day ready",
+      coverImageUrl: jordan.coverImageUrl,
+      rating: 4.7,
+      reviewCount: 28,
+      achievements: [{ id: "1", title: "Sub-17 5K", year: "2024" }],
+      media: [{ id: "m1", type: "image", url: IMG("1552674605-db6ffd4facb5", 800, 500), title: "Tempo session" }],
+      pricingPlans: [{ id: "hourly", label: "1-on-1 session", priceEur: 45, period: "hour", highlighted: true }],
     },
   },
 ].map((row) => {

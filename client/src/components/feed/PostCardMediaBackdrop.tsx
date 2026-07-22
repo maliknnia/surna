@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { extractEdgeColor, getCachedEdgeColor } from "@/lib/extractColor";
+import {
+  extractDominantColor,
+  extractEdgeColor,
+  getCachedColor,
+  getCachedEdgeColor,
+} from "@/lib/extractColor";
 import {
   buildImageEdgeGradient,
   buildNoImageRadialGlow,
   buildNoImageStripeTexture,
-  buildSportImageWash,
   buildTintCardBackground,
-  hexToRgba,
   noImageBottomFade,
   resolveCardScrim,
   resolveLightSurface,
@@ -39,8 +42,8 @@ type PostCardMediaBackdropProps = {
 };
 
 /**
- * Media area for home/feed cards: sport tint gradient always visible,
- * optional photo on top with edge-colour fade + bottom scrim.
+ * Media area for home/feed cards: photo-matched fill when an image exists,
+ * sport tint only as empty-state / loading fallback.
  */
 export function PostCardMediaBackdrop({
   imageUrl,
@@ -79,31 +82,41 @@ export function PostCardMediaBackdrop({
   const [edgeColor, setEdgeColor] = useState<string | null>(
     showPhoto && imageUrl ? getCachedEdgeColor(imageUrl) : null,
   );
+  const [photoBg, setPhotoBg] = useState<string | null>(
+    showPhoto && imageUrl ? getCachedColor(imageUrl) : null,
+  );
 
   useEffect(() => {
     if (!showPhoto || !imageUrl) {
       setEdgeColor(null);
+      setPhotoBg(null);
       return;
     }
-    const cached = getCachedEdgeColor(imageUrl);
-    if (cached) {
-      setEdgeColor(cached);
-      return;
-    }
+    const cachedEdge = getCachedEdgeColor(imageUrl);
+    const cachedDom = getCachedColor(imageUrl);
+    if (cachedEdge) setEdgeColor(cachedEdge);
+    if (cachedDom) setPhotoBg(cachedDom);
+
     let cancelled = false;
-    extractEdgeColor(imageUrl).then((c) => {
-      if (!cancelled) setEdgeColor(c);
-    });
+    if (!cachedEdge) {
+      extractEdgeColor(imageUrl).then((c) => {
+        if (!cancelled) setEdgeColor(c);
+      });
+    }
+    if (!cachedDom) {
+      extractDominantColor(imageUrl).then((c) => {
+        if (!cancelled) setPhotoBg(c);
+      });
+    }
     return () => {
       cancelled = true;
     };
   }, [showPhoto, imageUrl]);
 
   const tintBackground = buildTintCardBackground(tint, mode);
-  const baseBackground = backgroundOverride?.trim() || tintBackground;
-  const edgeGradient = buildImageEdgeGradient(edgeColor || tint, mode, tint);
-  const washOpacity = variant === "home" ? 0.11 : 0.24;
-  const sportWash = buildSportImageWash(tint, washOpacity, mode);
+  const matchedFill = backgroundOverride?.trim() || (showPhoto ? photoBg : null);
+  const baseBackground = matchedFill || tintBackground;
+  const edgeGradient = buildImageEdgeGradient(edgeColor || matchedFill || tint, mode);
   const scrim = resolveCardScrim(mode, variant, tint);
   const lightSurface = mode === "light" ? resolveLightSurface(tint) : null;
   const sportMeta = getSportColor(sport);
@@ -131,7 +144,6 @@ export function PostCardMediaBackdrop({
       }
     >
       <div className="absolute inset-0">
-        {/* Sport tint gradient — always visible (shows through while loading / on image error). */}
         <div className="absolute inset-0" style={{ background: baseBackground }} />
 
         {showPhoto && (
@@ -140,6 +152,8 @@ export function PostCardMediaBackdrop({
             alt={imageAlt}
             className={cn("absolute inset-0 h-full w-full object-cover", imageClassName)}
             loading="lazy"
+            crossOrigin="anonymous"
+            referrerPolicy="no-referrer"
             onLoad={onImageLoad}
             onError={() => setImageFailed(true)}
           />
@@ -149,12 +163,10 @@ export function PostCardMediaBackdrop({
           <>
             {mode === "dark" ? (
               <>
-                <div className="pointer-events-none absolute inset-0" style={{ background: sportWash }} />
                 <div className="pointer-events-none absolute inset-0" style={{ background: edgeGradient }} />
                 <div className="pointer-events-none absolute inset-0" style={{ background: scrim }} />
               </>
             ) : (
-              /* Light: solid photo + soft dark bottom fade only (no white/pastel wash). */
               <div className="pointer-events-none absolute inset-0" style={{ background: scrim }} />
             )}
           </>

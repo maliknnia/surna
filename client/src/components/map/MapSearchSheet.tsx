@@ -112,7 +112,7 @@ export function MapSearchSheet({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-6" style={{ scrollbarWidth: "thin" }}>
+        <div className="flex-1 overflow-y-auto px-4 pb-6 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
           {searchQuery.trim() ? (
             results.length === 0 ? (
               <p className="text-center text-sm py-8" style={{ color: theme.iconMuted }}>

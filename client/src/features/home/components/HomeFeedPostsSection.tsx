@@ -117,10 +117,10 @@ export function HomeFeedPostsSection({ contentSeed }: { contentSeed: number }) {
         <FeedCardSkeleton />
       ) : !post ? (
         <div
-          className="rounded-xl px-4 py-6 text-center"
+          className="rounded-xl px-4 py-6 text-center surna-air-surface"
           style={{
-            background: "linear-gradient(160deg, color-mix(in srgb, var(--spotify-red, #8b2635) 16%, var(--surna-bg-card)) 0%, var(--surna-bg-card) 100%)",
-            border: "1px solid color-mix(in srgb, var(--spotify-red, #8b2635) 18%, var(--surna-border))",
+            background: "var(--surna-elevated)",
+            border: "1px solid var(--surna-border)",
           }}
         >
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--surna-text-secondary)" }}>

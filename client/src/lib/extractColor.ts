@@ -70,8 +70,8 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
 }
 
 /**
- * Discovery card fill — keep the photo’s own colour.
- * Only nudge lightness so white text stays readable (no hue wash).
+ * Discovery card fill — stay true to the photo’s colour.
+ * Only gentle lightness clamps so text stays readable.
  */
 export function softenCardColor(hex: string): string {
   const rgb = hexToRgb(hex);
@@ -79,12 +79,12 @@ export function softenCardColor(hex: string): string {
 
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
-  // Preserve hue + saturation from the image; clamp lightness for contrast
-  const outS = Math.min(0.85, Math.max(0.2, s));
+  // Keep saturation close to the image (avoid muddy / washed fills)
+  const outS = Math.min(0.92, Math.max(0.28, s * 1.05));
   let outL = l;
-  if (outL > 0.58) outL = 0.42 + (outL - 0.58) * 0.25; // too light → darken
-  if (outL < 0.22) outL = 0.28; // too dark → lift slightly
-  outL = Math.min(0.52, Math.max(0.28, outL));
+  if (outL > 0.72) outL = 0.52 + (outL - 0.72) * 0.35; // very light → darken a bit
+  if (outL < 0.18) outL = 0.26; // near-black → lift slightly
+  outL = Math.min(0.62, Math.max(0.24, outL));
 
   const out = hslToRgb(h, outS, outL);
   return rgbToHex(out.r, out.g, out.b);

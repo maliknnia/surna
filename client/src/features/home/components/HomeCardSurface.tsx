@@ -358,7 +358,7 @@ export function HomeCoachCircleCard({
       onClick={onClick}
       className="coach-circle-card flex-shrink-0 w-[104px] flex flex-col items-center active:scale-[0.97] transition-transform touch-manipulation"
     >
-      <div className="coach-circle-card__frame" style={{ width: 96, height: 96 }}>
+      <div className="coach-circle-card__frame surna-air-photo" style={{ width: 96, height: 96 }}>
         <div
           className="coach-circle-card__avatar relative overflow-hidden"
           style={{ background: "var(--surna-elevated)" }}

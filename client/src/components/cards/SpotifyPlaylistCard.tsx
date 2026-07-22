@@ -99,6 +99,8 @@ export default function SpotifyPlaylistCard({
               src={imageUrl}
               alt=""
               className="absolute inset-0 w-full h-full object-cover"
+              crossOrigin="anonymous"
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
               }}

@@ -1,6 +1,6 @@
 /** Curated showcase personas — used when offline demos are enabled. */
 
-export const DEMO_SHOWCASE_LIMIT = 3;
+export const DEMO_SHOWCASE_LIMIT = 8;
 
 /** High-quality portrait URL (face crop) for showcase athletes. */
 const FACE = (id: string, w = 400, h = 400) =>
@@ -54,6 +54,61 @@ export const SHOWCASE_ATHLETES: ShowcaseAthlete[] = [
     sport: "Running",
     bio: "Trail & road · sub-3 marathon chase · Cork",
     location: "Cork, IE",
+  },
+  {
+    id: "ds-jordan",
+    firstName: "Jordan",
+    lastName: "Blake",
+    username: "jordan_run",
+    profileImageUrl: FACE("1529626455594-4ff0802cfb7e"),
+    coverImageUrl: SHOT("1552674605-db6ffd4facb5", 1200, 700),
+    sport: "Running",
+    bio: "Road 5K–half · tempo Tuesday crew · Dublin",
+    location: "Dublin, IE",
+  },
+  {
+    id: "ds-sofia",
+    firstName: "Sofia",
+    lastName: "Martinez",
+    username: "sofia_trail",
+    profileImageUrl: FACE("1438761681033-6461ffad8d80"),
+    coverImageUrl: SHOT("1476480862126-209bf4358e27", 1200, 700),
+    sport: "Running",
+    bio: "Trail ultras · ridge lines · Galway",
+    location: "Galway, IE",
+  },
+  {
+    id: "ds-devon",
+    firstName: "Devon",
+    lastName: "Park",
+    username: "devon_hoops",
+    profileImageUrl: FACE("1500648767791-00dcc994a43e"),
+    coverImageUrl: SHOT("1546519638-68e109498ffc", 1200, 700),
+    sport: "Basketball",
+    bio: "Pickup captain · mid-range specialist · Cork",
+    location: "Cork, IE",
+  },
+  {
+    id: "ds-nina",
+    firstName: "Nina",
+    lastName: "Chen",
+    username: "nina_cycle",
+    profileImageUrl: FACE("1494790108377-be9c29b29330"),
+    coverImageUrl: SHOT("1541625602330-2277a4c46182", 1200, 700),
+    sport: "Cycling",
+    bio: "Group rides · climbs · weekend centuries",
+    location: "Killarney, IE",
+  },
+  {
+    id: "ds-amir",
+    firstName: "Amir",
+    lastName: "Hassan",
+    username: "amir_football",
+    profileImageUrl: FACE("1506794778202-cad84cf45f1d"),
+    coverImageUrl: SHOT("1574629810360-7efbbe195018", 1200, 700),
+    sport: "Soccer",
+    bio: "5-a-side & Sunday league · left wing",
+    location: "Limerick, IE",
   },
 ];
 

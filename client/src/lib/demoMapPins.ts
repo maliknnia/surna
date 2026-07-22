@@ -12,10 +12,16 @@ export function generateDemoPersonPins(center: Coordinates): MapPin[] {
     { lat: 0.0038, lng: -0.0042 },
     { lat: -0.0026, lng: 0.0035 },
     { lat: 0.0014, lng: 0.0051 },
+    { lat: -0.0041, lng: -0.0028 },
+    { lat: 0.0052, lng: 0.0016 },
+    { lat: -0.0018, lng: -0.0055 },
+    { lat: 0.0029, lng: 0.0044 },
+    { lat: -0.0035, lng: 0.0022 },
   ];
 
   return SHOWCASE_ATHLETES.slice(0, DEMO_SHOWCASE_LIMIT).map((a, i) => {
-    const off = offsets[i] ?? { lat: 0.002 * (i + 1), lng: -0.002 * (i + 1) };
+    const off = offsets[i] ?? { lat: 0.002 * ((i % 4) + 1), lng: -0.002 * ((i % 3) + 1) };
+    const isRunner = /run|trail/i.test(a.sport) || /run|trail/i.test(a.username);
     return {
       id: a.id,
       type: "person" as const,
@@ -34,9 +40,9 @@ export function generateDemoPersonPins(center: Coordinates): MapPin[] {
       },
       iconUrl: a.profileImageUrl,
       coverUrl: a.coverImageUrl,
-      hasStory: i === 0,
-      storyState: i === 0 ? ("new" as const) : ("none" as const),
-      presence: i === 0 ? ("active" as const) : ("idle" as const),
+      hasStory: isRunner || i === 0,
+      storyState: isRunner || i === 0 ? ("new" as const) : ("none" as const),
+      presence: isRunner || i < 2 ? ("active" as const) : ("idle" as const),
     };
   });
 }

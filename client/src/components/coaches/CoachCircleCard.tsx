@@ -28,13 +28,12 @@ export default function CoachCircleCard({ coach, size = 88 }: Props) {
     >
       <div className="relative mb-2.5">
         <div
-          className="rounded-full overflow-hidden mx-auto"
+          className="rounded-full overflow-hidden mx-auto surna-air-photo"
           style={{
             width: size,
             height: size,
             background: "var(--surna-elevated)",
             border: "1px solid var(--surna-border)",
-            boxShadow: "0 6px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06)",
           }}
         >
           {photo ? (
