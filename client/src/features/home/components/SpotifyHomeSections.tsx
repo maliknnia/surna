@@ -19,8 +19,7 @@ import { HOME_TEXT_SUBTITLE } from "@/features/home/homeCardColors";
 import {
   HomeCoachCircleCard,
   HomePortraitCard,
-  HomeSampleEventCard,
-  HomeSampleTeamCard,
+  HomeSamplePostCard,
 } from "@/features/home/components/HomeCardSurface";
 import { HomeFeedPostsSection } from "@/features/home/components/HomeFeedPostsSection";
 import type { CoachWithProfile } from "@shared/schema";
@@ -314,25 +313,36 @@ function HappeningNearYouRow({
 
   if (items.length === 0) return null;
 
+  const samples = items.filter((item) => item.isSample && item.cardKind === "event");
+  const live = items.filter((item) => !(item.isSample && item.cardKind === "event"));
+
   return (
     <section className="space-y-3">
       <SectionTitle showNew={showNew}>Happening near you</SectionTitle>
       <LiveInstantCounter count={liveCount} />
-      <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4 pb-0.5">
-        {items.map((item) =>
-          item.isSample && item.cardKind === "event" ? (
-            <HomeSampleEventCard
+      {samples.length > 0 ? (
+        <div className="space-y-3">
+          {samples.slice(0, 1).map((item) => (
+            <HomeSamplePostCard
               key={item.id}
               imageUrl={item.imageUrl}
               title={item.title}
-              meta={[item.meta, item.subtitle].filter(Boolean).join(" · ")}
+              subtitle={item.subtitle}
+              meta={item.meta}
               sport={item.sport}
+              kindLabel="Event"
+              cta="Go"
               onClick={() => {
                 markNavReturn("/");
                 setLocation(item.route);
               }}
             />
-          ) : (
+          ))}
+        </div>
+      ) : null}
+      {live.length > 0 ? (
+        <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4 pb-0.5">
+          {live.map((item) => (
             <HomePortraitCard
               key={item.id}
               imageUrl={item.imageUrl}
@@ -348,9 +358,9 @@ function HappeningNearYouRow({
                 setLocation(item.route);
               }}
             />
-          ),
-        )}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -415,25 +425,36 @@ function TeamsNearYouRow({
 
   if (items.length === 0) return null;
 
+  const samples = items.filter((item) => item.isSample);
+  const live = items.filter((item) => !item.isSample);
+
   return (
     <section className="space-y-3">
       <SectionTitle>Teams near you</SectionTitle>
-      <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4 pb-0.5">
-        {items.map((item) =>
-          item.isSample ? (
-            <HomeSampleTeamCard
+      {samples.length > 0 ? (
+        <div className="space-y-3">
+          {samples.slice(0, 1).map((item) => (
+            <HomeSamplePostCard
               key={item.id}
-              logoUrl={item.logoUrl}
-              coverUrl={item.coverUrl}
+              imageUrl={item.coverUrl || item.imageUrl}
+              avatarUrl={item.logoUrl}
               title={item.title}
-              meta={[item.meta, item.subtitle].filter(Boolean).join(" · ")}
+              subtitle={item.subtitle}
+              meta={item.meta}
               sport={item.sport}
+              kindLabel="Team"
+              cta="View"
               onClick={() => {
                 markNavReturn("/");
                 setLocation(item.route);
               }}
             />
-          ) : (
+          ))}
+        </div>
+      ) : null}
+      {live.length > 0 ? (
+        <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4 pb-0.5">
+          {live.map((item) => (
             <HomePortraitCard
               key={item.id}
               imageUrl={item.imageUrl}
@@ -449,9 +470,9 @@ function TeamsNearYouRow({
                 setLocation(item.route);
               }}
             />
-          ),
-        )}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -494,8 +515,6 @@ function CoachesRow({
             ? `${coach.user.firstName}${coach.user.lastName ? ` ${coach.user.lastName[0]}.` : ""}`
             : "Coach";
           const sportLabel = coach.specialties?.[0] || "Coach";
-          const sample =
-            isClientDemoId(String(coach.id)) || isClientDemoId(String(coach.userId));
           return (
             <HomeCoachCircleCard
               key={coach.id}
@@ -503,7 +522,6 @@ function CoachesRow({
               initials={initials || "C"}
               name={name}
               sport={sportLabel}
-              sample={sample}
               onClick={() => {
                 markNavReturn("/");
                 setLocation(ROUTES.coach(coach.id));

@@ -14,8 +14,6 @@ import type { PostCardContentKind } from "@/lib/postCardBackground";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import type { AttendeeEntityType } from "@/components/people/AttendeeCircles";
 import { useHomeCardPillStyle } from "@/features/home/homeCardStyles";
-import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
-import { isLightHex } from "@/lib/colorUtils";
 
 const inter = (extra?: CSSProperties): CSSProperties => ({
   fontFamily: "Inter, sans-serif",
@@ -404,70 +402,131 @@ export function HomeCoachCircleCard({
 }
 
 /**
- * Demo/sample event tile — solid photo-extracted colour + sharp cover thumb
- * (mirrors discovery EventCard, cleaner than full-bleed photo portraits).
+ * Demo/sample highlight — same clean shell as the home feed post card
+ * (photo hero + scrim + footer), sized for event/team samples.
  */
-export function HomeSampleEventCard({
+export function HomeSamplePostCard({
   imageUrl,
+  avatarUrl,
   title,
+  subtitle,
   meta,
+  kindLabel = "Sample",
+  cta = "View",
   sport,
   onClick,
 }: {
+  imageUrl?: string | null;
+  /** Crest / face shown in the hero row. */
+  avatarUrl?: string | null;
+  title: string;
+  subtitle?: string;
+  meta?: string;
+  kindLabel?: string;
+  cta?: string;
+  sport?: string | null;
+  onClick: () => void;
+}) {
+  const cover =
+    imageUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title });
+  const avatar = avatarUrl?.trim() || null;
+  const initials = (title.trim()[0] || "S").toUpperCase();
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="home-sample-post w-full text-left rounded-xl overflow-hidden active:scale-[0.99] transition-transform"
+      style={{ background: "var(--surna-elevated)", border: "1px solid var(--surna-border)" }}
+    >
+      <div className="relative w-full aspect-[16/10] overflow-hidden">
+        {cover ? (
+          <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="absolute inset-0" style={{ background: "var(--surna-surface)" }} />
+        )}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.4) 48%, rgba(0,0,0,0.1) 100%)",
+          }}
+        />
+        <div className="absolute bottom-0 left-0 right-0 p-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            {avatar ? (
+              <img
+                src={avatar}
+                alt=""
+                className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-white/25"
+              />
+            ) : (
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                style={{ background: "rgba(255,255,255,0.2)" }}
+              >
+                {initials}
+              </div>
+            )}
+            <span className="text-[12px] font-bold text-white truncate">{kindLabel}</span>
+            {meta ? (
+              <span className="text-[10px] text-white/60 ml-auto shrink-0 line-clamp-1 max-w-[45%]">
+                {meta}
+              </span>
+            ) : null}
+          </div>
+          <p className="text-[14px] font-bold text-white leading-snug line-clamp-2" style={inter()}>
+            {title}
+          </p>
+          {subtitle ? (
+            <p className="text-[11px] text-white/70 mt-0.5 line-clamp-1" style={inter()}>
+              {subtitle}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      <div className="px-3 py-2.5 flex items-center justify-between gap-3">
+        <p className="text-[12px] leading-snug line-clamp-1 flex-1" style={inter({ color: "var(--surna-text-secondary)" })}>
+          {subtitle || meta || "Sample"}
+        </p>
+        <span
+          className="text-[11px] font-bold shrink-0 px-3 py-1 rounded-full"
+          style={{
+            background: "var(--surna-surface)",
+            color: "var(--surna-text)",
+            border: "1px solid var(--surna-border)",
+          }}
+        >
+          {cta}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+/** @deprecated Prefer HomeSamplePostCard */
+export function HomeSampleEventCard(props: {
   imageUrl?: string | null;
   title: string;
   meta?: string;
   sport?: string | null;
   onClick: () => void;
 }) {
-  const cover =
-    imageUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title });
-  const background = useDiscoveryCardBg(cover, sport);
-  const light = isLightHex(background);
-  const primary = light ? "#121212" : "#ffffff";
-  const muted = light ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.68)";
-
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="home-sample-card home-sample-card--event flex-shrink-0 w-[142px] h-[190px] rounded-xl text-left active:scale-[0.98] transition-transform touch-manipulation surna-air-surface"
-      style={{ background }}
-    >
-      <span className="home-sample-card__chip" style={{ color: muted, borderColor: muted }}>
-        Sample
-      </span>
-      <div className="home-sample-card__thumb" style={{ background: light ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)" }}>
-        {cover ? (
-          <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-        ) : null}
-      </div>
-      <div className="home-sample-card__copy">
-        <p className="text-[13px] font-bold leading-snug line-clamp-2" style={inter({ color: primary })}>
-          {title}
-        </p>
-        {meta ? (
-          <p className="text-[10px] mt-1 line-clamp-2" style={inter({ color: muted })}>
-            {meta}
-          </p>
-        ) : null}
-      </div>
-    </button>
+    <HomeSamplePostCard
+      imageUrl={props.imageUrl}
+      title={props.title}
+      meta={props.meta}
+      sport={props.sport}
+      kindLabel="Event"
+      cta="Go"
+      onClick={props.onClick}
+    />
   );
 }
 
-/**
- * Demo/sample team tile — soft cover blur + crest logo
- * (mirrors discovery TeamCard / team page hero treatment).
- */
-export function HomeSampleTeamCard({
-  logoUrl,
-  coverUrl,
-  title,
-  meta,
-  sport,
-  onClick,
-}: {
+/** @deprecated Prefer HomeSamplePostCard */
+export function HomeSampleTeamCard(props: {
   logoUrl?: string | null;
   coverUrl?: string | null;
   title: string;
@@ -475,42 +534,17 @@ export function HomeSampleTeamCard({
   sport?: string | null;
   onClick: () => void;
 }) {
-  const crest = logoUrl?.trim() || coverUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title });
-  const blur = coverUrl?.trim() || crest;
-
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="home-sample-card home-sample-card--team flex-shrink-0 w-[142px] h-[190px] rounded-xl text-left active:scale-[0.98] transition-transform touch-manipulation overflow-hidden"
-    >
-      {blur ? (
-        <div className="home-sample-card__blur" aria-hidden>
-          <img src={blur} alt="" loading="lazy" />
-          <div className="home-sample-card__blur-scrim" />
-        </div>
-      ) : (
-        <div className="absolute inset-0" style={{ background: "var(--surna-elevated)" }} />
-      )}
-      <span className="home-sample-card__chip home-sample-card__chip--on-photo">Sample</span>
-      <div className="home-sample-card__crest">
-        {crest ? (
-          <img src={crest} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <span className="text-lg font-bold text-white/80">{(title[0] || "T").toUpperCase()}</span>
-        )}
-      </div>
-      <div className="home-sample-card__copy home-sample-card__copy--on-photo">
-        <p className="text-[13px] font-bold leading-snug line-clamp-2 text-white" style={inter()}>
-          {title}
-        </p>
-        {meta ? (
-          <p className="text-[10px] mt-1 line-clamp-2 text-white/70" style={inter()}>
-            {meta}
-          </p>
-        ) : null}
-      </div>
-    </button>
+    <HomeSamplePostCard
+      imageUrl={props.coverUrl || props.logoUrl}
+      avatarUrl={props.logoUrl}
+      title={props.title}
+      meta={props.meta}
+      sport={props.sport}
+      kindLabel="Team"
+      cta="View"
+      onClick={props.onClick}
+    />
   );
 }
 
