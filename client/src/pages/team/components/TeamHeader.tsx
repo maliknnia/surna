@@ -1,9 +1,9 @@
-import { MapPin, Star, Users, Heart, MessageCircle, UserPlus, Trophy, Settings, LogOut } from 'lucide-react';
+import { MapPin, Star, Heart, MessageCircle, UserPlus, Trophy, Settings, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { teamLogoUrl } from '@/lib/teamLogo';
+import { teamPhotoUrl } from '@/lib/teamLogo';
 import {
   joinTeamUnified,
   joinButtonLabel,
@@ -158,7 +158,7 @@ export default function TeamHeader({ team, sportConfig, openJoinSheet }: TeamHea
   };
 
   const memberCount = memberCountState;
-  const logoUrl = teamLogoUrl(team);
+  const logoUrl = teamPhotoUrl(team);
   const ratingLabel =
     team.rating != null && String(team.rating).trim() !== "" ? String(team.rating) : "—";
 

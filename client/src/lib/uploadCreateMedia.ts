@@ -3,6 +3,7 @@ import { apiFormRequest, apiRequest } from "@/lib/queryClient";
 export type UploadedCreateMedia = {
   mediaId?: string;
   publicUrl: string;
+  kind?: "image" | "video";
 };
 
 type InitResponse = {
@@ -56,10 +57,10 @@ export async function uploadCreateImage(file: File): Promise<UploadedCreateMedia
   const init = (await initRes.json()) as InitResponse;
 
   if (init.uploadMode === "multipart" && init.uploadEndpoint) {
-    return uploadViaMultipart(init.uploadEndpoint, file);
+    return { ...(await uploadViaMultipart(init.uploadEndpoint, file)), kind: "image" };
   }
 
-  return uploadViaPresigned(init, file);
+  return { ...(await uploadViaPresigned(init, file)), kind: "image" };
 }
 
 /** Read width/height from a local image file before upload. */
@@ -106,8 +107,10 @@ export async function uploadCreateFile(file: File): Promise<UploadedCreateMedia>
   const init = (await initRes.json()) as InitResponse;
 
   if (init.uploadMode === "multipart" && init.uploadEndpoint) {
-    return uploadViaMultipart(init.uploadEndpoint, file);
+    const uploaded = await uploadViaMultipart(init.uploadEndpoint, file);
+    return { ...uploaded, kind };
   }
 
-  return uploadViaPresigned(init, file);
+  const uploaded = await uploadViaPresigned(init, file);
+  return { ...uploaded, kind };
 }

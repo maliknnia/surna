@@ -10,7 +10,7 @@ import { TeamPageThemeProvider } from './TeamPageTheme';
 import { EntityEmptyState, EntityListSkeleton, EntitySectionTabs } from '@/components/entity';
 import { Loader2, ArrowLeft, Share2, QrCode, X, Trophy } from 'lucide-react';
 import { useDiscoveryCardBg } from '@/hooks/useDiscoveryCardBg';
-import { teamLogoUrl } from '@/lib/teamLogo';
+import { teamCoverUrl, teamPhotoUrl } from '@/lib/teamLogo';
 import { useSmartBack } from '@/lib/navigation';
 import QRCode from 'qrcode';
 
@@ -59,7 +59,7 @@ export default function TeamPage() {
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("join") === "1";
 
-  const teamPhoto = team ? teamLogoUrl(team as never) : null;
+  const teamPhoto = team ? (teamCoverUrl(team as never) || teamPhotoUrl(team as never)) : null;
   const extractedColor = useDiscoveryCardBg(teamPhoto, (team as any)?.sport);
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function TeamPage() {
     if (scrollRef.current) {
       const y = scrollRef.current.scrollTop;
       setScrollY(y);
-      setHeaderCollapsed(y > 280);
+      setHeaderCollapsed(y > 200);
     }
   }, []);
 

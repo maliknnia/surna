@@ -91,6 +91,7 @@ export default function VenueCard({ place, onPreview, onNavigate, onSave, style 
         imageUrl={thumb || null}
         fallbackIcon={emoji}
         backgroundColor={cardBg}
+        backdrop="blur"
         onCardClick={() => onPreview?.(place)}
         menu={<CardMenu inline onSave={() => onSave?.(place)} />}
         primaryAction={{

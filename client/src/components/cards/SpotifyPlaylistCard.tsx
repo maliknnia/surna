@@ -11,11 +11,26 @@ export type SpotifyCardAction = {
   ariaLabel?: string;
 };
 
+/** How the card body is painted behind content. */
+export type DiscoveryCardBackdrop =
+  /** Solid fill from photo colour / sport (events, coaches). */
+  | "solid"
+  /** Full atmosphere blur of the photo (venues). */
+  | "blur"
+  /** Soft hint of blur behind a logo thumb (teams). */
+  | "soft-blur";
+
 export type SpotifyPlaylistCardProps = {
   title: string;
   subtitle?: string;
   meta?: string;
+  /** Sharp thumbnail (logo / cover / portrait). */
   imageUrl?: string | null;
+  /**
+   * Optional separate image for blur layer (e.g. team cover while thumb is logo).
+   * Defaults to imageUrl.
+   */
+  blurImageUrl?: string | null;
   fallbackIcon?: ReactNode;
   backgroundColor: string;
   onCardClick?: () => void;
@@ -24,17 +39,14 @@ export type SpotifyPlaylistCardProps = {
   menu?: ReactNode;
   extraContent?: ReactNode;
   className?: string;
-  /** Larger artwork for team discovery cards */
   thumbSize?: "default" | "large";
-  /**
-   * When true (default) and imageUrl is set, fill the card with a blurred
-   * version of that photo (events / teams / venues discovery look).
-   */
+  /** Card surface treatment — see DiscoveryCardBackdrop. */
+  backdrop?: DiscoveryCardBackdrop;
+  /** @deprecated Use backdrop="blur" | "solid" instead. */
   blurPhotoBackground?: boolean;
 };
 
 function cardTextColors(backgroundColor: string, photoBackdrop: boolean) {
-  // Blurred photo + scrim always reads as a dark surface for type
   if (photoBackdrop) {
     return {
       primary: "#ffffff",
@@ -52,11 +64,22 @@ function cardTextColors(backgroundColor: string, photoBackdrop: boolean) {
   };
 }
 
+function resolveBackdrop(
+  backdrop: DiscoveryCardBackdrop | undefined,
+  blurPhotoBackground: boolean | undefined,
+): DiscoveryCardBackdrop {
+  if (backdrop) return backdrop;
+  if (blurPhotoBackground === false) return "solid";
+  if (blurPhotoBackground === true) return "blur";
+  return "solid";
+}
+
 export default function SpotifyPlaylistCard({
   title,
   subtitle,
   meta,
   imageUrl,
+  blurImageUrl,
   fallbackIcon,
   backgroundColor,
   onCardClick,
@@ -66,10 +89,13 @@ export default function SpotifyPlaylistCard({
   extraContent,
   className = "",
   thumbSize = "default",
-  blurPhotoBackground = true,
+  backdrop,
+  blurPhotoBackground,
 }: SpotifyPlaylistCardProps) {
-  const hasPhoto = Boolean(imageUrl?.trim());
-  const useBlurBg = blurPhotoBackground && hasPhoto;
+  const mode = resolveBackdrop(backdrop, blurPhotoBackground);
+  const hasThumb = Boolean(imageUrl?.trim());
+  const blurSrc = (blurImageUrl || imageUrl || "").trim();
+  const useBlurBg = (mode === "blur" || mode === "soft-blur") && Boolean(blurSrc);
   const colors = cardTextColors(backgroundColor, useBlurBg);
   const thumbClass =
     thumbSize === "large"
@@ -93,7 +119,13 @@ export default function SpotifyPlaylistCard({
 
   return (
     <div
-      className={`card-spotify playlist-card ${useBlurBg ? "playlist-card--photo-blur" : ""} ${className}`.trim()}
+      className={`card-spotify playlist-card ${
+        useBlurBg
+          ? mode === "soft-blur"
+            ? "playlist-card--photo-blur playlist-card--soft-blur"
+            : "playlist-card--photo-blur"
+          : ""
+      } ${className}`.trim()}
       style={{ background: backgroundColor }}
       onClick={onCardClick}
       role={onCardClick ? "button" : undefined}
@@ -112,7 +144,7 @@ export default function SpotifyPlaylistCard({
       {useBlurBg ? (
         <div className="playlist-card__blur-layer" aria-hidden>
           <img
-            src={imageUrl!}
+            src={blurSrc}
             alt=""
             className="playlist-card__blur-img"
             crossOrigin="anonymous"
@@ -128,7 +160,7 @@ export default function SpotifyPlaylistCard({
 
       <div className="playlist-card__header">
         <div className={thumbClass} style={{ background: colors.thumbBg }}>
-          {hasPhoto ? (
+          {hasThumb ? (
             <img
               src={imageUrl!}
               alt=""

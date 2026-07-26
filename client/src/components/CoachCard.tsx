@@ -60,6 +60,7 @@ export default function CoachCard({ coach, compact = false, embedded = false }: 
           imageUrl={portrait}
           fallbackIcon={<span className="text-xl">{config.emoji}</span>}
           backgroundColor={cardBg}
+          backdrop="solid"
           onCardClick={openProfile}
           primaryAction={{ label: "Book", onClick: openBook }}
           menu={<CoachVerificationBadge coach={coach} size="sm" />}
@@ -76,6 +77,7 @@ export default function CoachCard({ coach, compact = false, embedded = false }: 
       imageUrl={portrait}
       fallbackIcon={<span className="text-2xl">{config.emoji}</span>}
       backgroundColor={cardBg}
+      backdrop="solid"
       onCardClick={openProfile}
       thumbSize="large"
       primaryAction={{ label: "Book session", onClick: openBook }}

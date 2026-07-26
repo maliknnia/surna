@@ -45,9 +45,13 @@ export default function TeamFeed({ teamId, canManage = false }: TeamFeedProps) {
 
   const postMutation = useMutation({
     mutationFn: async () => {
+      const url = coverMedia?.publicUrl ?? null;
+      const isVideo =
+        coverMedia?.kind === "video" || Boolean(url?.match(/\.(mp4|webm|mov)(\?|$)/i));
       const res = await apiRequest("POST", `/api/teams/${teamId}/feed`, {
         content: draft.trim(),
-        imageUrl: coverMedia?.publicUrl ?? null,
+        imageUrl: isVideo ? null : url,
+        videoUrl: isVideo ? url : null,
       });
       return res.json();
     },
@@ -123,8 +127,9 @@ export default function TeamFeed({ teamId, canManage = false }: TeamFeedProps) {
               <CreateMediaSection
                 cover={coverMedia}
                 onCoverChange={setCoverMedia}
-                coverLabel="Photo"
-                coverHint="Optional — shows in the team feed with your update."
+                allowVideo
+                coverLabel="Photo or video"
+                coverHint="Optional — clips and photos show in the team feed with your update."
               />
               <Textarea
                 rows={3}

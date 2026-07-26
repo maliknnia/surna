@@ -8,7 +8,7 @@ import { ActivityPeopleSheet } from "@/components/people/ActivityPeopleSheet";
 import SpotifyPlaylistCard from "@/components/cards/SpotifyPlaylistCard";
 import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
 import { isLightHex } from "@/lib/colorUtils";
-import { teamLogoUrl } from "@/lib/teamLogo";
+import { teamCoverUrl, teamLogoUrl, teamPhotoUrl } from "@/lib/teamLogo";
 
 interface TeamCardProps {
   team: Team;
@@ -60,7 +60,9 @@ export default function TeamCard({
 }: TeamCardProps) {
   const [peopleOpen, setPeopleOpen] = useState(false);
   const config = getSportConfig(team.sport);
-  const teamPhoto = teamLogoUrl(team);
+  const logo = teamLogoUrl(team);
+  const cover = teamCoverUrl(team);
+  const teamPhoto = teamPhotoUrl(team);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
@@ -92,8 +94,8 @@ export default function TeamCard({
   );
 
   const cardBg = useDiscoveryCardBg(teamPhoto, team.sport);
-  const hasPhoto = Boolean(teamPhoto?.trim());
-  const lightCard = hasPhoto ? false : isLightHex(cardBg);
+  const hasAtmosphere = Boolean((cover || logo)?.trim());
+  const lightCard = hasAtmosphere ? false : isLightHex(cardBg);
   const surfaceLight = lightCard ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)";
 
   if (compact) {
@@ -104,13 +106,13 @@ export default function TeamCard({
           style={{ height: "140px", minWidth: "140px", padding: 0, background: cardBg }}
           onClick={() => onViewDetails(team.id)}
         >
-          {hasPhoto ? (
+          {hasAtmosphere ? (
             <div className="absolute inset-0 pointer-events-none" aria-hidden>
               <img
-                src={teamPhoto!}
+                src={(cover || logo)!}
                 alt=""
-                className="absolute inset-[-18%] w-[136%] h-[136%] object-cover"
-                style={{ filter: "blur(22px) saturate(1.15)", transform: "scale(1.08)" }}
+                className="absolute inset-[-12%] w-[124%] h-[124%] object-cover"
+                style={{ filter: "blur(16px) saturate(1.08)", opacity: 0.55, transform: "scale(1.06)" }}
                 crossOrigin="anonymous"
                 referrerPolicy="no-referrer"
               />
@@ -118,7 +120,7 @@ export default function TeamCard({
                 className="absolute inset-0"
                 style={{
                   background:
-                    "linear-gradient(165deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.5) 100%)",
+                    "linear-gradient(165deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%)",
                 }}
               />
             </div>
@@ -129,9 +131,9 @@ export default function TeamCard({
           >
             {config.emoji}
           </div>
-          {teamPhoto ? (
-            <div className="absolute top-3 left-3 w-12 h-12 rounded-lg overflow-hidden z-[1]">
-              <img src={teamPhoto} alt="" className="w-full h-full object-cover" />
+          {logo || cover ? (
+            <div className="absolute top-3 left-3 w-12 h-12 rounded-lg overflow-hidden z-[1] shadow-md">
+              <img src={(logo || cover)!} alt="" className="w-full h-full object-cover" />
             </div>
           ) : null}
           <div className="absolute bottom-0 left-0 right-0 p-3 z-[1]">
@@ -172,9 +174,11 @@ export default function TeamCard({
         title={team.name}
         subtitle={team.sport || undefined}
         meta={metaParts.slice(0, 2).join(" · ")}
-        imageUrl={teamPhoto || null}
+        imageUrl={logo || cover || null}
+        blurImageUrl={cover || logo || null}
         fallbackIcon={config.emoji}
         backgroundColor={cardBg}
+        backdrop="soft-blur"
         thumbSize="large"
         onCardClick={() => onViewDetails(team.id)}
         menu={<CardMenu inline />}

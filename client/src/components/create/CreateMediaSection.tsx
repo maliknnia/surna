@@ -1,7 +1,11 @@
 import { useRef, useState } from "react";
-import { Camera, ImagePlus, Loader2, X } from "lucide-react";
+import { Camera, ImagePlus, Loader2, Video, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { uploadCreateImage, type UploadedCreateMedia } from "@/lib/uploadCreateMedia";
+import {
+  uploadCreateFile,
+  uploadCreateImage,
+  type UploadedCreateMedia,
+} from "@/lib/uploadCreateMedia";
 import { cn } from "@/lib/utils";
 
 export type CreateMediaValue = UploadedCreateMedia | null;
@@ -16,6 +20,8 @@ type CreateMediaSectionProps = {
   maxGallery?: number;
   coverLabel?: string;
   coverHint?: string;
+  /** Allow video as well as photo for the main media slot (team feed, etc.). */
+  allowVideo?: boolean;
   className?: string;
 };
 
@@ -29,6 +35,7 @@ export function CreateMediaSection({
   maxGallery = 4,
   coverLabel = "Cover photo",
   coverHint = "Tap to add a photo — shows on cards, map pins, and your profile.",
+  allowVideo = false,
   className,
 }: CreateMediaSectionProps) {
   const { toast } = useToast();
@@ -43,15 +50,16 @@ export function CreateMediaSection({
     file: File | undefined,
     onDone: (value: CreateMediaValue) => void,
     setBusy: (v: boolean) => void,
+    asVideoCapable = false,
   ) => {
     if (!file) return;
     setBusy(true);
     try {
-      const uploaded = await uploadCreateImage(file);
+      const uploaded = asVideoCapable ? await uploadCreateFile(file) : await uploadCreateImage(file);
       onDone(uploaded);
     } catch (err) {
       toast({
-        title: "Photo upload failed",
+        title: asVideoCapable ? "Upload failed" : "Photo upload failed",
         description: err instanceof Error ? err.message : "Try again",
         variant: "destructive",
       });
@@ -61,6 +69,8 @@ export function CreateMediaSection({
   };
 
   const showLogo = Boolean(onLogoChange);
+  const isVideo =
+    cover?.kind === "video" || Boolean(cover?.publicUrl?.match(/\.(mp4|webm|mov)(\?|$)/i));
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -89,23 +99,38 @@ export function CreateMediaSection({
         >
           {cover?.publicUrl ? (
             <>
-              <img src={cover.publicUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              {isVideo ? (
+                <video
+                  src={cover.publicUrl}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
+              ) : (
+                <img src={cover.publicUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-              <span
-                className="absolute bottom-3 left-3 text-xs font-semibold text-white flex items-center gap-1.5"
-              >
-                <Camera size={14} /> Change cover
+              <span className="absolute bottom-3 left-3 text-xs font-semibold text-white flex items-center gap-1.5">
+                {isVideo ? <Video size={14} /> : <Camera size={14} />}
+                {isVideo ? "Change video" : "Change cover"}
               </span>
             </>
           ) : (
             <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4">
               {uploadingCover ? (
                 <Loader2 size={28} className="animate-spin" style={{ color: "var(--surna-text-secondary)" }} />
+              ) : allowVideo ? (
+                <Video size={32} strokeWidth={1.5} style={{ color: "var(--surna-text-secondary)" }} />
               ) : (
                 <ImagePlus size={32} strokeWidth={1.5} style={{ color: "var(--surna-text-secondary)" }} />
               )}
               <span className="text-sm font-semibold" style={{ color: "var(--surna-text)" }}>
-                {uploadingCover ? "Uploading…" : "Add cover photo"}
+                {uploadingCover
+                  ? "Uploading…"
+                  : allowVideo
+                    ? "Add photo or video"
+                    : "Add cover photo"}
               </span>
               <span className="text-xs text-center" style={{ color: "var(--surna-text-muted)" }}>
                 Optional but recommended
@@ -117,7 +142,7 @@ export function CreateMediaSection({
         {cover?.publicUrl ? (
           <button
             type="button"
-            aria-label="Remove cover"
+            aria-label="Remove media"
             onClick={() => onCoverChange(null)}
             className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center bg-black/60 text-white"
           >
@@ -128,10 +153,10 @@ export function CreateMediaSection({
         <input
           ref={coverInputRef}
           type="file"
-          accept="image/*"
+          accept={allowVideo ? "image/*,video/*" : "image/*"}
           className="hidden"
           onChange={(e) => {
-            void pickAndUpload(e.target.files?.[0], onCoverChange, setUploadingCover);
+            void pickAndUpload(e.target.files?.[0], onCoverChange, setUploadingCover, allowVideo);
             e.target.value = "";
           }}
         />

@@ -568,6 +568,24 @@
     opacity: 0.95;
   }
 
+  /* Teams — softer atmosphere so the logo stays the hero */
+  .playlist-card--soft-blur .playlist-card__blur-img {
+    filter: blur(18px) saturate(1.08);
+    opacity: 0.55;
+    inset: -12%;
+    width: 124%;
+    height: 124%;
+  }
+
+  .playlist-card--soft-blur .playlist-card__blur-scrim {
+    background: linear-gradient(
+      165deg,
+      rgba(0, 0, 0, 0.35) 0%,
+      rgba(0, 0, 0, 0.48) 55%,
+      rgba(0, 0, 0, 0.58) 100%
+    );
+  }
+
   .playlist-card__blur-scrim {
     position: absolute;
     inset: 0;
@@ -1320,7 +1338,7 @@
 }
 
 .spotify-hero {
-  padding-top: 60px;
+  padding-top: 52px;
   will-change: transform;
   transition: transform 0.05s linear;
 }
@@ -1331,6 +1349,81 @@
   align-items: center;
   text-align: center;
   padding: 20px 20px 24px;
+}
+
+/* Team profile — wide cover frame + crest */
+.team-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  padding-bottom: 8px;
+}
+
+.team-hero__cover {
+  position: relative;
+  width: 100%;
+  height: min(42vw, 220px);
+  min-height: 160px;
+  overflow: hidden;
+  background: var(--surna-elevated);
+}
+
+.team-hero__cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-hero__cover-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.team-hero__cover-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.12) 45%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+:root:not(.dark) .team-hero__cover-scrim {
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0.08) 40%,
+    transparent 70%
+  );
+}
+
+.team-hero__crest-wrap {
+  margin-top: -52px;
+  position: relative;
+  z-index: 2;
+  padding: 0 20px;
+}
+
+.team-hero__crest {
+  width: 104px;
+  height: 104px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 3px solid var(--surna-base, #000);
+  background: var(--surna-elevated);
+}
+
+.team-hero__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 14px 20px 20px;
 }
 
 .spotify-album-art {

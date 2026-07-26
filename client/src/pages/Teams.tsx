@@ -27,7 +27,7 @@ import { YourTeamsStrip } from "@/components/teams/YourTeamsStrip";
 import { joinTeamUnified } from "@/lib/teamJoin";
 import DiscoveryCircleStrip from "@/components/cards/DiscoveryCircleStrip";
 import { DiscoverySectionHeading, DISCOVERY_SECTION_LABELS } from "@/components/cards/DiscoverySectionHeading";
-import { teamLogoUrl } from "@/lib/teamLogo";
+import { teamLogoUrl, teamPhotoUrl } from "@/lib/teamLogo";
 import { getSportConfig } from "@/components/TeamCard";
 import { mergeWithDemoTeams } from "@/lib/demoTeams";
 import type { Team } from "@shared/schema";
@@ -247,7 +247,7 @@ export default function Teams({
     .map((team) => ({
       id: team.id,
       name: team.name,
-      imageUrl: teamLogoUrl(team),
+      imageUrl: teamPhotoUrl(team),
       emoji: getSportConfig(team.sport).emoji,
       sport: team.sport,
       verified: team.verified ?? false,
