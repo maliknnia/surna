@@ -1,6 +1,13 @@
 ﻿import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { cacheAside, cacheKey, TTL } from "./cache";
+import {
+  scoreForPerson,
+  DEFAULT_PERSON_RANKING,
+  type PersonAffinity,
+  type RankableContent,
+  type PersonRankingWeights,
+} from "@shared/personRanking";
 
 export interface FeedItem {
   id: string;
@@ -24,37 +31,72 @@ export interface FeedRankingConfig {
 }
 
 const DEFAULT_RANKING: FeedRankingConfig = {
-  chronologicalWeight: 0.6,
-  engagementWeight: 0.4,
-  freshnessDecayHours: 24,
+  chronologicalWeight: DEFAULT_PERSON_RANKING.freshness,
+  engagementWeight: DEFAULT_PERSON_RANKING.engagement,
+  freshnessDecayHours: DEFAULT_PERSON_RANKING.halfLifeHours * 2,
   boostFactors: {
-    isFollowing: 1.5,
-    isTeammate: 1.3,
-    hasMedia: 1.2,
-    isVerified: 1.1,
+    isFollowing: DEFAULT_PERSON_RANKING.followBoost,
+    isTeammate: DEFAULT_PERSON_RANKING.teammateBoost,
+    hasMedia: DEFAULT_PERSON_RANKING.mediaBoost,
+    isVerified: DEFAULT_PERSON_RANKING.verifiedBoost,
     isSponsored: 1.4,
   },
 };
 
-export function computeFeedScore(post: any, userId: string, config: FeedRankingConfig = DEFAULT_RANKING): number {
-  const ageHours = (Date.now() - new Date(post.createdAt).getTime()) / (1000 * 60 * 60);
-  const freshness = Math.max(0, 1 - ageHours / config.freshnessDecayHours);
+/** @deprecated Prefer scoreForPerson from @shared/personRanking — kept for callers. */
+export function computeFeedScore(
+  post: any,
+  _userId: string,
+  config: FeedRankingConfig = DEFAULT_RANKING,
+  person?: PersonAffinity,
+): number {
+  const weights: PersonRankingWeights = {
+    ...DEFAULT_PERSON_RANKING,
+    freshness: config.chronologicalWeight,
+    engagement: config.engagementWeight,
+    halfLifeHours: Math.max(1, config.freshnessDecayHours / 2),
+    followBoost: config.boostFactors.isFollowing,
+    teammateBoost: config.boostFactors.isTeammate,
+    mediaBoost: config.boostFactors.hasMedia,
+    verifiedBoost: config.boostFactors.isVerified,
+  };
 
-  const likes = post.likeCount || 0;
-  const comments = post.commentCount || 0;
-  const shares = post.shareCount || 0;
-  const engagement = Math.log2(1 + likes + comments * 2 + shares * 3);
+  const item: RankableContent = {
+    createdAt: post.createdAt,
+    sport: post.sport,
+    location: post.location,
+    authorId: post.authorId || post.author?.id,
+    authorSport: post.author?.sport,
+    authorVerified: post.isVerified || post.author?.isVerified,
+    likesCount: post.likeCount || post.likesCount,
+    commentsCount: post.commentCount || post.commentsCount,
+    sharesCount: post.shareCount || post.sharesCount,
+    imageUrl: post.imageUrl || post.mediaUrl,
+    videoUrl: post.videoUrl,
+  };
 
-  let score = freshness * config.chronologicalWeight + engagement * config.engagementWeight;
+  const affinity: PersonAffinity = person ?? {
+    preferredSports: [],
+    followingIds: post.isFollowing && item.authorId ? [item.authorId] : [],
+    teammateIds: post.isTeammate && item.authorId ? [item.authorId] : [],
+  };
 
-  if (post.isFollowing) score *= config.boostFactors.isFollowing;
-  if (post.isTeammate) score *= config.boostFactors.isTeammate;
-  if (post.mediaUrl || post.imageUrl) score *= config.boostFactors.hasMedia;
-  if (post.isVerified) score *= config.boostFactors.isVerified;
+  // Legacy flags when person affinity wasn't passed
+  if (!person) {
+    if (post.isFollowing && item.authorId) {
+      affinity.followingIds = [...(affinity.followingIds as string[] || []), item.authorId];
+    }
+    if (post.isTeammate && item.authorId) {
+      affinity.teammateIds = [...(affinity.teammateIds as string[] || []), item.authorId];
+    }
+  }
+
+  let { score } = scoreForPerson(item, affinity, weights);
   if (post.isSponsored) score *= config.boostFactors.isSponsored;
-
   return Math.round(score * 1000) / 1000;
 }
+
+export { scoreForPerson, DEFAULT_PERSON_RANKING };
 
 export interface MapCluster {
   lat: number;

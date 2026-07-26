@@ -630,18 +630,34 @@ export class DatabaseStorage implements IStorage {
       }),
     );
 
-    // Merge — followed authors weighted 3x; onboarding sports/location boost 2x
+    // Person-ranking: freshness + engagement × follow / sport / location / quality
+    const { scoreForPerson } = await import("@shared/personRanking");
     const scoreItem = (item: Record<string, unknown>) => {
-      const date = new Date(String(item.createdAt ?? 0)).getTime();
-      const author = item.author as { id?: string; sport?: string | null } | undefined;
-      const authorId = author?.id;
-      let weight = 1;
-      if (authorId && followingIds.has(authorId)) weight *= 3;
-      const postSport = String(item.sport || author?.sport || "").toLowerCase();
-      if (postSport && prefSports.has(postSport)) weight *= 2;
-      const postLoc = String(item.location || "").toLowerCase();
-      if (prefLocation && postLoc && postLoc.includes(prefLocation.split(",")[0])) weight *= 2;
-      return weight * date;
+      const author = item.author as
+        | { id?: string; sport?: string | null; isVerified?: boolean | null }
+        | undefined;
+      const place = item.place as { id?: string; isVerified?: boolean | null } | undefined;
+      const { score } = scoreForPerson(
+        {
+          createdAt: item.createdAt as Date | string | null,
+          sport: (item.sport as string) || author?.sport || null,
+          location: (item.location as string) || null,
+          authorId: author?.id || null,
+          authorSport: author?.sport || null,
+          authorVerified: Boolean(author?.isVerified || place?.isVerified),
+          likesCount: Number(item.likesCount ?? 0),
+          commentsCount: Number(item.commentsCount ?? 0),
+          sharesCount: Number(item.sharesCount ?? 0),
+          imageUrl: (item.imageUrl as string) || null,
+          videoUrl: (item.videoUrl as string) || null,
+        },
+        {
+          preferredSports: [...prefSports],
+          locationCity: prefLocation || null,
+          followingIds,
+        },
+      );
+      return score;
     };
 
     const allItems = [...postsWithLikeStatus, ...formattedPlacePosts]

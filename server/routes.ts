@@ -1238,9 +1238,12 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
-      const includeTypes = req.query.types ? 
-        Array.isArray(req.query.types) ? req.query.types : [req.query.types] : 
-        ['post', 'event', 'team', 'coach'];
+      const includeTypes = (() => {
+        const raw = req.query.types ?? req.query.includeTypes;
+        if (!raw) return ['post', 'event', 'team', 'coach'];
+        if (Array.isArray(raw)) return raw.map(String);
+        return String(raw).split(',').map((s) => s.trim()).filter(Boolean);
+      })();
       const limit = Math.min(Number(req.query.limit) || 20, 50);
       const algorithm = req.query.algorithm || 'hybrid';
       const refreshCache = req.query.refresh === 'true';
@@ -1261,16 +1264,29 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
     }
   });
 
-  // Track user interaction for ML learning
-  app.post('/api/interactions', isAuthenticated, validateBody(insertUserInteractionSchema), async (req: any, res) => {
+  // Track user interaction for ML learning (accepts target* or legacy content*)
+  app.post('/api/interactions', isAuthenticated, async (req: any, res) => {
     try {
       const userId = sessionUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
+      const body = req.body || {};
+      const targetType = String(body.targetType || body.contentType || "").trim();
+      const targetId = String(body.targetId || body.contentId || "").trim();
+      const interactionType = String(body.interactionType || "").trim();
+      if (!targetType || !targetId || !interactionType) {
+        return res.status(400).json({ message: "targetType, targetId, and interactionType are required" });
+      }
+
+      const weightRaw = body.weight ?? 1;
       const interactionData = {
-        ...req.body,
-        userId
+        userId,
+        targetType,
+        targetId,
+        interactionType,
+        weight: String(weightRaw),
+        metadata: body.metadata ?? body.context ?? null,
       };
 
       await recommendationService.trackInteraction(interactionData);
@@ -1282,7 +1298,7 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
   });
 
   // Provide feedback on recommendations
-  app.post('/api/recommendations/feedback', isAuthenticated, validateBody(insertRecommendationFeedbackSchema), async (req: any, res) => {
+  app.post('/api/recommendations/feedback', isAuthenticated, async (req: any, res) => {
     try {
       const userId = sessionUserId(req);
       if (!userId) {
@@ -1292,16 +1308,29 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
         ...req.body,
         userId
       };
+      const recommendationId = String(feedbackData.recommendationId || feedbackData.contentId || "").trim();
+      const feedback = String(feedbackData.feedback || feedbackData.feedbackType || "").trim();
+      if (!recommendationId || !feedback) {
+        return res.status(400).json({ message: "recommendationId and feedback are required" });
+      }
 
-      // Note: This would typically update the recommendation feedback table
-      // For now, we'll just track it as an interaction
+      const { db } = await import("./db");
+      const { recommendationFeedback } = await import("@shared/schema");
+      await db.insert(recommendationFeedback).values({
+        userId,
+        recommendationId,
+        feedback,
+        reason: feedbackData.reason || feedbackData.comments || null,
+      });
+
+      const positive = ["positive", "relevant", "like"].includes(feedback.toLowerCase());
       await recommendationService.trackInteraction({
         userId,
-        targetType: 'recommendation',
-        targetId: feedbackData.recommendationId,
-        interactionType: feedbackData.feedbackType,
-        weight: feedbackData.explicitRating ? String(feedbackData.explicitRating / 5) : "1.0",
-        metadata: { feedback: true, comments: feedbackData.comments }
+        targetType: String(feedbackData.targetType || "recommendation"),
+        targetId: recommendationId,
+        interactionType: positive ? "like" : "skip",
+        weight: positive ? "0.90" : "-0.20",
+        metadata: { feedback: true, reason: feedbackData.reason, comments: feedbackData.comments },
       });
 
       res.json({ success: true });
@@ -1798,6 +1827,16 @@ export async function registerRoutes(app: Express, io?: any): Promise<Server> {
       }
       const postId = req.params.id;
       const liked = await storage.likePost(userId, postId);
+      if (liked) {
+        void recommendationService.trackInteraction({
+          userId,
+          targetType: "post",
+          targetId: postId,
+          interactionType: "like",
+          weight: "0.80",
+          metadata: { source: "api_like" },
+        }).catch(() => {});
+      }
       res.json({ liked });
     } catch (error: unknown) {
       console.error("Error liking post:", error);

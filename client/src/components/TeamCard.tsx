@@ -92,7 +92,8 @@ export default function TeamCard({
   );
 
   const cardBg = useDiscoveryCardBg(teamPhoto, team.sport);
-  const lightCard = isLightHex(cardBg);
+  const hasPhoto = Boolean(teamPhoto?.trim());
+  const lightCard = hasPhoto ? false : isLightHex(cardBg);
   const surfaceLight = lightCard ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)";
 
   if (compact) {
@@ -103,16 +104,37 @@ export default function TeamCard({
           style={{ height: "140px", minWidth: "140px", padding: 0, background: cardBg }}
           onClick={() => onViewDetails(team.id)}
         >
-          <div className="absolute top-2.5 right-2.5 w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-            style={{ background: surfaceLight }}>
+          {hasPhoto ? (
+            <div className="absolute inset-0 pointer-events-none" aria-hidden>
+              <img
+                src={teamPhoto!}
+                alt=""
+                className="absolute inset-[-18%] w-[136%] h-[136%] object-cover"
+                style={{ filter: "blur(22px) saturate(1.15)", transform: "scale(1.08)" }}
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(165deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.5) 100%)",
+                }}
+              />
+            </div>
+          ) : null}
+          <div
+            className="absolute top-2.5 right-2.5 w-7 h-7 rounded-lg flex items-center justify-center text-sm z-[1]"
+            style={{ background: surfaceLight }}
+          >
             {config.emoji}
           </div>
           {teamPhoto ? (
-            <div className="absolute top-3 left-3 w-12 h-12 rounded-lg overflow-hidden">
+            <div className="absolute top-3 left-3 w-12 h-12 rounded-lg overflow-hidden z-[1]">
               <img src={teamPhoto} alt="" className="w-full h-full object-cover" />
             </div>
           ) : null}
-          <div className="absolute bottom-0 left-0 right-0 p-3">
+          <div className="absolute bottom-0 left-0 right-0 p-3 z-[1]">
             <p className="text-xs font-bold truncate" style={{ color: lightCard ? "#121212" : "#fff" }}>{team.name}</p>
             <div className="flex items-center gap-2 mt-1">
               <CardAttendeeStrip

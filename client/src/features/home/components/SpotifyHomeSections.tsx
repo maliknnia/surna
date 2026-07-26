@@ -22,6 +22,8 @@ import {
 } from "@/features/home/components/HomeCardSurface";
 import { HomeFeedPostsSection } from "@/features/home/components/HomeFeedPostsSection";
 import type { CoachWithProfile } from "@shared/schema";
+import { scoreForPerson } from "@shared/personRanking";
+import { useAuth } from "@/hooks/useAuth";
 
 const PURPLE_NEW = "#803FE1";
 const HOME_ROW_MAX = 2;
@@ -43,15 +45,19 @@ function interFont(style?: CSSProperties): CSSProperties {
   return { fontFamily: "Inter, sans-serif", ...style };
 }
 
-function ts(item: { updatedAt?: string; createdAt?: string; starts_at?: string; startTime?: string }) {
-  const raw =
-    item.updatedAt ||
-    item.createdAt ||
-    item.starts_at ||
-    item.startTime ||
-    "";
-  const n = Date.parse(raw);
-  return Number.isFinite(n) ? n : 0;
+function viewerAffinity(user: any) {
+  const sports = [
+    user?.sport,
+    user?.primarySport,
+    ...(Array.isArray(user?.sports) ? user.sports : []),
+    ...(Array.isArray(user?.profile?.sports) ? user.profile.sports : []),
+  ]
+    .filter(Boolean)
+    .map((s: string) => String(s));
+  return {
+    preferredSports: [...new Set(sports)],
+    locationCity: (user?.location as string) || null,
+  };
 }
 
 function SectionTitle({ children, showNew }: { children: ReactNode; showNew?: boolean }) {
@@ -90,6 +96,9 @@ function LiveInstantCounter({ count }: { count: number }) {
 }
 
 function useHomeData() {
+  const { user } = useAuth();
+  const affinity = useMemo(() => viewerAffinity(user), [user]);
+
   const eventsQuery = useQuery<any>({
     queryKey: [...HOME_QUERY_KEYS.events],
     queryFn: getQueryFn({ on401: "returnNull" }),
@@ -113,27 +122,86 @@ function useHomeData() {
   });
   const coachesQuery = useQuery({
     queryKey: [...HOME_QUERY_KEYS.coaches],
-    queryFn: () => fetchCoaches({ limit: HOME_ROW_MAX }),
+    queryFn: () => fetchCoaches({ limit: Math.max(HOME_ROW_MAX * 4, 12) }),
     ...homeQueryOptions,
   });
 
   const events = useMemo(() => {
     const api = Array.isArray(eventsQuery.data) ? eventsQuery.data : eventsQuery.data?.items || [];
+    const merged = mergeWithDemoEvents(api, { skipDemo: false, mixDemos: true, fallback: true });
     return takeHomeRows(
-      mergeWithDemoEvents(api, { skipDemo: false, mixDemos: true, fallback: true }),
+      sortByDesc(merged, (ev: any) =>
+        scoreForPerson(
+          {
+            createdAt: ev.starts_at || ev.startDate || ev.createdAt,
+            sport: ev.sport,
+            location: ev.location,
+            goingCount: ev.going_count || ev.goingCount,
+            imageUrl: ev.cover_url || ev.coverUrl || ev.imageUrl,
+          },
+          affinity,
+        ).score,
+      ),
     );
-  }, [eventsQuery.data]);
+  }, [eventsQuery.data, affinity]);
+
   const teams = useMemo(() => {
     const api = (teamsQuery.data || []).filter((team: any) => {
       const captain = String(team?.captainId ?? team?.captain_id ?? "");
       return !captain.startsWith("jwt-");
     });
+    const merged = mergeWithDemoTeams(api, { skipDemo: false, mixDemos: true, fallback: true });
     return takeHomeRows(
-      mergeWithDemoTeams(api, { skipDemo: false, mixDemos: true, fallback: true }),
+      sortByDesc(merged, (team: any) =>
+        scoreForPerson(
+          {
+            createdAt: team.createdAt || team.updatedAt,
+            sport: team.sport,
+            location: team.location || team.city,
+            followersCount: team.followersCount,
+            currentMembers: team.currentMembers,
+            imageUrl: team.logo || team.coverImageUrl || team.cover,
+          },
+          affinity,
+        ).score,
+      ),
     );
-  }, [teamsQuery.data]);
-  const instantGames = useMemo(() => takeHomeRows(instantQuery.data || []), [instantQuery.data]);
-  const coaches = takeHomeRows(coachesQuery.data || []);
+  }, [teamsQuery.data, affinity]);
+
+  const instantGames = useMemo(() => {
+    const list = instantQuery.data || [];
+    return takeHomeRows(
+      sortByDesc(list, (g: any) =>
+        scoreForPerson(
+          {
+            createdAt: g.startTime || g.createdAt,
+            sport: g.sport,
+            location: g.locationName || g.location,
+            currentMembers: g.playersJoined,
+          },
+          affinity,
+        ).score,
+      ),
+    );
+  }, [instantQuery.data, affinity]);
+
+  const coaches = useMemo(() => {
+    const list = coachesQuery.data || [];
+    return takeHomeRows(
+      sortByDesc(list as CoachWithProfile[], (coach) =>
+        scoreForPerson(
+          {
+            createdAt: coach.createdAt,
+            sport: coach.specialties?.[0] || coach.user?.sport,
+            location: coach.user?.location,
+            authorVerified: coach.isVerified,
+            imageUrl: coach.user?.profileImageUrl || coach.profile?.coverImageUrl,
+          },
+          affinity,
+        ).score,
+      ),
+    );
+  }, [coachesQuery.data, affinity]);
 
   const loading =
     eventsQuery.isLoading ||
@@ -158,6 +226,8 @@ function HappeningNearYouRow({
   showNew?: boolean;
 }) {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const affinity = useMemo(() => viewerAffinity(user), [user]);
   const [liveCount, setLiveCount] = useState(() => countActiveInstantGames(instantGames));
 
   useEffect(() => {
@@ -170,7 +240,16 @@ function HappeningNearYouRow({
     const merged = [
       ...events.map((ev) => ({
         id: `ev-${ev.id}`,
-        sortScore: (ev.going_count || ev.goingCount || 0) * 2 + ts(ev),
+        sortScore: scoreForPerson(
+          {
+            createdAt: ev.starts_at || ev.startDate,
+            sport: ev.sport,
+            location: ev.location,
+            goingCount: ev.going_count || ev.goingCount,
+            imageUrl: getEventCoverUrl(ev),
+          },
+          affinity,
+        ).score,
         title: ev.title,
         subtitle: ev.location || "Near you",
         meta: [formatEventWhenShort(ev.starts_at || ev.startDate), ev.sport].filter(Boolean).join(" · "),
@@ -186,7 +265,15 @@ function HappeningNearYouRow({
       })),
       ...instantGames.map((g) => ({
         id: `in-${g.id}`,
-        sortScore: (g.playersJoined || 1) * 3 + ts(g),
+        sortScore: scoreForPerson(
+          {
+            createdAt: g.startTime,
+            sport: g.sport,
+            location: g.locationName,
+            currentMembers: g.playersJoined,
+          },
+          affinity,
+        ).score,
         title: g.name,
         subtitle: g.locationName || "Near you",
         meta: [g.sport, formatEventWhenShort(g.startTime)].filter(Boolean).join(" · "),
@@ -202,7 +289,7 @@ function HappeningNearYouRow({
       })),
     ];
     return sortByDesc(merged, (item) => item.sortScore).slice(0, HOME_ROW_MAX);
-  }, [events, instantGames]);
+  }, [events, instantGames, affinity]);
 
   if (loading) {
     return (

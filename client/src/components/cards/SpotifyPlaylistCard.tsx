@@ -26,9 +26,23 @@ export type SpotifyPlaylistCardProps = {
   className?: string;
   /** Larger artwork for team discovery cards */
   thumbSize?: "default" | "large";
+  /**
+   * When true (default) and imageUrl is set, fill the card with a blurred
+   * version of that photo (events / teams / venues discovery look).
+   */
+  blurPhotoBackground?: boolean;
 };
 
-function cardTextColors(backgroundColor: string) {
+function cardTextColors(backgroundColor: string, photoBackdrop: boolean) {
+  // Blurred photo + scrim always reads as a dark surface for type
+  if (photoBackdrop) {
+    return {
+      primary: "#ffffff",
+      muted: "rgba(255,255,255,0.72)",
+      fill: "rgba(255,255,255,0.16)",
+      thumbBg: "rgba(255,255,255,0.12)",
+    };
+  }
   const lightBg = isLightHex(backgroundColor);
   return {
     primary: lightBg ? "#121212" : "#ffffff",
@@ -52,8 +66,11 @@ export default function SpotifyPlaylistCard({
   extraContent,
   className = "",
   thumbSize = "default",
+  blurPhotoBackground = true,
 }: SpotifyPlaylistCardProps) {
-  const colors = cardTextColors(backgroundColor);
+  const hasPhoto = Boolean(imageUrl?.trim());
+  const useBlurBg = blurPhotoBackground && hasPhoto;
+  const colors = cardTextColors(backgroundColor, useBlurBg);
   const thumbClass =
     thumbSize === "large"
       ? "playlist-card__thumb playlist-card__thumb--lg"
@@ -76,7 +93,7 @@ export default function SpotifyPlaylistCard({
 
   return (
     <div
-      className={`card-spotify playlist-card ${className}`.trim()}
+      className={`card-spotify playlist-card ${useBlurBg ? "playlist-card--photo-blur" : ""} ${className}`.trim()}
       style={{ background: backgroundColor }}
       onClick={onCardClick}
       role={onCardClick ? "button" : undefined}
@@ -92,11 +109,28 @@ export default function SpotifyPlaylistCard({
           : undefined
       }
     >
+      {useBlurBg ? (
+        <div className="playlist-card__blur-layer" aria-hidden>
+          <img
+            src={imageUrl!}
+            alt=""
+            className="playlist-card__blur-img"
+            crossOrigin="anonymous"
+            referrerPolicy="no-referrer"
+            loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+          <div className="playlist-card__blur-scrim" />
+        </div>
+      ) : null}
+
       <div className="playlist-card__header">
         <div className={thumbClass} style={{ background: colors.thumbBg }}>
-          {imageUrl ? (
+          {hasPhoto ? (
             <img
-              src={imageUrl}
+              src={imageUrl!}
               alt=""
               className="absolute inset-0 w-full h-full object-cover"
               crossOrigin="anonymous"

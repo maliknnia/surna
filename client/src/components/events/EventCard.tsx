@@ -101,7 +101,9 @@ export default function EventCard({ ev }: { ev: any }) {
   const isFull = spotsLeft === 0;
 
   const cardBg = useDiscoveryCardBg(coverUrl, sport);
-  const lightCard = isLightHex(cardBg);
+  const hasPhoto = Boolean(coverUrl?.trim());
+  // Blurred photo backdrop always uses light text on a dark scrim
+  const lightCard = hasPhoto ? false : isLightHex(cardBg);
   const textPrimary = lightCard ? "#121212" : "#ffffff";
   const textMuted = lightCard ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.55)";
   const progressTrack = lightCard ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)";

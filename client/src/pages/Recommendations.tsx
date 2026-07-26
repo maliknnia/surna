@@ -78,7 +78,7 @@ export default function Recommendations() {
   const { data: recommendations, isLoading } = useQuery<RecommendationsResponse>({
     queryKey: ['/api/recommendations'],
     queryFn: async () => {
-      const response = await fetch('/api/recommendations?includeTypes=team,coach,user&algorithm=hybrid');
+      const response = await fetch('/api/recommendations?types=team,coach&algorithm=hybrid');
       if (!response.ok) throw new Error('Failed to fetch recommendations');
       return response.json();
     },

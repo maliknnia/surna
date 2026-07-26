@@ -540,6 +540,56 @@
 
   .playlist-card {
     padding: 14px 16px;
+    isolation: isolate;
+  }
+
+  .playlist-card__blur-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0 !important;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .playlist-card > *:not(.playlist-card__blur-layer) {
+    position: relative;
+    z-index: 2;
+  }
+
+  .playlist-card__blur-img {
+    position: absolute;
+    inset: -18%;
+    width: 136%;
+    height: 136%;
+    object-fit: cover;
+    filter: blur(28px) saturate(1.15);
+    transform: scale(1.08);
+    opacity: 0.95;
+  }
+
+  .playlist-card__blur-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      165deg,
+      rgba(0, 0, 0, 0.28) 0%,
+      rgba(0, 0, 0, 0.42) 45%,
+      rgba(0, 0, 0, 0.55) 100%
+    );
+  }
+
+  .playlist-card--photo-blur {
+    background-color: transparent !important;
+  }
+
+  .playlist-card--photo-blur::after {
+    /* Soft top sheen still ok; keep subtle over photo blur */
+    background: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 42%
+    );
   }
 
   .playlist-card__header {
