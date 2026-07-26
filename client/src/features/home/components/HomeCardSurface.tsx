@@ -14,6 +14,8 @@ import type { PostCardContentKind } from "@/lib/postCardBackground";
 import { CardAttendeeStrip } from "@/components/people/CardAttendeeStrip";
 import type { AttendeeEntityType } from "@/components/people/AttendeeCircles";
 import { useHomeCardPillStyle } from "@/features/home/homeCardStyles";
+import { useDiscoveryCardBg } from "@/hooks/useDiscoveryCardBg";
+import { isLightHex } from "@/lib/colorUtils";
 
 const inter = (extra?: CSSProperties): CSSProperties => ({
   fontFamily: "Inter, sans-serif",
@@ -341,12 +343,15 @@ export function HomeCoachCircleCard({
   name,
   sport,
   onClick,
+  sample = false,
 }: {
   photo?: string | null;
   initials: string;
   name: string;
   sport: string;
   onClick: () => void;
+  /** Showcase / demo coach — quieter label under sport. */
+  sample?: boolean;
   /** @deprecated Glow removed — kept for call-site compat. */
   glow?: boolean;
 }) {
@@ -356,7 +361,9 @@ export function HomeCoachCircleCard({
     <button
       type="button"
       onClick={onClick}
-      className="coach-circle-card flex-shrink-0 w-[104px] flex flex-col items-center active:scale-[0.97] transition-transform touch-manipulation"
+      className={`coach-circle-card flex-shrink-0 w-[104px] flex flex-col items-center active:scale-[0.97] transition-transform touch-manipulation${
+        sample ? " coach-circle-card--sample" : ""
+      }`}
     >
       <div className="coach-circle-card__frame surna-air-photo" style={{ width: 96, height: 96 }}>
         <div
@@ -387,6 +394,122 @@ export function HomeCoachCircleCard({
       >
         {sport}
       </p>
+      {sample ? (
+        <p className="text-[10px] text-center w-full mt-0.5" style={inter({ color: HOME_TEXT_META, opacity: 0.75 })}>
+          Sample
+        </p>
+      ) : null}
+    </button>
+  );
+}
+
+/**
+ * Demo/sample event tile — solid photo-extracted colour + sharp cover thumb
+ * (mirrors discovery EventCard, cleaner than full-bleed photo portraits).
+ */
+export function HomeSampleEventCard({
+  imageUrl,
+  title,
+  meta,
+  sport,
+  onClick,
+}: {
+  imageUrl?: string | null;
+  title: string;
+  meta?: string;
+  sport?: string | null;
+  onClick: () => void;
+}) {
+  const cover =
+    imageUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title });
+  const background = useDiscoveryCardBg(cover, sport);
+  const light = isLightHex(background);
+  const primary = light ? "#121212" : "#ffffff";
+  const muted = light ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.68)";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="home-sample-card home-sample-card--event flex-shrink-0 w-[142px] h-[190px] rounded-xl text-left active:scale-[0.98] transition-transform touch-manipulation surna-air-surface"
+      style={{ background }}
+    >
+      <span className="home-sample-card__chip" style={{ color: muted, borderColor: muted }}>
+        Sample
+      </span>
+      <div className="home-sample-card__thumb" style={{ background: light ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)" }}>
+        {cover ? (
+          <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+        ) : null}
+      </div>
+      <div className="home-sample-card__copy">
+        <p className="text-[13px] font-bold leading-snug line-clamp-2" style={inter({ color: primary })}>
+          {title}
+        </p>
+        {meta ? (
+          <p className="text-[10px] mt-1 line-clamp-2" style={inter({ color: muted })}>
+            {meta}
+          </p>
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
+/**
+ * Demo/sample team tile — soft cover blur + crest logo
+ * (mirrors discovery TeamCard / team page hero treatment).
+ */
+export function HomeSampleTeamCard({
+  logoUrl,
+  coverUrl,
+  title,
+  meta,
+  sport,
+  onClick,
+}: {
+  logoUrl?: string | null;
+  coverUrl?: string | null;
+  title: string;
+  meta?: string;
+  sport?: string | null;
+  onClick: () => void;
+}) {
+  const crest = logoUrl?.trim() || coverUrl?.trim() || getEventCoverUrl({ sport: sport ?? undefined, title });
+  const blur = coverUrl?.trim() || crest;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="home-sample-card home-sample-card--team flex-shrink-0 w-[142px] h-[190px] rounded-xl text-left active:scale-[0.98] transition-transform touch-manipulation overflow-hidden"
+    >
+      {blur ? (
+        <div className="home-sample-card__blur" aria-hidden>
+          <img src={blur} alt="" loading="lazy" />
+          <div className="home-sample-card__blur-scrim" />
+        </div>
+      ) : (
+        <div className="absolute inset-0" style={{ background: "var(--surna-elevated)" }} />
+      )}
+      <span className="home-sample-card__chip home-sample-card__chip--on-photo">Sample</span>
+      <div className="home-sample-card__crest">
+        {crest ? (
+          <img src={crest} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <span className="text-lg font-bold text-white/80">{(title[0] || "T").toUpperCase()}</span>
+        )}
+      </div>
+      <div className="home-sample-card__copy home-sample-card__copy--on-photo">
+        <p className="text-[13px] font-bold leading-snug line-clamp-2 text-white" style={inter()}>
+          {title}
+        </p>
+        {meta ? (
+          <p className="text-[10px] mt-1 line-clamp-2 text-white/70" style={inter()}>
+            {meta}
+          </p>
+        ) : null}
+      </div>
     </button>
   );
 }

@@ -39,10 +39,7 @@ function locationLabel(post: PostWithAuthor & { place?: { name?: string } }): st
 
 function showcaseDemoPost(): PostWithAuthor {
   const athlete = SHOWCASE_ATHLETES[0] ?? SHOWCASE_ATHLETES[SHOWCASE_ATHLETES.length - 1];
-  const cover =
-    getEventCoverUrl({ sport: athlete?.sport, title: "Morning session" }) ||
-    athlete?.profileImageUrl ||
-    "";
+  const cover = athlete?.coverImageUrl || athlete?.profileImageUrl || "";
   return {
     id: "demo-post-home-feed",
     authorId: athlete?.id ?? "ds-aisha",

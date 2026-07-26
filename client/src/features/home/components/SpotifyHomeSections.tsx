@@ -19,11 +19,17 @@ import { HOME_TEXT_SUBTITLE } from "@/features/home/homeCardColors";
 import {
   HomeCoachCircleCard,
   HomePortraitCard,
+  HomeSampleEventCard,
+  HomeSampleTeamCard,
 } from "@/features/home/components/HomeCardSurface";
 import { HomeFeedPostsSection } from "@/features/home/components/HomeFeedPostsSection";
 import type { CoachWithProfile } from "@shared/schema";
 import { scoreForPerson } from "@shared/personRanking";
 import { useAuth } from "@/hooks/useAuth";
+import { isClientDemoId } from "@/lib/demoShowcase";
+import { isDemoEventId } from "@/lib/demoEvents";
+import { isDemoTeamId } from "@/lib/demoTeams";
+import { teamCoverUrl, teamLogoUrl } from "@/lib/teamLogo";
 
 const PURPLE_NEW = "#803FE1";
 const HOME_ROW_MAX = 2;
@@ -257,6 +263,7 @@ function HappeningNearYouRow({
         route: `/events/${ev.id}`,
         sport: ev.sport as string | undefined,
         cardKind: "event" as const,
+        isSample: Boolean(ev.isDemo) || isDemoEventId(String(ev.id)),
         attendeeEntity: {
           type: "event" as const,
           id: String(ev.id),
@@ -281,6 +288,7 @@ function HappeningNearYouRow({
         route: ROUTES.instantTeam(String(g.id)),
         sport: g.sport as string | undefined,
         cardKind: "instantJoin" as const,
+        isSample: isClientDemoId(String(g.id)),
         attendeeEntity: {
           type: "instant" as const,
           id: String(g.id),
@@ -311,23 +319,37 @@ function HappeningNearYouRow({
       <SectionTitle showNew={showNew}>Happening near you</SectionTitle>
       <LiveInstantCounter count={liveCount} />
       <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4 pb-0.5">
-        {items.map((item) => (
-          <HomePortraitCard
-            key={item.id}
-            imageUrl={item.imageUrl}
-            title={item.title}
-            subtitle={item.subtitle}
-            meta={item.meta}
-            sport={item.sport}
-            cardKind={item.cardKind}
-            cta={item.cardKind === "instantJoin" ? "Join" : "Go"}
-            attendeeEntity={item.attendeeEntity}
-            onClick={() => {
-              markNavReturn("/");
-              setLocation(item.route);
-            }}
-          />
-        ))}
+        {items.map((item) =>
+          item.isSample && item.cardKind === "event" ? (
+            <HomeSampleEventCard
+              key={item.id}
+              imageUrl={item.imageUrl}
+              title={item.title}
+              meta={[item.meta, item.subtitle].filter(Boolean).join(" · ")}
+              sport={item.sport}
+              onClick={() => {
+                markNavReturn("/");
+                setLocation(item.route);
+              }}
+            />
+          ) : (
+            <HomePortraitCard
+              key={item.id}
+              imageUrl={item.imageUrl}
+              title={item.title}
+              subtitle={item.subtitle}
+              meta={item.meta}
+              sport={item.sport}
+              cardKind={item.cardKind}
+              cta={item.cardKind === "instantJoin" ? "Join" : "Go"}
+              attendeeEntity={item.attendeeEntity}
+              onClick={() => {
+                markNavReturn("/");
+                setLocation(item.route);
+              }}
+            />
+          ),
+        )}
       </div>
     </section>
   );
@@ -347,29 +369,35 @@ function TeamsNearYouRow({
       Number(team.followersCount || team.currentMembers || team.memberCount || 0),
     )
       .slice(0, HOME_ROW_MAX)
-      .map((team) => ({
-        id: String(team.id),
-        title: team.name,
-        subtitle: team.city || team.location || "Near you",
-        meta: [
-          team.sport,
-          team.currentMembers != null ? `${team.currentMembers} members` : null,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-        imageUrl:
-          team.cover ||
-          team.logo ||
-          team.logoUrl ||
-          getEventCoverUrl({ sport: team.sport, title: team.name }),
-        sport: team.sport as string | undefined,
-        route: `/teams/${team.id}`,
-        attendeeEntity: {
-          type: "team" as const,
+      .map((team) => {
+        const logo = teamLogoUrl(team);
+        const cover = teamCoverUrl(team);
+        return {
           id: String(team.id),
-          count: team.currentMembers || team.memberCount,
-        },
-      }));
+          title: team.name,
+          subtitle: team.city || team.location || "Near you",
+          meta: [
+            team.sport,
+            team.currentMembers != null ? `${team.currentMembers} members` : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          logoUrl: logo,
+          coverUrl: cover,
+          imageUrl:
+            cover ||
+            logo ||
+            getEventCoverUrl({ sport: team.sport, title: team.name }),
+          sport: team.sport as string | undefined,
+          route: `/teams/${team.id}`,
+          isSample: Boolean(team.isDemo) || isDemoTeamId(String(team.id)),
+          attendeeEntity: {
+            type: "team" as const,
+            id: String(team.id),
+            count: team.currentMembers || team.memberCount,
+          },
+        };
+      });
   }, [teams]);
 
   if (loading) {
@@ -391,23 +419,38 @@ function TeamsNearYouRow({
     <section className="space-y-3">
       <SectionTitle>Teams near you</SectionTitle>
       <div className="flex gap-3 surna-h-scroll no-scrollbar -mx-4 px-4 pb-0.5">
-        {items.map((item) => (
-          <HomePortraitCard
-            key={item.id}
-            imageUrl={item.imageUrl}
-            title={item.title}
-            subtitle={item.subtitle}
-            meta={item.meta}
-            sport={item.sport}
-            cardKind="team"
-            cta="View"
-            attendeeEntity={item.attendeeEntity}
-            onClick={() => {
-              markNavReturn("/");
-              setLocation(item.route);
-            }}
-          />
-        ))}
+        {items.map((item) =>
+          item.isSample ? (
+            <HomeSampleTeamCard
+              key={item.id}
+              logoUrl={item.logoUrl}
+              coverUrl={item.coverUrl}
+              title={item.title}
+              meta={[item.meta, item.subtitle].filter(Boolean).join(" · ")}
+              sport={item.sport}
+              onClick={() => {
+                markNavReturn("/");
+                setLocation(item.route);
+              }}
+            />
+          ) : (
+            <HomePortraitCard
+              key={item.id}
+              imageUrl={item.imageUrl}
+              title={item.title}
+              subtitle={item.subtitle}
+              meta={item.meta}
+              sport={item.sport}
+              cardKind="team"
+              cta="View"
+              attendeeEntity={item.attendeeEntity}
+              onClick={() => {
+                markNavReturn("/");
+                setLocation(item.route);
+              }}
+            />
+          ),
+        )}
       </div>
     </section>
   );
@@ -445,12 +488,14 @@ function CoachesRow({
       <SectionTitle>Coaches near you</SectionTitle>
       <div className="flex gap-3.5 surna-h-scroll no-scrollbar -mx-4 px-4 pb-1">
         {list.map((coach) => {
-          const photo = coach.user.profileImageUrl || coach.profile?.coverImageUrl;
+          const photo = coach.user.profileImageUrl;
           const initials = `${coach.user.firstName?.[0] ?? ""}${coach.user.lastName?.[0] ?? ""}`;
           const name = coach.user.firstName
             ? `${coach.user.firstName}${coach.user.lastName ? ` ${coach.user.lastName[0]}.` : ""}`
             : "Coach";
           const sportLabel = coach.specialties?.[0] || "Coach";
+          const sample =
+            isClientDemoId(String(coach.id)) || isClientDemoId(String(coach.userId));
           return (
             <HomeCoachCircleCard
               key={coach.id}
@@ -458,6 +503,7 @@ function CoachesRow({
               initials={initials || "C"}
               name={name}
               sport={sportLabel}
+              sample={sample}
               onClick={() => {
                 markNavReturn("/");
                 setLocation(ROUTES.coach(coach.id));
