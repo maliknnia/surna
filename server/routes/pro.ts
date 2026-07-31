@@ -19,6 +19,7 @@ import { transfersScoutRouter } from "./proTransfersScout";
 import { attachProSessionUser, getProSessionUser, getProSessionUserId, resolveProUserId } from "./proAuth";
 import { ensureProEntitlementTables } from "../infrastructure/proEntitlements";
 import { sportsAlign } from "@shared/proSportProfiles";
+import { requireActivePro } from "../middleware/requireActivePro";
 
 export const proRouter = Router();
 
@@ -158,25 +159,6 @@ proRouter.post("/user/entitlement/activate", async (req, res) => {
 });
 
 proRouter.use(tournamentPublicRouter);
-
-async function requireActivePro(req: any, res: any, next: () => void) {
-  if (isProEntitlementOpenAccess()) return next();
-  const userId = resolveProUserId(req);
-  if (!userId) return unauthorized(res);
-  try {
-    await ensureProEntitlementTables().catch(() => {});
-    const ent = await getUserEntitlement(userId);
-    if (!isActiveProUserEntitlement(ent)) {
-      return res.status(403).json({
-        error: "Pro subscription required",
-        code: "PRO_REQUIRED",
-      });
-    }
-    next();
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-}
 
 proRouter.use(requireActivePro);
 

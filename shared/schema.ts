@@ -245,6 +245,38 @@ export const teamStats = pgTable("team_stats", {
   lastUpdated: timestamp("last_updated").defaultNow(),
 });
 
+/**
+ * Cross-sport rules config for Pro match / roster behaviour.
+ * Not wired to UI yet — table + seed only (Phase 1 Task 4).
+ */
+export const sportConfigs = pgTable("sport_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  /** Stable key: football | gaa | boxing | basketball | volleyball */
+  sportType: varchar("sport_type").notNull().unique(),
+  squadSizeMin: integer("squad_size_min").notNull(),
+  squadSizeMax: integer("squad_size_max").notNull(),
+  /** team-formation | team-rotation | individual-fight | team-lineup */
+  matchStructure: varchar("match_structure").notNull(),
+  /** football-grid | gaa-lines | null */
+  formationLayout: varchar("formation_layout"),
+  /** single-score | dual-score | set-based | round-based */
+  scoringType: varchar("scoring_type").notNull(),
+  /** continuous | quarters | sets | rounds */
+  periodStructure: varchar("period_structure").notNull(),
+  specialRoles: text("special_roles").array().notNull().default(sql`ARRAY[]::text[]`),
+  weightClassTracking: boolean("weight_class_tracking").notNull().default(false),
+  playbookEnabled: boolean("playbook_enabled").notNull().default(false),
+  /** null = N/A or unlimited (sport-dependent) */
+  maxSubsPerMatch: integer("max_subs_per_match"),
+  /** Basketball foul-out threshold; null for other sports */
+  foulOutLimit: integer("foul_out_limit"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SportConfig = typeof sportConfigs.$inferSelect;
+export type InsertSportConfig = typeof sportConfigs.$inferInsert;
+
 /** Logged friendly/competitive games for consumer teams */
 export const teamGames = pgTable("team_games", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -257,6 +289,8 @@ export const teamGames = pgTable("team_games", {
   theirScore: integer("their_score"),
   playedAt: timestamp("played_at").defaultNow(),
   notes: text("notes"),
+  /** Optional link to a canonical competitive challenge match (FK in DB; declared after competitive_matches in schema) */
+  competitiveMatchId: varchar("competitive_match_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2996,6 +3030,10 @@ export const proMatchSquads = pgTable("pro_match_squads", {
   teamId: varchar("team_id").notNull().references(() => teams.id),
   formationId: varchar("formation_id").references(() => proFormations.id),
   captainUserId: varchar("captain_user_id").references(() => users.id),
+  /** Optional link to a canonical competitive challenge match */
+  competitiveMatchId: varchar("competitive_match_id").references(() => competitiveMatches.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

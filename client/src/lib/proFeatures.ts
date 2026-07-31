@@ -16,9 +16,9 @@ const FEATURE_ROUTES: Record<string, string> = {
   "events.promote": "/pro/tournament",
 
   "places.bookings": "/pro/schedule",
-  "places.bookingCalendar": "/pro/schedule",
-  "places.recurring": "/pro/schedule",
-  "places.slots": "/pro/schedule",
+  "places.bookingCalendar": "/pro/schedule?view=calendar",
+  "places.recurring": "/pro/schedule?view=recurring",
+  "places.slots": "/pro/schedule?view=slots",
   "places.pricing": "/pro/club",
   "places.analytics": "/pro/stats",
   "places.promotions": "/pro/comms",

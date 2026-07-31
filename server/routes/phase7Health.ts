@@ -14,8 +14,12 @@ import {
   assertTeamManager,
 } from "../services/phase7HealthService";
 import { canViewHealthSection } from "../services/healthPrivacyService";
+import { attachProSessionUser } from "./proAuth";
+import { requireActivePro } from "../middleware/requireActivePro";
 
 export const healthPhase7Router = Router();
+
+const requireProForTeamHealth = [attachProSessionUser, requireActivePro];
 
 function requireUserId(req: any, res: any): string | null {
   const id = resolveRequestUserId(req) ?? authUserId(req);
@@ -131,7 +135,7 @@ healthPhase7Router.get("/users/:id/personal-bests", async (req, res) => {
 });
 
 /** GET /api/pro/team/:teamId/squad-health */
-healthPhase7Router.get("/pro/team/:teamId/squad-health", async (req, res) => {
+healthPhase7Router.get("/pro/team/:teamId/squad-health", ...requireProForTeamHealth, async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   try {
@@ -144,7 +148,7 @@ healthPhase7Router.get("/pro/team/:teamId/squad-health", async (req, res) => {
 });
 
 /** GET /api/pro/team/:teamId/squad-health/:playerId */
-healthPhase7Router.get("/pro/team/:teamId/squad-health/:playerId", async (req, res) => {
+healthPhase7Router.get("/pro/team/:teamId/squad-health/:playerId", ...requireProForTeamHealth, async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   try {
@@ -157,7 +161,7 @@ healthPhase7Router.get("/pro/team/:teamId/squad-health/:playerId", async (req, r
 });
 
 /** GET /api/pro/team/:teamId/readiness/:eventId */
-healthPhase7Router.get("/pro/team/:teamId/readiness/:eventId", async (req, res) => {
+healthPhase7Router.get("/pro/team/:teamId/readiness/:eventId", ...requireProForTeamHealth, async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   try {

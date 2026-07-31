@@ -10,12 +10,12 @@ export default function ProShopStatsModule() {
 
   return (
     <PageShell
-      title="Performance"
+      title="My Shop Performance"
       subtitle={`${entityName} · sales & shop metrics`}
       actions={
         <>
           <Button variant="secondary" href="/analytics/marketplace" leadingIcon={<TrendingUp size={14} />}>
-            Full analytics
+            Marketplace Trends
           </Button>
           {activeShop ? (
             <Button variant="secondary" href={marketplaceShopPath(activeShop.id)} leadingIcon={<Store size={14} />}>
@@ -26,9 +26,9 @@ export default function ProShopStatsModule() {
       }
     >
       <ContextBar
-        context={<>Quick shop pulse — open marketplace analytics for conversion, traffic, and revenue trends.</>}
+        context={<>This shop’s pulse — open Marketplace Trends for conversion, traffic, and revenue across the marketplace.</>}
         actions={[
-          { key: "analytics", label: "Marketplace analytics", icon: <BarChart3 size={12} />, href: "/analytics/marketplace" },
+          { key: "analytics", label: "Marketplace Trends", icon: <BarChart3 size={12} />, href: "/analytics/marketplace" },
           { key: "orders", label: "Orders", icon: <ShoppingBag size={12} />, href: "/seller/dashboard" },
         ]}
       />
@@ -46,7 +46,7 @@ export default function ProShopStatsModule() {
           Promote listings, reply to buyers quickly, and track conversion in marketplace analytics.
         </p>
         <div className="pro-row" style={{ gap: 8, flexWrap: "wrap" }}>
-          <Button variant="primary" href="/analytics/marketplace">Open analytics</Button>
+          <Button variant="primary" href="/analytics/marketplace">Marketplace Trends</Button>
           <Button variant="secondary" href={withQuery("/pro/comms")}>Promotions & messages</Button>
           <Link href={withQuery("/pro/shop")}>
             <Button variant="ghost">Back to shop home</Button>

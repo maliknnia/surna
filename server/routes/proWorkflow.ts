@@ -10,8 +10,13 @@ import {
   type ActivityRole,
   type ActivityKind,
 } from "../features/proWorkflow";
+import { attachProSessionUser } from "./proAuth";
+import { requireActivePro } from "../middleware/requireActivePro";
 
 export const proWorkflowRouter = Router();
+
+proWorkflowRouter.use(attachProSessionUser);
+proWorkflowRouter.use(requireActivePro);
 
 const DEMO_TEAM = "demo-team";
 

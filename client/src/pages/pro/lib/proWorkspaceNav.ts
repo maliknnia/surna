@@ -21,7 +21,6 @@ import {
   Repeat,
   Clock4,
   Megaphone,
-  Inbox,
   ShoppingBag,
   Store,
   TrendingUp,
@@ -69,13 +68,12 @@ export const PLACE_PRIMARY_NAV: ProNavItem[] = [
 ];
 
 export const PLACE_MORE_NAV: ProNavItem[] = [
-  { id: "calendar", path: "/pro/schedule", label: "Booking calendar", icon: Calendar },
-  { id: "recurring", path: "/pro/schedule", label: "Recurring blocks", icon: Repeat },
-  { id: "slots", path: "/pro/schedule", label: "Time slots", icon: Clock4 },
+  { id: "calendar", path: "/pro/schedule?view=calendar", label: "Booking calendar", icon: Calendar },
+  { id: "recurring", path: "/pro/schedule?view=recurring", label: "Recurring blocks", icon: Repeat },
+  { id: "slots", path: "/pro/schedule?view=slots", label: "Time slots", icon: Clock4 },
   { id: "pricing", path: "/pro/club", label: "Pricing tiers", icon: DollarSign },
   { id: "promotions", path: "/pro/comms", label: "Promotions", icon: Megaphone },
   { id: "staff", path: "/pro/roster", label: "Staff & roles", icon: Users },
-  { id: "leads", path: "/pro/recruitment", label: "Leads pipeline", icon: Inbox },
   { id: "settings", path: "/pro/settings", label: "Settings", icon: Settings },
 ];
 
@@ -83,15 +81,14 @@ export const SHOP_PRIMARY_NAV: ProNavItem[] = [
   { id: "home", path: "/pro/shop", label: "Home", icon: LayoutDashboard, exact: true, primary: true },
   { id: "orders", path: "/seller/dashboard", label: "Orders", icon: ShoppingBag, primary: true },
   { id: "products", path: "#storefront", label: "Store", icon: Store, primary: true },
-  { id: "analytics", path: "/analytics/marketplace", label: "Analytics", icon: TrendingUp, primary: true },
+  { id: "analytics", path: "/analytics/marketplace", label: "Marketplace Trends", icon: TrendingUp, primary: true },
   { id: "more", path: "#more", label: "More", icon: MoreHorizontal, primary: true },
 ];
 
 export const SHOP_MORE_NAV: ProNavItem[] = [
   { id: "inventory", path: "/pro/inventory", label: "Inventory", icon: Package },
   { id: "promotions", path: "/pro/comms", label: "Promotions", icon: Megaphone },
-  { id: "stats", path: "/pro/stats", label: "Performance", icon: BarChart3 },
-  { id: "recruitment", path: "/pro/recruitment", label: "Customer leads", icon: Inbox },
+  { id: "stats", path: "/pro/stats", label: "My Shop Performance", icon: BarChart3 },
   { id: "settings", path: "/pro/settings", label: "Settings", icon: Settings },
 ];
 

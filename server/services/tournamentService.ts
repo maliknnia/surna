@@ -157,6 +157,26 @@ export async function ensureTournamentTables() {
           is_final BOOLEAN NOT NULL DEFAULT false
         );
       `);
+      await db.execute(sql`
+        ALTER TABLE pro_tournament_fixtures
+        ADD COLUMN IF NOT EXISTS competitive_match_id VARCHAR
+      `);
+      await db.execute(sql`
+        DO $$
+        BEGIN
+          ALTER TABLE pro_tournament_fixtures
+            ADD CONSTRAINT pro_tournament_fixtures_competitive_match_id_fkey
+            FOREIGN KEY (competitive_match_id)
+            REFERENCES competitive_matches(id)
+            ON DELETE SET NULL;
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS pro_tournament_fixtures_competitive_match_id_idx
+        ON pro_tournament_fixtures(competitive_match_id)
+      `);
       await db.execute(sql`ALTER TABLE pro_tournaments ADD COLUMN IF NOT EXISTS settings_json JSONB DEFAULT '{}'::jsonb`);
       await db.execute(sql`ALTER TABLE pro_tournaments ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
       await db.execute(sql`ALTER TABLE pro_tournament_registrations ADD COLUMN IF NOT EXISTS registered_by_user_id VARCHAR`);
