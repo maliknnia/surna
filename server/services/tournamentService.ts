@@ -11,9 +11,14 @@ import {
   isActiveProUserEntitlement,
   isProEntitlementOpenAccess,
 } from "../infrastructure/proEntitlements";
-import { storage } from "../storage";
+import { getSportConfigByType, sportImpliesWeightClassTracking } from "../lib/sportConfigLookup";
+import {
+  BOXING_WEIGHT_CLASSES,
+  isBoxingWeightClass,
+} from "@shared/boxingWeightClasses";
 
 export type TournamentFormat = "league" | "knockout" | "group_knockout";
+export type TournamentEntryType = "team" | "individual";
 export type TournamentStaffRole = "owner" | "admin" | "operations" | "scorekeeper";
 
 export type TournamentStaffRow = {
@@ -57,6 +62,8 @@ export type TournamentRow = {
   description: string;
   teamId: string | null;
   hostingTeamName: string;
+  entryType: TournamentEntryType;
+  classChampions: Record<string, { userId: string; displayName: string }>;
 };
 
 export type RegistrationRow = {
@@ -87,6 +94,19 @@ export type FixtureRow = {
   awayScore: number | null;
   status: string;
   isFinal: boolean;
+  weightClass: string | null;
+  homeUserId: string | null;
+  awayUserId: string | null;
+};
+
+export type EntrantRow = {
+  id: string;
+  tournamentId: string;
+  userId: string;
+  displayName: string;
+  weightClass: string;
+  status: string;
+  registeredAt: string;
 };
 
 let tablesReady: Promise<void> | null = null;
@@ -177,6 +197,42 @@ export async function ensureTournamentTables() {
         CREATE INDEX IF NOT EXISTS pro_tournament_fixtures_competitive_match_id_idx
         ON pro_tournament_fixtures(competitive_match_id)
       `);
+      await db.execute(sql`
+        ALTER TABLE pro_tournaments
+        ADD COLUMN IF NOT EXISTS entry_type VARCHAR NOT NULL DEFAULT 'team'
+      `);
+      await db.execute(sql`
+        ALTER TABLE pro_tournaments
+        ADD COLUMN IF NOT EXISTS class_champions_json JSONB NOT NULL DEFAULT '{}'::jsonb
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS pro_tournament_entrants (
+          id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+          tournament_id VARCHAR NOT NULL REFERENCES pro_tournaments(id) ON DELETE CASCADE,
+          user_id VARCHAR NOT NULL,
+          display_name VARCHAR NOT NULL,
+          weight_class VARCHAR NOT NULL,
+          status VARCHAR NOT NULL DEFAULT 'pending',
+          registered_at TIMESTAMP DEFAULT now(),
+          UNIQUE (tournament_id, user_id)
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS pro_tournament_entrants_tournament_idx
+        ON pro_tournament_entrants(tournament_id)
+      `);
+      await db.execute(sql`
+        ALTER TABLE pro_tournament_fixtures
+        ADD COLUMN IF NOT EXISTS weight_class VARCHAR
+      `);
+      await db.execute(sql`
+        ALTER TABLE pro_tournament_fixtures
+        ADD COLUMN IF NOT EXISTS home_user_id VARCHAR
+      `);
+      await db.execute(sql`
+        ALTER TABLE pro_tournament_fixtures
+        ADD COLUMN IF NOT EXISTS away_user_id VARCHAR
+      `);
       await db.execute(sql`ALTER TABLE pro_tournaments ADD COLUMN IF NOT EXISTS settings_json JSONB DEFAULT '{}'::jsonb`);
       await db.execute(sql`ALTER TABLE pro_tournaments ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
       await db.execute(sql`ALTER TABLE pro_tournament_registrations ADD COLUMN IF NOT EXISTS registered_by_user_id VARCHAR`);
@@ -224,6 +280,21 @@ function mapTournament(row: any): TournamentRow {
     description: row.description || "",
     teamId: row.team_id ?? null,
     hostingTeamName: row.hosting_team_name || "",
+    entryType: (row.entry_type === "individual" ? "individual" : "team") as TournamentEntryType,
+    classChampions: (() => {
+      const raw = row.class_champions_json;
+      if (!raw) return {};
+      if (typeof raw === "string") {
+        try {
+          return JSON.parse(raw) as Record<string, { userId: string; displayName: string }>;
+        } catch {
+          return {};
+        }
+      }
+      return typeof raw === "object"
+        ? (raw as Record<string, { userId: string; displayName: string }>)
+        : {};
+    })(),
   };
 }
 
@@ -496,6 +567,9 @@ function mapFixture(row: any): FixtureRow {
     awayScore: row.away_score != null ? Number(row.away_score) : null,
     status: row.status,
     isFinal: !!row.is_final,
+    weightClass: row.weight_class ?? null,
+    homeUserId: row.home_user_id ?? null,
+    awayUserId: row.away_user_id ?? null,
   };
 }
 
@@ -520,9 +594,15 @@ export async function createTournament(data: {
   teamId?: string | null;
   hostingTeamName?: string;
   coManagers?: Array<{ userId: string; role: TournamentStaffRole; displayName: string }>;
+  entryType?: TournamentEntryType;
 }): Promise<TournamentRow> {
   await ensureTournamentTables();
   const settings = { ...DEFAULT_TOURNAMENT_SETTINGS, ...(data.settings || {}) };
+  const entryType: TournamentEntryType = data.entryType === "individual" ? "individual" : "team";
+
+  if (entryType === "individual" && data.format !== "knockout") {
+    throw new Error("Individual (weight-class) tournaments must use knockout format");
+  }
 
   if (data.teamId) {
     await assertUserOnTeam(data.organizerUserId, data.teamId);
@@ -541,7 +621,7 @@ export async function createTournament(data: {
     INSERT INTO pro_tournaments (
       name, sport, format, max_teams, entry_fee_eur, prize_description,
       start_date, end_date, location, organizer_user_id, description, settings_json,
-      team_id, hosting_team_name
+      team_id, hosting_team_name, entry_type
     ) VALUES (
       ${data.name}, ${data.sport}, ${data.format}, ${data.maxTeams},
       ${data.entryFeeEur}, ${data.prizeDescription},
@@ -550,7 +630,8 @@ export async function createTournament(data: {
       ${data.description || ""},
       ${JSON.stringify(settings)}::jsonb,
       ${data.teamId || null},
-      ${data.hostingTeamName || ""}
+      ${data.hostingTeamName || ""},
+      ${entryType}
     )
     RETURNING *
   `);
@@ -689,6 +770,7 @@ export async function registerTeam(
   await ensureTournamentTables();
   const t = await getTournament(tournamentId);
   if (!t) throw new Error("Tournament not found");
+  if (t.entryType === "individual") throw new Error("This tournament only accepts individual entrants");
   if (t.status !== "registration") throw new Error("Registration is closed for this tournament");
 
   await validateTeamEligibility(t, teamId, opts.registeredByUserId);
@@ -828,18 +910,139 @@ async function insertFixture(
   await db.execute(sql`
     INSERT INTO pro_tournament_fixtures (
       tournament_id, round, group_name, home_team_id, away_team_id,
-      home_team_name, away_team_name, scheduled_at, is_final
+      home_team_name, away_team_name, scheduled_at, is_final,
+      weight_class, home_user_id, away_user_id
     ) VALUES (
       ${tournamentId}, ${f.round}, ${f.groupName}, ${f.homeTeamId}, ${f.awayTeamId},
-      ${f.homeTeamName}, ${f.awayTeamName}, ${f.scheduledAt}::timestamptz, ${f.isFinal}
+      ${f.homeTeamName}, ${f.awayTeamName}, ${f.scheduledAt}::timestamptz, ${f.isFinal},
+      ${f.weightClass}, ${f.homeUserId}, ${f.awayUserId}
     )
   `);
+}
+
+type FighterRef = { userId: string; displayName: string };
+
+/** Knockout pairings for one weight class — even count required (v1, no BYE). */
+export function buildWeightClassKnockoutPairings(
+  fighters: FighterRef[],
+  weightClass: string,
+): Array<{
+  home: FighterRef;
+  away: FighterRef;
+  weightClass: string;
+  isFinal: boolean;
+}> {
+  if (fighters.length < 2) {
+    throw new Error(`${weightClass}: need at least 2 entrants`);
+  }
+  if (fighters.length % 2 !== 0) {
+    throw new Error(
+      `${weightClass}: even number of entrants required (got ${fighters.length}). No byes in v1.`,
+    );
+  }
+  const drawn = shuffle(fighters);
+  const isFinal = drawn.length === 2;
+  const out: Array<{ home: FighterRef; away: FighterRef; weightClass: string; isFinal: boolean }> = [];
+  for (let i = 0; i < drawn.length; i += 2) {
+    out.push({
+      home: drawn[i],
+      away: drawn[i + 1],
+      weightClass,
+      isFinal,
+    });
+  }
+  return out;
+}
+
+export async function getApprovedEntrants(tournamentId: string): Promise<EntrantRow[]> {
+  await ensureTournamentTables();
+  const result = await db.execute(sql`
+    SELECT * FROM pro_tournament_entrants
+    WHERE tournament_id = ${tournamentId} AND status IN ('approved', 'paid')
+    ORDER BY weight_class, display_name
+  `);
+  return result.rows.map(mapEntrant);
+}
+
+export async function getAllEntrants(tournamentId: string): Promise<EntrantRow[]> {
+  await ensureTournamentTables();
+  const result = await db.execute(sql`
+    SELECT * FROM pro_tournament_entrants
+    WHERE tournament_id = ${tournamentId}
+    ORDER BY weight_class, display_name
+  `);
+  return result.rows.map(mapEntrant);
+}
+
+function mapEntrant(row: any): EntrantRow {
+  return {
+    id: row.id,
+    tournamentId: row.tournament_id,
+    userId: row.user_id,
+    displayName: row.display_name,
+    weightClass: row.weight_class,
+    status: row.status,
+    registeredAt: row.registered_at,
+  };
+}
+
+export async function registerEntrant(
+  tournamentId: string,
+  opts: { userId: string; displayName: string; weightClass: string; autoApprove?: boolean },
+): Promise<EntrantRow> {
+  await ensureTournamentTables();
+  const t = await getTournament(tournamentId);
+  if (!t) throw new Error("Tournament not found");
+  if (t.entryType !== "individual") throw new Error("This tournament only accepts team registrations");
+  if (t.status !== "registration") throw new Error("Registration is closed for this tournament");
+  if (!isBoxingWeightClass(opts.weightClass)) {
+    throw new Error(`Invalid weight class. Allowed: ${BOXING_WEIGHT_CLASSES.join(", ")}`);
+  }
+
+  const all = await getAllEntrants(tournamentId);
+  if (all.some((e) => e.userId === opts.userId)) throw new Error("Already registered");
+  if (all.filter((e) => e.status === "approved" || e.status === "paid" || e.status === "pending").length >= t.maxTeams) {
+    throw new Error("Tournament is full");
+  }
+
+  const status = opts.autoApprove || t.settings.autoApprove ? "approved" : "pending";
+  const result = await db.execute(sql`
+    INSERT INTO pro_tournament_entrants (
+      tournament_id, user_id, display_name, weight_class, status
+    ) VALUES (
+      ${tournamentId}, ${opts.userId}, ${opts.displayName}, ${opts.weightClass}, ${status}
+    )
+    RETURNING *
+  `);
+  return mapEntrant(result.rows[0]);
+}
+
+export async function setEntrantStatus(
+  tournamentId: string,
+  entrantId: string,
+  status: "approved" | "rejected",
+  actorUserId: string,
+): Promise<EntrantRow> {
+  await assertTournamentAccess(actorUserId, tournamentId, "canApprove");
+  const result = await db.execute(sql`
+    UPDATE pro_tournament_entrants
+    SET status = ${status}
+    WHERE id = ${entrantId} AND tournament_id = ${tournamentId}
+    RETURNING *
+  `);
+  if (!result.rows[0]) throw new Error("Entrant not found");
+  return mapEntrant(result.rows[0]);
 }
 
 export async function generateFixtures(tournamentId: string): Promise<FixtureRow[]> {
   await ensureTournamentTables();
   const tournament = await getTournament(tournamentId);
   if (!tournament) throw new Error("Tournament not found");
+
+  if (tournament.entryType === "individual") {
+    return generateIndividualWeightClassFixtures(tournament);
+  }
+
   const regs = await getApprovedRegistrations(tournamentId);
   if (regs.length < 2) throw new Error("Need at least 2 approved teams");
 
@@ -848,6 +1051,8 @@ export async function generateFixtures(tournamentId: string): Promise<FixtureRow
   const teamsList: TeamRef[] = regs.map((r) => ({ teamId: r.teamId, teamName: r.teamName }));
   const toInsert: Omit<FixtureRow, "id" | "tournamentId" | "homeScore" | "awayScore" | "status">[] = [];
   let slot = 0;
+
+  const blankIndividual = { weightClass: null as string | null, homeUserId: null as string | null, awayUserId: null as string | null };
 
   if (tournament.format === "knockout") {
     const drawn = shuffle(teamsList);
@@ -865,6 +1070,7 @@ export async function generateFixtures(tournamentId: string): Promise<FixtureRow
         awayTeamName: away.teamName,
         scheduledAt: scheduleBase(tournament, Math.floor(slot / 2), 10 + (slot % 4) * 2),
         isFinal: drawn.length === 2,
+        ...blankIndividual,
       });
       slot++;
     }
@@ -888,6 +1094,7 @@ export async function generateFixtures(tournamentId: string): Promise<FixtureRow
           awayTeamName: away.teamName,
           scheduledAt: scheduleBase(tournament, r, 10 + (i % 3) * 2),
           isFinal: false,
+          ...blankIndividual,
         });
       }
       const fixed = list.shift()!;
@@ -916,6 +1123,7 @@ export async function generateFixtures(tournamentId: string): Promise<FixtureRow
             awayTeamName: gt[j].teamName,
             scheduledAt: scheduleBase(tournament, round - 1 + g, 10 + ((i + j) % 4) * 2),
             isFinal: false,
+            ...blankIndividual,
           });
         }
       }
@@ -933,13 +1141,347 @@ export async function generateFixtures(tournamentId: string): Promise<FixtureRow
   return getFixtures(tournamentId);
 }
 
-async function maybeAdvanceKnockout(tournamentId: string, tournament: TournamentRow): Promise<boolean> {
-  if (tournament.format !== "knockout") return false;
-  const fixtures = await getFixtures(tournamentId);
-  if (!fixtures.length) return false;
+async function generateIndividualWeightClassFixtures(tournament: TournamentRow): Promise<FixtureRow[]> {
+  if (tournament.format !== "knockout") {
+    throw new Error("Individual / weight-class tournaments use knockout format only in v1");
+  }
+  const config = await getSportConfigByType(tournament.sport);
+  if (!sportImpliesWeightClassTracking(tournament.sport, config)) {
+    throw new Error("This sport does not use weight-class brackets");
+  }
 
-  const maxRound = Math.max(...fixtures.map((f) => f.round));
-  const roundFixtures = fixtures.filter((f) => f.round === maxRound);
+  const entrants = await getApprovedEntrants(tournament.id);
+  if (entrants.length < 2) throw new Error("Need at least 2 approved entrants");
+
+  const byClass = new Map<string, EntrantRow[]>();
+  for (const e of entrants) {
+    if (!byClass.has(e.weightClass)) byClass.set(e.weightClass, []);
+    byClass.get(e.weightClass)!.push(e);
+  }
+
+  for (const [wc, list] of byClass) {
+    if (list.length % 2 !== 0) {
+      throw new Error(
+        `${wc}: even number of entrants required (got ${list.length}). No byes in v1.`,
+      );
+    }
+    if (list.length < 2) {
+      throw new Error(`${wc}: need at least 2 entrants to open a bracket`);
+    }
+  }
+
+  await db.execute(sql`DELETE FROM pro_tournament_fixtures WHERE tournament_id = ${tournament.id}`);
+  await db.execute(sql`
+    UPDATE pro_tournaments SET class_champions_json = '{}'::jsonb WHERE id = ${tournament.id}
+  `);
+
+  let slot = 0;
+  for (const [wc, list] of [...byClass.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const fighters = list.map((e) => ({ userId: e.userId, displayName: e.displayName }));
+    const pairings = buildWeightClassKnockoutPairings(fighters, wc);
+    for (const p of pairings) {
+      await insertFixture(tournament.id, {
+        round: 1,
+        groupName: null,
+        homeTeamId: null,
+        awayTeamId: null,
+        homeTeamName: p.home.displayName,
+        awayTeamName: p.away.displayName,
+        scheduledAt: scheduleBase(tournament, Math.floor(slot / 2), 10 + (slot % 4) * 2),
+        isFinal: p.isFinal,
+        weightClass: p.weightClass,
+        homeUserId: p.home.userId,
+        awayUserId: p.away.userId,
+      });
+      slot++;
+    }
+  }
+
+  await db.execute(sql`
+    UPDATE pro_tournaments SET status = 'in_progress' WHERE id = ${tournament.id}
+  `);
+
+  return getFixtures(tournament.id);
+}
+
+export type StandingRow = {
+  teamId: string;
+  teamName: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  gf: number;
+  ga: number;
+  points: number;
+};
+
+export type GroupStandingBlock = {
+  groupName: string;
+  standings: StandingRow[];
+};
+
+function emptyStanding(teamId: string, teamName: string): StandingRow {
+  return {
+    teamId,
+    teamName,
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    gf: 0,
+    ga: 0,
+    points: 0,
+  };
+}
+
+function applyPlayedFixture(home: StandingRow, away: StandingRow, homeScore: number, awayScore: number) {
+  home.played++;
+  away.played++;
+  home.gf += homeScore;
+  home.ga += awayScore;
+  away.gf += awayScore;
+  away.ga += homeScore;
+  if (homeScore > awayScore) {
+    home.won++;
+    home.points += 3;
+    away.lost++;
+  } else if (homeScore < awayScore) {
+    away.won++;
+    away.points += 3;
+    home.lost++;
+  } else {
+    home.drawn++;
+    away.drawn++;
+    home.points++;
+    away.points++;
+  }
+}
+
+function goalDiff(s: StandingRow): number {
+  return s.gf - s.ga;
+}
+
+/** Head-to-head: return negative if a beat b, positive if b beat a, 0 if draw/missing. */
+function headToHeadResult(
+  fixtures: FixtureRow[],
+  aId: string,
+  bId: string,
+): number {
+  for (const f of fixtures) {
+    if (f.homeScore == null || f.awayScore == null) continue;
+    if (f.homeTeamId === aId && f.awayTeamId === bId) {
+      if (f.homeScore > f.awayScore) return -1;
+      if (f.homeScore < f.awayScore) return 1;
+      return 0;
+    }
+    if (f.homeTeamId === bId && f.awayTeamId === aId) {
+      if (f.awayScore > f.homeScore) return -1;
+      if (f.awayScore < f.homeScore) return 1;
+      return 0;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Tie-break order: points → GD → GF → head-to-head (two-way) → team name.
+ */
+export function compareStandings(
+  a: StandingRow,
+  b: StandingRow,
+  fixtures: FixtureRow[],
+): number {
+  if (b.points !== a.points) return b.points - a.points;
+  const gd = goalDiff(b) - goalDiff(a);
+  if (gd !== 0) return gd;
+  if (b.gf !== a.gf) return b.gf - a.gf;
+  const h2h = headToHeadResult(fixtures, a.teamId, b.teamId);
+  if (h2h !== 0) return h2h;
+  return a.teamName.localeCompare(b.teamName);
+}
+
+export function computeStandings(
+  fixtures: FixtureRow[],
+  registrations: RegistrationRow[],
+): StandingRow[] {
+  const map = new Map<string, StandingRow>();
+  for (const r of registrations) {
+    map.set(r.teamId, emptyStanding(r.teamId, r.teamName));
+  }
+  for (const f of fixtures) {
+    if (f.homeScore == null || f.awayScore == null) continue;
+    const home = map.get(f.homeTeamId || "");
+    const away = map.get(f.awayTeamId || "");
+    if (!home || !away) continue;
+    applyPlayedFixture(home, away, f.homeScore, f.awayScore);
+  }
+  return [...map.values()].sort((a, b) => compareStandings(a, b, fixtures));
+}
+
+/** Rank teams within each group_name (group stage only). */
+export function computeGroupStandings(
+  fixtures: FixtureRow[],
+  registrations: RegistrationRow[],
+): GroupStandingBlock[] {
+  const groupFixtures = fixtures.filter((f) => f.groupName);
+  const byGroup = new Map<string, FixtureRow[]>();
+  for (const f of groupFixtures) {
+    const g = f.groupName!;
+    if (!byGroup.has(g)) byGroup.set(g, []);
+    byGroup.get(g)!.push(f);
+  }
+
+  const teamName = new Map(registrations.map((r) => [r.teamId, r.teamName]));
+  const blocks: GroupStandingBlock[] = [];
+
+  for (const [groupName, gFixtures] of [...byGroup.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const ids = new Set<string>();
+    for (const f of gFixtures) {
+      if (f.homeTeamId) ids.add(f.homeTeamId);
+      if (f.awayTeamId) ids.add(f.awayTeamId);
+    }
+    const map = new Map<string, StandingRow>();
+    for (const id of ids) {
+      map.set(id, emptyStanding(id, teamName.get(id) || id));
+    }
+    for (const f of gFixtures) {
+      if (f.homeScore == null || f.awayScore == null) continue;
+      const home = map.get(f.homeTeamId || "");
+      const away = map.get(f.awayTeamId || "");
+      if (!home || !away) continue;
+      applyPlayedFixture(home, away, f.homeScore, f.awayScore);
+    }
+    const standings = [...map.values()].sort((a, b) => compareStandings(a, b, gFixtures));
+    blocks.push({ groupName, standings });
+  }
+
+  return blocks;
+}
+
+export function groupFixturesComplete(fixtures: FixtureRow[]): boolean {
+  const group = fixtures.filter((f) => f.groupName);
+  return group.length > 0 && group.every((f) => f.status === "played");
+}
+
+export function knockoutFixturesExist(fixtures: FixtureRow[]): boolean {
+  return fixtures.some((f) => !f.groupName);
+}
+
+/** Top N per group (default 2). */
+export function selectGroupAdvancers(
+  blocks: GroupStandingBlock[],
+  perGroup = 2,
+): { groupName: string; seed: number; team: StandingRow }[] {
+  const out: { groupName: string; seed: number; team: StandingRow }[] = [];
+  for (const block of blocks) {
+    for (let i = 0; i < perGroup && i < block.standings.length; i++) {
+      out.push({ groupName: block.groupName, seed: i + 1, team: block.standings[i] });
+    }
+  }
+  return out;
+}
+
+type Advancer = { groupName: string; seed: number; team: StandingRow };
+
+/**
+ * Cross-group knockout pairing.
+ * 2 groups: A1–B2, B1–A2
+ * 4 groups: A1–B2, C1–D2, B1–A2, D1–C2
+ *   (insert order so auto-advance yields SF: W(A1/B2)–W(C1/D2), W(B1/A2)–W(D1/C2))
+ */
+export function buildCrossGroupKnockoutPairings(advancers: Advancer[]): [Advancer, Advancer][] {
+  const groups = [...new Set(advancers.map((a) => a.groupName))].sort();
+  if (groups.length < 2) throw new Error("Need at least 2 groups to build knockout");
+  if (groups.length % 2 !== 0) {
+    throw new Error("Knockout pairing expects an even number of groups (2 or 4)");
+  }
+
+  const byKey = new Map(advancers.map((a) => [`${a.groupName}:${a.seed}`, a]));
+  const need = (g: string, seed: number) => {
+    const hit = byKey.get(`${g}:${seed}`);
+    if (!hit) throw new Error(`Missing advancer ${g}${seed}`);
+    return hit;
+  };
+
+  const firstHalf: [Advancer, Advancer][] = [];
+  const secondHalf: [Advancer, Advancer][] = [];
+  for (let i = 0; i < groups.length; i += 2) {
+    const g = groups[i];
+    const h = groups[i + 1];
+    firstHalf.push([need(g, 1), need(h, 2)]);
+    secondHalf.push([need(h, 1), need(g, 2)]);
+  }
+  return [...firstHalf, ...secondHalf];
+}
+
+export async function generateKnockoutFromGroups(tournamentId: string): Promise<{
+  fixtures: FixtureRow[];
+  groupStandings: GroupStandingBlock[];
+  advancers: Advancer[];
+}> {
+  await ensureTournamentTables();
+  const tournament = await getTournament(tournamentId);
+  if (!tournament) throw new Error("Tournament not found");
+  if (tournament.format !== "group_knockout") {
+    throw new Error("Generate knockout is only for group_knockout tournaments");
+  }
+
+  const fixtures = await getFixtures(tournamentId);
+  if (!groupFixturesComplete(fixtures)) {
+    throw new Error("Group stage is not complete — finish all group fixtures first");
+  }
+  if (knockoutFixturesExist(fixtures)) {
+    throw new Error("Knockout bracket already exists for this tournament");
+  }
+
+  const regs = await getApprovedRegistrations(tournamentId);
+  const groupStandings = computeGroupStandings(fixtures, regs);
+  const advancers = selectGroupAdvancers(groupStandings, 2);
+  if (advancers.length < 4) {
+    throw new Error("Need at least 4 advancers (top 2 from each of 2+ groups)");
+  }
+
+  const pairings = buildCrossGroupKnockoutPairings(advancers);
+  const maxGroupRound = Math.max(...fixtures.filter((f) => f.groupName).map((f) => f.round), 1);
+  const knockoutRound = maxGroupRound + 1;
+  const isFinal = pairings.length === 1;
+
+  let slot = 0;
+  for (const [home, away] of pairings) {
+    await insertFixture(tournamentId, {
+      round: knockoutRound,
+      groupName: null,
+      homeTeamId: home.team.teamId,
+      awayTeamId: away.team.teamId,
+      homeTeamName: home.team.teamName,
+      awayTeamName: away.team.teamName,
+      scheduledAt: scheduleBase(tournament, knockoutRound + slot, 14 + (slot % 3) * 2),
+      isFinal,
+      weightClass: null,
+      homeUserId: null,
+      awayUserId: null,
+    });
+    slot++;
+  }
+
+  return {
+    fixtures: await getFixtures(tournamentId),
+    groupStandings,
+    advancers,
+  };
+}
+
+async function maybeAdvanceKnockout(tournamentId: string, tournament: TournamentRow): Promise<boolean> {
+  if (tournament.format !== "knockout" && tournament.format !== "group_knockout") return false;
+  const fixtures = await getFixtures(tournamentId);
+  // Pure knockout: all fixtures. Group+knockout: only post-group (group_name null) fixtures.
+  const koFixtures =
+    tournament.format === "group_knockout" ? fixtures.filter((f) => !f.groupName) : fixtures;
+  if (!koFixtures.length) return false;
+
+  const maxRound = Math.max(...koFixtures.map((f) => f.round));
+  const roundFixtures = koFixtures.filter((f) => f.round === maxRound);
   if (!roundFixtures.every((f) => f.status === "played")) return false;
   if (roundFixtures.some((f) => f.homeScore === f.awayScore)) return false;
 
@@ -980,69 +1522,88 @@ async function maybeAdvanceKnockout(tournamentId: string, tournament: Tournament
       awayTeamName: away.teamName,
       scheduledAt: scheduleBase(tournament, nextRound + slot, 14 + (slot % 3) * 2),
       isFinal,
+      weightClass: null,
+      homeUserId: null,
+      awayUserId: null,
     });
     slot++;
   }
   return false;
 }
 
-export type StandingRow = {
-  teamId: string;
-  teamName: string;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  gf: number;
-  ga: number;
-  points: number;
-};
+/** Advance one weight-class bracket; complete tournament when every class has a champion. */
+async function maybeAdvanceWeightClassBracket(
+  tournamentId: string,
+  tournament: TournamentRow,
+  weightClass: string,
+): Promise<boolean> {
+  const fixtures = await getFixtures(tournamentId);
+  const classFixtures = fixtures.filter((f) => f.weightClass === weightClass);
+  if (!classFixtures.length) return false;
 
-export function computeStandings(
-  fixtures: FixtureRow[],
-  registrations: RegistrationRow[],
-): StandingRow[] {
-  const map = new Map<string, StandingRow>();
-  for (const r of registrations) {
-    map.set(r.teamId, {
-      teamId: r.teamId,
-      teamName: r.teamName,
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      gf: 0,
-      ga: 0,
-      points: 0,
+  const maxRound = Math.max(...classFixtures.map((f) => f.round));
+  const roundFixtures = classFixtures.filter((f) => f.round === maxRound);
+  if (!roundFixtures.every((f) => f.status === "played")) return false;
+  if (roundFixtures.some((f) => f.homeScore === f.awayScore)) return false;
+
+  const winners: FighterRef[] = [];
+  for (const f of roundFixtures) {
+    if (f.homeScore == null || f.awayScore == null) continue;
+    const homeWins = f.homeScore > f.awayScore;
+    winners.push({
+      userId: (homeWins ? f.homeUserId : f.awayUserId)!,
+      displayName: homeWins ? f.homeTeamName : f.awayTeamName,
     });
   }
-  for (const f of fixtures) {
-    if (f.homeScore == null || f.awayScore == null) continue;
-    const home = map.get(f.homeTeamId || "");
-    const away = map.get(f.awayTeamId || "");
-    if (!home || !away) continue;
-    home.played++;
-    away.played++;
-    home.gf += f.homeScore;
-    home.ga += f.awayScore;
-    away.gf += f.awayScore;
-    away.ga += f.homeScore;
-    if (f.homeScore > f.awayScore) {
-      home.won++;
-      home.points += 3;
-      away.lost++;
-    } else if (f.homeScore < f.awayScore) {
-      away.won++;
-      away.points += 3;
-      home.lost++;
-    } else {
-      home.drawn++;
-      away.drawn++;
-      home.points++;
-      away.points++;
+
+  if (winners.length === 1) {
+    const champ = winners[0];
+    const champions = { ...tournament.classChampions, [weightClass]: { userId: champ.userId, displayName: champ.displayName } };
+    await db.execute(sql`
+      UPDATE pro_tournaments
+      SET class_champions_json = ${JSON.stringify(champions)}::jsonb
+      WHERE id = ${tournamentId}
+    `);
+
+    const allClasses = [...new Set(fixtures.map((f) => f.weightClass).filter(Boolean))] as string[];
+    const allDone = allClasses.every((wc) => champions[wc]);
+    if (allDone) {
+      await db.execute(sql`
+        UPDATE pro_tournaments
+        SET status = 'completed',
+            winner_team_name = ${`Champions: ${allClasses.map((c) => champions[c].displayName).join(", ")}`}
+        WHERE id = ${tournamentId}
+      `);
+      return true;
     }
+    return false;
   }
-  return [...map.values()].sort((a, b) => b.points - a.points || b.gf - b.ga - (a.gf - a.ga));
+
+  if (winners.length < 2) return false;
+
+  const nextRound = maxRound + 1;
+  const isFinal = winners.length === 2;
+  let slot = 0;
+  for (let i = 0; i < winners.length; i += 2) {
+    const home = winners[i];
+    const away = winners[i + 1];
+    if (!away) continue;
+    await insertFixture(tournamentId, {
+      round: nextRound,
+      groupName: null,
+      homeTeamId: null,
+      awayTeamId: null,
+      homeTeamName: home.displayName,
+      awayTeamName: away.displayName,
+      scheduledAt: scheduleBase(tournament, nextRound + slot, 14 + (slot % 3) * 2),
+      isFinal,
+      weightClass,
+      homeUserId: home.userId,
+      awayUserId: away.userId,
+    });
+    slot++;
+  }
+  return false;
 }
 
 export async function updateFixtureScore(
@@ -1064,7 +1625,13 @@ export async function updateFixtureScore(
 
   let winnerTriggered = false;
 
-  if (fixture.isFinal && homeScore !== awayScore) {
+  if (tournament.entryType === "individual" && fixture.weightClass) {
+    winnerTriggered = await maybeAdvanceWeightClassBracket(
+      tournamentId,
+      tournament,
+      fixture.weightClass,
+    );
+  } else if (fixture.isFinal && homeScore !== awayScore) {
     const winnerId = homeScore > awayScore ? fixture.homeTeamId : fixture.awayTeamId;
     const winnerName = homeScore > awayScore ? fixture.homeTeamName : fixture.awayTeamName;
     if (winnerId) {
@@ -1075,7 +1642,7 @@ export async function updateFixtureScore(
       `);
       winnerTriggered = true;
     }
-  } else if (tournament.format === "knockout") {
+  } else if (tournament.format === "knockout" || tournament.format === "group_knockout") {
     winnerTriggered = await maybeAdvanceKnockout(tournamentId, tournament);
   } else if (tournament.format === "league") {
     const allPlayed = fixtures.length > 0 && fixtures.every((f) => f.status === "played");

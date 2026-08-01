@@ -13,9 +13,18 @@ import {
   getApprovedRegistrations,
   getAllRegistrations,
   registerTeam,
+  registerEntrant,
+  getApprovedEntrants,
+  getAllEntrants,
+  setEntrantStatus,
   generateFixtures,
+  generateKnockoutFromGroups,
   getFixtures,
   computeStandings,
+  computeGroupStandings,
+  groupFixturesComplete,
+  knockoutFixturesExist,
+  selectGroupAdvancers,
   updateFixtureScore,
   getTeamMemberUserIds,
   markPrizeReleased,
@@ -34,6 +43,7 @@ import {
   ensureOrganizerStaffRecord,
 } from "../services/tournamentService";
 import { DEFAULT_TOURNAMENT_SETTINGS } from "@shared/tournamentSport";
+import { BOXING_WEIGHT_CLASSES, isBoxingWeightClass } from "@shared/boxingWeightClasses";
 import { badgeDefinitions, userBadges } from "@shared/schema";
 import { and } from "drizzle-orm";
 import { getProSessionUserId, getProSessionUser } from "./proAuth";
@@ -67,19 +77,40 @@ function permissionError(res: any, error: any) {
 async function tournamentDetailPayload(id: string, includePending = false) {
   const t = await getTournament(id);
   if (!t) return null;
+  const isIndividual = t.entryType === "individual";
   const registrations = includePending ? await getAllRegistrations(id) : await getApprovedRegistrations(id);
   const approved = await getApprovedRegistrations(id);
+  const entrants = includePending ? await getAllEntrants(id) : await getApprovedEntrants(id);
+  const approvedEntrants = await getApprovedEntrants(id);
   const fixtures = await getFixtures(id);
-  const standings = computeStandings(fixtures, approved);
-  const pendingCount = (await getAllRegistrations(id)).filter((r) => r.status === "pending").length;
+  const standings = isIndividual ? [] : computeStandings(fixtures, approved);
+  const groupStandings = isIndividual ? [] : computeGroupStandings(fixtures, approved);
+  const groupStageComplete = groupFixturesComplete(fixtures);
+  const knockoutReady =
+    t.format === "group_knockout" && groupStageComplete && !knockoutFixturesExist(fixtures);
+  const pendingTeamCount = (await getAllRegistrations(id)).filter((r) => r.status === "pending").length;
+  const pendingEntrantCount = (await getAllEntrants(id)).filter((e) => e.status === "pending").length;
+  const pendingCount = isIndividual ? pendingEntrantCount : pendingTeamCount;
+  const filled = isIndividual ? approvedEntrants.length : approved.length;
+  const weightClasses = isIndividual
+    ? [...new Set(approvedEntrants.map((e) => e.weightClass))].sort()
+    : [];
   return {
     ...t,
     registrations: includePending ? registrations : approved,
     approvedRegistrations: approved,
+    entrants: includePending ? entrants : approvedEntrants,
+    approvedEntrants,
+    weightClasses,
+    weightClassOptions: BOXING_WEIGHT_CLASSES,
     pendingCount,
-    spotsRemaining: Math.max(0, t.maxTeams - approved.length - pendingCount),
+    spotsRemaining: Math.max(0, t.maxTeams - filled - pendingCount),
     fixtures,
     standings,
+    groupStandings,
+    groupStageComplete,
+    knockoutReady,
+    proposedAdvancers: knockoutReady ? selectGroupAdvancers(groupStandings, 2) : [],
   };
 }
 
@@ -94,6 +125,7 @@ const createTournamentSchema = z.object({
   startDate: z.string().min(1),
   endDate: z.string().min(1),
   location: z.string().max(200).optional(),
+  entryType: z.enum(["team", "individual"]).optional().default("team"),
   settings: z
     .object({
       autoApprove: z.boolean().optional(),
@@ -114,6 +146,14 @@ const createTournamentSchema = z.object({
       }),
     )
     .optional(),
+}).superRefine((data, ctx) => {
+  if (data.entryType === "individual" && data.format !== "knockout") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Individual tournaments must use knockout format",
+      path: ["format"],
+    });
+  }
 });
 
 const settingsPatchSchema = z.object({
@@ -289,6 +329,9 @@ tournamentPublicRouter.post("/tournaments/:id/register", async (req, res) => {
 
     const t = await getTournament(req.params.id);
     if (!t) return res.status(404).json({ error: "Not found" });
+    if (t.entryType === "individual") {
+      return res.status(400).json({ error: "Use /register-entrant for individual tournaments" });
+    }
 
     const { team } = await validateTeamEligibility(t, body.teamId, userId);
 
@@ -334,6 +377,61 @@ tournamentPublicRouter.post("/tournaments/:id/register", async (req, res) => {
         reg.status === "pending"
           ? "Application submitted — the organizer will review your entry."
           : "Team registered successfully!",
+      spotsRemaining: Math.max(0, t.maxTeams - approved.length - pending.length),
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input" });
+    res.status(400).json({ error: error.message });
+  }
+});
+
+tournamentPublicRouter.post("/tournaments/:id/register-entrant", async (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) return unauthorized(res);
+  try {
+    const body = z
+      .object({
+        weightClass: z.string().min(1),
+        displayName: z.string().min(1).max(120).optional(),
+      })
+      .parse(req.body);
+
+    if (!isBoxingWeightClass(body.weightClass)) {
+      return res.status(400).json({
+        error: `Invalid weight class. Allowed: ${BOXING_WEIGHT_CLASSES.join(", ")}`,
+      });
+    }
+
+    const t = await getTournament(req.params.id);
+    if (!t) return res.status(404).json({ error: "Not found" });
+    if (t.entryType !== "individual") {
+      return res.status(400).json({ error: "This tournament only accepts team registrations" });
+    }
+
+    const user = getProSessionUser(req);
+    const displayName =
+      body.displayName ||
+      (user?.displayName as string) ||
+      (user?.username as string) ||
+      "Fighter";
+
+    const entrant = await registerEntrant(req.params.id, {
+      userId,
+      displayName,
+      weightClass: body.weightClass,
+    });
+
+    const approved = await getApprovedEntrants(req.params.id);
+    const pending = (await getAllEntrants(req.params.id)).filter((e) => e.status === "pending");
+
+    res.status(201).json({
+      entrant,
+      entrants: approved,
+      status: entrant.status,
+      message:
+        entrant.status === "pending"
+          ? "Application submitted — the organizer will review your entry."
+          : "Registered successfully!",
       spotsRemaining: Math.max(0, t.maxTeams - approved.length - pending.length),
     });
   } catch (error: any) {
@@ -519,6 +617,30 @@ tournamentRouter.post("/tournaments/:id/registrations/:regId/reject", async (req
   }
 });
 
+tournamentRouter.post("/tournaments/:id/entrants/:entrantId/approve", async (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) return unauthorized(res);
+  try {
+    const entrant = await setEntrantStatus(req.params.id, req.params.entrantId, "approved", userId);
+    const payload = await tournamentDetailPayload(req.params.id, true);
+    res.json({ entrant, ...payload });
+  } catch (error: any) {
+    return permissionError(res, error);
+  }
+});
+
+tournamentRouter.post("/tournaments/:id/entrants/:entrantId/reject", async (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) return unauthorized(res);
+  try {
+    const entrant = await setEntrantStatus(req.params.id, req.params.entrantId, "rejected", userId);
+    const payload = await tournamentDetailPayload(req.params.id, true);
+    res.json({ entrant, ...payload });
+  } catch (error: any) {
+    return permissionError(res, error);
+  }
+});
+
 tournamentRouter.delete("/tournaments/:id/registrations/:regId", async (req, res) => {
   const userId = getSessionUserId(req);
   if (!userId) return unauthorized(res);
@@ -540,6 +662,21 @@ tournamentRouter.post("/tournaments/:id/generate-fixtures", async (req, res) => 
     await assertTournamentAccess(userId, req.params.id, "canFixtures");
     const fixtures = await generateFixtures(req.params.id);
     res.json({ fixtures });
+  } catch (error: any) {
+    return permissionError(res, error);
+  }
+});
+
+tournamentRouter.post("/tournaments/:id/generate-knockout", async (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) return unauthorized(res);
+  try {
+    const t = await getTournament(req.params.id);
+    if (!t) return res.status(404).json({ error: "Not found" });
+    await assertTournamentAccess(userId, req.params.id, "canFixtures");
+    const result = await generateKnockoutFromGroups(req.params.id);
+    const payload = await tournamentDetailPayload(req.params.id, true);
+    res.json({ ...payload, ...result });
   } catch (error: any) {
     return permissionError(res, error);
   }

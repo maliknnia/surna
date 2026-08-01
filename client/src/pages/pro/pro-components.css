@@ -1924,3 +1924,96 @@
   color: #e9d5ff;
   font-style: italic;
 }
+
+/* Formation builder — bench strip + photo tokens (Task 4) */
+.pro-tactical-token__disc--photo {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.pro-tactical-token__number--overlay {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pro-tactical-token--empty {
+  opacity: 0.45;
+  cursor: default;
+}
+.pro-tactical-token--empty .pro-tactical-token__disc {
+  background: color-mix(in srgb, var(--pro-surface-2) 80%, transparent);
+  border: 1.5px dashed rgba(255, 255, 255, 0.35);
+}
+.pro-tactical-token--empty .pro-tactical-token__number {
+  color: var(--pro-text-subtle);
+  font-size: 11px;
+  font-weight: 700;
+}
+.pro-tactical-formations--archetypes {
+  margin-top: 6px;
+}
+.pro-tactical-formations--archetypes .pro-tactical-formation-chip {
+  font-size: 11px;
+  opacity: 0.92;
+}
+.pro-tactical-bench {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--pro-radius);
+  background: var(--pro-surface-2);
+  border: 0.5px solid var(--pro-border);
+}
+.pro-tactical-bench__label {
+  font-size: var(--pro-fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pro-text-subtle);
+  margin-bottom: 8px;
+}
+.pro-tactical-bench__empty {
+  margin: 0;
+  font-size: var(--pro-fs-sm);
+  color: var(--pro-text-muted);
+}
+.pro-tactical-bench__row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.pro-tactical-bench__token {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  transform: scale(0.92);
+}
+.pro-tactical-bench__token:active {
+  cursor: grabbing;
+}
+.pro-tactical-drag-ghost {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.08);
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
+}

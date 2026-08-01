@@ -17,6 +17,7 @@ export const TOURNAMENT_SPORTS = [
   "Handball",
   "Water Polo",
   "American Football",
+  "Boxing",
 ] as const;
 
 export type TournamentSport = (typeof TOURNAMENT_SPORTS)[number];
@@ -133,6 +134,14 @@ const PROFILES: Record<string, SportTournamentProfile> = {
     typicalTeamCounts: [4, 8, 16],
     kitRequirements: ["Helmets", "Shoulder pads", "Matching jerseys", "Footballs"],
     rosterHint: "11 on field; large roster",
+  },
+  combat: {
+    sport: "Boxing",
+    recommendedFormats: ["knockout"],
+    defaultFormat: "knockout",
+    typicalTeamCounts: [8, 16, 32],
+    kitRequirements: ["Gloves", "Headgear (amateur)", "Mouth guard", "Hand wraps"],
+    rosterHint: "Individual entrants by weight class (even counts per class, no byes in v1)",
   },
 };
 

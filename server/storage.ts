@@ -356,10 +356,18 @@ export interface IStorage {
 
   // SURNA Pro â€” Category 3: Match Day
   getFormations(teamId: string): Promise<any[]>;
+  getFormationById(formationId: string): Promise<any | undefined>;
   createFormation(data: any): Promise<any>;
+  updateFormation(formationId: string, data: any): Promise<any>;
   getMatchSquad(matchId: string, teamId: string): Promise<any | undefined>;
+  getMatchSquadById(squadId: string): Promise<any | undefined>;
   createMatchSquad(data: any): Promise<any>;
+  setMatchSquadFormationId(squadId: string, formationId: string | null): Promise<any>;
   addSquadPlayer(data: any): Promise<any>;
+  replaceSquadPlayers(
+    squadId: string,
+    players: Array<{ userId: string; positionKey?: string; isStarter?: boolean; shirtNo?: number }>,
+  ): Promise<any[]>;
   getSquadPlayers(squadId: string): Promise<any[]>;
   addSubstitution(data: any): Promise<any>;
   getMatchSubstitutions(matchId: string): Promise<any[]>;
@@ -2926,8 +2934,22 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(proFormations).where(eq(proFormations.teamId, teamId));
   }
 
+  async getFormationById(formationId: string): Promise<any | undefined> {
+    const [formation] = await db.select().from(proFormations).where(eq(proFormations.id, formationId));
+    return formation;
+  }
+
   async createFormation(data: any): Promise<any> {
     const [formation] = await db.insert(proFormations).values(data).returning();
+    return formation;
+  }
+
+  async updateFormation(formationId: string, data: any): Promise<any> {
+    const [formation] = await db
+      .update(proFormations)
+      .set(data)
+      .where(eq(proFormations.id, formationId))
+      .returning();
     return formation;
   }
 
@@ -2936,14 +2958,49 @@ export class DatabaseStorage implements IStorage {
     return squad;
   }
 
+  async getMatchSquadById(squadId: string): Promise<any | undefined> {
+    const [squad] = await db.select().from(proMatchSquads).where(eq(proMatchSquads.id, squadId));
+    return squad;
+  }
+
   async createMatchSquad(data: any): Promise<any> {
     const [squad] = await db.insert(proMatchSquads).values(data).returning();
+    return squad;
+  }
+
+  async setMatchSquadFormationId(squadId: string, formationId: string | null): Promise<any> {
+    const [squad] = await db
+      .update(proMatchSquads)
+      .set({ formationId })
+      .where(eq(proMatchSquads.id, squadId))
+      .returning();
     return squad;
   }
 
   async addSquadPlayer(data: any): Promise<any> {
     const [player] = await db.insert(proMatchSquadPlayers).values(data).returning();
     return player;
+  }
+
+  async replaceSquadPlayers(
+    squadId: string,
+    players: Array<{ userId: string; positionKey?: string; isStarter?: boolean; shirtNo?: number }>,
+  ): Promise<any[]> {
+    await db.delete(proMatchSquadPlayers).where(eq(proMatchSquadPlayers.squadId, squadId));
+    if (!players.length) return [];
+    const rows = await db
+      .insert(proMatchSquadPlayers)
+      .values(
+        players.map((p) => ({
+          squadId,
+          userId: p.userId,
+          positionKey: p.positionKey,
+          isStarter: p.isStarter ?? true,
+          shirtNo: p.shirtNo,
+        })),
+      )
+      .returning();
+    return rows;
   }
 
   async getSquadPlayers(squadId: string): Promise<any[]> {

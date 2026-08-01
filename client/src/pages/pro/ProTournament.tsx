@@ -58,6 +58,9 @@ type Tournament = {
   approvedRegistrations?: Registration[];
   fixtures?: Fixture[];
   standings?: Standing[];
+  groupStandings?: { groupName: string; standings: Standing[] }[];
+  groupStageComplete?: boolean;
+  knockoutReady?: boolean;
   settings?: TournamentSettings;
   teamId?: string | null;
   hostingTeamName?: string;
@@ -473,6 +476,17 @@ function ProTeamTournament() {
     },
   });
 
+  const generateKnockoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/pro/tournaments/${tournamentId}/generate-knockout`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/pro/tournaments", tournamentId, "manage"] });
+      setTab("matchday");
+    },
+  });
+
   const scoreMutation = useMutation({
     mutationFn: async ({ fixtureId, homeScore, awayScore }: { fixtureId: string; homeScore: number; awayScore: number }) => {
       const res = await apiRequest("PATCH", `/api/pro/tournaments/${tournamentId}/fixtures/${fixtureId}/score`, { homeScore, awayScore });
@@ -584,6 +598,16 @@ function ProTeamTournament() {
           {canFixtures && (
             <Button variant="primary" leadingIcon={<Zap size={14} />} disabled={generateMutation.isPending || approvedCount < 2 || detail.status === "completed"} onClick={() => generateMutation.mutate()}>
               Generate fixtures
+            </Button>
+          )}
+          {canFixtures && detail.format === "group_knockout" && detail.knockoutReady && (
+            <Button
+              variant="secondary"
+              leadingIcon={<Trophy size={14} />}
+              disabled={generateKnockoutMutation.isPending || detail.status === "completed"}
+              onClick={() => generateKnockoutMutation.mutate()}
+            >
+              Generate knockout bracket
             </Button>
           )}
           {pendingRegs.length > 0 && canApprove && (

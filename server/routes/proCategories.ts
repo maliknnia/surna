@@ -3,6 +3,12 @@ import { Router } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { getProSessionUser } from "./proAuth";
+import { normalizeFormationLayoutJson } from "@shared/formationBoard";
+import {
+  attachFormationToMatchSquad,
+  resolveTeamFormationBoardMeta,
+  upsertTeamFormation,
+} from "../services/formationBoardService";
 
 export const proCategoriesRouter = Router();
 
@@ -147,9 +153,19 @@ proCategoriesRouter.post("/training/session/:sessionId/attendance", async (req, 
 
 const createFormationSchema = z.object({
   teamId: z.string().min(1),
-  name: z.string().min(1),
+  name: z.string().min(1).optional(),
   sportType: z.string().optional(),
   layoutJson: z.any().optional(),
+  archetypeKey: z.string().optional(),
+  /** When set, updates this formation instead of inserting (upsert via POST). */
+  formationId: z.string().optional(),
+});
+
+const patchFormationSchema = z.object({
+  name: z.string().min(1).optional(),
+  sportType: z.string().optional(),
+  layoutJson: z.any().optional(),
+  archetypeKey: z.string().optional(),
 });
 
 const createMatchSquadSchema = z.object({
@@ -157,6 +173,11 @@ const createMatchSquadSchema = z.object({
   teamId: z.string().min(1),
   formationId: z.string().optional(),
   captainUserId: z.string().optional(),
+});
+
+const attachFormationSchema = z.object({
+  formationId: z.string().min(1),
+  teamId: z.string().min(1),
 });
 
 const addSquadPlayerSchema = z.object({
@@ -182,40 +203,110 @@ const addMatchNoteSchema = z.object({
   note: z.string().optional(),
 });
 
+proCategoriesRouter.get("/team/:teamId/formation-board", async (req, res) => {
+  try {
+    const meta = await resolveTeamFormationBoardMeta(req.params.teamId);
+    res.json(meta);
+  } catch (error: any) {
+    const status = error?.message === "Team not found" ? 404 : 500;
+    res.status(status).json({ error: error.message });
+  }
+});
+
 proCategoriesRouter.get("/team/:teamId/formations", async (req, res) => {
   try {
     const formations = await storage.getFormations(req.params.teamId);
-    res.json(formations);
+    res.json(
+      formations.map((f: any) => ({
+        ...f,
+        layoutJson: normalizeFormationLayoutJson(f.layoutJson, {
+          layoutId: f.sportType,
+        }),
+      })),
+    );
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-proCategoriesRouter.post("/team/:teamId/formation", async (req, res) => {
-  const user = getUser(req);
-  if (!user) return unauthorized(res);
+proCategoriesRouter.get("/team/:teamId/formations/:formationId", async (req, res) => {
   try {
-    const data = createFormationSchema.parse({ ...req.body, teamId: req.params.teamId });
-    const formation = await storage.createFormation(data);
-    await storage.logProAudit(req.params.teamId, user.id, "formation.create", { entity: "formation", entityId: formation.id, after: data });
-    res.status(201).json(formation);
+    const formation = await storage.getFormationById(req.params.formationId);
+    if (!formation || formation.teamId !== req.params.teamId) {
+      return res.status(404).json({ error: "Formation not found" });
+    }
+    res.json({
+      ...formation,
+      layoutJson: normalizeFormationLayoutJson(formation.layoutJson, {
+        layoutId: formation.sportType,
+      }),
+    });
   } catch (error: any) {
-    if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
     res.status(500).json({ error: error.message });
   }
 });
 
-proCategoriesRouter.post("/team/:teamId/formations", async (req, res) => {
+async function handleUpsertFormation(req: any, res: any) {
   const user = getUser(req);
   if (!user) return unauthorized(res);
   try {
     const data = createFormationSchema.parse({ ...req.body, teamId: req.params.teamId });
-    const formation = await storage.createFormation(data);
-    await storage.logProAudit(req.params.teamId, user.id, "formation.create", { entity: "formation", entityId: formation.id, after: data });
-    res.status(201).json(formation);
+    const formation = await upsertTeamFormation(req.params.teamId, {
+      formationId: data.formationId,
+      name: data.name,
+      sportType: data.sportType,
+      layoutJson: data.layoutJson,
+      archetypeKey: data.archetypeKey,
+    });
+    await storage.logProAudit(
+      req.params.teamId,
+      user.id,
+      data.formationId ? "formation.update" : "formation.create",
+      { entity: "formation", entityId: formation.id, after: data },
+    );
+    res.status(data.formationId ? 200 : 201).json({
+      ...formation,
+      layoutJson: normalizeFormationLayoutJson(formation.layoutJson, {
+        layoutId: formation.sportType,
+      }),
+    });
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
-    res.status(500).json({ error: error.message });
+    const msg = error?.message || "Failed";
+    const status =
+      msg.includes("not found") || msg.includes("not valid") || msg.includes("Unknown") ? 400 : 500;
+    res.status(status).json({ error: msg });
+  }
+}
+
+proCategoriesRouter.post("/team/:teamId/formation", handleUpsertFormation);
+proCategoriesRouter.post("/team/:teamId/formations", handleUpsertFormation);
+
+proCategoriesRouter.patch("/team/:teamId/formations/:formationId", async (req, res) => {
+  const user = getUser(req);
+  if (!user) return unauthorized(res);
+  try {
+    const data = patchFormationSchema.parse(req.body);
+    const formation = await upsertTeamFormation(req.params.teamId, {
+      formationId: req.params.formationId,
+      ...data,
+    });
+    await storage.logProAudit(req.params.teamId, user.id, "formation.update", {
+      entity: "formation",
+      entityId: formation.id,
+      after: data,
+    });
+    res.json({
+      ...formation,
+      layoutJson: normalizeFormationLayoutJson(formation.layoutJson, {
+        layoutId: formation.sportType,
+      }),
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
+    const msg = error?.message || "Failed";
+    const status = msg.includes("not found") ? 404 : msg.includes("not valid") || msg.includes("Unknown") ? 400 : 500;
+    res.status(status).json({ error: msg });
   }
 });
 
@@ -242,6 +333,30 @@ proCategoriesRouter.post("/match/:matchId/squad/set", async (req, res) => {
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
     res.status(500).json({ error: error.message });
+  }
+});
+
+proCategoriesRouter.post("/match/:matchId/squad/:squadId/attach-formation", async (req, res) => {
+  const user = getUser(req);
+  if (!user) return unauthorized(res);
+  try {
+    const data = attachFormationSchema.parse(req.body);
+    const result = await attachFormationToMatchSquad({
+      squadId: req.params.squadId,
+      teamId: data.teamId,
+      formationId: data.formationId,
+    });
+    await storage.logProAudit(data.teamId, user.id, "squad.attach_formation", {
+      entity: "matchSquad",
+      entityId: req.params.squadId,
+      after: { formationId: data.formationId, matchId: req.params.matchId },
+    });
+    res.json(result);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
+    const msg = error?.message || "Failed";
+    const status = msg.includes("not found") ? 404 : 400;
+    res.status(status).json({ error: msg });
   }
 });
 

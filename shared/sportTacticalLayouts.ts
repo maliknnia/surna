@@ -90,6 +90,34 @@ const FOOTBALL_4231: SlotTemplate[] = [
   { role: "ST", x: 50, y: 18 },
 ];
 
+const FOOTBALL_532: SlotTemplate[] = [
+  { role: "GK", x: 50, y: 90 },
+  { role: "CB", x: 22, y: 76 },
+  { role: "CB", x: 50, y: 78 },
+  { role: "CB", x: 78, y: 76 },
+  { role: "LWB", x: 8, y: 58 },
+  { role: "RWB", x: 92, y: 58 },
+  { role: "CM", x: 30, y: 48 },
+  { role: "CM", x: 50, y: 50 },
+  { role: "CM", x: 70, y: 48 },
+  { role: "ST", x: 38, y: 20 },
+  { role: "ST", x: 62, y: 20 },
+];
+
+const FOOTBALL_541: SlotTemplate[] = [
+  { role: "GK", x: 50, y: 92 },
+  { role: "CB", x: 18, y: 78 },
+  { role: "CB", x: 40, y: 80 },
+  { role: "CB", x: 60, y: 80 },
+  { role: "CB", x: 82, y: 78 },
+  { role: "LWB", x: 8, y: 62 },
+  { role: "CM", x: 28, y: 55 },
+  { role: "CM", x: 50, y: 58 },
+  { role: "CM", x: 72, y: 55 },
+  { role: "RWB", x: 92, y: 62 },
+  { role: "ST", x: 50, y: 22 },
+];
+
 const GAA_15: SlotTemplate[] = [
   { role: "GK", x: 50, y: 92 },
   { role: "FB", x: 18, y: 80 },
@@ -128,6 +156,8 @@ export const TACTICAL_FORMATIONS: TacticalFormationDef[] = [
   { key: "4-4-2", label: "4-4-2", layoutId: "football", slots: FOOTBALL_442 },
   { key: "3-5-2", label: "3-5-2", layoutId: "football", slots: FOOTBALL_352 },
   { key: "4-2-3-1", label: "4-2-3-1", layoutId: "football", slots: FOOTBALL_4231 },
+  { key: "5-3-2", label: "5-3-2", layoutId: "football", slots: FOOTBALL_532 },
+  { key: "5-4-1", label: "5-4-1", layoutId: "football", slots: FOOTBALL_541 },
   { key: "gaa-15", label: "GAA 15", layoutId: "gaa", slots: GAA_15 },
   {
     key: "bb-5-out",

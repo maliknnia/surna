@@ -14,14 +14,20 @@ import { proKeys, mapMatchRows, fetchProJson, type ProMatchRow } from "./lib/pro
 import FormationMessageCard from "./components/FormationMessageCard";
 import {
   type PitchPlayer,
-  buildPlayersFromSquad,
+  type BenchPlayer,
+  buildEmptyPitch,
   encodeFormationMessage,
   getFormationTemplate,
   snapToFormation,
+  assignBenchToSlot,
+  clearPitchSlot,
+  isPitchSlotFilled,
+  playerMatchesIdentity,
 } from "./lib/tacticalFormations";
 import { defaultFormationForLayout } from "./lib/proSport";
 import type { SportTacticalLayoutId } from "@shared/sportTacticalLayouts";
 import { getLayoutMeta } from "@shared/sportTacticalLayouts";
+import { getArchetypeDef } from "@shared/formationBoard";
 import ProSportMatchPanel from "./components/ProSportMatchPanel";
 
 const TacticalBoard = lazy(() => import("./components/TacticalBoard"));
@@ -46,6 +52,15 @@ type SquadMember = {
   number?: number;
   userId?: string;
   status?: string;
+  photoUrl?: string;
+};
+
+type FormationBoardMeta = {
+  layoutId: SportTacticalLayoutId | null;
+  defaultFormationKey: string | null;
+  formationLayout: string | null;
+  archetypes: Array<{ key: string; label: string; formationKey: string; blurb: string }>;
+  shapePresets: Array<{ key: string; label: string }>;
 };
 
 type MessengerGroup = { id: string; name?: string };
@@ -65,6 +80,8 @@ function MStatus({ s }: { s: Match["status"] }) {
 type SavedLayout = {
   formationKey?: string;
   layoutId?: SportTacticalLayoutId;
+  archetypeKey?: string;
+  benchOrder?: string[];
   players?: Array<{
     playerId?: string;
     userId?: string;
@@ -74,6 +91,7 @@ type SavedLayout = {
     x: number;
     y: number;
     note?: string;
+    photoUrl?: string;
   }>;
 };
 
@@ -99,11 +117,13 @@ function ProTeamMatchDay() {
   const qc = useQueryClient();
 
   const [tab, setTab] = useState<MTab>("upcoming");
-  const tacticalLayout = sportProfile.tacticalLayout;
-  const [layoutId, setLayoutId] = useState<SportTacticalLayoutId>(tacticalLayout ?? "football");
+  const profileLayout = sportProfile.tacticalLayout;
+  const [layoutId, setLayoutId] = useState<SportTacticalLayoutId>(profileLayout ?? "football");
   const [formationKey, setFormationKey] = useState<string>(
     sportProfile.defaultFormation ?? "4-3-3",
   );
+  const [archetypeKey, setArchetypeKey] = useState<string | null>(null);
+  const [activeFormationId, setActiveFormationId] = useState<string | null>(null);
   const [pitchPlayers, setPitchPlayers] = useState<PitchPlayer[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [playerNotes, setPlayerNotes] = useState<Record<string, string>>({});
@@ -118,10 +138,18 @@ function ProTeamMatchDay() {
     },
   });
 
-  const needsFormations = tab === "formations" && !!tacticalLayout;
+  const needsFormations = tab === "formations";
+  const { data: boardMeta } = useQuery<FormationBoardMeta>({
+    queryKey: proKeys.teamFormationBoard(teamId ?? ""),
+    enabled: !!teamId && needsFormations,
+    queryFn: ({ signal }) => fetchProJson(`/api/pro/team/${teamId}/formation-board`, signal),
+  });
+
+  const tacticalLayout = boardMeta?.layoutId ?? profileLayout ?? null;
+
   const { data: apiFormations = [], isLoading: formLoading } = useQuery<FormationRow[]>({
     queryKey: proKeys.teamFormations(teamId ?? ""),
-    enabled: !!teamId && needsFormations,
+    enabled: !!teamId && needsFormations && !!tacticalLayout,
     queryFn: ({ signal }) => fetchProJson(`/api/pro/team/${teamId}/formations`, signal),
   });
 
@@ -160,6 +188,19 @@ function ProTeamMatchDay() {
     [squad],
   );
 
+  const benchPlayers: BenchPlayer[] = useMemo(() => {
+    return availableSquad
+      .filter((p) => !pitchPlayers.some((slot) => playerMatchesIdentity(slot, p)))
+      .map((p) => ({
+        id: p.id,
+        userId: p.userId,
+        name: p.name,
+        number: p.number,
+        position: p.position,
+        photoUrl: p.photoUrl,
+      }));
+  }, [availableSquad, pitchPlayers]);
+
   const teamGroupId = useMemo(() => {
     const groups = messengerGroups?.groups ?? [];
     const lower = teamName.toLowerCase();
@@ -172,30 +213,17 @@ function ProTeamMatchDay() {
 
   const initFormation = useCallback(
     (nextLayout: SportTacticalLayoutId, key?: string) => {
-      const fk = key ?? defaultFormationForLayout(nextLayout);
+      const fk = key ?? boardMeta?.defaultFormationKey ?? defaultFormationForLayout(nextLayout);
       const template = getFormationTemplate(fk);
-      const count = template.slots.length;
-      const picks = availableSquad.slice(0, count);
-      if (picks.length < count) {
-        const padded = [...picks];
-        while (padded.length < count) {
-          padded.push({
-            id: `placeholder-${padded.length}`,
-            userId: undefined,
-            name: `Player ${padded.length + 1}`,
-            position: template.slots[padded.length]?.role ?? "—",
-            number: padded.length + 1,
-          });
-        }
-        setPitchPlayers(buildPlayersFromSquad(template, padded));
-      } else {
-        setPitchPlayers(buildPlayersFromSquad(template, picks));
-      }
+      setPitchPlayers(buildEmptyPitch(template));
       setFormationKey(fk);
       setLayoutId(nextLayout);
+      setArchetypeKey(null);
+      setActiveFormationId(null);
       setSelectedSlotId(null);
+      setPlayerNotes({});
     },
-    [availableSquad],
+    [boardMeta?.defaultFormationKey],
   );
 
   const loadSavedFormation = useCallback(
@@ -221,19 +249,23 @@ function ProTeamMatchDay() {
             : undefined;
         const slotId = `slot-${i}`;
         if (saved?.note) notes[slotId] = saved.note;
+        const filled = !!(saved?.userId || saved?.playerId || squadMatch);
         return {
           slotId,
           playerId: saved?.playerId ?? squadMatch?.id,
           userId: saved?.userId ?? squadMatch?.userId,
-          name: saved?.name ?? squadMatch?.name ?? `Player ${i + 1}`,
+          name: filled ? saved?.name ?? squadMatch?.name ?? slot.role : slot.role,
           number: saved?.number ?? squadMatch?.number ?? i + 1,
           role: saved?.role ?? squadMatch?.position ?? slot.role,
           x: saved?.x ?? slot.x,
           y: saved?.y ?? slot.y,
+          photoUrl: saved?.photoUrl ?? squadMatch?.photoUrl,
         };
       });
       setFormationKey(fk);
       setLayoutId(savedLayoutId);
+      setArchetypeKey(layout.archetypeKey ?? null);
+      setActiveFormationId(row.id);
       setPitchPlayers(players);
       setPlayerNotes(notes);
       setSelectedSlotId(null);
@@ -244,56 +276,117 @@ function ProTeamMatchDay() {
   useEffect(() => {
     if (!tacticalLayout) return;
     setLayoutId(tacticalLayout);
-    setFormationKey(sportProfile.defaultFormation ?? defaultFormationForLayout(tacticalLayout));
+    setFormationKey(
+      boardMeta?.defaultFormationKey ??
+        sportProfile.defaultFormation ??
+        defaultFormationForLayout(tacticalLayout),
+    );
     setSquadInitialized(false);
     setPlayerNotes({});
-  }, [teamId, tacticalLayout, sportProfile.defaultFormation]);
+    setActiveFormationId(null);
+    setArchetypeKey(null);
+  }, [teamId, tacticalLayout, boardMeta?.defaultFormationKey, sportProfile.defaultFormation]);
 
   useEffect(() => {
     if (squadLoading || squadInitialized || !tacticalLayout) return;
-    initFormation(tacticalLayout, sportProfile.defaultFormation ?? undefined);
+    initFormation(
+      tacticalLayout,
+      boardMeta?.defaultFormationKey ?? sportProfile.defaultFormation ?? undefined,
+    );
     setSquadInitialized(true);
-  }, [squadLoading, squadInitialized, tacticalLayout, sportProfile.defaultFormation, initFormation]);
+  }, [
+    squadLoading,
+    squadInitialized,
+    tacticalLayout,
+    boardMeta?.defaultFormationKey,
+    sportProfile.defaultFormation,
+    initFormation,
+  ]);
 
   const handleFormationKeyChange = (key: string) => {
     const template = getFormationTemplate(key);
     setFormationKey(key);
     setLayoutId(template.layoutId);
+    setArchetypeKey(null);
     setPitchPlayers((prev) => snapToFormation(prev, template));
   };
+
+  const handleArchetypeSelect = (key: string) => {
+    const arch = getArchetypeDef(key);
+    if (!arch) return;
+    const template = getFormationTemplate(arch.formationKey);
+    setArchetypeKey(arch.key);
+    setFormationKey(arch.formationKey);
+    setLayoutId(arch.layoutId);
+    setPitchPlayers((prev) => snapToFormation(prev, template));
+  };
+
+  const assignFromBench = useCallback((bench: BenchPlayer, slotId: string) => {
+    setPitchPlayers((prev) => {
+      const cleared = prev.map((p) =>
+        playerMatchesIdentity(p, bench)
+          ? clearPitchSlot(p, getFormationTemplate(formationKey).slots[Number(p.slotId.replace("slot-", ""))]?.role)
+          : p,
+      );
+      return cleared.map((p) => {
+        if (p.slotId !== slotId) return p;
+        return assignBenchToSlot(p, bench, p.role);
+      });
+    });
+    setSelectedSlotId(slotId);
+  }, [formationKey]);
+
+  const returnToBench = useCallback((slotId: string) => {
+    setPitchPlayers((prev) =>
+      prev.map((p) => {
+        if (p.slotId !== slotId) return p;
+        const idx = Number(p.slotId.replace("slot-", ""));
+        const role = getFormationTemplate(formationKey).slots[idx]?.role ?? p.role;
+        return clearPitchSlot(p, role);
+      }),
+    );
+    setSelectedSlotId(null);
+    setPlayerNotes((prev) => {
+      const next = { ...prev };
+      delete next[slotId];
+      return next;
+    });
+  }, [formationKey]);
 
   const assignPlayer = useCallback(
     (player: SquadMember) => {
       if (!selectedSlotId) return;
-      setPitchPlayers((prev) =>
-        prev.map((p) =>
-          p.slotId === selectedSlotId
-            ? {
-                ...p,
-                playerId: player.id,
-                userId: player.userId,
-                name: player.name,
-                number: player.number ?? p.number,
-                role: player.position || p.role,
-              }
-            : p,
-        ),
+      assignFromBench(
+        {
+          id: player.id,
+          userId: player.userId,
+          name: player.name,
+          number: player.number,
+          position: player.position,
+          photoUrl: player.photoUrl,
+        },
+        selectedSlotId,
       );
-      setSelectedSlotId(null);
     },
-    [selectedSlotId],
+    [selectedSlotId, assignFromBench],
   );
 
   const saveFormationMutation = useMutation({
     mutationFn: async () => {
       if (!teamId) throw new Error("No team");
       const template = getFormationTemplate(formationKey);
-      await apiRequest("POST", `/api/pro/team/${teamId}/formations`, {
-        name: template.label,
+      const name = archetypeKey
+        ? getArchetypeDef(archetypeKey)?.label || template.label
+        : template.label;
+      const res = await apiRequest("POST", `/api/pro/team/${teamId}/formations`, {
+        formationId: activeFormationId || undefined,
+        name,
         sportType: layoutId,
+        archetypeKey: archetypeKey || undefined,
         layoutJson: {
           formationKey,
           layoutId,
+          archetypeKey: archetypeKey || undefined,
           players: pitchPlayers.map((p) => ({
             playerId: p.playerId,
             userId: p.userId,
@@ -302,12 +395,16 @@ function ProTeamMatchDay() {
             role: p.role,
             x: p.x,
             y: p.y,
+            photoUrl: p.photoUrl,
             note: p.userId ? playerNotes[p.slotId] : undefined,
           })),
+          benchOrder: benchPlayers.map((b) => b.userId || b.id),
         },
       });
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (row: FormationRow) => {
+      if (row?.id) setActiveFormationId(row.id);
       if (teamId) qc.invalidateQueries({ queryKey: proKeys.teamFormations(teamId) });
     },
   });
@@ -465,7 +562,7 @@ function ProTeamMatchDay() {
     </>
   );
 
-  const boardLoading = squadLoading || (pitchPlayers.length === 0 && !squadLoading && !!tacticalLayout);
+  const boardLoading = !squadInitialized && !!tacticalLayout;
 
   const historyRows = pastMatches.map((m) => ({
     id: m.id,
@@ -499,7 +596,7 @@ function ProTeamMatchDay() {
         context={
           canManage ? (
             <>
-              Drag tokens on the pitch · tap for tactical notes · {availableSquad.length} available in squad
+              Drag from bench to pitch · snap to slots · {benchPlayers.length} on bench
             </>
           ) : (
             <>Match day overview.</>
@@ -591,21 +688,25 @@ function ProTeamMatchDay() {
               <div>
                 <h3 style={{ margin: 0 }}>Tactical board</h3>
                 <p className="pro-text-muted" style={{ margin: "4px 0 0", fontSize: 11 }}>
-                  {getLayoutMeta(tacticalLayout).label}
+                  {getLayoutMeta(layoutId).label}
+                  {boardMeta?.formationLayout ? ` · ${boardMeta.formationLayout}` : ""}
                 </p>
               </div>
             </div>
 
             {boardLoading || formLoading ? (
-              <div className="animate-pulse rounded-xl" style={{ height: 420, background: "#121212" }} />
+              <div className="animate-pulse rounded-xl" style={{ height: 420, background: "var(--pro-surface-2)" }} />
             ) : (
-              <Suspense fallback={<div className="animate-pulse rounded-xl" style={{ height: 420, background: "#121212" }} />}>
+              <Suspense fallback={<div className="animate-pulse rounded-xl" style={{ height: 420, background: "var(--pro-surface-2)" }} />}>
                 <TacticalBoard
                   layoutId={layoutId}
                   formationKey={formationKey}
                   onFormationChange={handleFormationKeyChange}
                   players={pitchPlayers}
                   onPlayersChange={setPitchPlayers}
+                  bench={benchPlayers}
+                  onAssignFromBench={assignFromBench}
+                  onReturnToBench={returnToBench}
                   selectedSlotId={selectedSlotId}
                   onSelectSlot={setSelectedSlotId}
                   playerNotes={playerNotes}
@@ -613,6 +714,9 @@ function ProTeamMatchDay() {
                   onNoteChange={(slotId, note) =>
                     setPlayerNotes((prev) => ({ ...prev, [slotId]: note }))
                   }
+                  archetypes={boardMeta?.archetypes ?? []}
+                  archetypeKey={archetypeKey}
+                  onArchetypeSelect={handleArchetypeSelect}
                 />
               </Suspense>
             )}
@@ -622,9 +726,8 @@ function ProTeamMatchDay() {
                 <Button
                   variant="primary"
                   leadingIcon={<Send size={14} />}
-                  disabled={sendToTeamMutation.isPending || pitchPlayers.length === 0}
+                  disabled={sendToTeamMutation.isPending || !pitchPlayers.some(isPitchSlotFilled)}
                   onClick={() => sendToTeamMutation.mutate()}
-                  style={{ background: "#803FE1", borderColor: "#803FE1" }}
                 >
                   Send to team
                 </Button>
@@ -654,8 +757,8 @@ function ProTeamMatchDay() {
               style={{ fontSize: 12 }}
             >
               {selectedSlotId
-                ? "Tap a player to assign to the selected slot."
-                : "Select a player on the pitch, then pick from the list."}
+                ? "Tap a player to place on the selected slot (or drag from the bench)."
+                : "Drag from the bench onto the pitch, or select a slot then tap a player."}
             </p>
             {squadLoading ? (
               <div className="animate-pulse h-40 rounded mt-2" style={{ background: "var(--pro-surface-2)" }} />

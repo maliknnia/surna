@@ -18,7 +18,7 @@
     "db:seed:investor:verify": "tsx scripts/verify-investor-demo.ts",
     "db:fix:images": "tsx scripts/fix-demo-images.ts",
     "db:seed:marketplace": "tsx scripts/seed-marketplace.ts",
-    "test:unit": "tsx scripts/test-sport-labels.ts && tsx scripts/test-person-ranking.ts",
+    "test:unit": "tsx scripts/test-sport-labels.ts && tsx scripts/test-person-ranking.ts && tsx scripts/test-group-knockout-promotion.ts && tsx scripts/test-weight-class-brackets.ts && tsx scripts/test-formation-board.ts && tsx scripts/test-formation-builder-ui.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:audit": "npm audit --audit-level=high",
     "test:load:smoke": "node scripts/load-smoke.mjs",

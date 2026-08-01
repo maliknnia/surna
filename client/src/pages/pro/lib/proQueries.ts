@@ -8,6 +8,7 @@ export const proKeys = {
   teamMatchesPast: (teamId: string) => ["/api/pro/team", teamId, "matches", "past"] as const,
   teamSquad: (teamId: string) => ["/api/pro/team", teamId, "squad"] as const,
   teamFormations: (teamId: string) => ["/api/pro/team", teamId, "formations"] as const,
+  teamFormationBoard: (teamId: string) => ["/api/pro/team", teamId, "formation-board"] as const,
   teamMembers: (teamId: string) => ["/api/pro/team", teamId, "members"] as const,
   teamInventory: (teamId: string) => ["/api/pro/team", teamId, "inventory"] as const,
 };

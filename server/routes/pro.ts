@@ -33,6 +33,7 @@ function mapProSquadRow(row: any) {
     position: positions[0] || u.sport || "—",
     number: row.jerseyNumber ?? undefined,
     status: (row.status as string) || "active",
+    photoUrl: u.profileImageUrl || undefined,
   };
 }
 
